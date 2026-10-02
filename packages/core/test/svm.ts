@@ -17,17 +17,11 @@ import {
   getU32Encoder,
   getU8Encoder,
   isAdvanceNonceAccountInstruction,
-  isSolanaError,
   lamports,
   partiallySignTransaction,
   pipe,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-  SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
-  SOLANA_ERROR__INSTRUCTION_ERROR__INSUFFICIENT_FUNDS,
-  SOLANA_ERROR__INSTRUCTION_ERROR__MISSING_REQUIRED_SIGNATURE,
-  SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED,
-  SOLANA_ERROR__TRANSACTION_ERROR__BLOCKHASH_NOT_FOUND,
   signTransactionMessageWithSigners,
   type AccountSignerMeta,
   type Address,
@@ -38,7 +32,7 @@ import {
 } from '@solana/kit';
 import { getDelegateStakeInstruction, getInitializeInstruction } from '@solana-program/stake';
 import { decodeNonce, getCreateAccountInstruction } from '@solana-program/system';
-import { EpochSchedule, FailedTransactionMetadata, LiteSVM } from 'litesvm';
+import { EpochSchedule, FailedTransactionMetadata, LiteSVM, Rent } from 'litesvm';
 import {
   decodeStakeAccount,
   STAKE_ACCOUNT_SIZE,
@@ -51,16 +45,21 @@ import {
   type RawAccount,
   type StakeAccount,
 } from '../src/index.ts';
+import { chainErrorFromSolanaError, STAKE_PROGRAM_PATH, STAKE_PROGRAM_SHA256, type ChainError } from './support.ts';
+
+export { STAKE_PROGRAM_PATH, STAKE_PROGRAM_SHA256 } from './support.ts';
 
 export const LAMPORTS_PER_SOL = 1_000_000_000n;
-
-/** The committed mainnet stake program build (DECISIONS.md D4, fixtures/programs/README.md). */
-export const STAKE_PROGRAM_PATH = new URL('./fixtures/programs/stake-v5.1.0.so', import.meta.url);
-export const STAKE_PROGRAM_SHA256 = '3d2d39c596ce8be2d47816b4ee5db9fc759d80fde54b08c930ad0b6daed64c2c';
 
 /** Start of every test chain: 2026-10-01T00:00:00Z, epoch 1000. */
 export const START_UNIX_TIMESTAMP = 1_790_812_800n;
 export const START_EPOCH = 1_000n;
+/**
+ * Rent as mainnet and devnet charge it (Rent sysvar `lamportsPerByte` 5080 with the exemption threshold folded in, read
+ * 2026-10-02): a stake account needs 1 666 240 lamports, a nonce account 1 056 640, a wallet 650 240. LiteSVM 1.5.0
+ * still defaults to 6960 (2 282 880 for a stake account).
+ */
+export const MAINNET_RENT_LAMPORTS_PER_BYTE = 5_080n;
 /** Short linear epochs; only `clock.epoch` matters to the stake program. */
 const SLOTS_PER_EPOCH = 32n;
 
@@ -69,26 +68,12 @@ const SYSVAR_RENT_ADDRESS = 'SysvarRent111111111111111111111111111111111' as Add
 /** Serialized VoteState size the vote program expects. */
 const VOTE_ACCOUNT_SIZE = 3_762n;
 
-export type SvmError =
-  /** A program returned a custom error code, e.g. 1 = LockupInForce for the stake program. */
-  | { kind: 'custom'; code: number; index: number }
-  /** A built-in instruction error, e.g. MissingRequiredSignature. `index` counts every instruction. */
-  | { kind: 'instruction'; name: string; index: number }
-  /** Rejected before execution, e.g. BlockhashNotFound. */
-  | { kind: 'transaction'; name: string };
+/** Why a transaction failed (see ChainError in support.ts). */
+export type SvmError = ChainError;
 
 export type SendResult =
   | { ok: true; signature: Signature; computeUnits: bigint; logs: string[] }
   | { ok: false; signature: Signature; error: SvmError; logs: string[] };
-
-const INSTRUCTION_ERROR_NAMES = new Map<number, string>([
-  [SOLANA_ERROR__INSTRUCTION_ERROR__MISSING_REQUIRED_SIGNATURE, 'MissingRequiredSignature'],
-  [SOLANA_ERROR__INSTRUCTION_ERROR__INSUFFICIENT_FUNDS, 'InsufficientFunds'],
-]);
-const TRANSACTION_ERROR_NAMES = new Map<number, string>([
-  [SOLANA_ERROR__TRANSACTION_ERROR__BLOCKHASH_NOT_FOUND, 'BlockhashNotFound'],
-  [SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED, 'AlreadyProcessed'],
-]);
 
 export type NewStakeAccount = {
   staker: Address;
@@ -119,6 +104,7 @@ export class TestChain {
     const svm = new LiteSVM();
     svm.addProgram(STAKE_PROGRAM_ADDRESS, program);
     svm.setEpochSchedule(new EpochSchedule(SLOTS_PER_EPOCH, SLOTS_PER_EPOCH, false, 0n, 0n));
+    svm.setRent(new Rent(MAINNET_RENT_LAMPORTS_PER_BYTE, 1, svm.getRent().burnPercent));
     const chain = new TestChain(svm, await generateKeyPairSigner());
     chain.warpToEpoch(START_EPOCH);
     chain.setTime(START_UNIX_TIMESTAMP);
@@ -309,14 +295,5 @@ export class TestChain {
 }
 
 function toSvmError(failure: FailedTransactionMetadata): SvmError {
-  const error = getSolanaErrorFromLiteSvmFailure(failure);
-  if (isSolanaError(error, SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM)) {
-    return { kind: 'custom', code: error.context.code, index: error.context.index };
-  }
-  const code = error.context.__code;
-  const index: unknown = 'index' in error.context ? error.context.index : undefined;
-  if (typeof index === 'number') {
-    return { kind: 'instruction', name: INSTRUCTION_ERROR_NAMES.get(code) ?? `SolanaError ${String(code)}`, index };
-  }
-  return { kind: 'transaction', name: TRANSACTION_ERROR_NAMES.get(code) ?? `SolanaError ${String(code)}` };
+  return chainErrorFromSolanaError(getSolanaErrorFromLiteSvmFailure(failure));
 }

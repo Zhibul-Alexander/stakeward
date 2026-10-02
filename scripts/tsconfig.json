@@ -1,7 +1,9 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    // DOM: kit's signer types refer to the Web Crypto globals (CryptoKeyPair), see packages/core/test/tsconfig.json.
+    "lib": ["ES2024", "DOM"],
     "types": ["node"]
   },
-  "include": ["*.ts"]
+  "include": ["**/*.ts"]
 }
