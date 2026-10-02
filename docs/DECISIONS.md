@@ -8,6 +8,8 @@ Withdraw, AuthorizeChecked, Deactivate и DelegateStake собираем в ст
 
 Это расходится с CLAUDE.md §4 («Sysvar-аккаунтов нет»). Инспектор (шаг 2) принимает только наши форматы. Порядок в сети подтверждает проверка механизма на шаге 1.
 
+Подтверждено на LiteSVM с программой v5.1.0 (02.10.2026): все четыре инструкции в старом порядке выполняются (`packages/core/test/builders.svm.test.ts`). Devnet и mainnet подтвердит проверка механизма. Позиции sysvar записаны в `LEGACY_SYSVAR_SLOTS` (`packages/core/src/legacy-layout.ts`), по этой же таблице инспектор проверяет и убирает sysvar перед `parseStakeInstruction`.
+
 ## D2. Набор инструментов (02.10.2026)
 
 - TypeScript 6.0.3. TS 7 — нативный компилятор, typescript-eslint 8.71.0 с ним падает (`typescript-eslint does not support TS 7.0`).
@@ -22,7 +24,7 @@ Withdraw, AuthorizeChecked, Deactivate и DelegateStake собираем в ст
 
 ## D4. Стейк-программа в тестах LiteSVM (02.10.2026)
 
-LiteSVM 1.5.0 содержит стейк-программу v5.0.0, а в mainnet и devnet работает v5.1.0. Тесты загружают сборку v5.1.0, она побайтно совпадает с релизом на GitHub и с программой в mainnet: sha256 `3d2d39c596ce8be2d47816b4ee5db9fc759d80fde54b08c930ad0b6daed64c2c`, 212 056 байт. Файл кладётся в репозиторий как тестовая фикстура на шаге 1.
+LiteSVM 1.5.0 содержит стейк-программу v5.0.0, а в mainnet и devnet работает v5.1.0. Тесты загружают сборку v5.1.0, она побайтно совпадает с релизом на GitHub и с программой в mainnet: sha256 `3d2d39c596ce8be2d47816b4ee5db9fc759d80fde54b08c930ad0b6daed64c2c`, 212 056 байт. Файл лежит в `packages/core/test/fixtures/programs/stake-v5.1.0.so`, рядом README с источником и хешем. 02.10.2026 файл заново скачан с релиза program@v5.1.0 на GitHub, sha256 совпал. Харнесс `test/svm.ts` сверяет хеш перед загрузкой, а тест сравнивает programdata в LiteSVM с файлом.
 
 ## D5. Lighthouse от Phantom и Ledger (02.10.2026)
 
@@ -76,7 +78,45 @@ T считается так. К `now` (UTC) прибавляем N календ�
 
 ## D15. Проверка типов в core (02.10.2026)
 
-`packages/core/tsconfig.json` проверяет только `src`, без типов Node и DOM: в коде продукта нет ввода-вывода. Тесты и харнесс LiteSVM проверяет отдельный `test/tsconfig.json` с типами Node и библиотекой DOM. DOM нужен потому, что типы подписантов kit ссылаются на глобальный `CryptoKeyPair`, а в @types/node он есть только внутри `webcrypto`.
+`packages/core/tsconfig.json` проверяет только `src`, без типов Node и DOM: в коде продукта нет ввода-вывода. Тесты и харнесс LiteSVM проверяет отдельный `test/tsconfig.json` с типами Node и библиотекой DOM. DOM нужен потому, что типы подписантов kit ссылаются на глобальный `CryptoKeyPair`, а в @types/node он есть только внутри `webcrypto`. Тестовый кошелёк с ключами в памяти лежит в `packages/core/test/wallet.ts`, код продукта его не импортирует.
+
+## D16. Compute Budget: фиксированные лимит и цена (02.10.2026)
+
+Для всех видов транзакций лимит 60 000 CU и цена 10 000 микролампортов за CU (`COMPUTE_UNIT_LIMIT`, `COMPUTE_UNIT_PRICE_MICRO_LAMPORTS` в `packages/core/src/constants.ts`). Приоритетная комиссия при таком лимите не больше 600 лампортов, на фоне 5000 за подпись это мелочь.
+
+Замер на LiteSVM с программой v5.1.0, вместе с двумя инструкциями Compute Budget (по 150 CU):
+
+| вид | CU |
+|---|---|
+| protect | 12 022 |
+| extend | 8 983 |
+| unlock | 8 982 |
+| withdraw | 8 652 |
+| deactivate | 11 489 |
+| delegate | 13 738 |
+| rescue на nonce | 25 795 |
+| nonce setup | 600 |
+| nonce close | 450 |
+
+Лимит в 2,3 раза больше самого тяжёлого вида: остаётся место под хвост Lighthouse, если его допишет Phantom. Тест падает, если какой-то вид тратит больше половины лимита. Цену пересмотрим после матрицы кошельков и первых отправок в mainnet.
+
+## D17. Только legacy-сообщения (02.10.2026)
+
+Все транзакции собираются как legacy-сообщения, не v0. Таблицы адресов запрещены (§2), а без них v0 ничего не даёт и длиннее на 2 байта. Legacy понимают все кошельки и Ledger. Инспектор принимает только legacy.
+
+## D18. Nonce-аккаунт через CreateAccountWithSeed (02.10.2026)
+
+Nonce-аккаунт создаётся инструкцией System CreateAccountWithSeed: base и плательщик — сам D, seed — строка `stakeward-nonce`. Адрес выводится из (D, seed, System program), это делает `deriveNonceAccountAddress`. С обычным CreateAccount новый аккаунт обязан подписать сам, и браузеру пришлось бы генерировать для него одноразовый ключ. С seed подписывает только D, лишних ключей нет.
+
+Ledger показывает пару CreateAccountWithSeed + InitializeNonceAccount так же, как CreateAccount + InitializeNonceAccount: «Create nonce acct» (LedgerHQ/app-solana, `libsol/transaction_printers.c`, `is_create_nonce_account_with_seed`). Seed здесь — метка для вывода адреса, а не ключ и не seed-фраза. У одного D один nonce-аккаунт с этим seed; после закрытия его можно создать снова по тому же адресу. На LiteSVM проверены создание, спасение на этом nonce и закрытие.
+
+## D19. Значения замка в транзакциях (02.10.2026)
+
+Защита (SetLockupChecked) передаёт unixTimestamp = T и epoch = None, то есть «не менять». У обычных аккаунтов epoch замка и так 0, а Ledger без epoch не показывает лишнюю строку. Продление и снятие (SetLockup от K) меняют только unixTimestamp; epoch и custodian передаются как None.
+
+## D20. Один сборщик на все виды транзакций (02.10.2026)
+
+`buildTransaction(action, { feePayer, lifetime })` вместо отдельной функции на каждый вид. `action` (`TransactionAction` в `packages/core/src/actions.ts`) — то же описание, которое вернёт инспектор, поэтому проверка «сводка совпадает с тем, что подали в сборщик» сводится к сравнению объектов. Ключи в сборщике — только адреса (`createNoopSigner`), подписывают кошельки. Плательщика по §5 даёт `expectedFeePayer(action)`; для продления и снятия вызывающий может явно передать основной ключ (F5). Withdraw допускает `secondKey: null` для вывода после снятия или окончания замка. Спасение всегда требует K.
 
 ## Проверка RPC (02.10.2026)
 
