@@ -10,5 +10,6 @@ export * from './inspect.ts';
 export * from './legacy-layout.ts';
 export * from './link.ts';
 export * from './lockup.ts';
+export * from './ports.ts';
 export * from './status.ts';
 export * from './verify.ts';

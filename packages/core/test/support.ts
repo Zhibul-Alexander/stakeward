@@ -1,5 +1,7 @@
 // Test support without LiteSVM: the stake program build every test chain runs and the plain-data shape of a failed
 // transaction. Shared by the LiteSVM harness (svm.ts) and by scripts/gate (which also talks to devnet and mainnet).
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as kit from '@solana/kit';
 import {
   isSolanaError,
@@ -9,8 +11,12 @@ import {
   type SolanaError,
 } from '@solana/kit';
 
-/** The committed mainnet stake program build (DECISIONS.md D4, fixtures/programs/README.md). */
-export const STAKE_PROGRAM_PATH = new URL('./fixtures/programs/stake-v5.1.0.so', import.meta.url);
+/**
+ * The committed mainnet stake program build (DECISIONS.md D4, fixtures/programs/README.md). A file path, not
+ * `new URL('./...', import.meta.url)`: Vite rewrites that pattern into an http:// asset URL when the harness runs in
+ * a jsdom test of apps/web, and readFileSync then fails.
+ */
+export const STAKE_PROGRAM_PATH = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'programs', 'stake-v5.1.0.so');
 export const STAKE_PROGRAM_SHA256 = '3d2d39c596ce8be2d47816b4ee5db9fc759d80fde54b08c930ad0b6daed64c2c';
 /** GitHub release tag of that build (solana-program/stake). */
 export const STAKE_PROGRAM_RELEASE = 'program@v5.1.0';
