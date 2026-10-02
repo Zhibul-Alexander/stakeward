@@ -64,6 +64,20 @@ Ledger отказывается разбирать транзакцию, есл�
 
 Действия закреплены по SHA: checkout v7.0.1 `3d3c42e5…`, pnpm/action-setup v6.1.0 `ea17c68d…` (версия pnpm берётся из `packageManager`), setup-node v7.0.0 `82076278…` с кэшем pnpm. Шаги: установка с frozen lockfile, audit, `wrangler types --check`, typecheck, lint, test, build. Playwright добавится на шаге 3.
 
+## D13. Срок замка (02.10.2026)
+
+T считается так. К `now` (UTC) прибавляем N календарных месяцев. Если такого дня в целевом месяце нет, берём последний день месяца: 31 января + 1 месяц = 28 или 29 февраля. Время суток сохраняется. T — первая 00:00 UTC строго после этого момента, то есть начало следующих суток; ровно в полночь тоже переносим на следующую. Сроки 10 минут и 1 час доступны только при `cluster = 'devnet'`: `lockPeriodsFor('mainnet')` их не отдаёт, `lockupEnd` на mainnet бросает ошибку. Кластер передаёт вызывающий, core окружение не читает.
+
+## D14. Статус в сканере (02.10.2026)
+
+По данным сети нельзя понять, чей ключ стоит хранителем. Поэтому `scannerStatus(account, secondKeys, clock)` принимает список вторых ключей, которые известны для этого пользователя: кошелёк в слоте second, хранители, которых он уже подтвердил. Хранитель не из списка — Locked by someone else. Откуда брать список на `/app?address=` без кошелька, решаем на шагах 3–4.
+
+Замок, у которого хранитель — сам withdrawer, считается Unprotected: основной ключ снимает его один, а защита на таком аккаунте работает (A подписывает как хранитель). Замок, который действует только по эпохе, не бывает Expiring. Отдельного параметра `now` нет: текущее время — `clock.unixTimestamp`.
+
+## D15. Проверка типов в core (02.10.2026)
+
+`packages/core/tsconfig.json` проверяет только `src`, без типов Node и DOM: в коде продукта нет ввода-вывода. Тесты и харнесс LiteSVM проверяет отдельный `test/tsconfig.json` с типами Node и библиотекой DOM. DOM нужен потому, что типы подписантов kit ссылаются на глобальный `CryptoKeyPair`, а в @types/node он есть только внутри `webcrypto`.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
@@ -96,7 +110,7 @@ pnpm check-rpc "https://mainnet.helius-rpc.com/?api-key=$HELIUS_KEY"
 | typescript-eslint | 8.71.0 | корень | правила с учётом типов (`strictTypeChecked`) |
 | eslint-plugin-react-hooks | 7.1.1 | корень | правила хуков React для apps/web |
 | globals | 17.13.0 | корень | глобальные переменные браузера и Node для ESLint |
-| @types/node | 24.19.1 | корень, scripts | типы Node для конфигов vitest и скриптов |
+| @types/node | 24.19.1 | корень, scripts, core (dev) | типы Node для конфигов vitest, скриптов и тестов core |
 | @solana/kit | 8.4.0 | core, scripts | транзакции, адреса, кодеки, RPC-клиент |
 | @solana-program/stake | 0.10.0 | core, scripts | сгенерированный клиент стейк-программы: сборщики, декодер, разбор инструкций |
 | @solana-program/system | 0.15.0 | core | nonce-инструкции и создание аккаунтов |

@@ -1,0 +1,185 @@
+{
+  "epochInfo": {
+    "absoluteSlot": 452563563,
+    "blockHeight": 430602295,
+    "epoch": 1047,
+    "slotIndex": 259563,
+    "slotsInEpoch": 432000,
+    "transactionCount": 555147824567
+  },
+  "fixtures": {
+    "delegated-no-lockup": {
+      "address": "93iHZBUYNmiLtj9Z6KfwkvZ6XPEz1rTQYHKRKZQMpFF4",
+      "slot": 452563564,
+      "lamports": 23221971776,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 2,
+        "rentExemptReserve": "2282880",
+        "staker": "HUQtZ3Kkh8uqU6P5C5xRiqJ3SX7dUWQSURfWFXp57UMf",
+        "withdrawer": "HUQtZ3Kkh8uqU6P5C5xRiqJ3SX7dUWQSURfWFXp57UMf",
+        "lockup": {
+          "unixTimestamp": "0",
+          "epoch": "0",
+          "custodian": "11111111111111111111111111111111"
+        },
+        "delegation": {
+          "voter": "he1iusunGwqrNtafDtLdhsUQDFvo13z9sUa36PauBtk",
+          "stake": "23219688896",
+          "activationEpoch": "731",
+          "deactivationEpoch": "18446744073709551615",
+          "warmupCooldownRate": 0.25,
+          "creditsObserved": "2409230151",
+          "stakeFlags": 0
+        }
+      }
+    },
+    "delegated-lockup": {
+      "address": "14ss8zTNioPxXPVG2K7KtS252wDCkKQ711Lgon3ESP7S",
+      "slot": 452563565,
+      "lamports": 1468841692445,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 2,
+        "rentExemptReserve": "2282880",
+        "staker": "7wiYBtskxQzUuMmxSkZrT32JgPK3ySBKc6QGY7emn33w",
+        "withdrawer": "7wiYBtskxQzUuMmxSkZrT32JgPK3ySBKc6QGY7emn33w",
+        "lockup": {
+          "unixTimestamp": "1825545600",
+          "epoch": "0",
+          "custodian": "3XdBZcURF5nKg3oTZAcfQZg8XEc5eKsx6vK8r3BdGGxg"
+        },
+        "delegation": {
+          "voter": "XzMLju7T6BSSngmsPogeuryd6uswiimkPU87gB2chho",
+          "stake": "1445759655302",
+          "activationEpoch": "628",
+          "deactivationEpoch": "18446744073709551615",
+          "warmupCooldownRate": 0.25,
+          "creditsObserved": "2408160977",
+          "stakeFlags": 0
+        }
+      }
+    },
+    "initialized": {
+      "address": "HaDSjzGMBkdbdXLYWXRybc1i8f5ww1fYMenZZnEyjQcf",
+      "slot": 452563567,
+      "lamports": 44560439,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 1,
+        "rentExemptReserve": "2282880",
+        "staker": "7zo3q61Sefdg3X5JLgVnYM48D7qMUhYMPmQkC8yhbSTE",
+        "withdrawer": "7zo3q61Sefdg3X5JLgVnYM48D7qMUhYMPmQkC8yhbSTE",
+        "lockup": {
+          "unixTimestamp": "0",
+          "epoch": "0",
+          "custodian": "11111111111111111111111111111111"
+        },
+        "delegation": null
+      }
+    },
+    "initialized-lockup": {
+      "address": "Q1eyyuFjuASmwJM38NjvCeDA5zdYNfsKKV5AwuiXWdB",
+      "slot": 452563570,
+      "lamports": 350000000001,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 1,
+        "rentExemptReserve": "2282880",
+        "staker": "BoXwFNp9xau6MctkNSEXuReN7HS9xrjDXHLC41dsdvw8",
+        "withdrawer": "BoXwFNp9xau6MctkNSEXuReN7HS9xrjDXHLC41dsdvw8",
+        "lockup": {
+          "unixTimestamp": "1814400000",
+          "epoch": "0",
+          "custodian": "APfu848VkzSHR5XABWjfEP7bVWYcDUMpb5Q8yK7NP5Bh"
+        },
+        "delegation": null
+      }
+    },
+    "delegated-custodian-eq-withdrawer": {
+      "address": "515zCWZah1pPxYR5URYNqe82isCT9k3RZGNnj61NBPy5",
+      "slot": 452563571,
+      "lamports": 111414025907,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 2,
+        "rentExemptReserve": "2282880",
+        "staker": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6",
+        "withdrawer": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6",
+        "lockup": {
+          "unixTimestamp": "0",
+          "epoch": "0",
+          "custodian": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6"
+        },
+        "delegation": {
+          "voter": "he1iusunGwqrNtafDtLdhsUQDFvo13z9sUa36PauBtk",
+          "stake": "111411743027",
+          "activationEpoch": "723",
+          "deactivationEpoch": "18446744073709551615",
+          "warmupCooldownRate": 0.25,
+          "creditsObserved": "2409230151",
+          "stakeFlags": 0
+        }
+      }
+    },
+    "delegated-staker-ne-withdrawer": {
+      "address": "9kzSEgLWnSDx6hH7p8NxNSyptxC2VvHz2iZVeRaEe8jv",
+      "slot": 452563572,
+      "lamports": 551122033849780,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 2,
+        "rentExemptReserve": "2282880",
+        "staker": "8NDkBUK5TeK9a8wfzToa1phV2BTW5zA4DdXNvZKjHvWV",
+        "withdrawer": "G1hEevirRDbcV25iD1Ghcqci6yq39ipat5dWgmbDFPg6",
+        "lockup": {
+          "unixTimestamp": "0",
+          "epoch": "0",
+          "custodian": "11111111111111111111111111111111"
+        },
+        "delegation": {
+          "voter": "GEM1N1pCDGKiTa547eckcwuHWYMsUQeXgnXHfEZLDvpB",
+          "stake": "550867515981186",
+          "activationEpoch": "956",
+          "deactivationEpoch": "18446744073709551615",
+          "warmupCooldownRate": 0.25,
+          "creditsObserved": "1199450607",
+          "stakeFlags": 0
+        }
+      }
+    },
+    "deactivating": {
+      "address": "99Mv2NmaDG7uPbF8qkBdHj7JKPuZBv7GpSPxrfASdLdY",
+      "slot": 452563573,
+      "lamports": 278282521332,
+      "dataLen": 200,
+      "owner": "Stake11111111111111111111111111111111111111",
+      "raw": {
+        "state": 2,
+        "rentExemptReserve": "2282880",
+        "staker": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6",
+        "withdrawer": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6",
+        "lockup": {
+          "unixTimestamp": "0",
+          "epoch": "0",
+          "custodian": "57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6"
+        },
+        "delegation": {
+          "voter": "CatzoSMUkTRidT5DwBxAC2pEtnwMBTpkCepHkFgZDiqb",
+          "stake": "278280238452",
+          "activationEpoch": "723",
+          "deactivationEpoch": "1047",
+          "warmupCooldownRate": 0.25,
+          "creditsObserved": "2411696809",
+          "stakeFlags": 0
+        }
+      }
+    }
+  }
+}

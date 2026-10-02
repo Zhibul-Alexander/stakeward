@@ -1,0 +1,41 @@
+{
+  "name": "deactivating",
+  "cluster": "mainnet-beta",
+  "address": "99Mv2NmaDG7uPbF8qkBdHj7JKPuZBv7GpSPxrfASdLdY",
+  "slot": 452563573,
+  "fetchedAt": "2026-10-02T09:01:15.626Z",
+  "epochAtFetch": 1047,
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 8,
+    "method": "getAccountInfo",
+    "params": [
+      "99Mv2NmaDG7uPbF8qkBdHj7JKPuZBv7GpSPxrfASdLdY",
+      {
+        "encoding": "base64",
+        "commitment": "confirmed"
+      }
+    ]
+  },
+  "response": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "apiVersion": "4.3.0",
+        "slot": 452563573
+      },
+      "value": {
+        "data": [
+          "AgAAAIDVIgAAAAAAPRPRmvy0Uh7TWazM4+RJOLkROLpmnd4uiSZM5OdRcgc9E9Ga/LRSHtNZrMzj5Ek4uRE4umad3i6JJkzk51FyBwAAAAAAAAAAAAAAAAAAAAA9E9Ga/LRSHtNZrMzj5Ek4uRE4umad3i6JJkzk51FyB6wfg/25zlUN6V1VjNx5VGHM9DdKxojsE6mEACIKeNoGdHXLykAAAADTAgAAAAAAABcEAAAAAAAAAAAAAAAA0D+pkr+PAAAAAAAAAAA=",
+          "base64"
+        ],
+        "executable": false,
+        "lamports": 278282521332,
+        "owner": "Stake11111111111111111111111111111111111111",
+        "rentEpoch": 18446744073709552000,
+        "space": 200
+      }
+    },
+    "id": 8
+  }
+}

@@ -8,7 +8,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@solana/kit-plugin-litesvm": "0.19.0",
+    "@types/node": "24.19.1",
     "litesvm": "1.5.0",
     "typescript": "6.0.3",
     "vitest": "4.1.11"

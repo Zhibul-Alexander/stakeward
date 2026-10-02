@@ -1,0 +1,106 @@
+import type { Address, ReadonlyUint8Array } from '@solana/kit';
+import { getStakeStateAccountDecoder } from '@solana-program/stake';
+import { STAKE_ACCOUNT_SIZE, STAKE_PROGRAM_ADDRESS } from './constants.ts';
+
+/** Lockup of a stake account. Values are raw chain values (seconds, epochs). */
+export type Lockup = {
+  /** i64 unix seconds; the lockup is in force while it is later than the cluster clock. */
+  unixTimestamp: bigint;
+  /** u64 epoch; the lockup is in force while it is later than the current epoch. */
+  epoch: bigint;
+  /** The lockup authority (CLAUDE.md "second key"). The all-zero key when unset. */
+  custodian: Address;
+};
+
+export type Delegation = {
+  voter: Address;
+  /** Delegated lamports. */
+  stake: bigint;
+  activationEpoch: bigint;
+  /** u64::MAX while the stake is not being deactivated. */
+  deactivationEpoch: bigint;
+};
+
+/** Typed view of a stake account; only the fields Stakeward uses. */
+export type StakeAccount = {
+  address: Address;
+  /** Total balance of the account (rent reserve + delegated + undelegated lamports). */
+  lamports: bigint;
+  /** `delegated` means the account holds a delegation record (StakeStateV2::Stake), active or not. */
+  kind: 'initialized' | 'delegated';
+  rentExemptReserve: bigint;
+  staker: Address;
+  withdrawer: Address;
+  lockup: Lockup;
+  delegation: Delegation | null;
+};
+
+/** Raw account as read from the chain (RPC getAccountInfo / getMultipleAccounts with base64, or LiteSVM). */
+export type RawAccount = {
+  address: Address;
+  data: ReadonlyUint8Array;
+  lamports: bigint;
+  /** Owner program. */
+  owner: Address;
+};
+
+/**
+ * Why bytes were not accepted as a stake account Stakeward can work with.
+ * `uninitialized` and `rewards-pool` are real stake program states without authorities.
+ */
+export type DecodeError = 'wrong-owner' | 'wrong-size' | 'malformed' | 'uninitialized' | 'rewards-pool';
+
+export type DecodeResult = { ok: true; account: StakeAccount } | { ok: false; error: DecodeError };
+
+/**
+ * Decodes a stake account with the generated stake client. Checks the owner and the 200-byte size first,
+ * because the generated decoder checks neither (it decodes any bytes as a stake account).
+ */
+export function decodeStakeAccount(raw: RawAccount): DecodeResult {
+  if (raw.owner !== STAKE_PROGRAM_ADDRESS) return { ok: false, error: 'wrong-owner' };
+  if (raw.data.length !== STAKE_ACCOUNT_SIZE) return { ok: false, error: 'wrong-size' };
+
+  let state;
+  try {
+    state = getStakeStateAccountDecoder().decode(raw.data).state;
+  } catch {
+    return { ok: false, error: 'malformed' };
+  }
+
+  switch (state.__kind) {
+    case 'Uninitialized':
+      return { ok: false, error: 'uninitialized' };
+    case 'RewardsPool':
+      return { ok: false, error: 'rewards-pool' };
+    case 'Initialized':
+    case 'Stake': {
+      const [meta] = state.fields;
+      const delegation =
+        state.__kind === 'Stake'
+          ? {
+              voter: state.fields[1].delegation.voterPubkey,
+              stake: state.fields[1].delegation.stake,
+              activationEpoch: state.fields[1].delegation.activationEpoch,
+              deactivationEpoch: state.fields[1].delegation.deactivationEpoch,
+            }
+          : null;
+      return {
+        ok: true,
+        account: {
+          address: raw.address,
+          lamports: raw.lamports,
+          kind: delegation === null ? 'initialized' : 'delegated',
+          rentExemptReserve: meta.rentExemptReserve,
+          staker: meta.authorized.staker,
+          withdrawer: meta.authorized.withdrawer,
+          lockup: {
+            unixTimestamp: meta.lockup.unixTimestamp,
+            epoch: meta.lockup.epoch,
+            custodian: meta.lockup.custodian,
+          },
+          delegation,
+        },
+      };
+    }
+  }
+}
