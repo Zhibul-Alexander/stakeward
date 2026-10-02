@@ -8,6 +8,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "check-rpc": "node check-rpc.ts",
+    "dev-accounts": "node dev-accounts.ts",
     "gate:litesvm": "node gate.ts litesvm",
     "gate:devnet": "node gate.ts devnet",
     "gate:mainnet": "node gate.ts mainnet"

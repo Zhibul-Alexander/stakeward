@@ -15,6 +15,7 @@
     "build": "VITE_CLUSTER=devnet pnpm -r build",
     "e2e": "pnpm --filter @stakeward/web e2e",
     "check-rpc": "pnpm --filter @stakeward/scripts check-rpc",
+    "dev-accounts": "pnpm --filter @stakeward/scripts dev-accounts",
     "deploy:dev": "pnpm --filter @stakeward/worker deploy:dev",
     "deploy:prod": "pnpm --filter @stakeward/worker deploy:prod",
     "gate:litesvm": "pnpm --filter @stakeward/scripts gate:litesvm",
