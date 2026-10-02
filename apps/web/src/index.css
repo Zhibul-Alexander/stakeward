@@ -1,1 +1,105 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import './styles/tokens.css';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

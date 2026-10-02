@@ -1,0 +1,185 @@
+/*
+ * Stakeward design tokens: the only place with raw colours, font stacks, sizes, radii, shadows and durations
+ * (CLAUDE.md section 9). Components and pages use the Tailwind utilities generated from these variables
+ * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
+ * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
+ *
+ * Light theme values live in @theme; the dark theme overrides the same variables under prefers-color-scheme: dark.
+ * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
+ * exist at all.
+ *
+ * Colour roles
+ *   background        page
+ *   surface           cards and panels
+ *   surface-raised    popovers and other elevated layers (lighter than surface in the dark theme)
+ *   subtle            muted fills: secondary buttons, skeletons, progress tracks, hover
+ *   subtle-hover      hover on a subtle fill
+ *   foreground        body text
+ *   muted             secondary text (AA on background, surface, surface-raised and subtle)
+ *   border            decorative lines
+ *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
+ *   ring              focus indicator (3:1 against background and surface)
+ *   primary           main actions and links; on-primary is text on it
+ *   inverse           tooltip background; on-inverse is text on it
+ * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
+ * background, <tone>-border its outline.
+ *   success   Protected
+ *   warning   Expiring soon
+ *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
+ *   info      Locked by another key
+ *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Colours, light theme. Contrast ratios (WCAG 2.1) are asserted by test/design-tokens.test.ts. */
+  --color-background: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #eceef2;
+  --color-subtle-hover: #e1e4ea;
+  --color-foreground: #10131a;
+  --color-muted: #4a5263;
+  --color-border: #dde0e6;
+  --color-border-strong: #737b8c;
+  --color-ring: #4f46e5;
+  --color-primary: #4338ca;
+  --color-primary-hover: #3730a3;
+  --color-on-primary: #ffffff;
+  --color-inverse: #1f2430;
+  --color-on-inverse: #f5f6f8;
+
+  --color-success: #166534;
+  --color-success-soft: #dcfce7;
+  --color-success-border: #86efac;
+  --color-warning: #92400e;
+  --color-warning-soft: #fef3c7;
+  --color-warning-border: #fcd34d;
+  --color-neutral: #3f4756;
+  --color-neutral-soft: #e6e9ee;
+  --color-neutral-border: #c5cad3;
+  --color-info: #1e40af;
+  --color-info-soft: #dbeafe;
+  --color-info-border: #93c5fd;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+  --color-danger-border: #fca5a5;
+  --color-danger-solid: #b91c1c;
+  --color-danger-solid-hover: #991b1b;
+  --color-on-danger: #ffffff;
+
+  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale. T-shirt names on purpose: the class merger (cn) recognises them as font sizes, not colours. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
+  --spacing: 0.25rem;
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadows (elevation in the light theme; the dark theme also lightens surfaces) */
+  --shadow-sm: 0 1px 2px 0 rgb(16 19 26 / 0.06), 0 1px 3px 0 rgb(16 19 26 / 0.08);
+  --shadow-md: 0 4px 8px -2px rgb(16 19 26 / 0.08), 0 2px 4px -2px rgb(16 19 26 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(16 19 26 / 0.12), 0 4px 8px -4px rgb(16 19 26 / 0.08);
+
+  /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
+  --default-transition-duration: var(--motion-duration-fast);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0d1017;
+    --color-surface: #151922;
+    --color-surface-raised: #1d222d;
+    --color-subtle: #262b38;
+    --color-subtle-hover: #303644;
+    --color-foreground: #eceef3;
+    --color-muted: #a6adbb;
+    --color-border: #2c3240;
+    --color-border-strong: #7a8396;
+    --color-ring: #a5b4fc;
+    --color-primary: #a5b4fc;
+    --color-primary-hover: #c7d2fe;
+    --color-on-primary: #14123a;
+    --color-inverse: #eceef3;
+    --color-on-inverse: #151922;
+
+    --color-success: #86efac;
+    --color-success-soft: #0f2e1c;
+    --color-success-border: #166534;
+    --color-warning: #fcd34d;
+    --color-warning-soft: #3a2a07;
+    --color-warning-border: #92400e;
+    --color-neutral: #c5cad3;
+    --color-neutral-soft: #262b37;
+    --color-neutral-border: #4a5263;
+    --color-info: #93c5fd;
+    --color-info-soft: #13254a;
+    --color-info-border: #1e40af;
+    --color-danger: #fca5a5;
+    --color-danger-soft: #3b1212;
+    --color-danger-border: #991b1b;
+    --color-danger-solid: #b91c1c;
+    --color-danger-solid-hover: #dc2626;
+    --color-on-danger: #ffffff;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}

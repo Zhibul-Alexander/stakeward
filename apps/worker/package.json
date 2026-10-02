@@ -17,6 +17,8 @@
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote --env prod"
   },
   "dependencies": {
+    "@solana/kit": "8.4.0",
+    "@stakeward/core": "workspace:*",
     "hono": "4.13.12"
   },
   "devDependencies": {
