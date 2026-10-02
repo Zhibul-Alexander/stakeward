@@ -12,5 +12,6 @@
 
 ## Шаг 1. Проверка механизма
 
-- [ ] Одноразовый mainnet-ключ из `.keys/mainnet-gate.json` пополнен на 0,02 SOL, `pnpm gate:mainnet` прошёл, всё выведено обратно.
+- [ ] Devnet: спонсор `.keys/devnet-funder.json` (`D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`) пополнен минимум на 1,01058496 SOL (https://faucet.solana.com), `pnpm gate:devnet` прошёл: 21 из 21 шага совпали, возврат средств завершён.
+- [ ] Mainnet: на одноразовый ключ `.keys/mainnet-gate.json` (`7fmyecft8rfkYpndpyAsm74TCZCn1NfMpAtzZD2Y9f6v`) переведено 0,02 SOL (минимум 0,00238128), `pnpm gate:mainnet` прошёл: 8 из 8 шагов совпали. Остаток выведен: `solana transfer --from .keys/mainnet-gate.json <адрес> ALL --url mainnet-beta`.
 - [ ] docs/gate.md прочитан: по каждой проверке есть результат и подпись или код ошибки для LiteSVM, devnet и mainnet.

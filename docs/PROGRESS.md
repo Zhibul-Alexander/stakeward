@@ -75,3 +75,32 @@
 
 - Откуда брать известные вторые ключи для `scannerStatus` на `/app?address=` без кошелька (D14).
 - Хватит ли запаса лимита CU под хвост Lighthouse, покажет матрица кошельков (D5, D16).
+
+## Шаг 1. Проверка механизма (02.10.2026)
+
+### Сделано
+
+- `scripts/gate.ts` и папка `scripts/gate/`: проверки 1–14 из CLAUDE.md как `runGate(chain, { cluster, keys })` с двумя адаптерами, LiteSVM и RPC (D21). Команды `pnpm gate:litesvm`, `pnpm gate:devnet`, `pnpm gate:mainnet`. Каждый прогон переписывает свой раздел docs/gate.md: таблица по проверкам, дата, sha256 стейк-программы и сравнение с релизом v5.1.0, ключи, комиссии, возврат средств.
+- LiteSVM: 24 из 24 шагов совпали с ожиданием (14 проверок, у части есть подшаги). Главное утверждение, проверка 2, подтверждено.
+- Тесты в CI: `scripts/gate/gate.test.ts` прогоняет планы LiteSVM, devnet и mainnet на LiteSVM ровно на рассчитанную сумму, прогоны devnet и mainnet с обрывом сети посередине (всё возвращается плательщику) и запись разделов docs/gate.md. `scripts/gate/rpc.test.ts` проверяет RPC-адаптер на подставном транспорте: коды ошибок из getSignatureStatuses, повтор после 429, истёкший блокхэш, чтение Clock.
+- Ключи созданы, оба пустые: спонсор devnet `.keys/devnet-funder.json` (`D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`) и одноразовый ключ mainnet `.keys/mainnet-gate.json` (`7fmyecft8rfkYpndpyAsm74TCZCn1NfMpAtzZD2Y9f6v`). Адреса и суммы записаны в docs/gate.md.
+- Стейк-программа в devnet и mainnet прочитана из programdata: sha256 ELF совпадает с релизом v5.1.0 и с фикстурой тестов.
+- Харнесс core: аренда как в сети (D22), общий модуль `test/support.ts` без LiteSVM.
+- Airdrop на devnet не дали: публичный узел ответил `Internal error` и `x-ratelimit-airdrop-remaining: 0` (лимит — раз в сутки на IP, его потратила утренняя разведка).
+
+### Чем проверено
+
+- `pnpm gate:litesvm`: 24 из 24.
+- `pnpm test`: core 138, scripts 14, web 1, worker 6.
+- `pnpm typecheck`, `pnpm lint` — без ошибок.
+- `pnpm gate:devnet` и `pnpm gate:mainnet` без денег показывают адрес и точную сумму, пишут раздел «Ожидает пополнения» и выходят с кодом 0.
+- RPC-адаптер на настоящем devnet: Clock, аренда, programdata, vote-аккаунты и getProgramAccounts читаются; транзакция от пустого плательщика после истечения блокхэша определяется как не попавшая в блок.
+
+### Дальше
+
+Владелец: пополнить спонсора devnet на 1,01058496 SOL (faucet.solana.com) и запустить `pnpm gate:devnet`; перевести 0,02 SOL на одноразовый ключ mainnet и запустить `pnpm gate:mainnet`. Эти два прогона подтвердят в сети и legacy-порядок аккаунтов для Ledger (D1).
+
+### Открытые вопросы
+
+- Devnet и mainnet не прогнаны: на ключах нет денег.
+- CLAUDE.md §2 называет залог nonce-аккаунта около 0,0015 SOL, в сети сейчас 0,00106 SOL (D22).

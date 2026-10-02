@@ -36,7 +36,7 @@ Ledger отказывается разбирать транзакцию, есл�
 
 ## D7. Минимальная делегация 1 SOL (02.10.2026)
 
-Минимум делегации 1 SOL в mainnet, devnet и LiteSVM. Для проверки механизма на devnet и для scripts/dev-accounts.ts нужно от 3 SOL на devnet.
+Минимум делегации 1 SOL в mainnet, devnet и LiteSVM. Для scripts/dev-accounts.ts нужно от 3 SOL на devnet. Проверке механизма на devnet хватает 1,01058496 SOL (D21): S1 держит ровно минимум делегации, а Split идёт уже по неактивному аккаунту.
 
 ## D8. Скрипты запускаются обычным Node 24 (02.10.2026)
 
@@ -118,6 +118,22 @@ Ledger показывает пару CreateAccountWithSeed + InitializeNonceAcco
 
 `buildTransaction(action, { feePayer, lifetime })` вместо отдельной функции на каждый вид. `action` (`TransactionAction` в `packages/core/src/actions.ts`) — то же описание, которое вернёт инспектор, поэтому проверка «сводка совпадает с тем, что подали в сборщик» сводится к сравнению объектов. Ключи в сборщике — только адреса (`createNoopSigner`), подписывают кошельки. Плательщика по §5 даёт `expectedFeePayer(action)`; для продления и снятия вызывающий может явно передать основной ключ (F5). Withdraw допускает `secondKey: null` для вывода после снятия или окончания замка. Спасение всегда требует K.
 
+## D21. Проверка механизма: устройство прогона (02.10.2026)
+
+- `runGate(chain, { cluster, keys })` в `scripts/gate/run.ts`, два адаптера: LiteSVM (`gate/litesvm.ts`, поверх харнесса `packages/core/test/svm.ts`) и RPC (`gate/rpc.ts`). RPC-адаптер шлёт транзакцию в base64 без preflight, потом опрашивает getSignatureStatuses до `confirmed` или до истечения блокхэша; на 429, 5xx и обрыв соединения повторяет запрос с паузой. Публичный devnet отвечает 429 уже на опрос раз в секунду.
+- Всё, что отправляет и продукт (delegate, protect, withdraw, extend, unlock, deactivate, rescue, создание и закрытие nonce), собирает `buildTransaction` из core. Чего в продукте нет (AuthorizeChecked вора, Split, Merge), гейт собирает в том же формате: лимит и цена CU, одна стейк-инструкция, legacy-сообщение, AuthorizeChecked в legacy-порядке аккаунтов.
+- Проверки, которые должны упасть, в devnet и mainnet уходят без preflight: транзакция попадает в блок с ошибкой, и у неё есть подпись в эксплорере. Это стоит одну комиссию.
+- S1 делегируется (1b) и снимается с делегирования (7a) в одной эпохе. Такая делегация сразу неактивна, поэтому Split и Merge на шагах 8–9 не упираются в минимум делегации и прогрев, а S1 в конце выводится сразу. На devnet скрипт не стартует, если до конца эпохи меньше 20 минут.
+- Стейк-аккаунты создаются через CreateAccountWithSeed от плательщика, seed содержит метку прогона. Одноразовые ключи для аккаунтов не нужны.
+- На devnet ключи A, B, X, D генерируются на каждый прогон и сохраняются в `.keys/gate-devnet-{a,b,x,d}.json`; на mainnet в `.keys/mainnet-gate-{b,x}.json`, A — сам одноразовый ключ, D не нужен. В начале прогона скрипт возвращает плательщику всё, что осталось на ключах прошлого прогона; если вернуть не вышло, старые файлы переименовываются, а не затираются. В конце прогона всё, кроме комиссий, возвращается плательщику.
+- На mainnet продление и снятие замка оплачивает A, как в F5, когда у K нет SOL. Так ключу B не нужен баланс.
+- Сумма пополнения считается точно: залоги за аренду из сети, 1 SOL минимума делегации, комиссия каждой транзакции (5000 лампортов за подпись плюс 600 приоритетной) и остаток, без которого кошелёк не может платить комиссию. План транзакций по плательщикам лежит в `gate/budget.ts`. Тест `scripts/gate/gate.test.ts` прогоняет планы всех трёх кластеров на LiteSVM ровно с этой суммой и проверяет, что в конце у плательщика осталась сумма минус комиссии. Devnet: 1,01058496 SOL, из них комиссии 0,0002624. Mainnet: 0,00238128 SOL, комиссии 0,0000648.
+- Харнесс core отдаёт скриптам `@stakeward/core/test/svm`, `test/wallet` и `test/support`. В `test/support.ts` нет LiteSVM: там фикстура программы и перевод `SolanaError` в данные с именами ошибок рантайма, им пользуются и харнесс, и RPC-адаптер.
+
+## D22. Аренда в mainnet и devnet: 5080 лампортов за байт (02.10.2026)
+
+Rent sysvar в mainnet и devnet отдаёт `lamportsPerByte` 5080 (порог освобождения от аренды уже учтён). Минимум без аренды: кошелёк 650 240 лампортов, nonce-аккаунт 1 056 640 (около 0,00106 SOL, а не 0,0015, как в CLAUDE.md §2), стейк-аккаунт 1 666 240. Старые аккаунты хранят прежний `rent_exempt_reserve` 2 282 880. LiteSVM 1.5.0 по умолчанию считает 6960 за байт, харнесс `TestChain` ставит 5080, чтобы тесты шли с той же арендой, что и сеть. Залог на экранах и в FAQ берём из сети (getMinimumBalanceForRentExemption), а не константой.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
@@ -153,11 +169,11 @@ pnpm check-rpc "https://mainnet.helius-rpc.com/?api-key=$HELIUS_KEY"
 | @types/node | 24.19.1 | корень, scripts, core (dev) | типы Node для конфигов vitest, скриптов и тестов core |
 | @solana/kit | 8.4.0 | core, scripts | транзакции, адреса, кодеки, RPC-клиент |
 | @solana-program/stake | 0.10.0 | core, scripts | сгенерированный клиент стейк-программы: сборщики, декодер, разбор инструкций |
-| @solana-program/system | 0.15.0 | core | nonce-инструкции и создание аккаунтов |
-| @solana-program/compute-budget | 0.19.0 | core | инструкции Compute Budget в нужном порядке (хелперы kit дописывают их в конец) |
+| @solana-program/system | 0.15.0 | core, scripts | nonce-инструкции и создание аккаунтов; в scripts — подготовка аккаунтов и переводы в проверке механизма |
+| @solana-program/compute-budget | 0.19.0 | core, scripts | инструкции Compute Budget в нужном порядке (хелперы kit дописывают их в конец); в scripts — тот же формат для транзакций, которых нет в продукте |
 | litesvm | 1.5.0 | core (dev) | локальная SVM для тестов со стейк-программой; нативный модуль, Windows не поддерживает |
 | @solana/kit-plugin-litesvm | 0.19.0 | core (dev) | RPC поверх LiteSVM (`createRpcFromSvm`) и перевод ошибок LiteSVM в `SolanaError` |
-| vitest | 4.1.11 | core, web, worker | тесты |
+| vitest | 4.1.11 | core, web, worker, scripts | тесты; в scripts — проверка механизма на LiteSVM в CI |
 | react, react-dom | 19.3.0 | web | интерфейс |
 | @types/react, @types/react-dom | 19.3.0 | web (dev) | типы React |
 | vite | 8.3.2 | web (dev) | сборка сайта |
