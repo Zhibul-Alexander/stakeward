@@ -339,6 +339,11 @@ Not protected нейтральный: у нового пользователя �
 - `apps/web/test/i18n-literals.review.test.ts` не пускает строки интерфейса в TSX мимо en.json.
 - en.json импортируется целиком, тексты devCosign и devUi едут и в mainnet-бандл. Это только текст, код страниц вырезан (D31).
 
+## D46. Публичный RPC Solana не принимает запросы из воркера (02.10.2026)
+
+- `api.devnet.solana.com` отвечает HTTP 403 на любой запрос с заголовком `CF-Worker`, а Cloudflare ставит его на все исходящие запросы воркера, в том числе в `wrangler dev`. Проверено: `curl` без заголовка — 200, с `CF-Worker: example.com` — 403; локальный воркер с `RPC_URL=https://api.devnet.solana.com` получил 403 на всех трёх попытках.
+- Поэтому `RPC_URL` и `RPC_FALLBACK_URL` — только частный RPC (Helius или другой провайдер), и для dev тоже. Ключ Helius нужен до первого деплоя dev. Скрипты (`gate`, `dev-accounts`, `check-rpc`) работают из Node и публичный RPC использовать могут.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
