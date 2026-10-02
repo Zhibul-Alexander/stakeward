@@ -42,6 +42,7 @@ import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   COMPUTE_UNIT_LIMIT,
   COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+  MAX_LOCKUP_END,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
   STAKE_CONFIG_ADDRESS,
@@ -272,14 +273,30 @@ describe('input validation', () => {
     ['protect with lock end 0', { ...ACTIONS.protect, lockUntil: 0n }],
     ['extend with lock end 0 (that is unlock)', { ...ACTIONS.extend, lockUntil: 0n }],
     ['extend past i64', { ...ACTIONS.extend, lockUntil: 2n ** 63n }],
+    ['protect with a lock end after 2100-01-01', { ...ACTIONS.protect, lockUntil: MAX_LOCKUP_END + 1n }],
+    ['extend with a lock end after 2100-01-01', { ...ACTIONS.extend, lockUntil: MAX_LOCKUP_END + 1n }],
     ['withdraw of 0 lamports', { ...ACTIONS.withdraw, lamports: 0n }],
     ['withdraw with the main key as custodian', { ...ACTIONS.withdraw, secondKey: A }],
     ['rescue to the main key', { ...ACTIONS.rescue, newWallet: A }],
     ['rescue to the second key', { ...ACTIONS.rescue, newWallet: K }],
     ['nonce setup with an empty seed', { ...ACTIONS['nonce-setup'], seed: '' }],
     ['nonce setup with a 33-byte seed', { ...ACTIONS['nonce-setup'], seed: 'x'.repeat(33) }],
+    ['nonce setup with another seed', { ...ACTIONS['nonce-setup'], seed: 'stakeward-nonce-2' }],
     ['nonce close of 0 lamports', { ...ACTIONS['nonce-close'], lamports: 0n }],
   ] as [string, TransactionAction][])('rejects %s', (_name, action) => {
-    expect(() => buildTransaction(action, { feePayer: A, lifetime: blockhashLifetime })).toThrow();
+    // The section 5 fee payer, so each row fails only for the reason it names.
+    expect(() => buildTransaction(action, { feePayer: expectedFeePayer(action), lifetime: blockhashLifetime })).toThrow();
+  });
+
+  it('rejects a rescue the new wallet does not pay for, or on a nonce account it does not own (section 5)', () => {
+    for (const feePayer of [A, K]) {
+      expect(() => buildTransaction(ACTIONS.rescue, { feePayer, lifetime: blockhashLifetime })).toThrow(/paid by the new wallet/);
+    }
+    for (const nonceAuthority of [A, K]) {
+      expect(() => buildTransaction(ACTIONS.rescue, { feePayer: D, lifetime: { ...nonceLifetime, nonceAuthority } })).toThrow(
+        /nonce account/,
+      );
+    }
+    expect(buildTransaction(ACTIONS.rescue, { feePayer: D, lifetime: nonceLifetime }).meta.signers[0]).toBe(D);
   });
 });

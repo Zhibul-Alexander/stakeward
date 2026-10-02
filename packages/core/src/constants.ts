@@ -22,6 +22,9 @@ export const SYSVAR_CLOCK_ADDRESS = address('SysvarC1ock111111111111111111111111
 export const SYSVAR_STAKE_HISTORY_ADDRESS = address('SysvarStakeHistory1111111111111111111111111');
 /** Unused by the program, but the legacy DelegateStake layout has a slot for it. */
 export const STAKE_CONFIG_ADDRESS = address('StakeConfig11111111111111111111111111111111');
+/** Sysvars of the nonce instructions (the system client fills them in by default). */
+export const SYSVAR_RECENT_BLOCKHASHES_ADDRESS = address('SysvarRecentB1ockHashes11111111111111111111');
+export const SYSVAR_RENT_ADDRESS = address('SysvarRent111111111111111111111111111111111');
 
 /** The all-zero public key (base58 of 32 zero bytes). An unset custodian reads as this key. */
 export const ZERO_ADDRESS = address('11111111111111111111111111111111');
@@ -52,6 +55,13 @@ export const NONCE_ACCOUNT_SEED = 'stakeward-nonce';
 export const U64_MAX = 0xffff_ffff_ffff_ffffn;
 /** i64::MAX: the largest lockup unix timestamp the program can store. */
 export const I64_MAX = 0x7fff_ffff_ffff_ffffn;
+
+/**
+ * The latest lockup end Stakeward builds: 2100-01-01T00:00:00Z. Real ends are at most about 13 months ahead (D13);
+ * the cap keeps every lockup end a signing screen shows a readable date (a JavaScript Date ends at 8.64e12 s, the
+ * program accepts any i64).
+ */
+export const MAX_LOCKUP_END = 4_102_444_800n;
 
 /**
  * Fixed compute unit limit for every Stakeward transaction (CLAUDE.md section 5: fixed limit, no fee market logic).

@@ -5,7 +5,6 @@ import {
   createNoopSigner,
   createTransactionMessage,
   getTransactionEncoder,
-  getUtf8Encoder,
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -36,7 +35,7 @@ import type { Lifetime, TransactionAction } from './actions.ts';
 import {
   COMPUTE_UNIT_LIMIT,
   COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
-  I64_MAX,
+  MAX_LOCKUP_END,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
   SYSTEM_PROGRAM_ADDRESS,
@@ -66,9 +65,6 @@ export type BuiltTransaction = {
   };
 };
 
-/** Seeds of System CreateAccountWithSeed are at most 32 bytes. */
-const MAX_SEED_BYTES = 32;
-
 /**
  * Builds the unsigned transaction for one Stakeward action, in the only format the inspector accepts
  * (CLAUDE.md section 4):
@@ -80,15 +76,26 @@ const MAX_SEED_BYTES = 32;
  * The message is a legacy message (no address lookup tables; also the smallest form, and the one every wallet and
  * Ledger understand). Withdraw, AuthorizeChecked, Deactivate and DelegateStake use the legacy account layout (D1).
  * Keys are addresses only: the builder never sees a private key, wallets sign the returned bytes.
- * Throws on inputs the program would reject anyway (zero or negative amounts, a second key equal to the main key, ...).
+ * Throws on inputs the program would reject anyway (zero or negative amounts, a second key equal to the main key, ...)
+ * and on inputs Stakeward never sends: a lockup end after `MAX_LOCKUP_END`, a nonce seed other than
+ * `NONCE_ACCOUNT_SEED`, and a rescue that the new wallet does not pay for or that runs on someone else's nonce
+ * (CLAUDE.md section 5: the compromised main key never pays and never owns the nonce account). The inspector rebuilds
+ * every transaction it accepts with this function, so these rules hold for /cosign links and the RPC proxy too.
  */
 export function buildTransaction(action: TransactionAction, options: BuildOptions): BuiltTransaction {
+  const { lifetime } = options;
+  if (action.kind === 'rescue') {
+    check(options.feePayer === action.newWallet, 'A rescue is paid by the new wallet');
+    check(
+      lifetime.kind === 'blockhash' || lifetime.nonceAuthority === action.newWallet,
+      "A rescue runs on a blockhash or on the new wallet's nonce account",
+    );
+  }
   const instructions = [
     getSetComputeUnitLimitInstruction({ units: COMPUTE_UNIT_LIMIT }),
     getSetComputeUnitPriceInstruction({ microLamports: COMPUTE_UNIT_PRICE_MICRO_LAMPORTS }),
     ...actionInstructions(action),
   ];
-  const { lifetime } = options;
   const unsigned = pipe(
     createTransactionMessage({ version: 'legacy' }),
     (message) => setTransactionMessageFeePayer(options.feePayer, message),
@@ -217,10 +224,7 @@ function actionInstructions(action: TransactionAction): Instruction[] {
       ];
     case 'nonce-setup':
       requireLamports(action.lamports);
-      check(
-        action.seed.length > 0 && getUtf8Encoder().encode(action.seed).length <= MAX_SEED_BYTES,
-        `Nonce seed must be 1 to ${String(MAX_SEED_BYTES)} bytes`,
-      );
+      check(action.seed === NONCE_ACCOUNT_SEED, `The nonce seed is always "${NONCE_ACCOUNT_SEED}"`);
       return [
         getCreateAccountWithSeedInstruction({
           payer: signer(action.nonceAuthority),
@@ -260,7 +264,10 @@ function check(condition: boolean, message: string): asserts condition {
 }
 
 function requireLockupTimestamp(unixTimestamp: bigint): void {
-  check(unixTimestamp > 0n && unixTimestamp <= I64_MAX, 'Lockup end must be a positive unix timestamp');
+  check(
+    unixTimestamp > 0n && unixTimestamp <= MAX_LOCKUP_END,
+    'Lockup end must be a positive unix timestamp no later than 2100-01-01',
+  );
 }
 
 function requireLamports(lamports: bigint): void {

@@ -5,6 +5,7 @@ export * from './constants.ts';
 export * from './decode.ts';
 export * from './diff.ts';
 export * from './errors.ts';
+export * from './format.ts';
 export * from './inspect.ts';
 export * from './legacy-layout.ts';
 export * from './link.ts';

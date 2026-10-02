@@ -93,7 +93,7 @@ export type NonceSetupAction = {
   kind: 'nonce-setup';
   nonceAccount: Address;
   nonceAuthority: Address;
-  /** Address-derivation seed (a short label, at most 32 bytes); not a key. */
+  /** Address-derivation seed, always `NONCE_ACCOUNT_SEED` (a plain label, not a key); the builder refuses others. */
   seed: string;
   /** Rent-exempt deposit for 80 bytes, returned when the account is closed. */
   lamports: bigint;
@@ -137,7 +137,8 @@ export type Lifetime = BlockhashLifetime | NonceLifetime;
  * - extend, unlock: the second key. Fallback allowed by F5: when K has no SOL the main key pays and co-signs; the
  *   caller then passes the main key as fee payer explicitly.
  * - deactivate, delegate: the staker who signs it.
- * - rescue: the new wallet D, never the main key.
+ * - rescue: the new wallet D, never the main key; the builder refuses any other fee payer, and a nonce account that
+ *   D does not own.
  * - nonce setup and close: the nonce authority.
  */
 export function expectedFeePayer(action: TransactionAction): Address {
