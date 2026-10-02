@@ -1,0 +1,7 @@
+# Security headers for static assets served by Workers Static Assets (CLAUDE.md section 11).
+# /api/* responses get the same values from Hono (apps/worker/src/security-headers.ts); a worker test keeps both in sync.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=63072000; includeSubDomains

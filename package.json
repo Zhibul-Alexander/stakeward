@@ -1,0 +1,32 @@
+{
+  "name": "stakeward",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "check-rpc": "pnpm --filter @stakeward/scripts check-rpc",
+    "deploy:dev": "pnpm --filter @stakeward/worker deploy:dev",
+    "deploy:prod": "pnpm --filter @stakeward/worker deploy:prod",
+    "gate:litesvm": "echo 'gate:litesvm is not implemented yet (CLAUDE.md step 1)' >&2 && exit 1",
+    "gate:devnet": "echo 'gate:devnet is not implemented yet (CLAUDE.md step 1)' >&2 && exit 1",
+    "gate:mainnet": "echo 'gate:mainnet is not implemented yet (CLAUDE.md step 1)' >&2 && exit 1"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.1",
+    "eslint": "10.11.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
+  }
+}

@@ -1,2 +1,20 @@
-.env
+# dependencies
 node_modules/
+
+# build and tool output
+dist/
+.wrangler/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# secrets: never commit
+.env
+.env.*
+.dev.vars*
+.keys/
+
+# local Claude Code state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

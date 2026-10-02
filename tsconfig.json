@@ -1,0 +1,9 @@
+{
+  // Config files that live outside every package's `include` (they need Node types,
+  // which the worker and web projects must not see). Also gives ESLint's projectService a home for them.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["packages/core/vitest.config.ts", "apps/worker/vitest.config.ts"]
+}

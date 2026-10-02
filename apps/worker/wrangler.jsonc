@@ -1,0 +1,64 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // One Worker per environment: it serves the built site (apps/web/dist) as static assets and the API under /api/*.
+  // Always pass --env: `dev` = Solana devnet, `prod` = mainnet (scripts deploy:dev / deploy:prod).
+  "name": "stakeward",
+  "main": "src/index.ts",
+  // Must stay <= the newest date supported by the workerd that @cloudflare/vitest-pool-workers 0.22.0 pins (2026-08-22).
+  "compatibility_date": "2026-08-15",
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  // Secrets (set with `wrangler secret put <NAME> --env dev|prod`, locally in .dev.vars.dev / .dev.vars.prod; never committed):
+  //   RPC_URL                  Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
+  //   TELEGRAM_BOT_TOKEN       token of this environment's bot
+  //   TELEGRAM_WEBHOOK_SECRET  value Telegram sends in X-Telegram-Bot-Api-Secret-Token
+  //   ADMIN_CHAT_ID            Telegram chat id for worker error reports
+  // They become required (secrets.required) when code starts using them; until then a first deploy must not fail on them.
+  // Cron trigger (*/2 * * * *) is added in step 5.
+
+  // Top level = local-only defaults (plain `wrangler dev`, `wrangler types`). Named environments do NOT inherit
+  // vars or d1_databases, so each env repeats them. The all-zero id below is never created: a deploy without --env fails.
+  "vars": { "CLUSTER": "devnet" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "stakeward-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "env": {
+    "dev": {
+      "name": "stakeward-dev",
+      "vars": { "CLUSTER": "devnet" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "stakeward-dev",
+          // PLACEHOLDER: replace with the id printed by `wrangler d1 create stakeward-dev`.
+          "database_id": "00000000-0000-0000-0000-000000000001",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "prod": {
+      "name": "stakeward-prod",
+      "vars": { "CLUSTER": "mainnet" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "stakeward-prod",
+          // PLACEHOLDER: replace with the id printed by `wrangler d1 create stakeward-prod`.
+          "database_id": "00000000-0000-0000-0000-000000000002",
+          "migrations_dir": "migrations"
+        }
+      ]
+      // Permanent domain, once it is on Cloudflare:
+      // "routes": [{ "pattern": "<domain>", "custom_domain": true }]
+    }
+  }
+}

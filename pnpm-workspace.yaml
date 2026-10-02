@@ -1,0 +1,18 @@
+packages:
+  - packages/*
+  - apps/*
+  - scripts
+savePrefix: ''
+allowBuilds:
+  esbuild: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@types/node@24.19.1'
+  - vite@8.3.2
+  - miniflare@5.20261001.0-alpha
+  - wrangler@4.146.0
+overrides:
+  # @cloudflare/vitest-pool-workers@0.22.0 pins miniflare 5.20260815.0-alpha / wrangler 4.124.0 with undici 7.29.0
+  # and sharp 0.35.2 (GHSA advisories, test-only path). Patch-level bumps; remove when pool-workers updates.
+  'undici@<7.29.1': 7.29.1
+  'sharp@<0.35.4': 0.35.4
