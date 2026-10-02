@@ -6,6 +6,8 @@
   "main": "src/index.ts",
   // Must stay <= the newest date supported by the workerd that @cloudflare/vitest-pool-workers 0.22.0 pins (2026-08-22).
   "compatibility_date": "2026-08-15",
+  // @solana/kit's workerd export is its node build, which uses the Buffer global (base64, error messages in production).
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "../web/dist",
     "not_found_handling": "single-page-application",
@@ -13,16 +15,29 @@
   },
   "observability": { "enabled": true },
   // Secrets (set with `wrangler secret put <NAME> --env dev|prod`, locally in .dev.vars.dev / .dev.vars.prod; never committed):
-  //   RPC_URL                  Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
-  //   TELEGRAM_BOT_TOKEN       token of this environment's bot
-  //   TELEGRAM_WEBHOOK_SECRET  value Telegram sends in X-Telegram-Bot-Api-Secret-Token
-  //   ADMIN_CHAT_ID            Telegram chat id for worker error reports
-  // They become required (secrets.required) when code starts using them; until then a first deploy must not fail on them.
+  //   RPC_URL                  required. Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
+  //   RPC_FALLBACK_URL         optional. Second RPC URL, used for reads only when RPC_URL fails. Not listed in
+  //                            secrets.required, so wrangler dev ignores it in .dev.vars (set it with `wrangler secret put`).
+  //   TELEGRAM_BOT_TOKEN       token of this environment's bot (step 5)
+  //   TELEGRAM_WEBHOOK_SECRET  value Telegram sends in X-Telegram-Bot-Api-Secret-Token (step 5)
+  //   ADMIN_CHAT_ID            Telegram chat id for worker error reports (step 5)
+  // secrets.required lists what the code reads today; the Telegram secrets join it in step 5. With secrets.required the
+  // FIRST deploy of a new Worker must pass them: `wrangler deploy --env dev --secrets-file .dev.vars.dev`.
+  // Rate limits per client IP (CF-Connecting-IP), Workers rate limiting binding, period 10 or 60 s:
+  //   RPC_RATE_LIMIT     POST /api/rpc               30 requests / 10 s
+  //   LOOKUP_RATE_LIMIT  GET /api/stake-accounts     20 requests / 60 s
+  // namespace_id is any positive integer unique in the Cloudflare account; dev and prod use separate counters.
   // Cron trigger (*/2 * * * *) is added in step 5.
 
   // Top level = local-only defaults (plain `wrangler dev`, `wrangler types`). Named environments do NOT inherit
-  // vars or d1_databases, so each env repeats them. The all-zero id below is never created: a deploy without --env fails.
+  // vars, secrets, ratelimits or d1_databases, so each env repeats them. The all-zero id below is never created:
+  // a deploy without --env fails.
   "vars": { "CLUSTER": "devnet" },
+  "secrets": { "required": ["RPC_URL"] },
+  "ratelimits": [
+    { "name": "RPC_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 10 } },
+    { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
@@ -35,6 +50,11 @@
     "dev": {
       "name": "stakeward-dev",
       "vars": { "CLUSTER": "devnet" },
+      "secrets": { "required": ["RPC_URL"] },
+      "ratelimits": [
+        { "name": "RPC_RATE_LIMIT", "namespace_id": "1101", "simple": { "limit": 30, "period": 10 } },
+        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1102", "simple": { "limit": 20, "period": 60 } }
+      ],
       "d1_databases": [
         {
           "binding": "DB",
@@ -48,6 +68,11 @@
     "prod": {
       "name": "stakeward-prod",
       "vars": { "CLUSTER": "mainnet" },
+      "secrets": { "required": ["RPC_URL"] },
+      "ratelimits": [
+        { "name": "RPC_RATE_LIMIT", "namespace_id": "1201", "simple": { "limit": 30, "period": 10 } },
+        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1202", "simple": { "limit": 20, "period": 60 } }
+      ],
       "d1_databases": [
         {
           "binding": "DB",
