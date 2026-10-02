@@ -40,7 +40,6 @@ const STATUSES: readonly StatusBadgeStatus[] = [
   'expiring',
   'unprotected',
   'locked-by-other',
-  'second-key-not-connected',
   'was-protected',
   'unknown',
 ];
@@ -188,7 +187,6 @@ export function ComponentsSection() {
                 activation={row.activation}
                 protection={row.protection}
                 managedByService={row.managedByService}
-                secondKeyConfirmed={row.secondKeyConfirmed}
                 wasProtected={row.wasProtected}
                 actions={rowActions(row)}
               />

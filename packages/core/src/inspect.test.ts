@@ -711,6 +711,7 @@ describe('never throws', () => {
       })),
     }));
     expect(await verdict(noData)).toBe('unknown-instruction');
-    expect(await verdict(wireFromMessage({ ...decodeMessage(built.bytes), instructions: [] }))).toBe('bad-layout');
+    // Strict decoding refuses a message without instructions (verify.ts, canonicalLegacyMessageSize).
+    expect(await verdict(wireFromMessage({ ...decodeMessage(built.bytes), instructions: [] }))).toBe('malformed');
   });
 });

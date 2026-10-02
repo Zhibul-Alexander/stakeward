@@ -2,8 +2,12 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from './fixtures.ts';
 
-/** Screenshots of /dev/ui for review and /design-sync (CLAUDE.md sections 9 and 13). */
+/**
+ * Screenshots of /dev/ui for review and /design-sync (CLAUDE.md sections 9 and 13), written to docs/screens only with
+ * UPDATE_SCREENS=1 (`UPDATE_SCREENS=1 pnpm e2e`), so ordinary runs do not rewrite tracked files.
+ */
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
+const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 
 /** Real inspector output rendered on the page: protect, extend, withdraw, rescue, unlock and one rejected link. */
 const SUMMARIES = 6;
@@ -64,9 +68,11 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.keyboard.press('Escape');
   await expect(page.getByRole('tooltip')).toBeHidden();
 
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  mkdirSync(SCREENS_DIR, { recursive: true });
-  await page.screenshot({ path: `${SCREENS_DIR}dev-ui-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+  if (UPDATE_SCREENS) {
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+    });
+    mkdirSync(SCREENS_DIR, { recursive: true });
+    await page.screenshot({ path: `${SCREENS_DIR}dev-ui-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+  }
 });

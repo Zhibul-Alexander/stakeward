@@ -1,0 +1,116 @@
+import { getAddressDecoder, type Address } from '@solana/kit';
+import { U64_MAX, ZERO_ADDRESS, type StakeAccount } from '@stakeward/core';
+import { describe, expect, it } from 'vitest';
+import { appLinks, buildAccountsView } from './view.ts';
+
+const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
+const DAY = 86_400n;
+const SOL = 1_000_000_000n;
+const clock = { unixTimestamp: 1_800_000_000n, epoch: 900n };
+
+const A = key(1);
+const K = key(2);
+const OTHER = key(3);
+const OWNER = key(4);
+
+function stake(n: number, options: { sol: bigint; withdrawer?: Address; staker?: Address; lockDays?: bigint; custodian?: Address }): StakeAccount {
+  const withdrawer = options.withdrawer ?? A;
+  return {
+    address: key(n),
+    lamports: options.sol * SOL,
+    kind: 'delegated',
+    rentExemptReserve: 1_666_240n,
+    staker: options.staker ?? withdrawer,
+    withdrawer,
+    lockup: {
+      unixTimestamp: options.lockDays === undefined ? 0n : clock.unixTimestamp + options.lockDays * DAY,
+      epoch: 0n,
+      custodian: options.custodian ?? ZERO_ADDRESS,
+    },
+    delegation: { voter: key(99), stake: options.sol * SOL, activationEpoch: 800n, deactivationEpoch: U64_MAX },
+  };
+}
+
+const open = stake(10, { sol: 3n });
+const openBig = stake(11, { sol: 30n });
+const locked = stake(12, { sol: 40n, lockDays: 100n, custodian: K });
+const expiring = stake(13, { sol: 5n, lockDays: 10n, custodian: K });
+const foreign = stake(14, { sol: 2n, lockDays: 100n, custodian: OTHER });
+const ended = stake(15, { sol: 8n, lockDays: -1n, custodian: K });
+const asSecondKey = stake(16, { sol: 7n, withdrawer: OWNER, lockDays: 50n, custodian: A });
+const asSecondKeyEnded = stake(17, { sol: 6n, withdrawer: OWNER, lockDays: -3n, custodian: A });
+const selfLocked = stake(18, { sol: 1n, lockDays: 100n, custodian: A });
+
+describe('buildAccountsView', () => {
+  const base = { address: A, clock, knownSecondKeys: [K], rememberedProtected: [] as Address[] };
+
+  it('splits main-key and second-key accounts, once each, most urgent first', () => {
+    const view = buildAccountsView({
+      ...base,
+      // Found by both searches: a self-locked account matches withdrawer and custodian.
+      accounts: [locked, open, foreign, expiring, openBig, selfLocked, asSecondKey, asSecondKeyEnded, selfLocked],
+    });
+    expect(view.owned.map((row) => row.account.address)).toEqual(
+      [expiring, openBig, open, selfLocked, locked, foreign].map((a) => a.address),
+    );
+    expect(view.owned.map((row) => row.protection)).toEqual([
+      'expiring',
+      'unprotected',
+      'unprotected',
+      'unprotected',
+      'protected',
+      'locked-by-other',
+    ]);
+    // A lock that ended gives the second key no say: only the account it still locks is listed.
+    expect(view.secondKeyFor.map((row) => [row.account.address, row.protection])).toEqual([[asSecondKey.address, 'protected']]);
+  });
+
+  it('totals the main list and the SOL under a lock', () => {
+    const view = buildAccountsView({ ...base, accounts: [open, locked, expiring, foreign, asSecondKey] });
+    expect(view.totals).toEqual({ count: 4, lamports: 50n * SOL, protectedLamports: 45n * SOL });
+  });
+
+  it('with no second key known, calls no lock protected, counts none and asks for the second key (D14)', () => {
+    const view = buildAccountsView({ ...base, knownSecondKeys: [], accounts: [locked, foreign] });
+    expect(view.owned.map((row) => row.protection)).toEqual(['locked-by-other', 'locked-by-other']);
+    expect(view.totals.protectedLamports).toBe(0n);
+    expect(view.unconfirmedLock).toBe(true);
+    expect(view.confirmedProtected).toEqual([]);
+  });
+
+  it('asks for the second key when a lock is someone else’s, not when all locks are confirmed', () => {
+    expect(buildAccountsView({ ...base, accounts: [locked, foreign] }).unconfirmedLock).toBe(true);
+    expect(buildAccountsView({ ...base, accounts: [locked, expiring, open] }).unconfirmedLock).toBe(false);
+  });
+
+  it('remembers confirmed locks and flags remembered accounts that lost theirs (F6)', () => {
+    const view = buildAccountsView({
+      ...base,
+      accounts: [locked, expiring, ended, open, foreign],
+      rememberedProtected: [ended.address, locked.address, key(77)],
+    });
+    expect(view.confirmedProtected.sort()).toEqual([locked.address, expiring.address].sort());
+    expect(view.noLongerProtected).toEqual([ended.address]);
+    const endedRow = view.owned.find((row) => row.account.address === ended.address);
+    expect(endedRow).toMatchObject({ protection: 'unprotected', wasProtected: true });
+    // First in the list: it needs attention most.
+    expect(view.owned[0]?.account.address).toBe(ended.address);
+    expect(view.owned.filter((row) => row.wasProtected)).toHaveLength(1);
+  });
+
+  it('flags a managed stake and reads its staking state from the epochs', () => {
+    const managed = stake(20, { sol: 4n, staker: key(50) });
+    const [row] = buildAccountsView({ ...base, accounts: [managed] }).owned;
+    expect(row).toMatchObject({ managedByService: true, activation: 'active' });
+  });
+});
+
+describe('appLinks', () => {
+  it('builds the action routes of section 9', () => {
+    expect(appLinks.protect([locked.address])).toBe(`/protect?account=${locked.address}`);
+    expect(appLinks.protect([locked.address, open.address])).toBe(`/protect?account=${locked.address}&account=${open.address}`);
+    expect(appLinks.extend(locked.address)).toBe(`/extend/${locked.address}`);
+    expect(appLinks.withdraw(locked.address)).toBe(`/withdraw/${locked.address}`);
+    expect(appLinks.rescue(A)).toBe(`/rescue?address=${A}`);
+  });
+});

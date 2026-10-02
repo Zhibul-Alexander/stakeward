@@ -5,10 +5,12 @@ import {
   STAKE_ACCOUNT_SIZE,
   STAKE_PROGRAM_ADDRESS,
   stakeAccountsToJson,
+  ZERO_ADDRESS,
   type StakeAccount,
 } from '@stakeward/core';
 import type { Context } from 'hono';
 import * as z from 'zod';
+import { isAddressText } from './address.ts';
 import { decodeBase64 } from './base64.ts';
 import { callUpstream, type UpstreamOptions } from './upstream.ts';
 import type { AppEnv } from './app.ts';
@@ -49,6 +51,11 @@ export function stakeAccountsHandler(upstreamOptions: UpstreamOptions) {
     const [role, target] = 'withdrawer' in parsed.data
       ? (['withdrawer', parsed.data.withdrawer] as const)
       : (['custodian', parsed.data.custodian] as const);
+    // The all-zero key (the System Program id) is nobody's wallet, and nearly every stake account without a lock has it
+    // as custodian: that query would return most of the cluster's stake accounts (upstream credits, isolate memory, CPU).
+    if (target === ZERO_ADDRESS) {
+      return c.json({ error: 'invalid-query', message: 'The all-zero address is not a wallet' }, 400);
+    }
 
     const cacheKey = new Request(new URL(`/api/stake-accounts?${role}=${target}`, url.origin).toString());
     const cache = caches.default;
@@ -162,14 +169,15 @@ export function parseProgramAccounts(
 
 /**
  * One item of the answer, checked by hand rather than with zod: this runs for every account and the free plan
- * allows 10 ms of CPU per request (test/cpu.test.ts). The owner is compared as a string, which also proves it valid.
+ * allows 10 ms of CPU per request (test/cpu.test.ts). The owner is compared as a string, which also proves it valid;
+ * the address is checked with `isAddressText` (kit's `isAddress`, cheaper).
  */
 function gpaItem(raw: unknown): { pubkey: Address; data: string; lamports: bigint } | null {
   if (!isRecord(raw) || typeof raw.pubkey !== 'string' || !isRecord(raw.account)) return null;
   const { data, owner, lamports } = raw.account;
   if (owner !== STAKE_PROGRAM_ADDRESS || typeof lamports !== 'bigint' || lamports < 0n) return null;
   if (!Array.isArray(data) || data.length !== 2 || data[1] !== 'base64' || typeof data[0] !== 'string') return null;
-  if (!isAddress(raw.pubkey)) return null;
+  if (!isAddressText(raw.pubkey)) return null;
   return { pubkey: raw.pubkey, data: data[0], lamports };
 }
 

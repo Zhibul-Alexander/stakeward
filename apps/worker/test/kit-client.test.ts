@@ -13,7 +13,7 @@ import {
 import { translateError } from '@stakeward/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeUpstream, ORIGIN, rpcResponse, testApp, type UpstreamCall } from './fakes.ts';
-import { b64, key, signedProtect, signedSystemTransfer, unsignedProtect } from './transactions.ts';
+import { b64, corruptFirstSignature, key, signedProtect, signedSystemTransfer, unsignedProtect } from './transactions.ts';
 
 const RESULTS: Record<string, unknown> = {
   getLatestBlockhash: { context: { slot: 1 }, value: { blockhash: '11111111111111111111111111111111', lastValidBlockHeight: 9 } },
@@ -84,13 +84,21 @@ describe('kit RPC client through /api/rpc', () => {
     const missing = await rpc.sendTransaction(unsigned, { encoding: 'base64' }).send().catch((error: unknown) => error);
     expect(isSolanaError(missing, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_TRANSACTION_SIGNATURE_VERIFICATION_FAILURE)).toBe(true);
     expect(missing).toMatchObject({ context: { check: 'signatures', code: 'missing-signatures' } });
-    expect(translateError(missing).title).toMatch(/signature/i);
+    expect(translateError(missing).code).toBe('missing-signature');
+
+    const corrupt = b64(corruptFirstSignature((await signedProtect()).bytes)) as Base64EncodedWireTransaction;
+    const forged = await rpc.sendTransaction(corrupt, { encoding: 'base64' }).send().catch((error: unknown) => error);
+    expect(isSolanaError(forged, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_TRANSACTION_SIGNATURE_VERIFICATION_FAILURE)).toBe(true);
+    expect(translateError(forged).code).toBe('invalid-signature');
 
     const transfer = b64(await signedSystemTransfer()) as Base64EncodedWireTransaction;
     const refused = await rpc.simulateTransaction(transfer, { encoding: 'base64' }).send().catch((error: unknown) => error);
     expect(isSolanaError(refused, SOLANA_ERROR__JSON_RPC__INVALID_PARAMS)).toBe(true);
     expect(refused).toMatchObject({ context: { __serverMessage: 'Transaction rejected by inspector: unknown-instruction' } });
-    expect(translateError(refused).code).toBe('unknown');
+    expect(translateError(refused)).toMatchObject({
+      code: 'rejected-by-inspector',
+      title: 'Stakeward refused to send this transaction: it is not in the format Stakeward builds. Nothing was sent; start again.',
+    });
 
     const method = await rpc.getBlockHeight().send().catch((error: unknown) => error);
     expect(isSolanaError(method, SOLANA_ERROR__JSON_RPC__METHOD_NOT_FOUND)).toBe(true);

@@ -12,10 +12,17 @@ export {
 } from './confirm.ts';
 export { HttpChain, type HttpChainOptions } from './http-chain.ts';
 export {
+  createProtectedAccountMemory,
+  MAX_REMEMBERED_PROTECTED_ACCOUNTS,
+  PROTECTED_ACCOUNTS_STORAGE_KEY,
+  type ProtectedAccountMemory,
+} from './protected-accounts.ts';
+export {
   PortsProvider,
   useChain,
   useKnownSecondKeys,
   usePorts,
+  useProtectedAccounts,
   useSlot,
   useWallets,
   useWalletSlots,

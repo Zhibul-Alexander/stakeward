@@ -1,0 +1,208 @@
+import type { Address } from '@solana/kit';
+import { translateError, type WalletPort, type WalletRole } from '@stakeward/core';
+import { useEffect, useRef, useState } from 'react';
+import { WalletSlot, type WalletOption } from '@/components/product/wallet-slot';
+import { t } from '@/i18n';
+import { errorMessage } from '@/i18n/errors';
+import { usePorts, useSlot, useWallets, WALLET_ROLES } from '@/ports';
+
+/** What the slot is doing on top of the stored slot: a connect in progress, its failure, or an account conflict. */
+type Pending =
+  | { kind: 'idle' }
+  | { kind: 'connecting'; walletId: string }
+  | { kind: 'error'; walletId: string; message: string; detail: string }
+  | { kind: 'conflict'; walletId: string; address: Address; conflictRole: WalletRole | undefined };
+
+type KeySlotProps = {
+  role: WalletRole;
+  /**
+   * The main key on screen. A view by address has no Main key slot, but its address is still the Main key: another
+   * slot never takes it (one address, one role; the second key differs from the main key, F1).
+   */
+  mainKey?: Address | undefined;
+  description?: string | undefined;
+  /** Called with the address once it fills the slot. */
+  onConnected?: ((address: Address) => void) | undefined;
+  className?: string | undefined;
+};
+
+function option(wallet: WalletPort): WalletOption {
+  return { id: wallet.id, name: wallet.name, icon: wallet.icon };
+}
+
+/**
+ * Connects a wallet account to one key slot (CLAUDE.md section 6) and shows it with WalletSlot. Connecting is never
+ * silent: it starts from the user's click. An account that already fills another role is refused with "switch to
+ * your other account in the wallet, then press Continue"; Continue reads the wallet's accounts again.
+ */
+export function KeySlot({ role, mainKey, description, onConnected, className }: KeySlotProps) {
+  const { slots } = usePorts();
+  const wallets = useWallets();
+  const resolved = useSlot(role);
+  const [pending, setPending] = useState<Pending>({ kind: 'idle' });
+  // Bumped by every connect and cancel, so the answer of an abandoned connect is ignored.
+  const request = useRef(0);
+  // The wallet request in flight. Cancel (and leaving the page) aborts it, so the wallet's queue lets the next request
+  // through even when the wallet never answers this one (core createWalletRequestQueue).
+  const inFlight = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      inFlight.current?.abort();
+    },
+    [],
+  );
+
+  function nextRequest(): { id: number; signal: AbortSignal } {
+    request.current += 1;
+    inFlight.current?.abort();
+    const controller = new AbortController();
+    inFlight.current = controller;
+    return { id: request.current, signal: controller.signal };
+  }
+
+  const walletById = (walletId: string) => wallets.find((wallet) => wallet.id === walletId) ?? null;
+
+  function take(wallet: WalletPort, accounts: readonly Address[]) {
+    const current = slots.getSnapshot();
+    const roleOf = (address: Address): WalletRole | undefined =>
+      role !== 'main' && address === mainKey
+        ? 'main'
+        : WALLET_ROLES.find((other) => other !== role && current[other]?.address === address);
+    const free = accounts.find((address) => roleOf(address) === undefined);
+    const first = accounts[0];
+    if (first === undefined) {
+      setPending({ kind: 'error', walletId: wallet.id, message: t('app.connect.noAccount'), detail: '' });
+      return;
+    }
+    if (free === undefined) {
+      setPending({ kind: 'conflict', walletId: wallet.id, address: first, conflictRole: roleOf(first) });
+      return;
+    }
+    const assigned = slots.assign(role, { walletId: wallet.id, address: free });
+    if (!assigned.ok) {
+      setPending({ kind: 'conflict', walletId: wallet.id, address: free, conflictRole: assigned.role });
+      return;
+    }
+    setPending({ kind: 'idle' });
+    onConnected?.(free);
+  }
+
+  async function connect(walletId: string) {
+    const wallet = walletById(walletId);
+    if (wallet === null) return;
+    const { id, signal } = nextRequest();
+    setPending({ kind: 'connecting', walletId });
+    try {
+      const accounts = await wallet.connect({ signal });
+      if (request.current === id) take(wallet, accounts);
+    } catch (error) {
+      if (request.current !== id) return;
+      const friendly = translateError(error);
+      setPending({ kind: 'error', walletId, message: errorMessage(friendly), detail: friendly.detail });
+    }
+  }
+
+  function cancel() {
+    request.current += 1;
+    inFlight.current?.abort();
+    setPending({ kind: 'idle' });
+  }
+
+  /** After the user switched accounts in the wallet: use what it offers now, or ask it again when it offers none. */
+  function continueWith(wallet: WalletPort) {
+    if (wallet.accounts.length === 0) void connect(wallet.id);
+    else take(wallet, wallet.accounts);
+  }
+
+  /**
+   * Continue on a filled slot whose wallet offers other accounts now: only look again for the slot's own account. It
+   * never puts another account in the slot (that would change the key behind the user's back); replacing the key is
+   * Disconnect, then Connect. A wallet that offers no account is asked again; what it answers only refreshes its
+   * accounts, which re-resolves the slot.
+   */
+  async function recheck(wallet: WalletPort, address: Address) {
+    if (wallet.accounts.includes(address)) return;
+    const { id, signal } = nextRequest();
+    setPending({ kind: 'connecting', walletId: wallet.id });
+    try {
+      await wallet.connect({ signal });
+      if (request.current === id) setPending({ kind: 'idle' });
+    } catch (error) {
+      if (request.current !== id) return;
+      const friendly = translateError(error);
+      setPending({ kind: 'error', walletId: wallet.id, message: errorMessage(friendly), detail: friendly.detail });
+    }
+  }
+
+  const common = { role, description, className };
+  const pendingWallet = pending.kind === 'idle' ? null : walletById(pending.walletId);
+  if (pending.kind !== 'idle' && pendingWallet !== null) {
+    const wallet = option(pendingWallet);
+    switch (pending.kind) {
+      case 'connecting':
+        return <WalletSlot {...common} status="connecting" wallet={wallet} onCancel={cancel} />;
+      case 'error':
+        return (
+          <WalletSlot
+            {...common}
+            status="error"
+            wallet={wallet}
+            message={pending.message}
+            detail={pending.detail === '' ? undefined : pending.detail}
+            onRetry={() => void connect(pending.walletId)}
+            onCancel={cancel}
+          />
+        );
+      case 'conflict':
+        return (
+          <WalletSlot
+            {...common}
+            status="wrong-account"
+            wallet={wallet}
+            address={pending.address}
+            conflictRole={pending.conflictRole}
+            onContinue={() => {
+              continueWith(pendingWallet);
+            }}
+            onDisconnect={cancel}
+          />
+        );
+    }
+  }
+
+  if (resolved !== null && resolved.wallet !== null) {
+    const { wallet, slot } = resolved;
+    if (resolved.ready) {
+      return (
+        <WalletSlot
+          {...common}
+          status="connected"
+          wallet={option(wallet)}
+          address={slot.address}
+          onDisconnect={() => {
+            slots.clear(role);
+          }}
+        />
+      );
+    }
+    // The wallet offers other accounts right now: the user switched away from this one.
+    if (wallet.accounts.length > 0) {
+      return (
+        <WalletSlot
+          {...common}
+          status="wrong-account"
+          wallet={option(wallet)}
+          address={slot.address}
+          onContinue={() => {
+            void recheck(wallet, slot.address);
+          }}
+          onDisconnect={() => {
+            slots.clear(role);
+          }}
+        />
+      );
+    }
+  }
+
+  return <WalletSlot {...common} status="empty" wallets={wallets.map(option)} onConnect={(walletId) => void connect(walletId)} />;
+}

@@ -10,7 +10,7 @@ import {
   type KeyPairSigner,
   type ReadonlyUint8Array,
 } from '@solana/kit';
-import type { WalletPort, WalletPortErrorName } from '../src/index.ts';
+import { createWalletRequestQueue, type WalletPort, type WalletPortErrorName } from '../src/index.ts';
 import { appendLighthouseTail, editMessage } from './craft.ts';
 
 /** Present in every test wallet; a build that contains this string shipped test code (CLAUDE.md section 11). */
@@ -80,7 +80,7 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
   const requests: TestWalletRequest[] = [];
   const responses: Uint8Array[][] = [];
   let accounts: readonly Address[] = options.connected === true ? [...exposedOnConnect] : [];
-  let queue: Promise<unknown> = Promise.resolve();
+  const serialised = createWalletRequestQueue();
   let open = 0;
   let maxConcurrent = 0;
   let nextOnly: TestWalletBehaviour | null = null;
@@ -93,12 +93,6 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
     accounts = [...next];
     notify();
   };
-  const serialised = <T>(task: () => Promise<T>): Promise<T> => {
-    const run = queue.then(task, task);
-    queue = run.catch(() => undefined);
-    return run;
-  };
-
   async function sign(address: Address, transactions: readonly ReadonlyUint8Array[]): Promise<Uint8Array[]> {
     const behaviour = { ...port.behaviour, ...nextOnly };
     nextOnly = null;
@@ -154,20 +148,20 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
     once(behaviour) {
       nextOnly = behaviour;
     },
-    connect() {
+    connect(requestOptions) {
       return serialised(() => {
         if (port.rejectConnect) return Promise.reject(rejection(name));
         setAccounts(accounts.length > 0 ? accounts : exposedOnConnect);
         return Promise.resolve(accounts);
-      });
+      }, requestOptions?.signal);
     },
     disconnect() {
       setAccounts([]);
       return Promise.resolve();
     },
-    signTransactions(address, transactions) {
+    signTransactions(address, transactions, requestOptions) {
       if (transactions.length === 0) return Promise.resolve([]);
-      return serialised(() => sign(address, transactions));
+      return serialised(() => sign(address, transactions), requestOptions?.signal);
     },
     onChange(listener) {
       listeners.add(listener);

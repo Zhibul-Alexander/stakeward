@@ -1,22 +1,32 @@
 import {
   getSolanaErrorFromJsonRpcError,
+  isSolanaError,
   SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR,
   SolanaError,
 } from '@solana/kit';
-import { translateError } from '@stakeward/core';
 
 /**
  * The site's only network path: same-origin requests to the worker (CLAUDE.md section 3, RPC). A fetch-based
  * JSON-RPC client instead of kit's createSolanaRpc: about 6 KB gzip smaller in the bundle (measured 02.10.2026 with
  * the inspector already bundled), and it only needs the nine methods the proxy allows.
  *
- * Reliability (CLAUDE.md section 12): every attempt times out after 8 s; reads are retried up to twice on transient
- * failures (network, timeout, HTTP 408/429/5xx, node behind). Failures are thrown in the shapes `translateError`
- * classifies: kit SolanaErrors for JSON-RPC and HTTP errors, a TimeoutError, or fetch's own TypeError.
+ * Reliability (CLAUDE.md section 12). The worker already retries the upstream RPC: a read gets three attempts of 8 s
+ * with pauses of 250 and 500 ms, a send one attempt (apps/worker/src/upstream.ts). So the browser never retries what
+ * the worker answered: its 502 and 504 (the RPC failed after the worker's own retries), 429 (rate limit, wait a
+ * minute) and every JSON-RPC error are final; retrying them would multiply upstream calls and the wait. The browser
+ * retries, up to twice, only when the worker's answer never arrived: fetch failed (TypeError), the body broke off,
+ * or no answer within REQUEST_TIMEOUT_MS, which is longer than the worker's longest answer. Plus HTTP 503, which
+ * Cloudflare answers when a Worker could not run at all (resource limits, e.g. the CPU of a cold start) and the
+ * worker answers when its RPC is not configured; neither reached the upstream RPC.
+ * Failures are thrown in the shapes `translateError` classifies: kit SolanaErrors for JSON-RPC and HTTP errors, a
+ * TimeoutError, or fetch's own TypeError.
  */
 
-export const REQUEST_TIMEOUT_MS = 8_000;
-/** Retries after the first attempt, for reads and for resending the same signed bytes. */
+/** The worker's longest answer: three upstream attempts of 8 s and the pauses between them (upstream.ts). */
+export const WORKER_READ_BUDGET_MS = 3 * 8_000 + 250 + 500;
+/** Per request; longer than WORKER_READ_BUDGET_MS, so the browser does not give up while the worker still works. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+/** Retries after the first attempt, only for answers that never arrived (see above). */
 export const MAX_RETRIES = 2;
 const RETRY_DELAYS_MS = [500, 1_500] as const;
 
@@ -32,8 +42,13 @@ export type RequestOptions = {
   retries: number;
 };
 
-/** A thrown fetch() failure: the request never got an HTTP answer. */
-const fetchFailures = new WeakSet<object>();
+/** Failures where the worker's answer never arrived: fetch threw, the body broke off, or our timeout fired. */
+const unanswered = new WeakSet<object>();
+
+function noAnswer<T>(error: T): T {
+  if (typeof error === 'object' && error !== null) unanswered.add(error);
+  return error;
+}
 
 export class Transport {
   private readonly fetchImpl: typeof fetch;
@@ -60,7 +75,7 @@ export class Transport {
       const message = parseJsonWithBigInts(response.text);
       if (!isRecord(message)) throw malformed(`${method}: the response is not a JSON-RPC message`);
       if ('error' in message && message['error'] !== undefined && message['error'] !== null) {
-        throw getSolanaErrorFromJsonRpcError(message['error']);
+        throw jsonRpcError(message['error']);
       }
       if (!('result' in message)) throw malformed(`${method}: the response has no result`);
       return message['result'];
@@ -87,16 +102,13 @@ export class Transport {
       try {
         response = await this.fetchImpl(url, { ...init, signal: controller.signal });
       } catch (error) {
-        if (controller.signal.aborted) throw timeout;
-        if (typeof error === 'object' && error !== null) fetchFailures.add(error);
-        throw error;
+        throw noAnswer(controller.signal.aborted ? timeout : error);
       }
       let text: string;
       try {
         text = await response.text();
       } catch (error) {
-        if (controller.signal.aborted) throw timeout;
-        throw error;
+        throw noAnswer(controller.signal.aborted ? timeout : error);
       }
       if (!response.ok) throw httpError(response, text);
       return { text };
@@ -110,7 +122,7 @@ export class Transport {
       try {
         return await attempt();
       } catch (error) {
-        if (failures >= retries || !isTransient(error)) throw error;
+        if (failures >= retries || !isRetryable(error)) throw error;
         await this.sleep(RETRY_DELAYS_MS[Math.min(failures, RETRY_DELAYS_MS.length - 1)] ?? 1_000);
       }
     }
@@ -118,18 +130,18 @@ export class Transport {
 }
 
 /**
- * A failure worth retrying: no HTTP answer, our timeout, or what `translateError` calls a network failure
- * (HTTP 408/429/5xx, JSON-RPC -32005 node behind and -32603 internal error).
+ * A failure worth retrying (see the module comment): the worker's answer never arrived, or HTTP 503 (the Worker could
+ * not run). Never what the worker answered after trying the RPC itself (502, 504, JSON-RPC errors) or a rate limit.
  */
-export function isTransient(error: unknown): boolean {
-  if (typeof error === 'object' && error !== null && fetchFailures.has(error)) return true;
-  return translateError(error).code === 'network';
+export function isRetryable(error: unknown): boolean {
+  if (typeof error === 'object' && error !== null && unanswered.has(error)) return true;
+  return isSolanaError(error, SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR) && error.context.statusCode === 503;
 }
 
 /**
- * An HTTP error status. 408, 429 and 5xx become kit's transport error (translateError: network). Anything else
- * carrying a JSON-RPC error body (the proxy refusing a method or its parameters) throws that error; the rest throws
- * the transport error with the status.
+ * An HTTP error status. 408, 429 and 5xx become kit's transport error (translateError: rate-limited for 429, network
+ * for the others). Anything else carrying a JSON-RPC error body (the proxy refusing a method or its parameters)
+ * throws that error; the rest throws the transport error with the status.
  */
 function httpError(response: Response, text: string): Error {
   const status = response.status;
@@ -137,7 +149,7 @@ function httpError(response: Response, text: string): Error {
     try {
       const body = parseJsonWithBigInts(text);
       if (isRecord(body) && isRecord(body['error']) && 'code' in body['error']) {
-        return getSolanaErrorFromJsonRpcError(body['error']);
+        return jsonRpcError(body['error']);
       }
     } catch {
       // Not JSON: report the status below.
@@ -148,6 +160,22 @@ function httpError(response: Response, text: string): Error {
     message: (response.statusText || text).slice(0, 200),
     statusCode: status,
   });
+}
+
+/**
+ * kit's error for a JSON-RPC error object. kit keeps the server's own message only for some codes (as
+ * `__serverMessage`) and drops it for the others, and its production build numbers every error message. So the message
+ * is added under kit's own name when kit dropped it: translateError shows it under "Details" (UX rule 8).
+ */
+export function jsonRpcError(raw: unknown): SolanaError {
+  const error = getSolanaErrorFromJsonRpcError(raw);
+  const message = isRecord(raw) ? raw['message'] : undefined;
+  if (typeof message !== 'string' || message === '' || '__serverMessage' in error.context) return error;
+  const { __code: code, ...context } = error.context;
+  const cause: unknown = error.cause;
+  // The context kit built for this code, plus the message (and the cause, which kit keeps outside the context).
+  const rebuilt = { ...context, __serverMessage: message, ...(cause === undefined ? {} : { cause }) };
+  return new SolanaError(code, rebuilt);
 }
 
 function timeoutError(ms: number): Error {

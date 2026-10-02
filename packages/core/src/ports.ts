@@ -97,6 +97,12 @@ export interface ChainPort {
 export type WalletPortErrorName = 'WalletAccountUnavailableError' | 'WalletUnsupportedError' | 'WalletBusyError';
 
 /**
+ * Options of a wallet request. `signal`: the caller stops waiting (Stop waiting, leaving the screen). The request then
+ * rejects with the signal's reason and no longer holds up the next requests to this wallet (wallet-queue.ts).
+ */
+export type WalletRequestOptions = { signal?: AbortSignal | undefined };
+
+/**
  * One wallet the user can connect (a Wallet Standard wallet in the browser, a test wallet in tests). The port never
  * reads transaction bytes: the caller runs `checkSigningStep` on everything it returns (verify.ts).
  */
@@ -113,7 +119,7 @@ export interface WalletPort {
   readonly accounts: readonly Address[];
 
   /** Asks the wallet for access (may open its prompt). Resolves with `accounts` after the change; rejects on refusal. */
-  connect(): Promise<readonly Address[]>;
+  connect(options?: WalletRequestOptions): Promise<readonly Address[]>;
 
   /** Forgets this site's session on the wallet side where supported; never rejects. */
   disconnect(): Promise<void>;
@@ -121,9 +127,14 @@ export interface WalletPort {
   /**
    * One wallet request for all `transactions`, signed by `address`; resolves with the wallet's returned wire bytes in
    * the same order (a wallet may add a Lighthouse tail, DECISIONS.md D24). Rejects with the wallet's error (user
-   * rejection included) or an Error named per WalletPortErrorName. Requests to one wallet are serialised.
+   * rejection included) or an Error named per WalletPortErrorName. Requests to one wallet are serialised; one whose
+   * signal aborted stops holding up the next (createWalletRequestQueue).
    */
-  signTransactions(address: Address, transactions: readonly ReadonlyUint8Array[]): Promise<readonly Uint8Array[]>;
+  signTransactions(
+    address: Address,
+    transactions: readonly ReadonlyUint8Array[],
+    options?: WalletRequestOptions,
+  ): Promise<readonly Uint8Array[]>;
 
   /** Called when accounts (or anything else the UI shows) change. Returns the unsubscribe function. */
   onChange(listener: () => void): () => void;

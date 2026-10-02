@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
 import type { ChainPort, WalletPort, WalletRole, WalletSlots } from '@stakeward/core';
 import { createContext, use, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import type { ProtectedAccountMemory } from './protected-accounts.ts';
 import { knownSecondKeys, resolveSlot, type ResolvedSlot, type SecondKeyMemory, type SlotStore } from './slots.ts';
 import type { WalletRegistry } from './wallet-registry.ts';
 
@@ -13,6 +14,8 @@ export type Ports = {
   wallets: WalletRegistry;
   slots: SlotStore;
   secondKeys: SecondKeyMemory;
+  /** Stake accounts seen protected on this device (F6 banner). */
+  protectedAccounts: ProtectedAccountMemory;
 };
 
 const PortsContext = createContext<Ports | null>(null);
@@ -57,4 +60,10 @@ export function useKnownSecondKeys(): readonly Address[] {
   const wallets = useWallets();
   const remembered = useSyncExternalStore(secondKeys.subscribe, secondKeys.getSnapshot);
   return useMemo(() => knownSecondKeys(slots, wallets, remembered), [slots, wallets, remembered]);
+}
+
+/** Stake accounts remembered on this device as protected (F6). */
+export function useProtectedAccounts(): readonly Address[] {
+  const { protectedAccounts } = usePorts();
+  return useSyncExternalStore(protectedAccounts.subscribe, protectedAccounts.getSnapshot);
 }

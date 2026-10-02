@@ -2,41 +2,72 @@
 // Prints the numbers; run `pnpm --filter @stakeward/worker exec vitest run test/cpu.test.ts --reporter=verbose`.
 // Local workerd advances performance.now() during computation, so averages over many runs are meaningful here
 // (production Workers freeze timers during execution and would read 0).
-import { inspectTransaction, STAKE_PROGRAM_ADDRESS, verifyAllSignatures } from '@stakeward/core';
+import {
+  inspectAndVerifyTransaction,
+  inspectTransaction,
+  STAKE_PROGRAM_ADDRESS,
+  verifyAllSignatures,
+} from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
 import { parseProgramAccounts } from '../src/stake-accounts.ts';
 import { fakeUpstream, rpcResponse, testApp } from './fakes.ts';
 import { b64, key, signedNonceRescue, stakeAccountData } from './transactions.ts';
 
-const RUNS = 50;
+const WARMUP_RUNS = 200;
+const BATCHES = 7;
+const BATCH_RUNS = 40;
 
-async function measure(run: () => Promise<unknown>): Promise<{ firstMs: number; averageMs: number }> {
+type Measurement = { firstMs: number; minMs: number; medianMs: number };
+
+/**
+ * `firstMs`: the first call (in the first test of this file, the first in a fresh isolate: cold). Then WARMUP_RUNS
+ * untimed calls, then BATCHES batches of BATCH_RUNS calls: `minMs` and `medianMs` are the lowest and the median batch
+ * average (warm). The clock is wall time in whole milliseconds and the machine may be busy, so the lowest batch is
+ * the closest to the CPU cost.
+ */
+async function measure(run: () => Promise<unknown>): Promise<Measurement> {
   const start = performance.now();
   await run();
   const firstMs = performance.now() - start;
-  const warmStart = performance.now();
-  for (let i = 0; i < RUNS; i++) await run();
-  return { firstMs, averageMs: (performance.now() - warmStart) / RUNS };
+  for (let i = 0; i < WARMUP_RUNS; i++) await run();
+  const averages: number[] = [];
+  for (let batch = 0; batch < BATCHES; batch++) {
+    const batchStart = performance.now();
+    for (let i = 0; i < BATCH_RUNS; i++) await run();
+    averages.push((performance.now() - batchStart) / BATCH_RUNS);
+  }
+  averages.sort((a, b) => a - b);
+  return { firstMs, minMs: averages[0] ?? NaN, medianMs: averages[Math.floor(BATCHES / 2)] ?? NaN };
 }
 
-function report(label: string, result: { firstMs: number; averageMs: number }) {
-  console.log(`[cpu] ${label}: first ${result.firstMs.toFixed(2)} ms, warm average ${result.averageMs.toFixed(2)} ms (${String(RUNS)} runs)`);
+function report(label: string, result: Measurement) {
+  console.log(
+    `[cpu] ${label}: first ${result.firstMs.toFixed(1)} ms, warm min ${result.minMs.toFixed(2)} ms, median ${result.medianMs.toFixed(2)} ms`,
+  );
 }
 
 describe('CPU budget (measurement)', () => {
-  it('inspectTransaction + verifyAllSignatures on a signed durable-nonce rescue', async () => {
+  it('inspectAndVerifyTransaction on a signed durable-nonce rescue (what the proxy runs before sending)', { timeout: 120_000 }, async () => {
     const bytes = await signedNonceRescue();
+    // First: the first inspection in this isolate (cold: nothing compiled or warmed up yet).
     const result = await measure(async () => {
-      const inspected = await inspectTransaction(bytes);
-      const signatures = await verifyAllSignatures(bytes);
-      expect(inspected.ok && signatures.ok).toBe(true);
+      const checked = await inspectAndVerifyTransaction(bytes);
+      expect(checked.ok && checked.signatures.ok).toBe(true);
     });
-    report('inspect + verify, nonce rescue (3 signatures)', result);
+    report('inspectAndVerifyTransaction, nonce rescue (3 signatures)', result);
+    report(
+      'inspectTransaction + verifyAllSignatures separately',
+      await measure(async () => {
+        const inspected = await inspectTransaction(bytes);
+        const signatures = await verifyAllSignatures(bytes);
+        expect(inspected.ok && signatures.ok).toBe(true);
+      }),
+    );
     report('inspect only', await measure(() => inspectTransaction(bytes)));
     report('verify only', await measure(() => verifyAllSignatures(bytes)));
   });
 
-  it('the whole sendTransaction request (validation, inspector, signatures, forwarding)', async () => {
+  it('the whole sendTransaction request (validation, inspector, signatures, forwarding)', { timeout: 120_000 }, async () => {
     const bytes = await signedNonceRescue();
     const upstream = fakeUpstream((c) => rpcResponse(c.json.id, 'sig'));
     // A fresh client per run keeps the rate limiter out of the way.
@@ -52,7 +83,7 @@ describe('CPU budget (measurement)', () => {
     report('POST /api/rpc sendTransaction (rescue), includes the fake upstream and rate limiter round trips', result);
   });
 
-  it('decoding a getProgramAccounts answer with 100 stake accounts', async () => {
+  it('decoding a getProgramAccounts answer with 100 stake accounts', { timeout: 120_000 }, async () => {
     const withdrawer = key(1);
     const items = Array.from({ length: 100 }, (_, i) => ({
       pubkey: key((i % 200) + 20),

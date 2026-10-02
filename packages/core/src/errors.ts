@@ -11,6 +11,7 @@ import {
   SOLANA_ERROR__INSTRUCTION_ERROR__MISSING_REQUIRED_SIGNATURE,
   SOLANA_ERROR__INVALID_NONCE,
   SOLANA_ERROR__JSON_RPC__INTERNAL_ERROR,
+  SOLANA_ERROR__JSON_RPC__INVALID_PARAMS,
   SOLANA_ERROR__JSON_RPC__SERVER_ERROR_NODE_UNHEALTHY,
   SOLANA_ERROR__JSON_RPC__SERVER_ERROR_TRANSACTION_SIGNATURE_VERIFICATION_FAILURE,
   SOLANA_ERROR__NONCE_ACCOUNT_NOT_FOUND,
@@ -54,36 +55,63 @@ import { formatUtcDate } from './format.ts';
  * must co-sign". Do not use `getStakeErrorMessage`: production bundles replace its text with a placeholder.
  */
 
-export type ErrorCode =
+/**
+ * Every code `translateError` returns, in a fixed order. The site needs a text for each (en.json `errors.*`; a test
+ * walks this list).
+ */
+export const ERROR_CODES = [
   /** Stake error 1: the lock is in force and the custodian did not sign (or a wrong key signed as custodian). */
-  | 'lockup-in-force'
+  'lockup-in-force',
   /** Stake error 7: changing the withdrawer while locked, without a custodian. */
-  | 'custodian-missing'
+  'custodian-missing',
   /** Stake error 8: the custodian account is there but did not sign. */
-  | 'custodian-signature-missing'
+  'custodian-signature-missing',
   /** Stake error 2: Deactivate on a stake that is already deactivated (the page showed an old state). */
-  | 'already-deactivated'
+  'already-deactivated',
   /** Stake error 3: delegating to another validator while the stake is still deactivating. */
-  | 'too-soon-to-redelegate'
+  'too-soon-to-redelegate',
   /** Stake error 12: the stake is below the minimum delegation (1 SOL, DECISIONS.md D7). */
-  | 'insufficient-delegation'
+  'insufficient-delegation',
   /** Stake error 6: Merge, MoveStake or MoveLamports between accounts whose authorities or lockups differ. */
-  | 'merge-mismatch'
-  /** MissingRequiredSignature, e.g. the main key tried to change a lock that is in force. */
-  | 'missing-signature'
+  'merge-mismatch',
+  /**
+   * MissingRequiredSignature, e.g. the main key tried to change a lock that is in force; also the worker refusing to
+   * send a transaction with a signature missing.
+   */
+  'missing-signature',
+  /**
+   * A signature does not match the transaction: the worker's inspector or signature check refused it (JSON-RPC
+   * -32003), or the network did (SignatureFailure).
+   */
+  'invalid-signature',
   /** InsufficientFunds: more than the free balance (stake still deactivating), or the fee payer has no SOL. */
-  | 'insufficient-funds'
+  'insufficient-funds',
   /** BlockhashNotFound on a blockhash transaction: it expired; rebuild and sign again. */
-  | 'blockhash-expired'
+  'blockhash-expired',
   /** BlockhashNotFound on a nonce transaction: the nonce moved on (the link was used or cancelled). */
-  | 'nonce-advanced'
+  'nonce-advanced',
   /** The same transaction already landed. */
-  | 'already-processed'
+  'already-processed',
+  /** The worker's inspector refused the bytes (JSON-RPC -32602 "Transaction rejected by inspector: <code>"). */
+  'rejected-by-inspector',
   /** The user declined in the wallet. */
-  | 'wallet-rejected'
-  /** The RPC could not be reached, timed out, or answered 408, 429 or 5xx (other HTTP statuses are `unknown`). */
-  | 'network'
-  | 'unknown';
+  'wallet-rejected',
+  /** HTTP 429: the worker's per-IP rate limit (or any server) says too many requests. */
+  'rate-limited',
+  /** The RPC could not be reached, timed out, or answered 408 or 5xx (other HTTP statuses are `unknown`). */
+  'network',
+  'unknown',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+/**
+ * Message prefixes of the worker's refusals on POST /api/rpc (apps/worker/src/rpc.ts), followed by the inspector's or
+ * the signature check's code. The worker writes them, `translateError` reads them: kit keeps only the message of a
+ * -32602 error.
+ */
+export const INSPECTOR_REFUSAL_PREFIX = 'Transaction rejected by inspector: ';
+export const SIGNATURE_REFUSAL_PREFIX = 'Transaction rejected: ';
 
 export type FriendlyError = {
   code: ErrorCode;
@@ -116,8 +144,12 @@ const TITLES = {
     'A key that must sign did not, or it no longer controls this stake. Check the connected wallets and try again.',
   'blockhash-expired': 'This transaction expired before it reached the network. Sign it again.',
   'nonce-advanced': 'This signing link is no longer valid: it was used or cancelled. Start again to get a new one.',
+  'invalid-signature': 'A signature does not match this transaction. Start signing again from the first wallet.',
   'already-processed': 'This transaction already went through. Refresh to see the current state.',
+  'rejected-by-inspector':
+    'Stakeward refused to send this transaction: it is not in the format Stakeward builds. Nothing was sent; start again.',
   'wallet-rejected': 'The request was declined in the wallet. Nothing was sent; you can try again.',
+  'rate-limited': 'Too many requests. Wait a minute and try again.',
   network: 'The Solana network did not respond. Check your connection and try again.',
   unknown: 'Something went wrong. Refresh to see the current state, then try again.',
 } as const;
@@ -199,14 +231,21 @@ function classifySolanaError(error: SolanaError, transaction: TransactionInfo, c
     case SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED:
       return translation('already-processed');
     case SOLANA_ERROR__TRANSACTION_ERROR__SIGNATURE_FAILURE:
+      return translation('invalid-signature');
     case SOLANA_ERROR__JSON_RPC__SERVER_ERROR_TRANSACTION_SIGNATURE_VERIFICATION_FAILURE:
-      return {
-        code: 'unknown',
-        title: 'A signature does not match this transaction. Start signing again from the first wallet.',
-      };
-    case SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR:
-      // Timeouts, rate limits and server errors pass; any other status (the proxy refused the request) does not.
-      return translation(isTransientHttpStatus(error.context.statusCode) ? 'network' : 'unknown');
+      return classifySignatureRefusal(error.context);
+    case SOLANA_ERROR__JSON_RPC__INVALID_PARAMS: {
+      // The worker's inspector refused the bytes; any other invalid parameter is our bug, not the user's.
+      const message: unknown = error.context.__serverMessage;
+      const refused = typeof message === 'string' && message.startsWith(INSPECTOR_REFUSAL_PREFIX);
+      return translation(refused ? 'rejected-by-inspector' : 'unknown');
+    }
+    case SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR: {
+      // Rate limits, timeouts and server errors; any other status (the proxy refused the request) is unknown.
+      const status = error.context.statusCode;
+      if (status === 429) return translation('rate-limited');
+      return translation(status === 408 || status >= 500 ? 'network' : 'unknown');
+    }
     case SOLANA_ERROR__JSON_RPC__SERVER_ERROR_NODE_UNHEALTHY:
     case SOLANA_ERROR__JSON_RPC__INTERNAL_ERROR:
       return translation('network');
@@ -273,8 +312,17 @@ function classifyCustom(
   return translation('unknown');
 }
 
-function isTransientHttpStatus(statusCode: number): boolean {
-  return statusCode === 408 || statusCode === 429 || statusCode >= 500;
+/**
+ * JSON-RPC -32003. From the worker, `data` (kit's error context) says which check refused and why: the inspector
+ * (`{ check: 'inspector', code: 'invalid-signature' }`) or the signature check before sending (`{ check: 'signatures',
+ * code: 'missing-signatures' | 'invalid-signatures' | ... }`). From a node it is a bad signature.
+ */
+function classifySignatureRefusal(context: object): Translation {
+  const { check, code } = context as { check?: unknown; code?: unknown };
+  if (check === 'signatures' && code === 'missing-signatures') return translation('missing-signature');
+  if (check === 'signatures' && code === 'malformed') return translation('rejected-by-inspector');
+  if (code === 'verification-unavailable') return translation('unknown');
+  return translation('invalid-signature');
 }
 
 function translation(code: keyof typeof TITLES): Translation {
@@ -372,12 +420,24 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-/** The original error as text for "Details": name and message, simulation logs, and the chain of causes. */
+/**
+ * The original error as text for "Details": name and message, the plain values of a kit error's context, simulation
+ * logs, and the chain of causes. The context matters in the built site: kit's production build replaces every
+ * SolanaError message with "Solana error #<code>; Decode this error...", and the server's own words survive only in the
+ * context (`__serverMessage`, the worker's refusal `code`/`message`, an HTTP `statusCode`).
+ */
 function describe(error: unknown, depth: number): string {
   if (error instanceof Error) {
     const lines = [`${error.name}: ${error.message}`];
     if (isSolanaError(error)) {
-      const logs = (error.context as Record<string, unknown>)['logs'];
+      const context = error.context as Record<string, unknown>;
+      for (const [key, value] of Object.entries(context)) {
+        if (key === '__code' || key === 'logs') continue;
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+          lines.push(`${key === '__serverMessage' ? 'Server message' : key}: ${String(value)}`);
+        }
+      }
+      const logs = context['logs'];
       if (Array.isArray(logs)) lines.push(...logs.filter((line): line is string => typeof line === 'string').slice(-10));
     }
     if (error.cause !== undefined && depth < MAX_DEPTH) lines.push(`Caused by ${describe(error.cause, depth + 1)}`);

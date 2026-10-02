@@ -1,6 +1,7 @@
 import {
   appendTransactionMessageInstructions,
   compileTransaction,
+  compileTransactionMessage,
   createAddressWithSeed,
   createNoopSigner,
   createTransactionMessage,
@@ -10,7 +11,9 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
   setTransactionMessageLifetimeUsingDurableNonce,
   type Address,
+  type CompiledTransactionMessageWithLifetime,
   type Instruction,
+  type LegacyCompiledTransactionMessage,
 } from '@solana/kit';
 import {
   getSetComputeUnitLimitInstruction,
@@ -83,6 +86,33 @@ export type BuiltTransaction = {
  * every transaction it accepts with this function, so these rules hold for /cosign links and the RPC proxy too.
  */
 export function buildTransaction(action: TransactionAction, options: BuildOptions): BuiltTransaction {
+  const transaction = compileTransaction(transactionMessage(action, options));
+  return {
+    bytes: new Uint8Array(transactionEncoder.encode(transaction)),
+    meta: {
+      action,
+      feePayer: options.feePayer,
+      lifetime: options.lifetime,
+      signers: Object.keys(transaction.signatures) as Address[],
+    },
+  };
+}
+
+/**
+ * The compiled message `buildTransaction` encodes, before encoding. The inspector's backstop compares it with the
+ * message it inspects field by field: the same check as comparing bytes, without turning every address back into
+ * bytes (DECISIONS.md D23, CPU). Throws like `buildTransaction`.
+ */
+export function compileActionMessage(
+  action: TransactionAction,
+  options: BuildOptions,
+): LegacyCompiledTransactionMessage & CompiledTransactionMessageWithLifetime {
+  return compileTransactionMessage(transactionMessage(action, options));
+}
+
+const transactionEncoder = /* @__PURE__ */ getTransactionEncoder();
+
+function transactionMessage(action: TransactionAction, options: BuildOptions) {
   const { lifetime } = options;
   if (action.kind === 'rescue') {
     check(options.feePayer === action.newWallet, 'A rescue is paid by the new wallet');
@@ -102,33 +132,19 @@ export function buildTransaction(action: TransactionAction, options: BuildOption
     (message) => appendTransactionMessageInstructions(instructions, message),
   );
   // The durable nonce setter prepends AdvanceNonceAccount, so the instruction order above is kept after it.
-  const transaction =
-    lifetime.kind === 'blockhash'
-      ? compileTransaction(
-          setTransactionMessageLifetimeUsingBlockhash(
-            { blockhash: lifetime.blockhash, lastValidBlockHeight: lifetime.lastValidBlockHeight },
-            unsigned,
-          ),
-        )
-      : compileTransaction(
-          setTransactionMessageLifetimeUsingDurableNonce(
-            {
-              nonce: lifetime.nonceValue,
-              nonceAccountAddress: lifetime.nonceAccount,
-              nonceAuthorityAddress: lifetime.nonceAuthority,
-            },
-            unsigned,
-          ),
-        );
-  return {
-    bytes: new Uint8Array(getTransactionEncoder().encode(transaction)),
-    meta: {
-      action,
-      feePayer: options.feePayer,
-      lifetime,
-      signers: Object.keys(transaction.signatures) as Address[],
-    },
-  };
+  return lifetime.kind === 'blockhash'
+    ? setTransactionMessageLifetimeUsingBlockhash(
+        { blockhash: lifetime.blockhash, lastValidBlockHeight: lifetime.lastValidBlockHeight },
+        unsigned,
+      )
+    : setTransactionMessageLifetimeUsingDurableNonce(
+        {
+          nonce: lifetime.nonceValue,
+          nonceAccountAddress: lifetime.nonceAccount,
+          nonceAuthorityAddress: lifetime.nonceAuthority,
+        },
+        unsigned,
+      );
 }
 
 /** Address of the nonce account that `nonce-setup` creates for `nonceAuthority` (System CreateAccountWithSeed). */

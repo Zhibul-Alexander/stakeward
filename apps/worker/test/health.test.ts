@@ -16,7 +16,13 @@ describe('/api/health', () => {
     const res = await exports.default.fetch('https://stakeward.test/api/health');
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toMatch(/^application\/json/);
-    expect(await res.json()).toEqual({ ok: true, lastMonitorRunAt: null });
+    const before = Date.now();
+    const body = await res.json<{ ok: boolean; lastMonitorRunAt: string | null; now: string }>();
+    expect(Object.keys(body).sort()).toEqual(['lastMonitorRunAt', 'now', 'ok']);
+    expect(body).toMatchObject({ ok: true, lastMonitorRunAt: null });
+    // The worker's clock, as ISO 8601 UTC.
+    expect(body.now).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(Math.abs(Date.parse(body.now) - before)).toBeLessThan(60_000);
     expectSecurityHeaders(res);
   });
 

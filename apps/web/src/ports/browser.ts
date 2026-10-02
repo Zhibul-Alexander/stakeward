@@ -1,5 +1,6 @@
 import { WALLET_CHAIN } from '@/config';
 import { HttpChain } from './http-chain.ts';
+import { createProtectedAccountMemory } from './protected-accounts.ts';
 import type { Ports } from './react.tsx';
 import { createSecondKeyMemory, createSlotStore } from './slots.ts';
 import { StandardWalletRegistry } from './wallet-registry.ts';
@@ -11,5 +12,6 @@ export function createBrowserPorts(): Ports {
     wallets: new StandardWalletRegistry(WALLET_CHAIN),
     slots: createSlotStore(),
     secondKeys: createSecondKeyMemory(),
+    protectedAccounts: createProtectedAccountMemory(),
   };
 }

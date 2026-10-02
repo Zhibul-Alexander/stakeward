@@ -10,6 +10,7 @@ import {
   getTransactionDecoder,
   SOLANA_ERROR__BLOCK_HEIGHT_EXCEEDED,
   SOLANA_ERROR__INVALID_NONCE,
+  SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR,
   SolanaError,
   type Address,
   type Nonce,
@@ -17,7 +18,13 @@ import {
 import { describe, expect, it } from 'vitest';
 import { expectedFeePayer, type BlockhashLifetime, type NonceLifetime, type TransactionAction } from './actions.ts';
 import { buildTransaction } from './builders.ts';
-import { translateError, type ErrorCode } from './errors.ts';
+import {
+  ERROR_CODES,
+  INSPECTOR_REFUSAL_PREFIX,
+  SIGNATURE_REFUSAL_PREFIX,
+  translateError,
+  type ErrorCode,
+} from './errors.ts';
 
 const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
 const STAKE = key(1);
@@ -186,6 +193,87 @@ describe('runtime errors', () => {
     expect(code(getSolanaErrorFromJsonRpcError({ code: -32005, message: 'Node is unhealthy', data: {} }))).toBe('network');
     expect(code(getSolanaErrorFromJsonRpcError({ code: -32603, message: 'Internal error' }))).toBe('network');
     expect(code(getSolanaErrorFromJsonRpcError({ code: -32602, message: 'Invalid params' }))).toBe('unknown');
+  });
+});
+
+// The worker's refusals on POST /api/rpc (apps/worker/src/rpc.ts) as the site's transport throws them: kit's
+// getSolanaErrorFromJsonRpcError over the JSON-RPC error body, or kit's HTTP error for a non-2xx status.
+describe('refusals of the worker', () => {
+  const rpcError = (code: number, message: string, data?: object) =>
+    getSolanaErrorFromJsonRpcError(data === undefined ? { code, message } : { code, message, data });
+  const httpError = (statusCode: number) =>
+    new SolanaError(SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR, { headers: undefined as never, message: '', statusCode });
+
+  it('the inspector refusing the bytes (-32602 with the inspector code in the message)', () => {
+    for (const inspectorCode of ['unknown-program', 'bad-layout', 'malformed', 'bad-lighthouse-tail']) {
+      const error = rpcError(-32602, `${INSPECTOR_REFUSAL_PREFIX}${inspectorCode}`, {
+        check: 'inspector',
+        code: inspectorCode,
+        message: 'details',
+      });
+      expect(translateError(error)).toMatchObject({
+        code: 'rejected-by-inspector',
+        title: 'Stakeward refused to send this transaction: it is not in the format Stakeward builds. Nothing was sent; start again.',
+      });
+      expect(translateError(error).detail).toContain(inspectorCode);
+    }
+    // Other invalid parameters are not the inspector.
+    expect(code(rpcError(-32602, 'params[0]: Expected canonical base64'))).toBe('unknown');
+  });
+
+  it('signature refusals (-32003): a bad signature, or one missing before sending', () => {
+    const inspector = rpcError(-32003, `${INSPECTOR_REFUSAL_PREFIX}invalid-signature`, {
+      check: 'inspector',
+      code: 'invalid-signature',
+      message: 'The signature of X does not match the message',
+    });
+    expect(translateError(inspector)).toMatchObject({
+      code: 'invalid-signature',
+      title: 'A signature does not match this transaction. Start signing again from the first wallet.',
+    });
+    const signatures = (signatureCode: string) =>
+      rpcError(-32003, `${SIGNATURE_REFUSAL_PREFIX}${signatureCode}`, {
+        check: 'signatures',
+        code: signatureCode,
+        signers: [K],
+        message: 'details',
+      });
+    expect(code(signatures('missing-signatures'))).toBe('missing-signature');
+    expect(code(signatures('invalid-signatures'))).toBe('invalid-signature');
+    expect(code(signatures('malformed'))).toBe('rejected-by-inspector');
+    expect(code(signatures('verification-unavailable'))).toBe('unknown');
+    // A node's own -32003 (no data) and the runtime's SignatureFailure.
+    expect(code(rpcError(-32003, 'Transaction signature verification failure'))).toBe('invalid-signature');
+    expect(code('SignatureFailure')).toBe('invalid-signature');
+  });
+
+  it('HTTP 429 is a rate limit; 408 and 5xx (the worker could not reach the RPC) are the network', () => {
+    expect(translateError(httpError(429))).toMatchObject({
+      code: 'rate-limited',
+      title: 'Too many requests. Wait a minute and try again.',
+    });
+    for (const status of [408, 500, 502, 503, 504]) expect(code(httpError(status)), String(status)).toBe('network');
+    for (const status of [400, 403, 404, 413, 415]) expect(code(httpError(status)), String(status)).toBe('unknown');
+  });
+
+  it('-32005 in a body stays a node problem: the 429 of the worker is read from the HTTP status', () => {
+    // The worker answers 429 with -32005 in the body; the site's transport throws the HTTP error, not the body.
+    expect(code(rpcError(-32005, 'Too many requests', {}))).toBe('network');
+  });
+});
+
+describe('ERROR_CODES', () => {
+  it('lists every code once, and translateError never returns another', () => {
+    expect(new Set(ERROR_CODES).size).toBe(ERROR_CODES.length);
+    const samples: unknown[] = [
+      'BlockhashNotFound',
+      'SignatureFailure',
+      new TypeError('Failed to fetch'),
+      { code: 4001 },
+      new Error('x'),
+      null,
+    ];
+    for (const sample of samples) expect(ERROR_CODES).toContain(code(sample));
   });
 });
 

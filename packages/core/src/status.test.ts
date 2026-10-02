@@ -61,8 +61,22 @@ describe('scannerStatus', () => {
     expect(scannerStatus(value, [K], clock).status).toBe(expected);
   });
 
-  it('treats every in-force custodian as foreign when no second key is known', () => {
-    expect(scannerStatus(account({ unixTimestamp: now + 100n * DAY, custodian: K }), [], clock).status).toBe('locked-by-other');
+  describe('with no known second key (a fresh device, a view by address; D14, CLAUDE.md sections 5 and 11)', () => {
+    it.each([
+      ['a lock held by another key, 100 days left', account({ unixTimestamp: now + 100n * DAY, custodian: other })],
+      ['a lock held by another key, under 30 days left', account({ unixTimestamp: now + DAY, custodian: other })],
+      ['a lock held by the epoch only', account({ epoch: 1_001n, custodian: other })],
+    ] as const)('%s -> locked-by-other, never protected', (_name, value) => {
+      expect(scannerStatus(value, [], clock)).toEqual({ status: 'locked-by-other', managedByService: false });
+    });
+
+    it.each([
+      ['no lockup', account({})],
+      ['lockup ended', account({ unixTimestamp: now, custodian: other })],
+      ['custodian is the main key itself', account({ unixTimestamp: now + 100n * DAY, custodian: A })],
+    ] as const)('%s -> unprotected', (_name, value) => {
+      expect(scannerStatus(value, [], clock)).toEqual({ status: 'unprotected', managedByService: false });
+    });
   });
 
   it('flags accounts whose staker is not the withdrawer as managed by a service', () => {

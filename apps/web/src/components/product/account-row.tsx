@@ -43,11 +43,6 @@ type AccountRowProps = {
   protection: ProtectionStatus;
   /** From core `scannerStatus`: staker != withdrawer, a service may manage the stake. */
   managedByService: boolean;
-  /**
-   * False when the lock is in force but this site knows none of the viewer's second keys, so it cannot confirm whose
-   * key holds it (D14). Protected / Expiring soon then carry "Second key not connected". Default true.
-   */
-  secondKeyConfirmed?: boolean | undefined;
   /** F6: this account was protected and its lock is gone. With `protection: 'unprotected'` it shows red. */
   wasProtected?: boolean | undefined;
   /** Buttons or a selection checkbox for this account. */
@@ -60,7 +55,6 @@ const HINTS: Record<StatusBadgeStatus, MessageKey | null> = {
   expiring: 'status.expiringHint',
   unprotected: 'status.unprotectedHint',
   'locked-by-other': 'status.lockedByOtherHint',
-  'second-key-not-connected': 'status.secondKeyNotConnectedHint',
   'was-protected': 'components.status.wasProtectedHint',
   unknown: 'components.status.unknownHint',
 };
@@ -75,21 +69,21 @@ export function AccountRow({
   activation,
   protection,
   managedByService,
-  secondKeyConfirmed = true,
   wasProtected = false,
   actions,
   className,
 }: AccountRowProps) {
   const lockInForce = protection !== 'unprotected';
   const status: StatusBadgeStatus = protection === 'unprotected' && wasProtected ? 'was-protected' : protection;
-  const unconfirmed = !secondKeyConfirmed && (protection === 'protected' || protection === 'expiring');
-  const date = lockInForce && account.lockup.unixTimestamp > 0n ? formatUtcDate(account.lockup.unixTimestamp) : null;
+  // The end date only for a lock its timestamp alone holds (epoch 0, as Stakeward sets it): a lock with an epoch can
+  // last past its timestamp, so its date would be wrong or already past.
+  const date =
+    lockInForce && account.lockup.epoch === 0n && account.lockup.unixTimestamp > 0n
+      ? formatUtcDate(account.lockup.unixTimestamp)
+      : null;
   const short = shortAddress(account.address);
-  const hintKey = unconfirmed ? HINTS['second-key-not-connected'] : HINTS[status];
-  const hint =
-    hintKey === null
-      ? null
-      : t(hintKey, { date: date ?? '', address: shortAddress(account.lockup.custodian) });
+  const hintKey = HINTS[status];
+  const hint = hintKey === null ? null : t(hintKey, { date: date ?? '' });
   return (
     <article
       aria-label={t('components.accountRow.label', { address: short })}
@@ -111,10 +105,16 @@ export function AccountRow({
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={status} />
         {date === null ? null : <span className="text-sm text-muted">{t('components.status.until', { date })}</span>}
-        {unconfirmed ? <StatusBadge status="second-key-not-connected" /> : null}
         <ActivationBadge status={activation} />
       </div>
-      {hint === null || (status === 'protected' && !unconfirmed && date === null) ? null : (
+      {status === 'locked-by-other' ? (
+        // The key that holds the lock, to compare with the viewer's wallets (copy, explorer: UX rule 9).
+        <div data-slot="lock-holder" className="flex flex-wrap items-center gap-x-2 text-sm">
+          <span className="text-muted">{t('common.roles.second')}</span>
+          <AddressText address={account.lockup.custodian} />
+        </div>
+      ) : null}
+      {hint === null || (status === 'protected' && date === null) ? null : (
         <p className={cn('text-sm', status === 'was-protected' ? 'font-medium text-danger' : 'text-muted')}>{hint}</p>
       )}
       {managedByService ? (

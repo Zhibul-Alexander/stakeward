@@ -7,7 +7,6 @@ import {
   ShieldCheckIcon,
   ShieldOffIcon,
   ShieldXIcon,
-  UnplugIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
@@ -16,13 +15,12 @@ import { t, type MessageKey } from '@/i18n';
 
 /**
  * Everything a stake account's protection can show (CLAUDE.md section 5, D14):
- * - the four scanner statuses of core `scannerStatus`;
- * - `second-key-not-connected`: the lock is in force but this site knows no second key of the viewer, so it cannot
- *   tell whose key holds it; shown next to Protected / Expiring soon, never instead of calling it someone else's;
+ * - the four scanner statuses of core `scannerStatus` (a lock held by a key the viewer is not known to hold is
+ *   Locked by another key, never Protected: the chain cannot say whose key it is);
  * - `was-protected`: F6, the account was protected and now stands without a lock (red);
  * - `unknown`: the account could not be read (error state).
  */
-export type StatusBadgeStatus = ProtectionStatus | 'second-key-not-connected' | 'was-protected' | 'unknown';
+export type StatusBadgeStatus = ProtectionStatus | 'was-protected' | 'unknown';
 
 type Look = { tone: NonNullable<BadgeProps['tone']>; icon: LucideIcon; label: MessageKey };
 
@@ -32,7 +30,6 @@ const LOOKS: Record<StatusBadgeStatus, Look> = {
   expiring: { tone: 'warning', icon: ShieldAlertIcon, label: 'status.expiring' },
   unprotected: { tone: 'neutral', icon: ShieldOffIcon, label: 'status.unprotected' },
   'locked-by-other': { tone: 'info', icon: KeyRoundIcon, label: 'status.lockedByOther' },
-  'second-key-not-connected': { tone: 'outline', icon: UnplugIcon, label: 'status.secondKeyNotConnected' },
   'was-protected': { tone: 'danger', icon: ShieldXIcon, label: 'components.status.wasProtected' },
   unknown: { tone: 'outline', icon: CircleQuestionMarkIcon, label: 'components.status.unknown' },
 };

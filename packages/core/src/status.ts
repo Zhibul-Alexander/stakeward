@@ -32,17 +32,20 @@ export type ScannerView = {
 };
 
 /**
- * What the scanner shows for an account whose withdrawer is the viewer (CLAUDE.md section 5).
+ * What the scanner shows for an account whose withdrawer is the viewer (CLAUDE.md section 5, DECISIONS.md D14).
  *
  * - `unprotected`: the lockup is not in force, or its custodian is the withdrawer itself (the main key alone can lift
  *   such a lock, so it protects nothing; the protect flow works on it because the main key signs as custodian).
  * - `protected` / `expiring`: in force and the custodian is one of `secondKeys`; `expiring` when the lockup timestamp
  *   is less than 30 days after `clock.unixTimestamp` and the lockup epoch does not hold the lock. A lock its epoch
  *   holds (now or past its timestamp) is never `expiring`.
- * - `locked-by-other`: in force and the custodian is not one of the viewer's known second keys; view only.
+ * - `locked-by-other`: in force and the custodian is not one of the viewer's known second keys; view only. With no
+ *   second key known (a fresh device, a view by address) that is every lock: the chain cannot say whose key holds it,
+ *   and a lock someone else set (CLAUDE.md section 11: a fake site that makes the thief the second key) must never
+ *   read as Protected. The page offers to connect the second key instead.
  *
  * The chain cannot say which custodian belongs to the viewer. The caller passes the second keys it knows for this
- * viewer (for example the wallet in the "second" slot, or custodians the viewer confirmed earlier).
+ * viewer (the wallet in the "second" slot, second keys remembered on this device).
  * `clock.unixTimestamp` is the current time in seconds (cluster clock, or the local clock when that is not at hand).
  */
 export function scannerStatus(

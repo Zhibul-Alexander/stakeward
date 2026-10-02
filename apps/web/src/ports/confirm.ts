@@ -55,10 +55,14 @@ export async function waitForConfirmation(
   for (;;) {
     signal?.throwIfAborted();
     try {
-      const outcome = await check(chain, signature, lifetime, commitment);
+      // A round of reads can take long (HttpChain retries each one; about 92 s in the worst case), so the round, not
+      // only the pause between rounds, stops at the deadline and on cancel. A read left behind changes nothing.
+      const outcome = await withinDeadline(check(chain, signature, lifetime, commitment), Math.max(0, deadline - now()), signal);
+      if (outcome === PAST_DEADLINE) return { status: 'timeout', lastError };
       if (outcome !== null) return outcome;
       lastError = null;
     } catch (error) {
+      if (signal?.aborted === true) throw abortReason(signal);
       // HttpChain already retried this read; keep polling until the deadline and report the error if it persists.
       lastError = error;
     }
@@ -67,6 +71,40 @@ export async function waitForConfirmation(
     if (left <= 0) return { status: 'timeout', lastError };
     await sleep(Math.min(pollIntervalMs, left), signal);
   }
+}
+
+const PAST_DEADLINE = Symbol('past deadline');
+
+/**
+ * `work`, or PAST_DEADLINE once `ms` (real time) pass first, or the signal's reason once it aborts first. The timer is a
+ * real one even when tests replace `now` and `sleep`: it only bounds reads that hang.
+ */
+function withinDeadline<T>(work: Promise<T>, ms: number, signal: AbortSignal | undefined): Promise<T | typeof PAST_DEADLINE> {
+  return new Promise((resolve, reject) => {
+    const settle = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      settle();
+      reject(abortReason(signal));
+    };
+    const timer = setTimeout(() => {
+      settle();
+      resolve(PAST_DEADLINE);
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    work.then(
+      (value) => {
+        settle();
+        resolve(value);
+      },
+      (error: unknown) => {
+        settle();
+        reject(error instanceof Error ? error : new Error(String(error), { cause: error }));
+      },
+    );
+  });
 }
 
 /** One round: an outcome, or null to keep waiting. */

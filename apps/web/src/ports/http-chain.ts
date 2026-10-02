@@ -140,7 +140,9 @@ export class HttpChain implements ChainPort {
   /**
    * Sends with preflight. Transient failures are retried with the same bytes (CLAUDE.md section 12); never with other
    * bytes. A transaction the cluster already processed (an earlier attempt that did reach it) resolves with its
-   * signature: whether it succeeded is the status's business.
+   * signature: whether it succeeded is the status's business. A blockhash transaction tells by AlreadyProcessed; a
+   * durable-nonce one cannot, since landing advanced its nonce and the resend fails preflight with BlockhashNotFound
+   * first. So when a send fails, the signature's status decides: known to the cluster, the transaction went in.
    */
   async send(transaction: ReadonlyUint8Array): Promise<Signature> {
     // The fee payer's signature is the transaction id. Throws when it is missing (translateError: missing-signature).
@@ -153,6 +155,7 @@ export class HttpChain implements ChainPort {
       ]);
     } catch (error) {
       if (isSolanaError(unwrapSimulationError(error), SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED)) return signature;
+      if (await this.knownToCluster(signature)) return signature;
       throw error;
     }
     if (returned !== signature) throw malformed(`sendTransaction answered ${String(returned)} for ${signature}`);
@@ -179,6 +182,17 @@ export class HttpChain implements ChainPort {
       'withdrawer' in filter ? account.withdrawer === filter.withdrawer : account.lockup.custodian === filter.custodian,
     );
     return { slot, accounts: matching };
+  }
+
+  /** One status read without retries (the send that failed may have been a network failure already); false on error. */
+  private async knownToCluster(signature: Signature): Promise<boolean> {
+    try {
+      const result = await this.transport.rpc(this.rpcUrl, 'getSignatureStatuses', [[signature]], { retries: 0 });
+      const { value } = contextValue(result, 'getSignatureStatuses');
+      return Array.isArray(value) && value.length === 1 && transactionStatus(value[0]) !== null;
+    } catch {
+      return false;
+    }
   }
 
   private call(method: string, params: readonly unknown[]): Promise<unknown> {

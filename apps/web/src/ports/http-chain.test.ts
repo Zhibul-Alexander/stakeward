@@ -16,7 +16,8 @@ import { buildTransaction, STAKE_PROGRAM_ADDRESS, SYSVAR_CLOCK_ADDRESS, translat
 import { beforeAll, describe, expect, it } from 'vitest';
 import { HttpChain } from './http-chain.ts';
 
-type RpcAnswer = { result: unknown } | { error: unknown } | Response;
+/** A JSON-RPC body, an HTTP response, or an Error that fetch throws (no answer from the worker). */
+type RpcAnswer = { result: unknown } | { error: unknown } | Response | Error;
 type Call = { url: string; method: string; params: unknown[] };
 
 /** JSON with bigints written as plain integers, like an RPC node. */
@@ -35,6 +36,7 @@ function fakeServer(answer: (call: Call) => RpcAnswer) {
     const call = { url, method: request.method, params: request.params };
     calls.push(call);
     const out = answer(call);
+    if (out instanceof Error) return Promise.reject(out);
     if (out instanceof Response) return Promise.resolve(out);
     return Promise.resolve(new Response(stringify({ jsonrpc: '2.0', id: 1, ...out })));
   };
@@ -200,15 +202,70 @@ describe('HttpChain', () => {
     expect(translateError(error, { transaction: signed }).code).toBe('lockup-in-force');
   });
 
-  it('send: resends the SAME bytes after a network failure; AlreadyProcessed means it is in', async () => {
+  it('send: resends the SAME bytes when the worker did not answer; AlreadyProcessed means it is in', async () => {
     const answers: (() => RpcAnswer)[] = [
-      () => new Response('', { status: 502 }),
+      () => new TypeError('Failed to fetch'),
       () => ({ error: { code: -32002, message: 'Transaction simulation failed: This transaction has already been processed', data: { err: 'AlreadyProcessed', logs: [] } } }),
     ];
     const { calls, chain } = fakeServer(() => (answers.shift() ?? (() => ({ result: null })))());
     expect(await chain.send(signed)).toBe(signature);
     expect(calls).toHaveLength(2);
     expect(calls[1]?.params).toEqual(calls[0]?.params);
+  });
+
+  it("does not retry the worker's own answers: an upstream failure (502/504), a rate limit, a refusal", async () => {
+    const answers: [RpcAnswer, string][] = [
+      [new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32603, message: 'Upstream RPC unavailable' } }), { status: 502 }), 'network'],
+      [new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32603, message: 'Upstream RPC timed out' } }), { status: 504 }), 'network'],
+      [new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32005, message: 'Too many requests' } }), { status: 429 }), 'rate-limited'],
+      [
+        { error: { code: -32602, message: 'Transaction rejected by inspector: bad-layout', data: { check: 'inspector', code: 'bad-layout', message: 'x' } } },
+        'rejected-by-inspector',
+      ],
+      [
+        { error: { code: -32003, message: 'Transaction rejected: missing-signatures', data: { check: 'signatures', code: 'missing-signatures', signers: [K.address], message: 'x' } } },
+        'missing-signature',
+      ],
+      [
+        { error: { code: -32003, message: 'Transaction rejected by inspector: invalid-signature', data: { check: 'inspector', code: 'invalid-signature', message: 'x' } } },
+        'invalid-signature',
+      ],
+    ];
+    for (const [answer, code] of answers) {
+      const { calls, chain } = fakeServer(() => answer);
+      const error: unknown = await chain.send(signed).catch((e: unknown) => e);
+      // One send, then one status read (did an earlier attempt land?), neither retried.
+      expect(calls.map((call) => call.method), code).toEqual(['sendTransaction', 'getSignatureStatuses']);
+      expect(translateError(error, { transaction: signed }).code).toBe(code);
+    }
+    const reads = fakeServer(() => new Response('', { status: 502 }));
+    await expect(reads.chain.getBlockHeight()).rejects.toMatchObject({ context: { statusCode: 502 } });
+    expect(reads.calls).toHaveLength(1);
+    const search = fakeServer(() => new Response(JSON.stringify({ error: 'rate-limited', message: 'Too many requests' }), { status: 429 }));
+    const limited: unknown = await search.chain.findStakeAccounts({ withdrawer: A.address }).catch((e: unknown) => e);
+    expect(search.calls).toHaveLength(1);
+    expect(translateError(limited).code).toBe('rate-limited');
+  });
+
+  it('send: a failed send rejects with its own error unless the cluster knows the signature', async () => {
+    const preflight = {
+      error: {
+        code: -32002,
+        message: 'Transaction simulation failed: Error processing Instruction 2: custom program error: 0x1',
+        data: { err: { InstructionError: [2, { Custom: 1 }] }, logs: [], accounts: null, unitsConsumed: 0n },
+      },
+    };
+    const unknown = fakeServer((call) =>
+      call.method === 'sendTransaction' ? preflight : { result: { context: CONTEXT, value: [null] } },
+    );
+    const error: unknown = await unknown.chain.send(signed).catch((e: unknown) => e);
+    expect(translateError(error, { transaction: signed }).code).toBe('lockup-in-force');
+    const known = fakeServer((call) =>
+      call.method === 'sendTransaction'
+        ? preflight
+        : { result: { context: CONTEXT, value: [{ slot: 1n, confirmations: null, err: null, confirmationStatus: 'confirmed' }] } },
+    );
+    expect(await known.chain.send(signed)).toBe(getSignatureFromTransaction(getTransactionDecoder().decode(signed)));
   });
 
   it('send: refuses bytes without the fee payer signature before calling the network', async () => {

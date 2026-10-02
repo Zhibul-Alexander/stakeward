@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { AccountRow } from './account-row.tsx';
 
@@ -31,23 +31,18 @@ describe('AccountRow', () => {
     expect(screen.getByText('until 12 April 2027')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Extend' })).toBeInTheDocument();
-    expect(screen.queryByText('Second key not connected')).not.toBeInTheDocument();
   });
 
-  it('D14: with no known second key a lock in force stays Protected and says the second key is not connected', () => {
-    render(
-      <AccountRow account={account(SECOND)} activation="active" protection="protected" managedByService={false} secondKeyConfirmed={false} />,
-    );
-    expect(screen.getByText('Protected')).toBeInTheDocument();
-    expect(screen.getByText('Second key not connected')).toBeInTheDocument();
-    expect(screen.getByText('Connect your second key to manage this lock.')).toBeInTheDocument();
-    expect(screen.queryByText('Locked by another key')).not.toBeInTheDocument();
-  });
-
-  it('locked by another key names that key so the viewer can connect it if it is theirs', () => {
+  it('locked by another key names that key, with copy and explorer, so the viewer can connect it if it is theirs', () => {
     render(<AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} />);
     expect(screen.getByText('Locked by another key')).toBeInTheDocument();
-    expect(screen.getByText('The second key is 57M...3Sz. Connect it if it is yours.')).toBeInTheDocument();
+    const holder = screen.getByRole('article').querySelector('[data-slot="lock-holder"]');
+    if (!(holder instanceof HTMLElement)) throw new Error('no lock holder');
+    expect(holder).toHaveTextContent('Second key');
+    expect(within(holder).getByText('57M...3Sz')).toBeInTheDocument();
+    expect(within(holder).getByRole('button', { name: 'Copy address 57M...3Sz' })).toBeInTheDocument();
+    expect(within(holder).getByRole('link', { name: /^View 57M...3Sz on Solana Explorer/ })).toHaveAttribute('href', expect.stringContaining(OTHER));
+    expect(screen.getByText('If this second key is yours, connect it to manage the lock.')).toBeInTheDocument();
   });
 
   it('F6: a stake that was protected and lost its lock shows red', () => {

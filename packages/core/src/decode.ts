@@ -52,6 +52,9 @@ export type DecodeError = 'wrong-owner' | 'wrong-size' | 'malformed' | 'uninitia
 
 export type DecodeResult = { ok: true; account: StakeAccount } | { ok: false; error: DecodeError };
 
+/** Built once: the worker decodes up to hundreds of accounts per request, and building the decoder costs more. */
+const stakeStateAccountDecoder = /* @__PURE__ */ getStakeStateAccountDecoder();
+
 /**
  * Decodes a stake account with the generated stake client. Checks the owner and the 200-byte size first,
  * because the generated decoder checks neither (it decodes any bytes as a stake account).
@@ -62,7 +65,7 @@ export function decodeStakeAccount(raw: RawAccount): DecodeResult {
 
   let state;
   try {
-    state = getStakeStateAccountDecoder().decode(raw.data).state;
+    state = stakeStateAccountDecoder.decode(raw.data).state;
   } catch {
     return { ok: false, error: 'malformed' };
   }

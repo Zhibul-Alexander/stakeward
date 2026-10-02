@@ -14,3 +14,4 @@ export * from './lockup.ts';
 export * from './ports.ts';
 export * from './status.ts';
 export * from './verify.ts';
+export * from './wallet-queue.ts';

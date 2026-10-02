@@ -1,8 +1,8 @@
 import {
   AccountRole,
   getCompiledTransactionMessageDecoder,
-  getCompiledTransactionMessageEncoder,
   getPublicKeyFromAddress,
+  getShortU16Encoder,
   getTransactionDecoder,
   getTransactionEncoder,
   isSignerRole,
@@ -50,7 +50,19 @@ import { MAX_TRANSACTION_BYTES } from './link.ts';
  *
  * This module also holds the strict wire decoding the inspector shares (`decodeWireTransaction`,
  * `checkSignatures`, `compareMessages`).
+ *
+ * CPU (the worker runs this on every sendTransaction; the Workers free plan allows 10 ms per request): codecs are built
+ * once per module, and nothing re-encodes a message. Encoding an address (base58 text to bytes) is the costliest step
+ * in kit's codecs, so canonical encoding is checked by size (`decodeLegacyMessage`) and messages are compared field by
+ * field (`isSameMessage`); both are exactly equivalent to comparing kit's re-encoding byte for byte (the size check
+ * together with the rule that a message has at least one instruction, see `canonicalLegacyMessageSize`).
  */
+
+// Built once: building a kit codec costs more than running it.
+const transactionDecoder = /* @__PURE__ */ getTransactionDecoder();
+const transactionEncoder = /* @__PURE__ */ getTransactionEncoder();
+const messageDecoder = /* @__PURE__ */ getCompiledTransactionMessageDecoder();
+const shortU16Encoder = /* @__PURE__ */ getShortU16Encoder();
 
 export type SigningStepErrorCode =
   /** The wallet returned bytes that are not a transaction (or the transaction that went in was not one). */
@@ -156,32 +168,39 @@ export async function verifyAllSignatures(transactionBytes: ReadonlyUint8Array):
     if (!decoded.ok) {
       return { ok: false, error: { code: 'malformed', signers: [], message: decoded.message } };
     }
-    const statuses = await checkSignatures(decoded.transaction, decoded.signers);
-    const unverifiable = statuses.filter((s) => s.status === 'unverifiable').map((s) => s.signer);
-    if (unverifiable.length > 0) {
-      return { ok: false, error: { code: 'verification-unavailable', signers: unverifiable, message: VERIFICATION_UNAVAILABLE } };
-    }
-    const invalid = statuses.filter((s) => s.status === 'invalid').map((s) => s.signer);
-    if (invalid.length > 0) {
-      return {
-        ok: false,
-        error: { code: 'invalid-signatures', signers: invalid, message: `Invalid signature from ${invalid.join(', ')}` },
-      };
-    }
-    const missing = statuses.filter((s) => s.status === 'missing').map((s) => s.signer);
-    if (missing.length > 0) {
-      return {
-        ok: false,
-        error: { code: 'missing-signatures', signers: missing, message: `Missing signature from ${missing.join(', ')}` },
-      };
-    }
-    return { ok: true };
+    return signatureCheckOf(await checkSignatures(decoded.transaction, decoded.signers));
   } catch (error) {
     return {
       ok: false,
       error: { code: 'malformed', signers: [], message: `Unexpected error while verifying: ${describeError(error)}` },
     };
   }
+}
+
+/**
+ * The verdict of `verifyAllSignatures` from the status of every required signature (`checkSignatures` over all
+ * signers): a browser that cannot verify Ed25519 first, then invalid signatures, then missing ones.
+ */
+export function signatureCheckOf(statuses: readonly SignatureStatus[]): SignatureCheck {
+  const unverifiable = statuses.filter((s) => s.status === 'unverifiable').map((s) => s.signer);
+  if (unverifiable.length > 0) {
+    return { ok: false, error: { code: 'verification-unavailable', signers: unverifiable, message: VERIFICATION_UNAVAILABLE } };
+  }
+  const invalid = statuses.filter((s) => s.status === 'invalid').map((s) => s.signer);
+  if (invalid.length > 0) {
+    return {
+      ok: false,
+      error: { code: 'invalid-signatures', signers: invalid, message: `Invalid signature from ${invalid.join(', ')}` },
+    };
+  }
+  const missing = statuses.filter((s) => s.status === 'missing').map((s) => s.signer);
+  if (missing.length > 0) {
+    return {
+      ok: false,
+      error: { code: 'missing-signatures', signers: missing, message: `Missing signature from ${missing.join(', ')}` },
+    };
+  }
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -219,13 +238,14 @@ export function decodeWireTransaction(bytes: ReadonlyUint8Array): WireDecodeResu
   }
   let transaction: Transaction;
   try {
-    transaction = getTransactionDecoder().decode(bytes);
+    transaction = transactionDecoder.decode(bytes);
   } catch (error) {
     return { ok: false, code: 'malformed', message: `Not a transaction: ${describeError(error)}` };
   }
   const decoded = decodeLegacyMessage(transaction.messageBytes);
   if (!decoded.ok) return decoded;
-  if (!bytesEqual(getTransactionEncoder().encode(transaction), bytes)) {
+  // Cheap: the signatures and the message are copied as bytes. It catches a non-minimal signature count.
+  if (!bytesEqual(transactionEncoder.encode(transaction), bytes)) {
     return { ok: false, code: 'malformed', message: 'The transaction is not canonically encoded' };
   }
   const { message } = decoded;
@@ -245,7 +265,7 @@ export function decodeWireTransaction(bytes: ReadonlyUint8Array): WireDecodeResu
 export function decodeLegacyMessage(messageBytes: ReadonlyUint8Array): MessageDecodeResult {
   let compiled: CompiledTransactionMessage & CompiledTransactionMessageWithLifetime;
   try {
-    compiled = getCompiledTransactionMessageDecoder().decode(messageBytes);
+    compiled = messageDecoder.decode(messageBytes);
   } catch (error) {
     return { ok: false, code: 'malformed', message: `Not a transaction message: ${describeError(error)}` };
   }
@@ -255,13 +275,12 @@ export function decodeLegacyMessage(messageBytes: ReadonlyUint8Array): MessageDe
     }
     return { ok: false, code: 'unsupported-version', message: `Message version ${String(compiled.version)} is not legacy` };
   }
-  let reencoded: ReadonlyUint8Array;
-  try {
-    reencoded = getCompiledTransactionMessageEncoder().encode(compiled);
-  } catch (error) {
-    return { ok: false, code: 'malformed', message: `The message cannot be re-encoded: ${describeError(error)}` };
+  // Before the size check, which relies on it: kit decodes a missing instruction count at the end of the bytes as no
+  // instructions without reading a byte. Every transaction this site handles has at least one instruction.
+  if (compiled.instructions.length === 0) {
+    return { ok: false, code: 'malformed', message: 'The message has no instructions' };
   }
-  if (!bytesEqual(reencoded, messageBytes)) {
+  if (canonicalLegacyMessageSize(compiled) !== messageBytes.length) {
     return { ok: false, code: 'malformed', message: 'The message is not canonically encoded (trailing or altered bytes)' };
   }
   const { header, staticAccounts, instructions } = compiled;
@@ -281,6 +300,34 @@ export function decodeLegacyMessage(messageBytes: ReadonlyUint8Array): MessageDe
     return { ok: false, code: 'malformed', message: 'An instruction refers to an account outside the message' };
   }
   return { ok: true, message: compiled };
+}
+
+/**
+ * Size of kit's (canonical) encoding of a legacy message: the 3-byte header, the static accounts (compact-u16 count,
+ * 32 bytes each), the 32-byte lifetime token, then the instructions (compact-u16 count; per instruction a u8 program
+ * index, compact-u16 count of u8 account indices, compact-u16 length of data).
+ *
+ * For a message kit decoded from `bytes` with at least one instruction, `canonicalLegacyMessageSize(message) ===
+ * bytes.length` holds exactly when re-encoding the message gives `bytes` back: every field has a fixed size except the
+ * compact-u16 counts, which the decoder also accepts in a longer, non-minimal form (minimal is the only form of that
+ * size), and fixed fields decode and re-encode to the same bytes (32-byte base58 included). So the bytes the decoder
+ * read are at least this size, equal only when every count is minimal, and the decoder ignores trailing bytes: equal
+ * sizes leave no room for either. The one place kit reads FEWER bytes than this is a prefixed array whose count is
+ * missing at the very end of the bytes (`getArrayDecoder` returns [] there). Inside the message only the instruction
+ * list can end the bytes that way (a missing count of account indices is followed by the data length, which kit
+ * requires), so `decodeLegacyMessage` rejects a message with no instructions before it compares sizes.
+ * Re-encoding would turn every address back from base58 text, the inspector's most expensive step.
+ */
+function canonicalLegacyMessageSize(message: LegacyCompiledTransactionMessage): number {
+  const compactSize = (value: number) => shortU16Encoder.getSizeFromValue(value);
+  const accounts = message.staticAccounts.length;
+  let size = 3 + compactSize(accounts) + 32 * accounts + 32 + compactSize(message.instructions.length);
+  for (const ix of message.instructions) {
+    const indices = ix.accountIndices?.length ?? 0;
+    const data = ix.data?.length ?? 0;
+    size += 1 + compactSize(indices) + indices + compactSize(data) + data;
+  }
+  return size;
 }
 
 /** Role of static account `index` as the header defines it (signers first, writable before read-only). */
@@ -381,8 +428,7 @@ export type MessageComparison =
  * Lighthouse tail (see the module comment).
  */
 export function compareMessages(original: LegacyMessage, candidate: LegacyMessage): MessageComparison {
-  const encoder = getCompiledTransactionMessageEncoder();
-  if (bytesEqual(encoder.encode(original), encoder.encode(candidate))) return { kind: 'identical' };
+  if (isSameMessage(original, candidate)) return { kind: 'identical' };
   const changed = (message: string, tail = false): MessageComparison => ({ kind: 'changed', tail, message });
 
   if (candidate.lifetimeToken !== original.lifetimeToken) return changed('The blockhash or nonce changed');
@@ -440,6 +486,39 @@ export function compareMessages(original: LegacyMessage, candidate: LegacyMessag
   if (unused !== undefined) return changed(`Account ${unused} was added but no appended instruction uses it`, true);
   return { kind: 'lighthouse-tail', instructionCount: tail.length, addedAccounts: added };
 }
+
+/**
+ * Whether two legacy messages are the same message, field by field. Exactly equivalent to comparing kit's encodings
+ * byte for byte (and to comparing the wire bytes of messages that passed `decodeLegacyMessage`), without encoding:
+ * kit's legacy encoding is a bijection between messages and canonical bytes, and an absent account list or data
+ * encodes like an empty one.
+ */
+export function isSameMessage(a: LegacyMessage, b: LegacyMessage): boolean {
+  if (
+    a.lifetimeToken !== b.lifetimeToken ||
+    a.header.numSignerAccounts !== b.header.numSignerAccounts ||
+    a.header.numReadonlySignerAccounts !== b.header.numReadonlySignerAccounts ||
+    a.header.numReadonlyNonSignerAccounts !== b.header.numReadonlyNonSignerAccounts ||
+    a.staticAccounts.length !== b.staticAccounts.length ||
+    a.instructions.length !== b.instructions.length
+  ) {
+    return false;
+  }
+  if (a.staticAccounts.some((address, index) => address !== b.staticAccounts[index])) return false;
+  return a.instructions.every((ix, index) => {
+    const other = b.instructions[index];
+    if (other === undefined || ix.programAddressIndex !== other.programAddressIndex) return false;
+    const indices = ix.accountIndices ?? [];
+    const otherIndices = other.accountIndices ?? [];
+    return (
+      indices.length === otherIndices.length &&
+      indices.every((value, position) => value === otherIndices[position]) &&
+      bytesEqual(ix.data ?? EMPTY, other.data ?? EMPTY)
+    );
+  });
+}
+
+const EMPTY: ReadonlyUint8Array = new Uint8Array();
 
 function sameInstruction(a: StakeIx, b: StakeIx): boolean {
   return (

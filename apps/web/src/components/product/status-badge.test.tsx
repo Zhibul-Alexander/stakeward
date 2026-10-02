@@ -8,7 +8,6 @@ const EXPECTED: [StatusBadgeStatus, string, string][] = [
   ['expiring', 'Expiring soon', 'warning'],
   ['unprotected', 'Not protected', 'neutral'],
   ['locked-by-other', 'Locked by another key', 'info'],
-  ['second-key-not-connected', 'Second key not connected', 'outline'],
   ['was-protected', 'No longer protected', 'danger'],
   ['unknown', 'Status unknown', 'outline'],
 ];

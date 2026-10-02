@@ -1,7 +1,6 @@
 import {
   AccountRole,
   createAddressWithSeed,
-  getTransactionDecoder,
   isSome,
   mergeRoles,
   type Address,
@@ -39,7 +38,7 @@ import {
   SystemInstruction,
 } from '@solana-program/system';
 import type { Lifetime, TransactionAction } from './actions.ts';
-import { buildTransaction } from './builders.ts';
+import { compileActionMessage } from './builders.ts';
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   COMPUTE_UNIT_LIMIT,
@@ -56,10 +55,13 @@ import {
   accountRoleAt,
   checkSignatures,
   compareMessages,
-  decodeLegacyMessage,
   decodeWireTransaction,
+  isSameMessage,
   resolveInstructions,
+  signatureCheckOf,
   type LegacyMessage,
+  type SignatureCheck,
+  type SignatureStatus,
 } from './verify.ts';
 
 /**
@@ -95,6 +97,8 @@ import {
  *      from the accepted Lighthouse tail (`compareMessages`). So the inspector accepts nothing the builder would not
  *      build, including the builder's own input checks (distinct keys, positive amounts, lockup end at most
  *      `MAX_LOCKUP_END`, the one nonce seed, a rescue paid by the new wallet and never on another key's nonce).
+ *      The builder's compiled message is compared field by field (`compileActionMessage`, `isSameMessage`), which is
+ *      the same as comparing the encoded bytes but skips encoding (CPU budget of the worker, DECISIONS.md D23).
  *   8. Every present signature verifies against the message bytes (`verification-unavailable` when this browser
  *      cannot run Ed25519, never `invalid-signature`).
  *
@@ -176,8 +180,37 @@ export const LAMPORTS_PER_SIGNATURE = 5_000n;
  * re-derived from its seed.
  */
 export async function inspectTransaction(bytes: ReadonlyUint8Array): Promise<InspectResult> {
+  const result = await inspectWithStatuses(bytes);
+  return result.ok ? { ok: true, summary: result.summary } : result;
+}
+
+/**
+ * Both checks the RPC proxy runs before sending: the inspector's result and, when it accepted the bytes, the result of
+ * `verifyAllSignatures`.
+ */
+export type InspectAndVerifyResult =
+  | { ok: true; summary: TransactionSummary; signatures: SignatureCheck }
+  | { ok: false; error: InspectError };
+
+/**
+ * `inspectTransaction` and `verifyAllSignatures` in one pass, for the worker's sendTransaction path: the bytes are
+ * decoded once and every signature is verified once (the inspector already verifies every present signature).
+ * `summary` and `error` are exactly what `inspectTransaction` returns, `signatures` exactly what `verifyAllSignatures`
+ * returns; neither check is skipped. Never throws.
+ */
+export async function inspectAndVerifyTransaction(bytes: ReadonlyUint8Array): Promise<InspectAndVerifyResult> {
+  const result = await inspectWithStatuses(bytes);
+  if (!result.ok) return result;
+  return { ok: true, summary: result.summary, signatures: signatureCheckOf(result.statuses) };
+}
+
+type Inspected =
+  | { ok: true; summary: TransactionSummary; statuses: readonly SignatureStatus[] }
+  | { ok: false; error: InspectError };
+
+async function inspectWithStatuses(bytes: ReadonlyUint8Array): Promise<Inspected> {
   try {
-    return { ok: true, summary: await inspect(bytes) };
+    return { ok: true, ...(await inspect(bytes)) };
   } catch (error) {
     if (error instanceof Rejection) return { ok: false, error: { code: error.code, message: error.message } };
     return { ok: false, error: { code: 'malformed', message: `Could not inspect: ${describeError(error)}` } };
@@ -198,7 +231,13 @@ function reject(code: InspectErrorCode, message: string): never {
   throw new Rejection(code, message);
 }
 
-async function inspect(bytes: ReadonlyUint8Array): Promise<TransactionSummary> {
+/**
+ * The summary, plus the status of every required signature (`checkSignatures` over all signers) for
+ * `inspectAndVerifyTransaction`.
+ */
+async function inspect(
+  bytes: ReadonlyUint8Array,
+): Promise<{ summary: TransactionSummary; statuses: readonly SignatureStatus[] }> {
   const decoded = decodeWireTransaction(bytes);
   if (!decoded.ok) reject(decoded.code, decoded.message);
   const { transaction, message, signers } = decoded;
@@ -263,23 +302,25 @@ async function inspect(bytes: ReadonlyUint8Array): Promise<TransactionSummary> {
   // 7. Backstop: the builder must produce this very message (apart from the accepted tail).
   const builderLifetime: Lifetime =
     lifetime.kind === 'nonce' ? lifetime : { kind: 'blockhash', blockhash: lifetime.blockhash, lastValidBlockHeight: 0n };
-  let rebuilt: ReadonlyUint8Array;
+  let expected: LegacyMessage;
   try {
-    rebuilt = buildTransaction(action, { feePayer, lifetime: builderLifetime }).bytes;
+    expected = compileActionMessage(action, { feePayer, lifetime: builderLifetime });
   } catch (error) {
     reject('unknown-instruction', `Stakeward never builds this ${action.kind}: ${describeError(error)}`);
   }
-  const expected = decodeLegacyMessage(getTransactionDecoder().decode(rebuilt).messageBytes);
-  if (!expected.ok) reject('malformed', `Could not rebuild the transaction: ${expected.message}`);
-  const comparison = compareMessages(expected.message, message);
-  if (comparison.kind === 'tail-escalates') reject('bad-lighthouse-tail', comparison.message);
-  if (comparison.kind === 'changed') {
-    reject(comparison.tail ? 'bad-lighthouse-tail' : 'bad-layout', `Not the builder's format: ${comparison.message}`);
+  let lighthouseTail: LighthouseTail | null = null;
+  // The same message is the common case; only a different one needs the full comparison (a Lighthouse tail, or not
+  // our format).
+  if (!isSameMessage(expected, message)) {
+    const comparison = compareMessages(expected, message);
+    if (comparison.kind === 'tail-escalates') reject('bad-lighthouse-tail', comparison.message);
+    if (comparison.kind === 'changed') {
+      reject(comparison.tail ? 'bad-lighthouse-tail' : 'bad-layout', `Not the builder's format: ${comparison.message}`);
+    }
+    if (comparison.kind === 'lighthouse-tail') {
+      lighthouseTail = { instructionCount: comparison.instructionCount, addedAccounts: comparison.addedAccounts };
+    }
   }
-  const lighthouseTail: LighthouseTail | null =
-    comparison.kind === 'lighthouse-tail'
-      ? { instructionCount: comparison.instructionCount, addedAccounts: comparison.addedAccounts }
-      : null;
   if ((lighthouseTail?.instructionCount ?? 0) !== tail.length) {
     reject('bad-lighthouse-tail', 'The Lighthouse instructions do not match the accepted tail');
   }
@@ -292,7 +333,7 @@ async function inspect(bytes: ReadonlyUint8Array): Promise<TransactionSummary> {
   const invalid = statuses.find((status) => status.status === 'invalid');
   if (invalid !== undefined) reject('invalid-signature', `The signature of ${invalid.signer} does not match the message`);
 
-  return {
+  const summary: TransactionSummary = {
     action,
     feePayer,
     lifetime,
@@ -302,6 +343,7 @@ async function inspect(bytes: ReadonlyUint8Array): Promise<TransactionSummary> {
     presentSignatures: statuses.filter((status) => status.status === 'valid').map((status) => status.signer),
     lighthouseTail,
   };
+  return { summary, statuses };
 }
 
 /** 5000 lamports per signature plus the priority fee, limit x price rounded up to whole lamports. */
@@ -321,6 +363,22 @@ const KNOWN_PROGRAMS: ReadonlySet<Address> = new Set([
 ]);
 
 const { READONLY: R, WRITABLE: W, READONLY_SIGNER: RS, WRITABLE_SIGNER: WS } = AccountRole;
+
+/** Data encoders for the canonical re-encoding of each instruction (`requireCanonical`), built once. */
+const ENCODERS = {
+  cuLimit: /* @__PURE__ */ getSetComputeUnitLimitInstructionDataEncoder(),
+  cuPrice: /* @__PURE__ */ getSetComputeUnitPriceInstructionDataEncoder(),
+  setLockup: /* @__PURE__ */ getSetLockupInstructionDataEncoder(),
+  setLockupChecked: /* @__PURE__ */ getSetLockupCheckedInstructionDataEncoder(),
+  withdraw: /* @__PURE__ */ getWithdrawInstructionDataEncoder(),
+  authorizeChecked: /* @__PURE__ */ getAuthorizeCheckedInstructionDataEncoder(),
+  deactivate: /* @__PURE__ */ getDeactivateInstructionDataEncoder(),
+  delegate: /* @__PURE__ */ getDelegateStakeInstructionDataEncoder(),
+  advanceNonce: /* @__PURE__ */ getAdvanceNonceAccountInstructionDataEncoder(),
+  createAccountWithSeed: /* @__PURE__ */ getCreateAccountWithSeedInstructionDataEncoder(),
+  initializeNonce: /* @__PURE__ */ getInitializeNonceAccountInstructionDataEncoder(),
+  withdrawNonce: /* @__PURE__ */ getWithdrawNonceAccountInstructionDataEncoder(),
+};
 
 /** One instruction as Stakeward builds it, parsed. Addresses only; roles are checked separately. */
 type Step =
@@ -456,10 +514,10 @@ function readComputeBudget(ix: StakeIx, where: string): Read {
   const program = ix.programAddress;
   switch (parsed.instructionType) {
     case ComputeBudgetInstruction.SetComputeUnitLimit:
-      requireCanonical(where, getSetComputeUnitLimitInstructionDataEncoder().encode(parsed.data), ix.data);
+      requireCanonical(where, ENCODERS.cuLimit.encode(parsed.data), ix.data);
       return { program, slots: [], step: { type: 'cu-limit', units: parsed.data.units } };
     case ComputeBudgetInstruction.SetComputeUnitPrice:
-      requireCanonical(where, getSetComputeUnitPriceInstructionDataEncoder().encode(parsed.data), ix.data);
+      requireCanonical(where, ENCODERS.cuPrice.encode(parsed.data), ix.data);
       return { program, slots: [], step: { type: 'cu-price', microLamports: parsed.data.microLamports } };
     default:
       return reject('unknown-instruction', `${where}: unexpected compute budget instruction`);
@@ -479,7 +537,7 @@ function readStake(ix: StakeIx, where: string): Read {
   const step = ((): StakeStep => {
     switch (parsed.instructionType) {
       case StakeInstruction.SetLockup:
-        requireCanonical(where, getSetLockupInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.setLockup.encode(parsed.data), ix.data);
         return {
           type: 'set-lockup',
           stake: parsed.accounts.stake.address,
@@ -489,7 +547,7 @@ function readStake(ix: StakeIx, where: string): Read {
           custodian: parsed.data.custodian,
         };
       case StakeInstruction.SetLockupChecked:
-        requireCanonical(where, getSetLockupCheckedInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.setLockupChecked.encode(parsed.data), ix.data);
         return {
           type: 'set-lockup-checked',
           stake: parsed.accounts.stake.address,
@@ -499,7 +557,7 @@ function readStake(ix: StakeIx, where: string): Read {
           epoch: parsed.data.epoch,
         };
       case StakeInstruction.Withdraw:
-        requireCanonical(where, getWithdrawInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.withdraw.encode(parsed.data), ix.data);
         return {
           type: 'withdraw',
           stake: parsed.accounts.stake.address,
@@ -509,7 +567,7 @@ function readStake(ix: StakeIx, where: string): Read {
           lamports: parsed.data.args,
         };
       case StakeInstruction.AuthorizeChecked:
-        requireCanonical(where, getAuthorizeCheckedInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.authorizeChecked.encode(parsed.data), ix.data);
         return {
           type: 'authorize-checked',
           stake: parsed.accounts.stake.address,
@@ -519,14 +577,14 @@ function readStake(ix: StakeIx, where: string): Read {
           stakeAuthorize: parsed.data.stakeAuthorize,
         };
       case StakeInstruction.Deactivate:
-        requireCanonical(where, getDeactivateInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.deactivate.encode(parsed.data), ix.data);
         return {
           type: 'deactivate',
           stake: parsed.accounts.stake.address,
           staker: parsed.accounts.stakeAuthority.address,
         };
       case StakeInstruction.DelegateStake:
-        requireCanonical(where, getDelegateStakeInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.delegate.encode(parsed.data), ix.data);
         return {
           type: 'delegate',
           stake: parsed.accounts.stake.address,
@@ -551,14 +609,14 @@ function readSystem(ix: StakeIx, where: string): Read {
   const step = ((): Step => {
     switch (parsed.instructionType) {
       case SystemInstruction.AdvanceNonceAccount:
-        requireCanonical(where, getAdvanceNonceAccountInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.advanceNonce.encode(parsed.data), ix.data);
         return {
           type: 'advance-nonce',
           nonceAccount: parsed.accounts.nonceAccount.address,
           nonceAuthority: parsed.accounts.nonceAuthority.address,
         };
       case SystemInstruction.CreateAccountWithSeed:
-        requireCanonical(where, getCreateAccountWithSeedInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.createAccountWithSeed.encode(parsed.data), ix.data);
         return {
           type: 'create-account-with-seed',
           payer: parsed.accounts.payer.address,
@@ -570,14 +628,14 @@ function readSystem(ix: StakeIx, where: string): Read {
           owner: parsed.data.programAddress,
         };
       case SystemInstruction.InitializeNonceAccount:
-        requireCanonical(where, getInitializeNonceAccountInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.initializeNonce.encode(parsed.data), ix.data);
         return {
           type: 'initialize-nonce',
           nonceAccount: parsed.accounts.nonceAccount.address,
           nonceAuthority: parsed.data.nonceAuthority,
         };
       case SystemInstruction.WithdrawNonceAccount:
-        requireCanonical(where, getWithdrawNonceAccountInstructionDataEncoder().encode(parsed.data), ix.data);
+        requireCanonical(where, ENCODERS.withdrawNonce.encode(parsed.data), ix.data);
         return {
           type: 'withdraw-nonce',
           nonceAccount: parsed.accounts.nonceAccount.address,

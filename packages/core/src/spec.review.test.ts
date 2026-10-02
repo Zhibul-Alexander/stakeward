@@ -247,11 +247,11 @@ describe('N: errors that are not the wallet and not the chain', () => {
     expect(translateError(refused).code).not.toBe('network');
   });
 
-  it('N-guard: HTTP 429 and 503 stay network problems', () => {
-    for (const statusCode of [429, 503]) {
-      const error = new SolanaError(SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR, { headers: undefined as never, message: 'x', statusCode });
-      expect(translateError(error).code).toBe('network');
-    }
+  it('N-guard: HTTP 503 stays a network problem; 429 is a rate limit (wait, then try again)', () => {
+    const http = (statusCode: number) =>
+      new SolanaError(SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR, { headers: undefined as never, message: 'x', statusCode });
+    expect(translateError(http(503)).code).toBe('network');
+    expect(translateError(http(429)).code).toBe('rate-limited');
   });
 });
 

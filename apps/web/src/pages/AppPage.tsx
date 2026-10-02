@@ -1,11 +1,54 @@
+import type { Address } from '@solana/kit';
+import { useId } from 'react';
+import { useSearchParams } from 'wouter';
+import { fetchHealth, type Health } from '@/api/health';
 import { t } from '@/i18n';
+import { useSlot } from '@/ports';
+import { AccountsResults } from './app/AccountsResults.tsx';
+import { AddressForm, isCheckableAddress } from './app/AddressForm.tsx';
+import { KeySlot } from './app/KeySlot.tsx';
 
-/** /app: stake accounts and their status, also by address without a wallet (/app?address=). Built in step 3. */
-export function AppPage() {
+const loadHealthFromWorker = () => fetchHealth();
+
+type AppPageProps = {
+  /** GET /api/health; tests pass their own. */
+  loadHealth?: (() => Promise<Health>) | undefined;
+};
+
+/**
+ * /app: stake accounts and their status (CLAUDE.md sections 5 and 9). Works by address without a wallet
+ * (/app?address=), or with the main key connected. The address lives in the URL, so a reload shows the same stake,
+ * read fresh from the chain.
+ */
+export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
+  const [params, setParams] = useSearchParams();
+  const query = params.get('address');
+  const main = useSlot('main');
+  const connectId = useId();
+  // An address in the URL wins; without one, a connected main key shows its own stake.
+  const address: Address | null =
+    query === null ? (main?.ready === true ? main.slot.address : null) : isCheckableAddress(query) ? query : null;
+
+  const show = (next: Address) => {
+    setParams({ address: next });
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold">{t('app.title')}</h1>
-      <p className="text-muted">{t('common.comingSoon')}</p>
+    <div className="flex flex-col gap-8">
+      <div className="flex max-w-2xl flex-col gap-2">
+        <h1 className="text-3xl font-semibold">{t('app.title')}</h1>
+        <p className="text-muted">{t('app.intro')}</p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        <AddressForm value={query ?? ''} onSubmit={show} />
+        <section aria-labelledby={connectId} className="flex flex-col gap-2">
+          <h2 id={connectId} className="text-sm font-medium">
+            {t('app.connect.mainTitle')}
+          </h2>
+          <KeySlot role="main" description={t('app.connect.mainDescription')} onConnected={show} />
+        </section>
+      </div>
+      {address === null ? null : <AccountsResults key={address} address={address} loadHealth={loadHealth} />}
     </div>
   );
 }

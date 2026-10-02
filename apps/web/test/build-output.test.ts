@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEV_COSIGN_MARKER } from '@/pages/dev/DevCosignPage';
 import { DEV_UI_MARKER } from '@/pages/dev/DevUiPage';
+import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
+import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
 
 /**
  * Builds the site for both clusters, exactly as the deploy scripts do, and greps the output.
@@ -22,6 +24,11 @@ import { DEV_UI_MARKER } from '@/pages/dev/DevUiPage';
 const DEV_ONLY_PREFIX = 'stakeward-dev-only:';
 const TEST_ONLY_PREFIX = 'stakeward-test-only:';
 const DEV_MARKERS = [DEV_UI_MARKER, DEV_COSIGN_MARKER];
+/**
+ * Literals that only devnet-only modules use (not markers): they show that the code behind a page is gone too, not
+ * just the page component. /dev/cosign's storage keys live in src/pages/dev-cosign.
+ */
+const DEV_ONLY_CODE = [DEV_SLOTS_STORAGE_KEY, REPORTS_STORAGE_KEY];
 
 const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -76,12 +83,14 @@ describe('production builds', () => {
       expect(marker.startsWith(DEV_ONLY_PREFIX), marker).toBe(true);
       expect(filesContaining(devnet, marker), marker).not.toEqual([]);
     }
+    for (const literal of DEV_ONLY_CODE) expect(filesContaining(devnet, literal), literal).not.toEqual([]);
   });
 
   it('the mainnet build has no devnet-only code: no markers, no /dev routes, no dev page chunks', () => {
     expect(filesContaining(mainnet, DEV_ONLY_PREFIX)).toEqual([]);
     expect(filesContaining(mainnet, '/dev/ui')).toEqual([]);
     expect(filesContaining(mainnet, '/dev/cosign')).toEqual([]);
+    for (const literal of DEV_ONLY_CODE) expect(filesContaining(mainnet, literal), literal).toEqual([]);
     expect([...mainnet.files.keys()].filter((name) => /dev/i.test(name))).toEqual([]);
   });
 

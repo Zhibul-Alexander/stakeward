@@ -22,7 +22,8 @@ export function createApp(options: AppOptions = {}) {
   app.use(securityHeaders());
 
   // Real semantics (last successful monitor pass, HTTP 503 when older than 10 minutes) arrive with the monitor in step 5.
-  app.get('/health', (c) => c.json({ ok: true, lastMonitorRunAt: null }));
+  // `now` is the worker's clock: the site measures the age with it, not with the visitor's device clock.
+  app.get('/health', (c) => c.json({ ok: true, lastMonitorRunAt: null, now: new Date().toISOString() }));
 
   app.get(
     '/stake-accounts',

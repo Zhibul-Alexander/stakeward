@@ -267,7 +267,8 @@ describe('network failures through fetch and a kit RPC client', () => {
         .send()
         .catch((error: unknown) => error);
       const result = translateError(thrown);
-      expect(result.code).toBe('network');
+      expect(result.code).toBe('rate-limited');
+      expect(result.title).toBe('Too many requests. Wait a minute and try again.');
       expect(result.detail).toMatch(/429/);
     } finally {
       await new Promise((resolve) => server.close(resolve));

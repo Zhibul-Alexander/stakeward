@@ -3,6 +3,7 @@ import { createTestWalletPort } from '@stakeward/core/test/test-wallet-port';
 import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
+  createProtectedAccountMemory,
   createSecondKeyMemory,
   createSlotStore,
   PortsProvider,
@@ -39,6 +40,7 @@ describe('ports in React', () => {
       wallets: new StaticWalletRegistry([wallet]),
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
+      protectedAccounts: createProtectedAccountMemory(null),
     };
     render(
       <PortsProvider ports={ports}>

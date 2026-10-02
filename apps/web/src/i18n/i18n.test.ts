@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ErrorCode } from '@stakeward/core';
+import { ERROR_CODES } from '@stakeward/core';
 import en from './en.json';
 import { errorMessage } from './errors.ts';
 import { t } from './index.ts';
@@ -14,9 +14,7 @@ function leaves(node: unknown, prefix = ''): [string, string][] {
 describe('t()', () => {
   it('reads nested keys and fills placeholders', () => {
     expect(t('common.roles.second')).toBe('Second key');
-    expect(t('status.lockedByOtherHint', { address: '7xK...9fQ' })).toBe(
-      'The second key is 7xK...9fQ. Connect it if it is yours.',
-    );
+    expect(t('components.accountRow.label', { address: '7xK...9fQ' })).toBe('Stake account 7xK...9fQ');
     expect(t('errors.lockup-in-force', { date: '12 April 2027' })).toBe(
       'Locked until 12 April 2027: your second key must co-sign.',
     );
@@ -50,26 +48,16 @@ describe('en.json', () => {
 });
 
 describe('errorMessage()', () => {
-  const codes: ErrorCode[] = [
-    'lockup-in-force',
-    'custodian-missing',
-    'custodian-signature-missing',
-    'already-deactivated',
-    'too-soon-to-redelegate',
-    'insufficient-delegation',
-    'merge-mismatch',
-    'missing-signature',
-    'insufficient-funds',
-    'blockhash-expired',
-    'nonce-advanced',
-    'already-processed',
-    'wallet-rejected',
-    'network',
-    'unknown',
-  ];
-
-  it('has a text for every core error code', () => {
-    for (const code of codes) expect(errorMessage({ code }), code).not.toMatch(/^errors\./);
+  // ERROR_CODES is every code core's translateError returns (UX rule 8): each needs its own text in en.json.
+  it('has a text of its own for every core error code', () => {
+    const errors = (en as { errors: Record<string, string> }).errors;
+    for (const code of ERROR_CODES) {
+      expect(errors[code], code).toEqual(expect.any(String));
+      expect(errorMessage({ code }), code).not.toMatch(/^errors\./);
+    }
+    // The texts differ: no code borrows another one's sentence.
+    const texts = ERROR_CODES.map((code) => errorMessage({ code }, 1_807_488_000n));
+    expect(new Set(texts).size).toBe(texts.length);
   });
 
   it('says until when a lock holds (UX rule 8)', () => {

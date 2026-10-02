@@ -4,7 +4,14 @@ import {
   type SolanaSignTransactionFeature,
   type SolanaSignTransactionOutput,
 } from '@solana/wallet-standard-features';
-import { translateError, type WalletPort, type WalletPortErrorName } from '@stakeward/core';
+import {
+  createWalletRequestQueue,
+  translateError,
+  type WalletPort,
+  type WalletPortErrorName,
+  type WalletRequestOptions,
+  type WalletRequestQueue,
+} from '@stakeward/core';
 import type { IdentifierString, Wallet, WalletAccount } from '@wallet-standard/base';
 import {
   StandardConnect,
@@ -22,6 +29,7 @@ import {
  *   up by address right before the call: wallets compare the object by identity, and it goes stale when the user
  *   switches accounts. The port stores addresses only.
  * - Requests to one wallet (connect and sign) are serialised: Phantom fails a second open approval window (-32002).
+ *   A request whose signal aborts (Stop waiting) stops holding up the next ones (core createWalletRequestQueue).
  * - A user rejection (code 4001 or "rejected/declined/cancelled", as translateError reads it) is rethrown as an Error
  *   with code 4001 and the wallet's error as `cause`; -32002 becomes WalletBusyError. Other errors pass unchanged.
  * - Never signMessage, never signAndSendTransaction (section 2 rule 2, section 6): the site sends every transaction.
@@ -38,16 +46,15 @@ export function isSupportedWallet(wallet: Wallet, chain: IdentifierString): bool
 }
 
 /** Calls to one wallet, in order (keyed by the Wallet object, shared by every port over it). */
-const queues = new WeakMap<Wallet, Promise<unknown>>();
+const queues = new WeakMap<Wallet, WalletRequestQueue>();
 
-function serialised<T>(wallet: Wallet, task: () => Promise<T>): Promise<T> {
-  const previous = queues.get(wallet) ?? Promise.resolve();
-  const run = previous.then(task, task);
-  queues.set(
-    wallet,
-    run.catch(() => undefined),
-  );
-  return run;
+function serialised<T>(wallet: Wallet, task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+  let queue = queues.get(wallet);
+  if (queue === undefined) {
+    queue = createWalletRequestQueue();
+    queues.set(wallet, queue);
+  }
+  return queue(task, signal);
 }
 
 export class StandardWalletPort implements WalletPort {
@@ -80,7 +87,7 @@ export class StandardWalletPort implements WalletPort {
     return this.snapshot;
   }
 
-  connect(): Promise<readonly Address[]> {
+  connect(options: WalletRequestOptions = {}): Promise<readonly Address[]> {
     return serialised(this.wallet, async () => {
       const feature = connectFeature(this.wallet);
       if (feature === null) throw walletError('WalletUnsupportedError', `${this.name} cannot connect`);
@@ -94,7 +101,7 @@ export class StandardWalletPort implements WalletPort {
       this.connected = this.wallet.accounts.length === 0 ? output.accounts : [];
       this.notify();
       return this.accounts;
-    });
+    }, options.signal);
   }
 
   async disconnect(): Promise<void> {
@@ -108,7 +115,11 @@ export class StandardWalletPort implements WalletPort {
     this.notify();
   }
 
-  signTransactions(address: Address, transactions: readonly ReadonlyUint8Array[]): Promise<readonly Uint8Array[]> {
+  signTransactions(
+    address: Address,
+    transactions: readonly ReadonlyUint8Array[],
+    options: WalletRequestOptions = {},
+  ): Promise<readonly Uint8Array[]> {
     if (transactions.length === 0) return Promise.resolve([]);
     return serialised(this.wallet, async () => {
       const feature = signFeature(this.wallet);
@@ -141,7 +152,7 @@ export class StandardWalletPort implements WalletPort {
         if (!isBytes(signed)) throw new Error(`${this.name} returned no bytes for transaction ${String(index + 1)}`);
         return Uint8Array.from(signed);
       });
-    });
+    }, options.signal);
   }
 
   onChange(listener: () => void): () => void {

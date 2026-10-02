@@ -1,4 +1,4 @@
-import { inspectTransaction, verifyAllSignatures } from '@stakeward/core';
+import { inspectAndVerifyTransaction, INSPECTOR_REFUSAL_PREFIX, SIGNATURE_REFUSAL_PREFIX } from '@stakeward/core';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { decodeBase64, encodeBase64 } from './base64.ts';
@@ -16,7 +16,11 @@ import type { AppEnv } from './app.ts';
  * Refused transactions use codes kit knows, never a custom one: outside production builds kit 8.4 throws a TypeError
  * while formatting an unknown JSON-RPC code, and a TypeError reads as a network error. Signature problems are -32003
  * (what a node answers for bad signatures; kit keeps `data` as the error context), any other inspector refusal is
- * -32602 with the inspector code in the message. `data` carries the details for clients that read the body.
+ * -32602 with the inspector code in the message (kit keeps only the message for -32602). The message prefixes come
+ * from core, whose `translateError` reads them on the site. `data` carries the details for clients that read the body.
+ *
+ * CPU: the inspector and the signature check run in one pass (`inspectAndVerifyTransaction`): one decode, one
+ * verification per signature (test/cpu.test.ts).
  */
 
 export const JSON_RPC_ERRORS = {
@@ -86,25 +90,22 @@ export function rpcHandler(upstreamOptions: UpstreamOptions) {
       if (bytes === null) {
         return jsonRpcError(c, 200, id, JSON_RPC_ERRORS.invalidParams, 'params[0]: Expected canonical base64');
       }
-      const inspected = await inspectTransaction(bytes);
-      if (!inspected.ok) {
-        const { code, message } = inspected.error;
+      const checked = await inspectAndVerifyTransaction(bytes);
+      if (!checked.ok) {
+        const { code, message } = checked.error;
         const rpcCode =
           code === 'invalid-signature' ? JSON_RPC_ERRORS.signatureVerificationFailure : JSON_RPC_ERRORS.invalidParams;
-        return jsonRpcError(c, 200, id, rpcCode, `Transaction rejected by inspector: ${code}`, {
+        return jsonRpcError(c, 200, id, rpcCode, `${INSPECTOR_REFUSAL_PREFIX}${code}`, {
           check: 'inspector',
           code,
           message,
         });
       }
-      if (method === 'sendTransaction') {
-        const signatures = await verifyAllSignatures(bytes);
-        if (!signatures.ok) {
-          const { code, signers, message } = signatures.error;
-          const rejection = { check: 'signatures', code, signers, message } as const;
-          const text = `Transaction rejected: ${code}`;
-          return jsonRpcError(c, 200, id, JSON_RPC_ERRORS.signatureVerificationFailure, text, rejection);
-        }
+      if (method === 'sendTransaction' && !checked.signatures.ok) {
+        const { code, signers, message } = checked.signatures.error;
+        const rejection = { check: 'signatures', code, signers, message } as const;
+        const text = `${SIGNATURE_REFUSAL_PREFIX}${code}`;
+        return jsonRpcError(c, 200, id, JSON_RPC_ERRORS.signatureVerificationFailure, text, rejection);
       }
       params[0] = encodeBase64(bytes);
     }
