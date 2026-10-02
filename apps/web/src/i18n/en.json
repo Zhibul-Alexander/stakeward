@@ -1,0 +1,106 @@
+{
+  "common": {
+    "appName": "Stakeward",
+    "tagline": "Lock your natively staked SOL with a second key you control, so a stolen wallet key cannot withdraw it.",
+    "loading": "Loading",
+    "comingSoon": "Coming soon",
+    "comingSoonBody": "Coming soon: this page is not ready yet.",
+    "backToAccounts": "Back to your accounts",
+    "backHome": "Back to the start page",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "There is no page at this address.",
+    "skipToContent": "Skip to content",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyAddress": "Copy address {address}",
+    "viewOnExplorer": "View on Solana Explorer",
+    "opensInNewTab": "(opens in a new tab)",
+    "details": "Details",
+    "tryAgain": "Try again",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "neverSeedPhrase": "Stakeward never asks for your seed phrase.",
+    "cannotMoveSol": "This transaction cannot move your SOL.",
+    "networkFee": "Network fee",
+    "devnet": "Devnet",
+    "devnetNote": "Test network: no real SOL.",
+    "roles": {
+      "main": "Main key",
+      "second": "Second key",
+      "new": "New wallet"
+    },
+    "pages": {
+      "protect": "Protect your stake",
+      "withdraw": "Withdraw",
+      "extend": "Extend the lock",
+      "rescue": "Rescue your stake",
+      "cosign": "Co-sign a transaction",
+      "recovery": "Recovery card",
+      "stats": "Stats"
+    }
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Stakeward home",
+    "app": "Your accounts"
+  },
+  "footer": {
+    "sourceCode": "Source code",
+    "cannotDo": "What Stakeward cannot do",
+    "license": "No warranty. MIT license."
+  },
+  "landing": {
+    "title": "Protect your staked SOL",
+    "body": "Stakeward puts a lock on your existing stake accounts. While the lock holds, the stake can only be withdrawn or moved to a new owner when your second key co-signs.",
+    "checkStake": "Check your stake",
+    "cannotDoTitle": "What Stakeward cannot do",
+    "cannotDo1": "It cannot protect liquid staking tokens, stake held on exchanges or SOL in your wallet balance.",
+    "cannotDo2": "It cannot stop someone with your main key from deactivating or redelegating the stake; they still cannot take it.",
+    "cannotDo3": "Whoever holds the second key can freeze the stake by moving the lock date. Guard the second key as carefully as the main one.",
+    "cannotDo4": "It never holds your funds and never sees your keys or seed phrase."
+  },
+  "status": {
+    "protected": "Protected",
+    "expiring": "Expiring soon",
+    "unprotected": "Not protected",
+    "lockedByOther": "Locked by another key",
+    "secondKeyNotConnected": "Second key not connected",
+    "lockedUntil": "Locked until {date}",
+    "protectedHint": "Withdrawing or changing the owner needs your second key until {date}.",
+    "expiringHint": "The lock ends on {date}. Extend it to stay protected.",
+    "unprotectedHint": "Anyone with your main key can withdraw this stake.",
+    "lockedByOtherHint": "The second key is {address}. Connect it if it is yours.",
+    "secondKeyNotConnectedHint": "Connect your second key to manage this lock.",
+    "managedByService": "A staking service may manage this stake."
+  },
+  "components": {},
+  "devUi": {
+    "title": "Design system"
+  },
+  "app": {
+    "title": "Your stake accounts"
+  },
+  "devCosign": {
+    "title": "Wallet co-signing test"
+  },
+  "errors": {
+    "lockup-in-force": "Locked until {date}: your second key must co-sign.",
+    "lockup-in-force-no-date": "This stake is locked: your second key must co-sign.",
+    "custodian-missing": "This change needs your second key too: it must co-sign before you send.",
+    "custodian-signature-missing": "Your second key is part of this transaction but did not sign. Ask it to sign, then send again.",
+    "already-deactivated": "This stake is already deactivated. Refresh to see its current state.",
+    "too-soon-to-redelegate": "This stake is still deactivating. Delegate it again after the current epoch ends.",
+    "insufficient-delegation": "This stake holds less than the 1 SOL minimum the network allows to delegate.",
+    "merge-mismatch": "These stake accounts cannot be combined: their keys or locks differ.",
+    "missing-signature": "A key that must sign did not, or it no longer controls this stake. Check the connected wallets and try again.",
+    "insufficient-funds": "There is not enough SOL for this. If the stake is still deactivating, wait until the epoch ends; if the wallet paying the fee is empty, add a little SOL to it. Then try again.",
+    "blockhash-expired": "This transaction expired before it reached the network. Sign it again.",
+    "nonce-advanced": "This signing link is no longer valid: it was used or cancelled. Start again to get a new one.",
+    "already-processed": "This transaction already went through. Refresh to see the current state.",
+    "wallet-rejected": "The request was declined in the wallet. Nothing was sent; you can try again.",
+    "network": "The Solana network did not respond. Check your connection and try again.",
+    "unknown": "Something went wrong. Refresh to see the current state, then try again."
+  }
+}

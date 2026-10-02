@@ -1,4 +1,7 @@
 {
+  // Product code and jsdom component tests. No Node types: the site has no Node APIs.
+  // Node-side tests live in test/ and e2e/ with their own tsconfig; vite.config.ts, playwright.config.ts and
+  // static-headers.ts are checked by the root tsconfig.json.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
@@ -6,5 +9,5 @@
     "types": ["vite/client"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src"]
 }
