@@ -46,3 +46,32 @@
 - Заглушка в prod на постоянном домене не выкачена: нужны `wrangler login`, базы D1 и домен.
 - Секреты воркера пока не объявлены обязательными (D9); объявить, когда код начнёт их читать.
 - `compatibility_date` ограничен 2026-08-22, пока vitest-pool-workers 0.22.0 везёт старый workerd; overrides для undici и sharp убрать с его обновлением.
+
+## Шаг 2. packages/core: основа (02.10.2026)
+
+Шаг 1 (scripts/gate.ts) ещё не сделан; ядро собрано раньше него, проверки механизма на LiteSVM частично покрыты интеграционными тестами сборщиков.
+
+### Сделано
+
+- `constants.ts`: адреса программ (stake, system, compute budget, Lighthouse), sysvar для legacy-порядка, размеры аккаунтов, смещения для фильтров, `U64_MAX`, лимит и цена Compute Budget (D16).
+- `decode.ts`: `decodeStakeAccount` через сгенерированный декодер, с проверкой владельца и размера; результат — `{ ok, account }` или код ошибки.
+- `lockup.ts`: `isLockupInForce`, сроки замка (`lockupEndForPeriod`, `lockupEnd`, `lockPeriodsFor`, D13), `validateSecondKey`.
+- `status.ts`: `stakeActivationStatus` по эпохам, `scannerStatus` (D14), `groupForViewer`.
+- `actions.ts` + `builders.ts` + `legacy-layout.ts`: `buildTransaction` для protect, extend, unlock, withdraw, deactivate, delegate, rescue, nonce setup и nonce close; legacy-сообщение (D17), legacy-порядок аккаунтов (D1), nonce через CreateAccountWithSeed (D18), `expectedFeePayer`, `deriveNonceAccountAddress`.
+- `link.ts`: base64url и фрагмент `/cosign#tx=` (строгий разбор). Сделан сразу, а не заглушкой: он нужен тесту спасения.
+- Заглушки с типами и описанием для параллельной работы: `inspect.ts`, `verify.ts`, `diff.ts`, `errors.ts`.
+- Тестовая обвязка: `test/svm.ts` (LiteSVM с программой v5.1.0, часы, эпохи, vote- и стейк-аккаунты, `send` с разбором ошибок), `test/wallet.ts` (кошелёк с ключом в памяти), фикстуры семи аккаунтов mainnet.
+
+### Чем проверено
+
+- `pnpm --filter @stakeward/core test`: 8 файлов, 138 тестов. Декодирование совпадает с тремя аккаунтами mainnet и с сырыми смещениями §4 у всех семи. Каждый сборщик выполняется на LiteSVM, спасение — на nonce, с подписью по очереди через ссылку.
+- `pnpm typecheck`, `pnpm lint` — без ошибок.
+
+### Дальше
+
+Параллельно: инспектор (`inspect.ts`), проверка подписанной транзакции (`verify.ts`), сравнение снимков (`diff.ts`), перевод ошибок (`errors.ts`). Потом шаг 1 (gate) может опираться на `test/svm.ts`.
+
+### Открытые вопросы
+
+- Откуда брать известные вторые ключи для `scannerStatus` на `/app?address=` без кошелька (D14).
+- Хватит ли запаса лимита CU под хвост Lighthouse, покажет матрица кошельков (D5, D16).
