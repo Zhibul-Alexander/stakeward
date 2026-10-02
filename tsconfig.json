@@ -8,6 +8,8 @@
   "include": [
     "packages/core/vitest.config.ts",
     "apps/worker/vitest.config.ts",
-    "apps/web/vite.config.ts"
+    "apps/web/vite.config.ts",
+    "apps/web/playwright.config.ts",
+    "apps/web/static-headers.ts"
   ]
 }

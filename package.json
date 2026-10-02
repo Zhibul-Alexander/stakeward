@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "test": "pnpm -r test",
     "build": "VITE_CLUSTER=devnet pnpm -r build",
+    "e2e": "pnpm --filter @stakeward/web e2e",
     "check-rpc": "pnpm --filter @stakeward/scripts check-rpc",
     "deploy:dev": "pnpm --filter @stakeward/worker deploy:dev",
     "deploy:prod": "pnpm --filter @stakeward/worker deploy:prod",

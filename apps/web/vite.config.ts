@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { readStaticHeaders } from './static-headers.ts';
 
 const CLUSTERS = ['devnet', 'mainnet'] as const;
 type Cluster = (typeof CLUSTERS)[number];
@@ -27,6 +28,8 @@ export default defineConfig(({ command }) => ({
   // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
   resolve: { tsconfigPaths: true },
   define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(clusterFor(command)) },
+  // Same headers as production (public/_headers), so e2e tests run under the real CSP.
+  preview: { port: 4173, strictPort: true, headers: readStaticHeaders() },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
