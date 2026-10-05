@@ -13,6 +13,9 @@ export default defineConfig([
     '**/playwright-report/**',
     '**/test-results/**',
     '**/coverage/**',
+    // Agent worktrees (whole checkouts of this repository) and local tool state.
+    '.claude/**',
+    '.cache/**',
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
