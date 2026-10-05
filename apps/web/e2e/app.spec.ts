@@ -228,6 +228,11 @@ test('/app?address= shows every status, the red banner and the second-key list',
   await expect(secondList.getByRole('article')).toHaveCount(1);
   await expect(page.getByText('6 stake accounts', { exact: true })).toBeVisible();
   await expect(page.locator('[data-slot="monitoring"]')).toHaveText('Last checked 2 min ago');
+  // Alerts for this main key: the worker redirects to its bot with /start <address>, in a new tab.
+  const telegram = page.getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
+  await expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${MAIN}`);
+  await expect(telegram).toHaveAttribute('target', '_blank');
+  await expect(telegram).toHaveAttribute('rel', /\bnoreferrer\b/);
 
   await noHorizontalScroll(page);
   await expectNoA11yViolations();

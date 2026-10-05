@@ -32,7 +32,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('[data-slot="transaction-summary"][data-kind="protect"]').first()).toContainText(
     'This transaction cannot move your SOL.',
   );
-  // The flows: the signing panel in its phases and the protect wizard's Done screen.
+  // The flows: the signing panel in its 12 phases (built with core and inspected like the summaries above) and the
+  // protect wizard's Done screen (all, partial, none).
+  await expect(page.locator('#signing figure')).toHaveCount(12);
   await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
   await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
 
@@ -82,5 +84,11 @@ test('/dev/ui shows every token and component without console errors, axe violat
     });
     mkdirSync(SCREENS_DIR, { recursive: true });
     await page.screenshot({ path: `${SCREENS_DIR}dev-ui-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+    // The flows on their own, for review against the mockups: the signing panel phases and the protect Done screen.
+    for (const section of ['signing', 'protect-result']) {
+      await page
+        .locator(`#${section}`)
+        .screenshot({ path: `${SCREENS_DIR}dev-ui-${section}-${String(width)}.png`, animations: 'disabled' });
+    }
   }
 });
