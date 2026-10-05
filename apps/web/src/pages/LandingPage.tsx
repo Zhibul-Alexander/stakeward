@@ -1,31 +1,38 @@
-import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { t } from '@/i18n';
+import { useEffect } from 'react';
+import { CannotDo } from './landing/CannotDo.tsx';
+import { Faq } from './landing/Faq.tsx';
+import { Hero } from './landing/Hero.tsx';
+import { HowItWorks } from './landing/HowItWorks.tsx';
 
-/** Placeholder until step 8 builds the landing page. Keeps the #cannot-do anchor the footer links to. */
+/**
+ * The landing page (CLAUDE.md section 9 "/", section 10 step 8): what Stakeward is and the one action (look at your
+ * stake), how it works in three steps, what it cannot do (#cannot-do, linked from every footer) and the questions.
+ * It reads nothing from the network.
+ */
 export function LandingPage() {
+  useScrollToFragment();
   return (
-    <div className="flex max-w-2xl flex-col gap-10">
-      <section className="flex flex-col gap-4">
-        <h1 className="text-3xl font-semibold sm:text-4xl">{t('landing.title')}</h1>
-        <p className="text-lg text-muted">{t('landing.body')}</p>
-        <div>
-          <Button asChild size="lg">
-            <Link href="/app">{t('landing.checkStake')}</Link>
-          </Button>
-        </div>
-      </section>
-      <section id="cannot-do" aria-labelledby="cannot-do-title" className="flex flex-col gap-3">
-        <h2 id="cannot-do-title" className="text-xl font-semibold">
-          {t('landing.cannotDoTitle')}
-        </h2>
-        <ul className="flex list-disc flex-col gap-2 pl-5 text-muted">
-          <li>{t('landing.cannotDo1')}</li>
-          <li>{t('landing.cannotDo2')}</li>
-          <li>{t('landing.cannotDo3')}</li>
-          <li>{t('landing.cannotDo4')}</li>
-        </ul>
-      </section>
+    <div className="flex flex-col gap-16 sm:gap-20">
+      <Hero />
+      <HowItWorks />
+      <CannotDo />
+      <Faq />
     </div>
   );
+}
+
+/**
+ * Every footer links to /#cannot-do (UX rule 12). From another page that link loads this page fresh, and the browser
+ * may look for the fragment before React has rendered it. Scroll to it once it is there; a question (/#faq-wallets)
+ * also opens.
+ */
+function useScrollToFragment() {
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (id === '') return;
+    const target = document.getElementById(id);
+    if (target === null) return;
+    if (target instanceof HTMLDetailsElement) target.open = true;
+    target.scrollIntoView();
+  }, []);
 }

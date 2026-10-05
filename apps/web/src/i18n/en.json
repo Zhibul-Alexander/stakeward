@@ -54,13 +54,210 @@
   },
   "landing": {
     "title": "Protect your staked SOL",
-    "body": "Stakeward puts a lock on your existing stake accounts. While the lock holds, the stake can only be withdrawn or moved to a new owner when your second key co-signs.",
+    "lead": "Stakeward puts a network-level lock on the stake accounts you already have. The lock is part of Solana's own stake program: while it holds, your SOL can be withdrawn or moved to a new owner only when your second key co-signs. A thief with your main wallet key cannot take it.",
     "checkStake": "Check your stake",
-    "cannotDoTitle": "What Stakeward cannot do",
-    "cannotDo1": "It cannot protect liquid staking tokens, stake held on exchanges or SOL in your wallet balance.",
-    "cannotDo2": "It cannot stop someone with your main key from deactivating or redelegating the stake; they still cannot take it.",
-    "cannotDo3": "Whoever holds the second key can freeze the stake by moving the lock date. Guard the second key as carefully as the main one.",
-    "cannotDo4": "It never holds your funds and never sees your keys or seed phrase."
+    "checkStakeNote": "No wallet needed to look: paste your wallet address to see your stake accounts and their status.",
+    "facts": {
+      "nonCustodial": {
+        "title": "Non-custodial",
+        "body": "Stakeward never holds your SOL or your keys. Your own wallets sign every transaction."
+      },
+      "noProgram": {
+        "title": "No program of its own",
+        "body": "The lock is part of Solana's stake program. Stakeward puts no code of its own on chain."
+      },
+      "earning": {
+        "title": "Your stake keeps earning",
+        "body": "Protecting does not unstake anything or move your SOL."
+      },
+      "free": {
+        "title": "Free",
+        "body": "No token and no fee to Stakeward. You pay only the network fee."
+      }
+    },
+    "lockCard": {
+      "title": "While the lock holds",
+      "description": "Who must sign",
+      "withdraw": "Withdraw the SOL",
+      "newOwner": "Move the stake to a new owner",
+      "changeLock": "Change or remove the lock",
+      "staking": "Stop staking, restake or split",
+      "and": "and"
+    },
+    "how": {
+      "title": "How it works",
+      "intro": "You need two wallets made from different seed phrases: your main key, which controls the stake now, and a second key.",
+      "stepLabel": "Step {number}",
+      "choose": {
+        "title": "Pick the stake and a second key",
+        "body": "Choose the stake accounts to protect. Then choose your second key: another wallet you control, made from a different seed phrase than your main key."
+      },
+      "lock": {
+        "title": "Both keys sign the lock",
+        "body": "Your main key and your second key sign one transaction for each stake account. It puts the lock on: an end date and your second key. Your SOL stays where it is and keeps earning."
+      },
+      "alerts": {
+        "title": "Alerts, and Rescue if needed",
+        "body": "Turn on Telegram alerts, and Stakeward tells you when anything changes on your stake. If your main key is stolen, use it together with your second key to move the stake to a new wallet: that is Rescue."
+      },
+      "lockChip": "Lock until the end date",
+      "alertChip": "Telegram alert"
+    },
+    "cannotDo": {
+      "title": "What Stakeward cannot do",
+      "intro": "Read these limits before you protect a stake.",
+      "freeze": {
+        "title": "The second key can freeze your stake.",
+        "body": "Whoever holds it can set any end date and hand the lock to any key. They cannot take your SOL. Guard the second key as carefully as your main key."
+      },
+      "loseSecond": {
+        "title": "If you lose the second key, you wait.",
+        "body": "Until the lock ends, nobody can withdraw the stake or move it to a new wallet, not even you. After that, your main key alone can withdraw."
+      },
+      "notBackup": {
+        "title": "The second key is not a backup of the main key.",
+        "body": "If you lose your main key, nobody can withdraw or move this stake, not even with the second key. Keep a backup of the main key's seed phrase."
+      },
+      "staking": {
+        "title": "A stolen main key still controls the staking.",
+        "body": "A thief with it can stop the staking, stake with another validator, split the stake account and change who manages staking. While the lock holds, they cannot withdraw your SOL, take your main key's place or change the lock."
+      },
+      "lockEnds": {
+        "title": "When the lock ends, so does the protection.",
+        "body": "From the end date, your main key alone can withdraw again, and so can a thief who has it. Extend the lock in time, or move the stake to a new wallet before then."
+      },
+      "bothKeys": {
+        "title": "Both keys together can take the stake.",
+        "body": "If someone gets both keys, the lock cannot stop them. If you lose both, nobody can recover the stake."
+      },
+      "oneSeed": {
+        "title": "Two keys from one seed phrase protect nothing.",
+        "body": "Whoever has that seed phrase has both keys. Make the second key from a different seed phrase."
+      },
+      "noRecovery": {
+        "title": "Nobody at Stakeward can recover your stake for you.",
+        "body": "Stakeward never holds your SOL, keys or seed phrase. It cannot move your stake, reverse a transaction or restore a lost key."
+      },
+      "notCovered": {
+        "title": "Not covered",
+        "intro": "Stakeward protects native stake accounts only. It does not cover:",
+        "lst": "Liquid staking tokens (LSTs)",
+        "exchange": "Stake held on an exchange",
+        "vote": "Validator vote accounts",
+        "balance": "SOL in your wallet balance"
+      }
+    },
+    "faq": {
+      "title": "Questions and answers",
+      "lock": {
+        "question": "What does the lock do, exactly?",
+        "answer": {
+          "what": "Every Solana stake account has a lock built in, the lockup: an end date and a key called the custodian. While the lock holds, withdrawing the SOL or changing who can withdraw it also needs the custodian's signature. Stakeward makes your second key the custodian.",
+          "other": "Stopping the staking, staking with another validator and splitting the account do not need it, and the lock does not touch your rewards. A transaction with a hidden change of who can withdraw, a trick used in real thefts, fails without your second key.",
+          "existing": "The stake program lets the key that can withdraw put a new lock on an existing stake account while no lock holds. While a lock holds, only its custodian can change it.",
+          "names": "The Solana command line and explorers use the program's names: your main key is the withdraw authority (withdrawer), your second key is the lockup custodian, and the end date is the lockup timestamp. The stake authority (staker) manages staking; usually that is your main key too."
+        }
+      },
+      "custody": {
+        "question": "Is Stakeward custodial? Can it move my SOL?",
+        "answer": {
+          "no": "No. Stakeward never holds your SOL, and never asks for, creates, stores or sends private keys or seed phrases. There are no accounts or logins.",
+          "server": "Your browser builds every transaction, and your own wallets sign it. Stakeward's server takes no part in signing: it builds, stores and signs no transactions. It keeps only public data from the network and, if you turn on alerts, your Telegram chat id. If it goes down, you lose alerts, not money.",
+          "screen": "Before you sign, the signing screen reads the exact transaction your wallet is about to sign and says what changes, who signs, what it costs and what it cannot do."
+        }
+      },
+      "cost": {
+        "question": "What does it cost?",
+        "answer": {
+          "free": "Stakeward is free: no token, no subscription, no fee to Stakeward.",
+          "fee": "You pay only Solana's network fee, about 0.000005 SOL for each signature. The signing screen shows it before you sign.",
+          "deposit": "Signing on another device, by link, uses a link-signing account (a nonce account). It holds a deposit of about 0.00106 SOL that comes back when you close it. Rescue always uses one, so the new wallet needs about 0.01 SOL to start."
+        }
+      },
+      "lockEnds": {
+        "question": "How long does the lock last, and what happens when it ends?",
+        "answer": {
+          "period": "You choose 1, 3, 6 or 12 months. The lock ends at the first 00:00 UTC after that period.",
+          "extend": "Until then, your second key can extend the lock or remove it early. With Telegram alerts on, Stakeward reminds you 30, 14, 7, 3 and 1 day before the end.",
+          "after": "Once the lock ends, your main key alone can withdraw again, and so could a thief who has it. To stay protected, extend the lock in time, or protect the stake again with both keys."
+        }
+      },
+      "thief": {
+        "question": "What can a thief with my main key do?",
+        "answer": {
+          "cannot": "While the lock holds, they cannot withdraw your SOL, take your main key's place or change the lock.",
+          "can": "They can stop the staking, stake with another validator, split the stake account and change who manages staking. A split keeps the lock on both parts. With Telegram alerts on, Stakeward tells you when any of this happens.",
+          "rescue": "Then move the stake to a new wallet with Rescue: your main key, your second key and the new wallet sign together, and the new wallet pays. Do it well before the lock ends: from the end date, the main key alone can withdraw."
+        }
+      },
+      "loseSecond": {
+        "question": "What if I lose the second key?",
+        "answer": {
+          "wait": "You wait until the lock ends. Until then nobody can withdraw the stake or move it to a new wallet, not even you. If it is staked, it keeps earning meanwhile.",
+          "after": "After the end date, your main key alone can withdraw, and you can protect the stake again with a new second key. This is why every lock has an end date.",
+          "stolenToo": "If your main key is stolen too, the thief can withdraw as soon as the lock ends."
+        }
+      },
+      "secondStolen": {
+        "question": "What if someone steals my second key?",
+        "answer": {
+          "cannot": "They cannot take your SOL: withdrawing still needs your main key. But whoever holds the second key can freeze the stake: set any end date, or hand the lock to their own key.",
+          "act": "Act first: remove the lock with the second key, then protect the stake again with a new second key. Once the lock is removed, the stolen key has no power over the stake. With the Solana command line, the old and the new second key can also swap in one step.",
+          "late": "If the thief acts first, only their key can change the lock, and the stake stays locked until the date they chose. Your SOL still cannot leave without your main key."
+        },
+        "link": "Second key stolen: the command line steps on GitHub"
+      },
+      "seedPhrase": {
+        "question": "Why must the second key come from a different seed phrase?",
+        "answer": {
+          "why": "A seed phrase makes every account of a wallet, so whoever gets it gets every key made from it. If both keys come from one seed phrase, one leak gives a thief both keys, and the lock stops nothing.",
+          "how": "Make the second key from its own seed phrase: in another wallet app, on a separate Ledger, or as a new seed phrase in your wallet app. Another account under the same seed phrase, or on the same Ledger, is not enough. Keep the two backups apart.",
+          "confirm": "That is why protecting asks you to confirm: My second key comes from a different seed phrase."
+        }
+      },
+      "disappear": {
+        "question": "What if Stakeward disappears?",
+        "answer": {
+          "lock": "Nothing changes for your stake. The lock lives in Solana's stake program, not in Stakeward; only the Telegram alerts stop.",
+          "cli": "Everything Stakeward does can also be done with the Solana command line: withdraw with both keys, move the stake to a new wallet, extend or remove the lock. The recovery card of each protected stake account lists these commands, and the guide on GitHub explains each step.",
+          "keys": "The command line needs each key as a keypair file or on a Ledger: a key that lives only in a browser or phone wallet cannot sign there. In that case, wait until the lock ends; after that, your main key alone can withdraw in any wallet that can withdraw stake."
+        },
+        "link": "Recover without Stakeward: the guide on GitHub"
+      },
+      "wallets": {
+        "question": "Which wallets work, and which pairs are supported?",
+        "answer": {
+          "standard": "Stakeward works with browser wallets that support the Wallet Standard and can sign Solana transactions. Your main key and your second key can be two wallet apps, or two accounts in one wallet app, as long as they come from different seed phrases. If a wallet offers one account at a time, Stakeward asks you to switch accounts between signatures.",
+          "checks": "Stakeward checks every transaction a wallet hands back. If the wallet changed it, Stakeward stops and sends nothing. The one change it accepts: Lighthouse checks that Phantom may add at the end of a transaction, which only read accounts. Phantom then signs first.",
+          "untested": "Testing with real wallets is not finished yet. Results for Phantom, Solflare, Backpack and Ledger, alone and in pairs, will be listed here after testing."
+        },
+        "phone": "Which phone wallets work with signing by link has not been tested yet."
+      },
+      "ledger": {
+        "question": "What does a Ledger show?",
+        "answer": {
+          "format": "Stakeward builds every transaction in a format the Ledger Solana app can read, so a Ledger can show what you sign instead of asking for blind signing.",
+          "newAuthority": "The Ledger calls a new key New authority: your second key when you protect a stake, your new wallet when you rescue it. Check it against the address on Stakeward's signing screen.",
+          "withdraw": "When you withdraw, the Ledger does not show the second key. Stakeward's signing screen shows it in full.",
+          "lighthouse": "A Ledger cannot read the Lighthouse checks Phantom may add, and asks for blind signing when they are there. Whether Phantom adds them for Ledger accounts is not known yet.",
+          "untested": "This comes from the source code of the Ledger Solana app; it has not been tried on a real Ledger yet. Results will be listed here after testing."
+        }
+      },
+      "phone": {
+        "question": "Does it work on a phone?",
+        "answer": {
+          "inApp": "Partly. A phone wallet's own browser offers only that wallet. There you can check your stake, extend or remove a lock when your second key has a little SOL for the fee, and co-sign a link someone sent you.",
+          "desktop": "Protecting, withdrawing and rescuing need two or three keys at once, so start them in a desktop browser. A key on your phone can still sign by link: open the link in that wallet's own browser."
+        }
+      },
+      "lst": {
+        "question": "Does it protect liquid staking tokens or stake on an exchange?",
+        "answer": {
+          "no": "No. Stakeward protects native stake only: SOL you delegated from your own wallet, held in a stake account that your keys control.",
+          "why": "Liquid staking tokens (LSTs) are tokens in your wallet, not stake accounts, and stake on an exchange is controlled by the exchange. Validator vote accounts and SOL in your wallet balance are not covered either."
+        }
+      }
+    }
   },
   "status": {
     "protected": "Protected",
