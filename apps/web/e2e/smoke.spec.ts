@@ -1,8 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { Page } from '@playwright/test';
 import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
-import { mockApi, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
+import { MAIN, mockApi, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
 
 /**
  * The entry routes under the production headers (CLAUDE.md sections 11 and 13), with the worker's API mocked
@@ -19,6 +20,10 @@ type SmokeRoute = {
   heading: string;
   /** A stake account page: the h2 that shows it has read the account and says what can be done; null otherwise. */
   ready: string | null;
+  /** What else the route must show once it has read what it needs (before axe and the screenshot). */
+  shows?: ((page: Page) => Promise<void>) | undefined;
+  /** The route reads nothing from the API (a page that needs no wallet and no chain read to say what it says). */
+  noApi?: boolean | undefined;
   screen: string | null;
 };
 
@@ -28,14 +33,37 @@ const ROUTES: readonly SmokeRoute[] = [
   { path: '/protect', heading: 'Protect your stake', ready: null, screen: 'protect-start' },
   { path: `/withdraw/${SMOKE_STAKE}`, heading: 'Withdraw', ready: 'Withdraw 1,250.5 SOL to your main key', screen: 'withdraw' },
   { path: `/extend/${SMOKE_STAKE}`, heading: 'Extend the lock', ready: 'New end of the lock', screen: 'extend' },
+  {
+    // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
+    path: `/rescue?address=${MAIN}`,
+    heading: 'Rescue your stake',
+    ready: null,
+    shows: async (page) => {
+      await expect(page.getByRole('heading', { level: 2, name: 'Which main key may be stolen?' })).toBeVisible();
+      await expect(page.getByText(/^Your stake is locked until /)).toBeVisible();
+      await expect(page.locator('[data-slot="rescue-movable"] article[data-slot="account-row"]')).toHaveCount(1);
+    },
+    screen: 'rescue-start',
+  },
+  {
+    // A broken link: said before anything is read or asked (step 7 spec 8.3).
+    path: '/cosign#tx=@@',
+    heading: 'Co-sign a transaction',
+    ready: null,
+    shows: async (page) => {
+      await expect(page.getByRole('heading', { name: 'This link is broken' })).toBeVisible();
+    },
+    noApi: true,
+    screen: 'cosign-broken',
+  },
 ];
 
 test('every entry route renders under the production headers, without console errors or axe violations', async ({
   page,
   expectNoA11yViolations,
 }) => {
-  // Five pages, each checked by axe in two themes.
-  test.setTimeout(120_000);
+  // Seven pages, each checked by axe in two themes.
+  test.setTimeout(180_000);
   const width = page.viewportSize()?.width ?? 0;
   const apiRequests: string[] = [];
   page.on('request', (request) => {
@@ -72,6 +100,8 @@ test('every entry route renders under the production headers, without console er
         await expect(page.getByRole('button', { name: 'Connect a wallet as Main key' })).toBeVisible();
         expect(apiRequests).toEqual([]);
       }
+      await route.shows?.(page);
+      if (route.noApi === true) expect(apiRequests).toEqual([]);
       if (route.ready !== null) {
         // A stake account page reads its own account, never the search (step 6 spec 4.3).
         await expect(page.getByRole('heading', { level: 2, name: route.ready, exact: true })).toBeVisible();
