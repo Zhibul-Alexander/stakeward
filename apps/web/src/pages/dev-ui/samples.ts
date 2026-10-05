@@ -32,6 +32,7 @@ import type { StatusBadgeStatus } from '@/components/product/status-badge';
 import type { SummaryBatch } from '@/components/product/transaction-summary';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import { buildRecoveryCard, type RecoveryCard } from '@/pages/recovery/view';
 import { cosignUrl } from '@/signing/link';
 import walletSampleA from './wallet-sample-a.svg';
 import walletSampleB from './wallet-sample-b.svg';
@@ -195,6 +196,26 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       wasProtected: row.wasProtected ?? false,
     };
   });
+}
+
+/**
+ * The recovery card of the sample keys (spec 4.7), built by the page's own rules: the route's lock ends in 20 days at
+ * 14:30 UTC, so the time shows and the "lock ends" note appears; a second account has another stake authority; one
+ * more account of the main key has no lock (`others: 1`).
+ */
+export function sampleRecoveryCard(clock: ClockView): RecoveryCard {
+  const lock = (unixTimestamp: bigint): Lockup => ({ unixTimestamp, epoch: 0n, custodian: SAMPLE.secondKey });
+  const soon = clock.unixTimestamp - (clock.unixTimestamp % DAY) + 20n * DAY + 14n * 3_600n + 30n * 60n;
+  const route = stakeAccount({ address: SAMPLE.stakeA, sol: 1_250n, lamportsExtra: 500_000_000n, activation: 'active', lockup: lock(soon) });
+  const managed = stakeAccount({
+    address: SAMPLE.stakeG,
+    sol: 64n,
+    activation: 'active',
+    staker: SAMPLE.serviceStaker,
+    lockup: lock(midnightAfter(clock, 200n)),
+  });
+  const open = stakeAccount({ address: SAMPLE.stakeC, sol: 3n, lamportsExtra: 200_000_000n, activation: 'activating' });
+  return buildRecoveryCard(route, [managed, open], clock);
 }
 
 export type SampleSummary =

@@ -5,6 +5,7 @@ import { TransactionSummarySkeleton } from '@/components/product/transaction-sum
 import { WalletSlot } from '@/components/product/wallet-slot';
 import { t } from '@/i18n';
 import { ProtectDoneView, type ProtectDoneActions } from '@/pages/protect/DoneStep';
+import { RecoveryCardView } from '@/pages/recovery/RecoveryCardView';
 import { SigningView, type SigningActions } from '@/signing/SigningPanel';
 import { NonceBlocked } from '@/signing/NonceGate';
 import { NonceStepView } from '@/signing/NonceStep';
@@ -18,7 +19,7 @@ import {
   type SigningSample,
 } from './flows.ts';
 import { Demo, DevSection } from './layout.tsx';
-import { SAMPLE, SAMPLE_WALLETS, sampleClock } from './samples.ts';
+import { SAMPLE, SAMPLE_WALLETS, sampleClock, sampleRecoveryCard } from './samples.ts';
 
 const noop = () => undefined;
 
@@ -59,8 +60,8 @@ function NonceDemo({ sample }: { sample: NonceSample }) {
 
 /**
  * Flows on /dev/ui (devnet only, loaded lazily like the product components): the signing panel in every phase it
- * explains, signing by link, and the protect wizard's Done screen. Presentational views fed with fixtures; the buttons
- * do nothing.
+ * explains, signing by link, the protect wizard's Done screen and the recovery card. Presentational views fed with
+ * fixtures; the buttons do nothing.
  */
 export function FlowsSection() {
   const [clock] = useState(sampleClock);
@@ -69,6 +70,7 @@ export function FlowsSection() {
   const [nonceSteps, setNonceSteps] = useState<NonceSample[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [doneViews] = useState(() => sampleDoneViews(clock));
+  const [recoveryCard] = useState(() => sampleRecoveryCard(clock));
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +153,9 @@ export function FlowsSection() {
             </Demo>
           ))}
         </div>
+      </DevSection>
+      <DevSection id="recovery" title={t('devUi.flows.recovery')}>
+        <RecoveryCardView card={recoveryCard} />
       </DevSection>
     </>
   );

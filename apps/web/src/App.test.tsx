@@ -22,7 +22,7 @@ describe('app shell', () => {
     ['/extend/Stake11111111111111111111111111111111111111', 'Extend the lock'],
     ['/rescue', 'Rescue your stake'],
     ['/cosign', 'Co-sign a transaction'],
-    ['/recovery/Stake11111111111111111111111111111111111111', 'Recovery card'],
+    ['/recovery/Stake11111111111111111111111111111111111111', 'Stakeward recovery card'],
     ['/stats', 'Stats'],
     ['/no-such-page', 'Page not found'],
   ])('%s shows its heading inside the layout', (path, heading) => {
