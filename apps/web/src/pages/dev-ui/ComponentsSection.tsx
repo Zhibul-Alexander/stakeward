@@ -1,4 +1,5 @@
 import { U64_MAX } from '@stakeward/core';
+import { CoinsIcon, LockIcon, SendIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AccountRow, AccountRowError, AccountRowSkeleton } from '@/components/product/account-row';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
@@ -11,6 +12,7 @@ import { QrCode } from '@/components/product/qr-code';
 import { RiskNote } from '@/components/product/risk-note';
 import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
+import { StatTile } from '@/components/product/stat-tile';
 import { StatusBadge, StatusBadgeSkeleton, statusLabel, type StatusBadgeStatus } from '@/components/product/status-badge';
 import { StepProgress } from '@/components/product/step-progress';
 import {
@@ -202,6 +204,35 @@ export function ComponentsSection() {
           </Demo>
           <Demo label={t('devUi.states.loading')}>
             <SolAmountSkeleton />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.statTile')}>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Demo label={t('devUi.states.normal')}>
+            <StatTile
+              status="ready"
+              icon={CoinsIcon}
+              label={t('stats.tiles.sol.label')}
+              note={t('stats.tiles.sol.note')}
+              value={<SolAmount lamports={1_250_500_000_000n} className="whitespace-normal" />}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <StatTile status="loading" icon={LockIcon} label={t('stats.tiles.accounts.label')} note={t('stats.tiles.accounts.note')} />
+          </Demo>
+          <Demo label={t('devUi.states.empty')}>
+            <StatTile status="ready" icon={SendIcon} label={t('stats.tiles.alerts.label')} note={t('stats.tiles.alerts.note')} value="0" />
+          </Demo>
+          <Demo label={t('devUi.states.error')}>
+            <StatTile
+              status="error"
+              icon={CoinsIcon}
+              label={t('stats.tiles.sol.label')}
+              note={t('stats.tiles.sol.note')}
+              message={t('stats.unavailable')}
+            />
           </Demo>
         </div>
       </DemoGroup>

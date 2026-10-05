@@ -485,6 +485,7 @@
       "statusBadge": "StatusBadge",
       "addressText": "AddressText",
       "solAmount": "SolAmount",
+      "statTile": "StatTile",
       "accountRow": "AccountRow",
       "emptyState": "EmptyState",
       "walletSlot": "WalletSlot",
@@ -596,6 +597,23 @@
       "stale": "Alerts may be late.",
       "notYet": "Monitoring has not run yet",
       "unavailable": "Monitoring status unavailable. Press Refresh to try again."
+    }
+  },
+  "stats": {
+    "unavailable": "Not available",
+    "tiles": {
+      "accounts": {
+        "label": "Stake accounts locked",
+        "note": "Stake accounts Stakeward watches whose lock is in force now."
+      },
+      "sol": {
+        "label": "SOL locked",
+        "note": "All the SOL in those stake accounts: a lock covers the whole balance."
+      },
+      "alerts": {
+        "label": "Alerts sent",
+        "note": "Telegram alerts sent so far about changes to watched stake. Reminders are not counted."
+      }
     }
   },
   "protect": {
