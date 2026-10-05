@@ -1,16 +1,11 @@
 import { shortAddress, type Cluster } from '@stakeward/core';
 import { cn } from 'cn';
 import { CheckIcon, CopyIcon, ExternalLinkIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLUSTER, explorerUrl } from '@/config';
+import { useCopy } from '@/hooks/use-copy';
 import { t } from '@/i18n';
-
-type CopyState = 'idle' | 'copied' | 'failed';
-
-/** How long "Copied" / "Copy failed" stays before the button resets. */
-const COPY_FEEDBACK_MS = 2000;
 
 type AddressTextProps = {
   /** Base58 address, or a transaction signature with `kind="tx"`. */
@@ -41,29 +36,8 @@ export function AddressText({
   cluster = CLUSTER,
   className,
 }: AddressTextProps) {
-  const [copyState, setCopyState] = useState<CopyState>('idle');
+  const { state: copyState, copy: copyText } = useCopy();
   const short = shortAddress(address);
-
-  useEffect(() => {
-    if (copyState === 'idle') return undefined;
-    const timer = setTimeout(() => {
-      setCopyState('idle');
-    }, COPY_FEEDBACK_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [copyState]);
-
-  async function copyAddress() {
-    try {
-      // navigator.clipboard is missing on insecure origins and in some embedded wallet browsers.
-      if (!('clipboard' in navigator)) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(address);
-      setCopyState('copied');
-    } catch {
-      setCopyState('failed');
-    }
-  }
 
   return (
     <span
@@ -87,17 +61,17 @@ export function AddressText({
           type="button"
           variant="ghost"
           size="icon-sm"
-          className="text-muted hover:text-foreground"
+          className="text-muted hover:text-foreground print:hidden"
           aria-label={t('common.copyAddress', { address: short })}
           onClick={() => {
-            void copyAddress();
+            copyText(address);
           }}
         >
           {copyState === 'copied' ? <CheckIcon aria-hidden="true" className="text-success" /> : <CopyIcon aria-hidden="true" />}
         </Button>
       ) : null}
       {explorer ? (
-        <Button asChild variant="ghost" size="icon-sm" className="text-muted hover:text-foreground">
+        <Button asChild variant="ghost" size="icon-sm" className="text-muted hover:text-foreground print:hidden">
           <a
             href={explorerUrl(kind, address, cluster)}
             target="_blank"
@@ -119,7 +93,7 @@ export function AddressText({
         </span>
       ) : null}
       {copyState === 'failed' ? (
-        <span aria-hidden="true" className="self-center text-xs whitespace-nowrap text-danger">
+        <span aria-hidden="true" className="self-center text-xs whitespace-nowrap text-danger print:hidden">
           {t('components.address.copyFailedShort')}
         </span>
       ) : null}
