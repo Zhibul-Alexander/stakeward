@@ -22,6 +22,12 @@ export const WALLET_CHAIN = IS_DEVNET ? SOLANA_DEVNET_CHAIN : SOLANA_MAINNET_CHA
 
 export const SOURCE_CODE_URL = 'https://github.com/Zhibul-Alexander/stakeward';
 
+/** README section "Recover without Stakeward" (GitHub's anchor for that heading), linked from the landing page. */
+export const README_RECOVERY_URL = `${SOURCE_CODE_URL}#recover-without-stakeward`;
+
+/** The checks of the lock mechanism against the real stake program (step 1), linked from the landing FAQ. */
+export const GATE_RESULTS_URL = `${SOURCE_CODE_URL}/blob/main/docs/gate.md`;
+
 /** Path of the landing-page section linked from every footer (UX rule 12). */
 export const CANNOT_DO_PATH = '/#cannot-do';
 

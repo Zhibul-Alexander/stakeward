@@ -5,6 +5,7 @@ import { TransactionSummarySkeleton } from '@/components/product/transaction-sum
 import { WalletSlot } from '@/components/product/wallet-slot';
 import { t } from '@/i18n';
 import { ProtectDoneView, type ProtectDoneActions } from '@/pages/protect/DoneStep';
+import { Wallets } from '@/pages/landing/Wallets.tsx';
 import { RecoveryCardView } from '@/pages/recovery/RecoveryCardView';
 import { SigningView, type SigningActions } from '@/signing/SigningPanel';
 import { NonceBlocked } from '@/signing/NonceGate';
@@ -19,7 +20,14 @@ import {
   type SigningSample,
 } from './flows.ts';
 import { Demo, DevSection } from './layout.tsx';
-import { SAMPLE, SAMPLE_WALLETS, sampleClock, sampleRecoveryCard } from './samples.ts';
+import {
+  SAMPLE,
+  SAMPLE_MATRIX_DATE,
+  SAMPLE_WALLET_PAIRS,
+  SAMPLE_WALLETS,
+  sampleClock,
+  sampleRecoveryCard,
+} from './samples.ts';
 
 const noop = () => undefined;
 
@@ -60,8 +68,8 @@ function NonceDemo({ sample }: { sample: NonceSample }) {
 
 /**
  * Flows on /dev/ui (devnet only, loaded lazily like the product components): the signing panel in every phase it
- * explains, signing by link, the protect wizard's Done screen and the recovery card. Presentational views fed with
- * fixtures; the buttons do nothing.
+ * explains, signing by link, the protect wizard's Done screen, the recovery card and the landing's wallet table filled
+ * as a matrix run would fill it. Presentational views fed with fixtures; the buttons do nothing.
  */
 export function FlowsSection() {
   const [clock] = useState(sampleClock);
@@ -156,6 +164,11 @@ export function FlowsSection() {
       </DevSection>
       <DevSection id="recovery" title={t('devUi.flows.recovery')}>
         <RecoveryCardView card={recoveryCard} />
+      </DevSection>
+      <DevSection id="landing-wallets" title={t('devUi.flows.landingWallets')}>
+        <Demo label={t('devUi.states.filled')}>
+          <Wallets pairs={SAMPLE_WALLET_PAIRS} checkedOn={SAMPLE_MATRIX_DATE} />
+        </Demo>
       </DevSection>
     </>
   );

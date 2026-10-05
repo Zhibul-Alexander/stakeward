@@ -32,6 +32,7 @@ import type { StatusBadgeStatus } from '@/components/product/status-badge';
 import type { SummaryBatch } from '@/components/product/transaction-summary';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import type { PairSupport } from '@/pages/landing/wallet-support';
 import { buildRecoveryCard, type RecoveryCard } from '@/pages/recovery/view';
 import { cosignUrl } from '@/signing/link';
 import walletSampleA from './wallet-sample-a.svg';
@@ -395,3 +396,26 @@ export function sampleJobs(): JobStatusItem[] {
     { address: SAMPLE.stakeJ, status: 'left-out' },
   ];
 }
+
+/**
+ * The landing's wallet table as a matrix run might fill it (wallet-support.ts filling rules): every verdict and every
+ * note at least once, so the /dev/ui 360 px check covers the longest of them. Made up; the landing shows the real data.
+ */
+export const SAMPLE_WALLET_PAIRS: readonly PairSupport[] = [
+  { id: 'phantom+solflare', main: 'phantom', second: 'solflare', here: 'works', link: 'works-with-warning', note: 'new-site-warning' },
+  { id: 'phantom+backpack', main: 'phantom', second: 'backpack', here: 'works-with-warning', link: 'works', note: 'phantom-first' },
+  { id: 'solflare+backpack', main: 'solflare', second: 'backpack', here: 'works', link: 'not-verified', note: 'link-same-browser' },
+  {
+    id: 'phantom+phantom-imported',
+    main: 'phantom',
+    second: 'phantom-imported',
+    here: 'works',
+    link: 'works',
+    note: 'switch-account',
+  },
+  { id: 'ledger-phantom+any', main: 'ledger-phantom', second: 'any', here: 'blind-signing', link: 'blind-signing', note: 'ledger-blind' },
+  { id: 'ledger-solflare+any', main: 'ledger-solflare', second: 'any', here: 'does-not-work', link: 'not-verified', note: null },
+];
+
+/** The matrix date of the sample wallet table. */
+export const SAMPLE_MATRIX_DATE = '2026-10-06';

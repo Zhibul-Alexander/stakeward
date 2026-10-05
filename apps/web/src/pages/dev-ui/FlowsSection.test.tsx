@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import en from '@/i18n/en.json';
 import { FlowsSection } from './FlowsSection.tsx';
 import { SAMPLE } from './samples.ts';
 
@@ -90,5 +91,14 @@ describe('/dev/ui flows', () => {
     expect(document.querySelectorAll('#recovery [data-slot="managed-by"]')).toHaveLength(1);
     expect(document.querySelector('#recovery [data-risk="lock-ends"]')).toHaveTextContent(/, 14:30 UTC the lock ends/);
     expect(screen.getByText(/^This main key has 1 more stake account that this card does not cover/)).toBeInTheDocument();
+
+    // The landing's wallet table as a matrix run would fill it (spec 4.7): every verdict and every note at least once.
+    const wallets = document.getElementById('landing-wallets') as HTMLElement;
+    expect(wallets.querySelectorAll('[data-pair]')).toHaveLength(6);
+    expect(new Set([...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict')))).toEqual(
+      new Set(['not-verified', 'works', 'works-with-warning', 'blind-signing', 'does-not-work']),
+    );
+    expect(wallets).toHaveTextContent('Tested on Solana devnet on 6 October 2026.');
+    for (const note of Object.values(en.landing.wallets.notes)) expect(wallets).toHaveTextContent(note);
   }, 30_000);
 });

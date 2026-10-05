@@ -1,4 +1,4 @@
-import { cliUrl, LEDGER_PUBKEY_COMMAND, recoveryCommands, REMINDER_DAYS, U64_MAX } from '@stakeward/core';
+import { cliUrl, LEDGER_PUBKEY_COMMAND, recoveryCommands, U64_MAX } from '@stakeward/core';
 import { useEffect, useState } from 'react';
 import { AccountRow, AccountRowError, AccountRowSkeleton } from '@/components/product/account-row';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
@@ -26,6 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { t } from '@/i18n';
+import { FaqAnswer } from '@/pages/landing/Faq.tsx';
+import { REMINDER_DAYS_TEXT } from '@/pages/landing/faq.ts';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
 import {
   SAMPLE,
@@ -68,18 +70,7 @@ const VERDICTS: readonly SupportVerdict[] = ['not-verified', 'works', 'works-wit
 const COMMANDS = recoveryCommands({ mainKeyAddress: SAMPLE.mainKey, url: cliUrl('devnet') });
 
 /** The FAQ's parameter in these answers, as the landing fills it: "30, 14, 7, 3, and 1". */
-const FAQ_PARAMS = { days: new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(REMINDER_DAYS.map(String)) };
-
-/** An FAQ answer: one paragraph per blank-line-separated block of its en.json text. */
-function FaqAnswer({ text }: { text: string }) {
-  return (
-    <>
-      {text.split('\n\n').map((paragraph) => (
-        <p key={paragraph}>{paragraph}</p>
-      ))}
-    </>
-  );
-}
+const FAQ_PARAMS = { days: REMINDER_DAYS_TEXT };
 
 /** The action buttons a row would have on /app for its status. */
 function rowActions(row: SampleRow) {
