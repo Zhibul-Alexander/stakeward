@@ -6,71 +6,42 @@
 ## Шаг 0. Подготовка
 
 - [ ] `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` проходят на чистом клоне.
-- [ ] GitHub Actions зелёные на последнем push.
-- [ ] Заглушка prod открывается по постоянному домену, заголовки безопасности на месте (`curl -I https://<домен>/`).
-- [ ] Проверка Helius (getProgramAccounts по стейк-программе на devnet и mainnet) записана в docs/DECISIONS.md.
+- [ ] GitHub Actions зелёные на последнем push. 05.10.2026: check зелёный, e2e красный на build/product (#9, #10): axe находит недостаточный контраст кнопок на ширине 360, каждый раз разных, часть тестов проходит со второй попытки.
+- [x] 05.10.2026: prod открывается на временном адресе https://stakeward-prod.zhibul-alexander.workers.dev (свой домен не куплен, DECISIONS.md «Развёртывание»), заголовки безопасности на месте (`curl -I`).
+- [x] 05.10.2026: проверка Helius записана в docs/DECISIONS.md, раздел «Проверка RPC».
 
 ## Шаг 1. Проверка механизма
 
-- [ ] Devnet: спонсор `.keys/devnet-funder.json` (`D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`) пополнен минимум на 1,01058496 SOL (https://faucet.solana.com), `pnpm gate:devnet` прошёл: 21 из 21 шага совпали, возврат средств завершён.
-- [ ] Mainnet: на одноразовый ключ `.keys/mainnet-gate.json` (`7fmyecft8rfkYpndpyAsm74TCZCn1NfMpAtzZD2Y9f6v`) переведено 0,02 SOL (минимум 0,00238128), `pnpm gate:mainnet` прошёл: 8 из 8 шагов совпали. Остаток выведен: `solana transfer --from .keys/mainnet-gate.json <адрес> ALL --url mainnet-beta`.
+- [x] 05.10.2026, devnet: спонсор `.keys/devnet-funder.json` (`D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`) пополнен на 5 SOL, `pnpm gate:devnet` через Helius: 21 из 21 шага совпали, возврат средств завершён.
+- [x] 05.10.2026, mainnet: на одноразовый ключ `.keys/mainnet-gate.json` (`7fmyecft8rfkYpndpyAsm74TCZCn1NfMpAtzZD2Y9f6v`) пришли 0,021 SOL (вывод с биржи), `pnpm gate:mainnet`: 8 из 8 шагов совпали. Остаток 0,0209302 SOL переведён на Phantom 1 `KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw`, транзакция `4pZgWtYCsEBpvX2Q1mum2duuF3FUsbz3hYL1mJ3gk4e1Lagk48NopFFk2YwvnEjJnSmdoypH5rp3Y158MjzpuqU2`. Отправителю остаток не возвращаем: при выводе с биржи отправитель — общий кошелёк биржи.
 - [ ] docs/gate.md прочитан: по каждой проверке есть результат и подпись или код ошибки для LiteSVM, devnet и mainnet.
 
 ## Шаг 3. Каркас, дизайн-система, проверка кошельков
 
-Все команды — из корня репозитория, если не сказано иначе. Адрес dev дальше: `https://stakeward-dev.<поддомен>.workers.dev`, его печатает wrangler при деплое.
+Все команды — из корня репозитория, если не сказано иначе. Адрес dev: https://stakeward-dev.zhibul-alexander.workers.dev.
 
 ### а) Первый деплой в dev
 
-- [ ] `cd apps/worker && pnpm exec wrangler login`: откроется браузер, разрешить доступ к аккаунту Cloudflare. Вернуться в корень: `cd ../..`.
-- [ ] `cd apps/worker && pnpm exec wrangler d1 create stakeward-dev && cd ../..`. Из вывода скопировать `database_id` и вписать в `apps/worker/wrangler.jsonc`, в `env.dev.d1_databases`, вместо `00000000-0000-0000-0000-000000000001`. Если wrangler предложит сам дописать базу в конфиг, отказаться: id вписывается руками именно в окружение `dev`.
-- [ ] `pnpm --filter @stakeward/worker db:migrate:dev`, на вопрос о применении миграции ответить yes. В выводе: `0001_init.sql` применена.
-- [ ] В https://dashboard.helius.dev скопировать devnet URL с ключом. Создать файл `apps/worker/.dev.vars.dev` с одной строкой:
-  `RPC_URL=https://devnet.helius-rpc.com/?api-key=<ключ>`
-  Файл в .gitignore, в репозиторий он не попадёт. С шага 5 воркер требует ещё пять значений (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`): без них первый деплой не пройдёт. Как их получить — «Шаг 5», пункт а; удобнее сделать это сразу, до первого деплоя. Миграции: `0001`–`0003`.
-- [ ] Первый деплой (секрет обязателен, поэтому он идёт из файла):
-  ```sh
-  pnpm --filter @stakeward/web build:devnet
-  cd apps/worker
-  pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev
-  cd ../..
-  ```
-  Если wrangler попросит выбрать поддомен workers.dev, выбрать любой. Следующие деплои — просто `pnpm deploy:dev`: секрет уже хранится в Cloudflare.
-- [ ] Открыть адрес dev: лендинг-заглушка; `/app`, `/dev/ui`, `/dev/cosign` открываются.
-- [ ] `curl -s https://stakeward-dev.<поддомен>.workers.dev/api/health` сразу после деплоя отвечает 503 `{"ok":false,"lastMonitorRunAt":null,"now":"…"}`: мониторинг ещё не прошёл ни разу. Через 2–15 минут (cron включается не сразу) — 200 и свежий `lastMonitorRunAt`.
-- [ ] `curl -sI https://stakeward-dev.<поддомен>.workers.dev/` показывает `content-security-policy`, `referrer-policy: no-referrer`, `x-content-type-options: nosniff`, `strict-transport-security`.
-- [ ] RPC через воркер работает:
-  ```sh
-  curl -s -X POST -H 'content-type: application/json' \
-    -d '{"jsonrpc":"2.0","id":1,"method":"getEpochInfo","params":[{"commitment":"confirmed"}]}' \
-    https://stakeward-dev.<поддомен>.workers.dev/api/rpc
-  ```
-  В ответе `result` с `epoch` и `blockHeight`. Если вместо этого 503 «RPC is not configured», секрет не дошёл: повторить деплой с `--secrets-file`.
+Сделано 05.10.2026 по API-токену владельца, вместе с prod: базы D1, миграции 0001–0003, секреты, деплой, вебхуки ботов (DECISIONS.md, «Развёртывание»). Следующие деплои: `set -a; . ~/.config/stakeward/secrets.env; set +a; pnpm deploy:dev`.
+
+- [ ] Открыть адрес dev в браузере: лендинг; `/app`, `/dev/ui`, `/dev/cosign` открываются (curl 05.10.2026: все 200).
+- [x] 05.10.2026: `/api/health` сразу после деплоя ответил 503 `{"ok":false,"lastMonitorRunAt":null,…}`, после первого прохода в 19:18 UTC — 200.
+- [x] 05.10.2026: `curl -sI` показывает `content-security-policy`, `referrer-policy: no-referrer`, `x-content-type-options: nosniff`, `strict-transport-security`.
+- [x] 05.10.2026: RPC через воркер работает (getEpochInfo: эпоха 1175), метод вне списка получает -32601.
 
 ### б) Тестовые стейк-аккаунты на devnet
 
-- [ ] Пополнить спонсора `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` на https://faucet.solana.com. dev-accounts с параметрами по умолчанию нужно 1,10399392 SOL. Если `pnpm gate:devnet` из шага 1 ещё не прогнан, запустить его первым: он возвращает всё, кроме комиссий, и тогда 1,11 SOL хватит на обе команды.
-- [ ] Выбрать кошелёк, который будет Main key (например, Phantom), скопировать его адрес. `pnpm dev-accounts <адрес> --dry-run` печатает план и точную сумму, ничего не отправляя.
-- [ ] `pnpm dev-accounts <адрес>`: появятся делегированный (1 SOL) и неделегированный (0,1 SOL) стейк-аккаунты этого адреса, без замка. Для каждого следующего кошелька в роли Main key хватит одного аккаунта: `pnpm dev-accounts <адрес> --only undelegated` (около 0,1 SOL).
-- [ ] На каждый кошелёк в роли Main key взять 1 SOL с https://faucet.solana.com: из него платятся комиссии и залог nonce-аккаунта (около 0,00106 SOL, возвращается при закрытии). Second key SOL не нужен.
-- [ ] Открыть `<адрес dev>/app?address=<адрес Main key>`: два аккаунта со статусом Not protected, строка «Monitoring has not run yet» (мониторинг появится на шаге 5).
+- [x] 05.10.2026: спонсор `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` пополнен на 5 SOL.
+- [x] 05.10.2026: Main key — Phantom 1 `KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw`. `pnpm dev-accounts` создал делегированный `9SV2x3NahSEWTbAizM26q8z5AGdAPCVwtiPtULCmrph2` (1 SOL) и неделегированный `6GqZV9JSD9z6EdfvFYzPr2VaT2Ssrb2P54hdTF5aPkv3` (0,1 SOL), без замка. Second key — Phantom 2 `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK`.
+- [x] 05.10.2026: на Phantom 1 переведено 0,2 SOL со спонсора на комиссии и залог nonce-аккаунта (вместо faucet). Second key SOL не нужен.
+- [ ] Открыть `<адрес dev>/app?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw`: два аккаунта со статусом Not protected.
 
 ### в) Матрица кошельков на /dev/cosign
 
 Подготовка:
-- [ ] В каждом кошельке включить devnet. Phantom: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet. Solflare и Backpack: в настройках сети выбрать Devnet.
+- [ ] В Phantom включить devnet: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet. Режим действует на оба аккаунта.
 
-Пары (Main key / Second key):
-
-| # | Main key | Second key |
-|---|---|---|
-| 1 | Phantom | Solflare |
-| 2 | Phantom | Backpack |
-| 3 | Solflare | Backpack |
-| 4 | Phantom, аккаунт 1 | Phantom, аккаунт 2 |
-| 5–7 | Ledger через Phantom, через Solflare, через Backpack | любой другой кошелёк |
-
-Для пар 5–7 Ledger-аккаунт подключается как Main key: так подписывает владелец крупного стейка. Ему тоже нужны SOL с faucet и свой аккаунт (`pnpm dev-accounts <адрес Ledger> --only undelegated`).
+Пара (Main key / Second key): Phantom 1 / Phantom 2. У владельца нет Ledger и других кошельков (05.10.2026), поэтому Solflare, Backpack и Ledger не проверяются; в FAQ так и пишем: проверен только Phantom. Если кошельки появятся, пары те же, что были: Phantom + Solflare, Phantom + Backpack, Solflare + Backpack, Ledger через каждый из них как Main key (ему нужен свой аккаунт: `pnpm dev-accounts <адрес Ledger> --only undelegated`).
 
 Каждую пару прогнать четыре раза:
 - [ ] blockhash, Main key first;
@@ -90,7 +61,7 @@
 
 Что записать (в «6. Reports» у каждого отчёта три пустые строки в конце):
 - [ ] «Wallet warnings shown:»: точный текст каждого предупреждения кошелька или `none`.
-- [ ] «Ledger showed fields (yes/no):»: `yes`, если Ledger показал действие и поля замка (второй ключ, дата); `no`, если просил слепую подпись или показал только хеш. Слепую подпись можно включить в приложении Solana на Ledger, чтобы довести прогон, но в отчёте написать, что она понадобилась.
+- [ ] «Ledger showed fields (yes/no):»: `no Ledger`. С Ledger было бы так: `yes`, если Ledger показал действие и поля замка (второй ключ, дата); `no`, если просил слепую подпись или показал только хеш.
 - [ ] «Notes:»: всё остальное, например, кошелёк не отдал второй аккаунт или путал, какой аккаунт активен.
 - [ ] Прошла ли транзакция на nonce, страница пишет сама в строке Send.
 - [ ] В конце нажать «Copy all (N)», вставить текст в чат с Claude и дописать три строки к каждому отчёту. По ним я записываю итог в DECISIONS.md и до шага 4 правлю порядок подписей и список поддерживаемых пар.
@@ -107,8 +78,9 @@
 
 ### д) Проверка домена в Phantom
 
-- [ ] Открыть сайт в браузере с Phantom и подключить кошелёк. Если Phantom пишет «This domain is new or has not been reviewed yet. Proceed with caution.», это обычно проходит само за несколько дней.
-- [ ] Если предупреждение держится больше недели, отправить домен через форму Phantom: https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform (ссылка со страницы https://docs.phantom.com/developer-powertools/domain-and-transaction-warnings). Главное — постоянный домен prod; адрес на workers.dev стоит отправлять, только если предупреждение мешает матрице.
+- [ ] Открыть https://stakeward-prod.zhibul-alexander.workers.dev в браузере с Phantom и подключить кошелёк. Если Phantom пишет «This domain is new or has not been reviewed yet. Proceed with caution.», в тот же день отправить форму Phantom: https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform (ссылка со страницы https://docs.phantom.com/developer-powertools/domain-and-transaction-warnings). Phantom советует ждать неделю, но первые пользователи придут 10.10, а на workers.dev много фишинга.
+- [ ] Поля формы: Project Name — Stakeward; dApp website URL — адрес prod; Transaction Link — шаг 2 mainnet из docs/gate.md (SetLockupChecked); Team Information — https://github.com/Zhibul-Alexander; Repository Links — https://github.com/Zhibul-Alexander/stakeward; Social Media Handles — X или Telegram владельца. Describe your dApp:
+  > Stakeward is a free, open-source, non-custodial web app that protects natively staked SOL with the lockup built into the Solana stake program. Users set a second wallet they control as the lockup custodian of their existing stake accounts, so a stolen main key can neither withdraw the stake nor change its withdraw authority. There is no custom on-chain program: transactions contain only Stake program, System nonce and Compute Budget instructions.
 
 ## Шаг 4. Защита
 
@@ -133,41 +105,29 @@
 Нужен развёрнутый в dev шаг 4 (мастер защиты).
 
 ### а) Боты и секреты
-- [ ] В Telegram открыть @BotFather → `/newbot` дважды: «Stakeward Dev» (username, например, `stakeward_dev_bot`) и «Stakeward». Сохранить оба токена.
-- [ ] Свой chat id: написать что-нибудь dev-боту, затем `curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"` (до setWebhook) и взять `message.chat.id`.
-- [ ] Секрет вебхука на каждое окружение: `openssl rand -hex 32`.
-- [ ] Дописать в `apps/worker/.dev.vars.dev` (позже так же `.dev.vars.prod`):
-  ```
-  TELEGRAM_BOT_TOKEN=<токен dev-бота>
-  TELEGRAM_WEBHOOK_SECRET=<секрет>
-  ADMIN_CHAT_ID=<ваш chat id>
-  TELEGRAM_BOT_USERNAME=<username без @>
-  SITE_ORIGIN=https://stakeward-dev.<поддомен>.workers.dev
-  ```
-- [ ] `pnpm --filter @stakeward/worker db:migrate:dev`: применены `0002_monitor.sql` и `0003_pending_index.sql`.
-- [ ] Деплой с секретами:
-  ```sh
-  pnpm --filter @stakeward/web build:devnet
-  cd apps/worker && pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev && cd ../..
-  ```
+- [x] 05.10.2026: боты `@stakeward_dev_bot` и `@stakeward_bot`, chat id владельца (@userinfobot), секреты вебхука, секреты обоих окружений в Cloudflare, миграции 0001–0003 (DECISIONS.md, «Развёртывание»). Файлы секретов окружений: `~/.config/stakeward/dev.vars` и `prod.vars` на VPS.
 
 ### б) Регистрация бота (из корня репозитория)
+Сделано 05.10.2026 для обоих ботов; команды ниже нужны для повтора, например после смены адреса сайта. Для prod — `prod.vars`.
 ```sh
-set -a; . apps/worker/.dev.vars.dev; set +a
+set -a; . ~/.config/stakeward/dev.vars; set +a
 API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
 curl -sS "$API/setWebhook" --data-urlencode "url=$SITE_ORIGIN/api/telegram/webhook" \
   --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
   --data-urlencode 'allowed_updates=["message","my_chat_member"]' -d drop_pending_updates=true
 curl -sS "$API/setMyCommands" -H 'Content-Type: application/json' -d '{"commands":[
-  {"command":"start","description":"Alerts for a wallet: /start <address>"},
+  {"command":"start","description":"Get alerts for a wallet: /start <address>"},
   {"command":"status","description":"Wallets this chat follows"},
-  {"command":"stop","description":"Turn off all alerts in this chat"}]}'
-curl -sS "$API/setMyDescription" --data-urlencode "description=Alerts for stake accounts protected with Stakeward. Alerts only link to $SITE_ORIGIN. Stakeward never asks for your seed phrase."
-curl -sS "$API/setMyShortDescription" --data-urlencode "short_description=Stakeward alerts. Only $SITE_ORIGIN is Stakeward."
+  {"command":"stop","description":"Turn off all alerts in this chat"},
+  {"command":"help","description":"How the alerts work"}]}'
+curl -sS "$API/setMyDescription" --data-urlencode "description=Stakeward alerts for natively staked SOL. Send /start followed by a wallet address to get a message when one of its stake accounts changes and before a lock ends. Alerts only link to $SITE_ORIGIN. Stakeward never asks for your seed phrase."
+curl -sS "$API/setMyShortDescription" --data-urlencode "short_description=Alerts for SOL stake protected by Stakeward. Site: $SITE_ORIGIN"
 curl -sS "$API/getWebhookInfo"
 ```
-- [ ] В выводе `getWebhookInfo`: верный `url`, `pending_update_count: 0`, нет `last_error_message`.
-- [ ] Через 2–4 минуты `curl -i $SITE_ORIGIN/api/health` отвечает 200 со свежим `lastMonitorRunAt`. Cron может включаться до 15 минут после деплоя.
+У dev-бота оба описания начинаются с «Devnet test bot.».
+- [x] 05.10.2026: `getWebhookInfo` у обоих ботов: верный `url`, `pending_update_count: 0`, нет `last_error_message`.
+- [x] 05.10.2026, dev: `/api/health` — 200, первый проход в 19:18:10 UTC.
+- [ ] Prod: `/api/health` отвечает 200 со свежим `lastMonitorRunAt` (cron может включаться до 15 минут после деплоя).
 
 ### в) Проверяю я
 - [ ] Открыть `<адрес dev>/app?address=<Main key>`, нажать Get alerts in Telegram, в боте нажать Start. Ответ «Alerts are on for …». `/status` показывает кошелёк и число аккаунтов.
@@ -178,6 +138,7 @@ curl -sS "$API/getWebhookInfo"
 - [ ] По желанию: заблокировать бота, разблокировать, `/status` показывает, что привязок нет.
 
 ### г) CPU (решение Free или Paid)
+Решение 05.10.2026: пока Free. Первый проход dev (0 строк, холодный изолят) занял 9 мс CPU из 10.
 - [ ] Через сутки в Cloudflare: Workers & Pages → stakeward-dev → Observability → Logs. Отфильтровать вызовы cron (scheduled), посмотреть CPU time (поле `$workers.cpuTimeMs`, если имя другое — колонка CPU time). Прислать в чат:
   - максимум за 24 часа;
   - есть ли исходы Exceeded CPU;

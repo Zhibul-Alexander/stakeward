@@ -476,17 +476,31 @@ Not protected нейтральный: у нового пользователя �
 |---|---|---|---|---|---|
 | api.devnet.solana.com | 63rAwzgKQ7P5CSHVtQi6Gasu3wVKhChmzxA2H2A5ssRD | 4 аккаунта: 34, 42, 56 мс | 4, 75 мс | 4/4, все с этим withdrawer, 75 мс | 102 мс |
 | api.mainnet-beta.solana.com | 57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6 | 6 аккаунтов: 45, 37, 40 мс | 6, 38 мс | 6/6, все с этим withdrawer, 36 мс | 159 мс |
+| devnet.helius-rpc.com, 05.10 | 63rAwzgKQ7P5CSHVtQi6Gasu3wVKhChmzxA2H2A5ssRD | 3 аккаунта: 172, 121, 190 мс | 3, 117 мс | 3/3, все с этим withdrawer, 196 мс | 231 мс |
+| mainnet.helius-rpc.com, 05.10 | 57RQ3ocAibVdC3n3S9i4gT39EpF4DhRCbqAivyg6wtQ6 | 6 аккаунтов: 79, 65, 69 мс | 6, 31 мс | 6/6, все с этим withdrawer, 43 мс | 106 мс |
 
 Замерено с машины разработки. Публичные узлы, бесплатный уровень (`x-ratelimit-method-limit: 10` на getProgramAccounts). Для prod они не годятся, нужен Helius.
 
-**Проверка Helius ждёт ключа.** Команды для владельца (ключ не попадает в вывод):
+Helius, бесплатный план, 05.10.2026, тот же VPS: все запросы прошли с первого раза, без ошибок и 429. На gPA он медленнее публичных узлов (65–190 мс против 34–56), зато принимает запросы воркера, а публичные узлы отвечают ему 403 (D46). У withdrawer на devnet с 02.10 стало на один аккаунт меньше: это чужой кошелёк, его аккаунты меняются. Команда та же, ключ не попадает в вывод: `pnpm check-rpc "https://<сеть>.helius-rpc.com/?api-key=$HELIUS_API_KEY"`.
 
-```sh
-pnpm check-rpc "https://devnet.helius-rpc.com/?api-key=$HELIUS_KEY"
-pnpm check-rpc "https://mainnet.helius-rpc.com/?api-key=$HELIUS_KEY"
-```
+## Развёртывание (05.10.2026)
 
-Результат дописать в таблицу выше.
+Первый деплой сделан из отдельной сессии по API-токену владельца: шаблон Edit Cloudflare Workers плюс Account · D1 · Edit. Ключи владельца лежат на VPS вне репозитория, в `~/.config/stakeward/secrets.env`. Из них собраны файлы окружений `~/.config/stakeward/dev.vars` и `prod.vars` для `wrangler deploy --secrets-file`.
+
+| окружение | адрес | кластер | база D1 (WEUR) |
+|---|---|---|---|
+| dev | https://stakeward-dev.zhibul-alexander.workers.dev | devnet | stakeward-dev `ba00f60b-bd9d-443c-8928-268070d4967d` |
+| prod | https://stakeward-prod.zhibul-alexander.workers.dev | mainnet | stakeward-prod `6fd2892c-c158-4235-9ef2-055e490eccf3` |
+
+- Домен временный: поддомен аккаунта на workers.dev. Владелец решил не покупать домен сейчас; это расходится с CLAUDE.md, где prod с первого дня стоит на постоянном домене. Проверку Phantom проходит именно этот адрес. Переезд на свой домен означает `routes` с `custom_domain`, новый `SITE_ORIGIN`, новые описания ботов, правку README и новую проверку Phantom. Фишинга на workers.dev много (Fortra, 2024), поэтому форму Phantom отправляем в день деплоя prod. По D39 кэш поиска на workers.dev не работает: каждый поиск — getProgramAccounts в Helius, 10 кредитов.
+- В prod выкачена текущая сборка приложения для mainnet, а не заглушка, хотя по шагам 0 и 8 приложение должно было заменить заглушку только на шаге 8. Отдельной заглушки в коде больше нет, страниц /dev в сборке mainnet нет (D30), а проверке Phantom нужна живая страница. Адрес prod не публикуем до проверки владельцем на mainnet (шаг 9).
+- План Workers — Free, решение владельца от 05.10. `MONITOR_PLAN` остаётся `free`.
+- Миграции 0001–0003 применены на обе базы (`wrangler d1 migrations apply DB --remote`).
+- `RPC_URL` — Helius devnet и mainnet. `RPC_FALLBACK_URL` не задан: публичные узлы отвечают воркеру 403 (D46).
+- Боты: dev `@stakeward_dev_bot`, prod `@stakeward_bot`. Вебхук `<адрес>/api/telegram/webhook` с `secret_token`, `allowed_updates` — message и my_chat_member, `drop_pending_updates`. Команды /start, /status, /stop, /help. Описание и короткое описание называют адрес сайта (§11), у dev-бота с пометкой «Devnet test bot».
+- Проверено сразу после деплоя: заголовки безопасности на `/`; `/api/rpc` проводит getEpochInfo и отвечает -32601 на getProgramAccounts; `/api/telegram/link` отвечает 302 на нужного бота; вебхук с чужим секретом получает 401, со своим — ответ на /help; `/api/health` отдаёт 503 до первого прохода.
+- Первый проход мониторинга dev в 19:18:10 UTC: исход ok, 0 строк, CPU 9 мс, 844 мс по часам. Пустой проход в холодном изоляте уже съедает 9 из 10 мс бесплатного плана (§8: владелец предупреждён). Первый проход prod на момент записи не подтверждён.
+- Следующие деплои: `set -a; . ~/.config/stakeward/secrets.env; set +a`, затем `pnpm deploy:dev` или `pnpm deploy:prod`. Секреты уже хранятся в Cloudflare.
 
 ## Зависимости
 
