@@ -12,9 +12,9 @@ const T_MS = Number(LOCK_UNTIL) * 1000;
 const DAY_MS = 86_400_000;
 const SPEC: StakeAccountSpec = { state: 'delegated', staker: MAIN, withdrawer: MAIN, custodian: SECOND, unixTimestamp: LOCK_UNTIL };
 
-/** `days` before T at `time` (UTC), as ISO. */
-function before(days: number, time: string): string {
-  return `${new Date(T_MS - days * DAY_MS).toISOString().slice(0, 10)}T${time}Z`;
+/** `days` before the lock end `endMs` (default T) at `time` (UTC), as ISO. */
+function before(days: number, time: string, endMs = T_MS): string {
+  return `${new Date(endMs - days * DAY_MS).toISOString().slice(0, 10)}T${time}Z`;
 }
 
 async function watchedAt(iso: string, spec: StakeAccountSpec = SPEC): Promise<Harness> {
@@ -83,6 +83,50 @@ describe('reminders', () => {
       ['REMINDER_7', { days: 7, lockUntil: LOCK_UNTIL.toString() }],
       ['REMINDER_30', { days: 30, lockUntil: extended.toString() }],
     ]);
+  });
+
+  it('a lock extended after the 30-day reminder: the 30-day one again, 30 days before the new end', async () => {
+    const h = await watchedAt(before(31, '05:00:00'));
+    h.at(before(30, '06:30:00'));
+    expect(await h.pass()).toMatchObject({ reminders: 1 });
+
+    // Extended from the reminder's button, the same day: six months more.
+    const extended = LOCK_UNTIL + 180n * 86_400n;
+    const extendedMs = Number(extended) * 1000;
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: extended });
+    h.at(before(30, '12:00:00'));
+    expect(await h.pass()).toMatchObject({ events: 1, daily: false, reminders: 0 });
+    expect((await h.readAccounts())[0]).toMatchObject({ lock_until: extended.toString(), last_reminder_days: null });
+
+    for (const [days, due] of [
+      [31, 0],
+      [30, 1],
+      [29, 0],
+    ] as const) {
+      h.at(before(days, '06:30:00', extendedMs));
+      expect(await h.pass()).toMatchObject({ outcome: 'ok', daily: true, reminders: due });
+    }
+    expect(await reminders(h)).toEqual([
+      ['REMINDER_30', { days: 30, lockUntil: LOCK_UNTIL.toString() }],
+      ['REMINDER_30', { days: 30, lockUntil: extended.toString() }],
+    ]);
+  });
+
+  it('protected again after the lock ended: the 1-day reminder again, before the new end', { timeout: 15_000 }, async () => {
+    const h = await watchedAt(before(2, '05:00:00'));
+    h.at(before(1, '06:30:00'));
+    expect(await h.pass()).toMatchObject({ reminders: 1 });
+    h.at(before(0, '12:00:00'));
+    expect(await h.pass()).toMatchObject({ events: 1 });
+
+    const relocked = LOCK_UNTIL + 5n * 86_400n;
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: relocked });
+    h.at(before(0, '12:02:00'));
+    expect(await h.pass()).toMatchObject({ events: 1 });
+    h.at(before(1, '06:30:00', Number(relocked) * 1000));
+    expect(await h.pass()).toMatchObject({ daily: true, reminders: 1 });
+    expect((await reminders(h)).at(-1)).toEqual(['REMINDER_1', { days: 1, lockUntil: relocked.toString() }]);
+    expect((await h.readEvents()).map((e) => e.type)).toEqual(['REMINDER_1', 'EXPIRED', 'LOCKUP_CHANGED', 'REMINDER_1']);
   });
 
   it('a row first watched 10 days before T gets no late 14-day reminder, the 7-day one on time', async () => {

@@ -315,6 +315,18 @@ describe('monitor chunk statements', () => {
     expect(rows).toEqual({ [key(10)]: 1100, [key(11)]: 1000 });
   });
 
+  it('CHUNK_UPDATE keeps the last reminder threshold while the lock end stays, clears it for a new end', async () => {
+    await seed(watchRow(10, { lastReminderDays: 30 }), watchRow(11, { stakeAccount: key(11), lastReminderDays: 30 }));
+    const version = { prevSlot: 1000, prevCheckedAt: NOW_MS - 120_000, slot: 1100, checkedAt: NOW_MS, fingerprint: null };
+    const result = await chunkUpdateStatement(db, [
+      { ...watchRow(10), lamports: '10000000001', ...version },
+      { ...watchRow(11, { stakeAccount: key(11) }), lockUntil: (LOCK_UNTIL + 86_400n).toString(), ...version },
+    ]).run();
+    expect(result.meta.changes).toBe(2);
+    const days = Object.fromEntries((await page()).map((r) => [r.stake_account, r.last_reminder_days]));
+    expect(days).toEqual({ [key(10)]: 30, [key(11)]: null });
+  });
+
   it('KNOWN_LIVE: the listed accounts that have a live row', async () => {
     await seed(watchRow(10), watchRow(11));
     await closeRow(key(11));

@@ -102,13 +102,17 @@ WHERE EXISTS (SELECT 1 FROM accounts a
                 AND a.slot = e.value ->> '$.ps' AND a.checked_at = e.value ->> '$.pc')
 ON CONFLICT (stake_account, type, slot) DO NOTHING`,
 
-  // ?1 = [RowUpdate]. Compare-and-set on the version; comes AFTER CHUNK_EVENTS in the same batch.
+  // ?1 = [RowUpdate]. Compare-and-set on the version; comes AFTER CHUNK_EVENTS in the same batch. A new lock end
+  // starts the reminders over (SET reads the row as it was before the update): the threshold last sent for the old
+  // end must not hold back the same threshold for the new one (an extension right after the 30-day reminder).
   CHUNK_UPDATE: `UPDATE accounts SET
   withdrawer = u.value ->> '$.withdrawer', staker = u.value ->> '$.staker', custodian = u.value ->> '$.custodian',
   lock_until = CAST(u.value ->> '$.lockUntil' AS INTEGER), lamports = u.value ->> '$.lamports',
   state = u.value ->> '$.state', voter = u.value ->> '$.voter',
   activation_epoch = u.value ->> '$.activationEpoch', deactivation_epoch = u.value ->> '$.deactivationEpoch',
-  slot = u.value ->> '$.slot', checked_at = u.value ->> '$.checkedAt', fingerprint = u.value ->> '$.fingerprint'
+  slot = u.value ->> '$.slot', checked_at = u.value ->> '$.checkedAt', fingerprint = u.value ->> '$.fingerprint',
+  last_reminder_days = CASE WHEN accounts.lock_until = CAST(u.value ->> '$.lockUntil' AS INTEGER)
+                            THEN accounts.last_reminder_days END
 FROM json_each(?1) AS u
 WHERE accounts.stake_account = u.value ->> '$.stakeAccount'
   AND accounts.slot = u.value ->> '$.prevSlot' AND accounts.checked_at = u.value ->> '$.prevCheckedAt'`,

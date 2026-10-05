@@ -379,8 +379,8 @@ const DAY_SECONDS = 86_400n;
 /**
  * Which reminder is due now, or null. The due threshold is the smallest of {@link REMINDER_DAYS} that the time left
  * fits in (6.5 days left -> 7). It is due unless it equals `lastReminderDays` (the D1 column the worker stores the
- * result in). A threshold larger than the last one means the lock was extended, so the reminders start over without
- * the worker resetting the column. Null when the lock has ended or more than 30 days are left.
+ * result in; the worker clears it when the lock end changes, so a new end starts the reminders over even when its
+ * first threshold is the one last sent). Null when the lock has ended or more than 30 days are left.
  */
 export function reminderDue(lockUntil: bigint, now: bigint, lastReminderDays: number | null): number | null {
   const left = lockUntil - now;
