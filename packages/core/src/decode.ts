@@ -1,5 +1,5 @@
 import type { Address, ReadonlyUint8Array } from '@solana/kit';
-import { getStakeStateAccountDecoder } from '@solana-program/stake';
+import { getStakeStateAccountDecoder, getStakeStateAccountEncoder, type StakeStateV2Args } from '@solana-program/stake';
 import { STAKE_ACCOUNT_SIZE, STAKE_PROGRAM_ADDRESS } from './constants.ts';
 
 /** Lockup of a stake account. Values are raw chain values (seconds, epochs). */
@@ -123,4 +123,48 @@ export function decodeStakeAccount(raw: RawAccount): DecodeResult {
       };
     }
   }
+}
+
+/** Built once, like the decoder. Bundles that never encode (the site) drop it. */
+const stakeStateAccountEncoder = /* @__PURE__ */ getStakeStateAccountEncoder();
+
+/** The fields of a stake account that live in its data. */
+export type StakeAccountData = Pick<StakeAccount, 'rentExemptReserve' | 'staker' | 'withdrawer' | 'lockup' | 'delegation'>;
+
+/**
+ * The 200 data bytes of a stake account, written with the generated stake client: Initialized without a delegation,
+ * Stake with one. `decodeStakeAccount` reads the same fields back. What Stakeward never reads is zero: the deprecated
+ * warmup rate, credits_observed and the stake flags. For synthetic accounts (the worker's warm-up); no transaction
+ * carries these bytes.
+ */
+export function encodeStakeAccountData(account: StakeAccountData): Uint8Array {
+  const meta = {
+    rentExemptReserve: account.rentExemptReserve,
+    authorized: { staker: account.staker, withdrawer: account.withdrawer },
+    lockup: account.lockup,
+  };
+  const { delegation } = account;
+  const state: StakeStateV2Args =
+    delegation === null
+      ? { __kind: 'Initialized', fields: [meta] }
+      : {
+          __kind: 'Stake',
+          fields: [
+            meta,
+            {
+              delegation: {
+                voterPubkey: delegation.voter,
+                stake: delegation.stake,
+                activationEpoch: delegation.activationEpoch,
+                deactivationEpoch: delegation.deactivationEpoch,
+                reserved: new Array<number>(8).fill(0),
+              },
+              creditsObserved: 0n,
+            },
+            { bits: 0 },
+          ],
+        };
+  const data = new Uint8Array(STAKE_ACCOUNT_SIZE);
+  data.set(stakeStateAccountEncoder.encode({ state }));
+  return data;
 }
