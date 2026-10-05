@@ -66,16 +66,31 @@ export function monitorConfig(env: Env): MonitorConfig {
   const planName: string = env.MONITOR_PLAN;
   if (!isCluster(cluster)) throw new MonitorConfigError('unknown CLUSTER');
   if (planName !== 'free' && planName !== 'paid') throw new MonitorConfigError('unknown MONITOR_PLAN');
-  const token = textOf(env.TELEGRAM_BOT_TOKEN);
-  const adminChatId = textOf(env.ADMIN_CHAT_ID);
+  const admin = adminChannelOf(env);
   return {
     cluster,
     plan: MONITOR_PLANS[planName],
     siteOrigin: siteOriginOf(env),
-    telegramToken: token === '' ? null : token,
-    adminChatId: /^-?\d{1,20}$/.test(adminChatId) ? adminChatId : null,
+    telegramToken: admin.token,
+    adminChatId: admin.chatId,
     rpc: { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL },
   };
+}
+
+/**
+ * The bot token (null when empty) and the admin chat id (null unless an optionally negative integer). Read apart from
+ * monitorConfig so that a pass whose CLUSTER or MONITOR_PLAN is broken can still alert the admin.
+ */
+export function adminChannelOf(env: Env): { token: string | null; chatId: string | null } {
+  const token = textOf(env.TELEGRAM_BOT_TOKEN);
+  const chatId = textOf(env.ADMIN_CHAT_ID);
+  return { token: token === '' ? null : token, chatId: /^-?\d{1,20}$/.test(chatId) ? chatId : null };
+}
+
+/** CLUSTER when it is a known cluster, else null. */
+export function clusterOf(env: Env): Cluster | null {
+  const cluster: string = env.CLUSTER;
+  return isCluster(cluster) ? cluster : null;
 }
 
 /** SITE_ORIGIN when it is exactly an `https:` origin (`https://host[:port]`, no path, no trailing slash); else null. */

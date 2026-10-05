@@ -16,40 +16,8 @@ import { parseMultipleAccounts } from '../src/monitor/read.ts';
 import { parseProgramAccounts } from '../src/stake-accounts.ts';
 import { judgeAccounts } from '../src/watch.ts';
 import { fakeUpstream, multipleAccountsAnswer, multipleAccountsText, rpcResponse, testApp, type AccountJson } from './fakes.ts';
+import { measure, report } from './measure.ts';
 import { b64, clockData, key, signedNonceRescue, stakeAccountData } from './transactions.ts';
-
-const WARMUP_RUNS = 200;
-const BATCHES = 7;
-const BATCH_RUNS = 40;
-
-type Measurement = { firstMs: number; minMs: number; medianMs: number };
-
-/**
- * `firstMs`: the first call (in the first test of this file, the first in a fresh isolate: cold). Then WARMUP_RUNS
- * untimed calls, then BATCHES batches of BATCH_RUNS calls: `minMs` and `medianMs` are the lowest and the median batch
- * average (warm). The clock is wall time in whole milliseconds and the machine may be busy, so the lowest batch is
- * the closest to the CPU cost.
- */
-async function measure(run: () => Promise<unknown>): Promise<Measurement> {
-  const start = performance.now();
-  await run();
-  const firstMs = performance.now() - start;
-  for (let i = 0; i < WARMUP_RUNS; i++) await run();
-  const averages: number[] = [];
-  for (let batch = 0; batch < BATCHES; batch++) {
-    const batchStart = performance.now();
-    for (let i = 0; i < BATCH_RUNS; i++) await run();
-    averages.push((performance.now() - batchStart) / BATCH_RUNS);
-  }
-  averages.sort((a, b) => a - b);
-  return { firstMs, minMs: averages[0] ?? NaN, medianMs: averages[Math.floor(BATCHES / 2)] ?? NaN };
-}
-
-function report(label: string, result: Measurement) {
-  console.log(
-    `[cpu] ${label}: first ${result.firstMs.toFixed(1)} ms, warm min ${result.minMs.toFixed(2)} ms, median ${result.medianMs.toFixed(2)} ms`,
-  );
-}
 
 describe('CPU budget (measurement)', () => {
   it('inspectAndVerifyTransaction on a signed durable-nonce rescue (what the proxy runs before sending)', { timeout: 120_000 }, async () => {

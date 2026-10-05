@@ -22,7 +22,7 @@ import { newTestWallet, type TestWallet } from '@stakeward/core/test/wallet';
 import { encodeBase64 } from '../src/base64.ts';
 
 export const BLOCKHASH = blockhash('EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N');
-/** 2027-04-12T00:00:00Z */
+/** 2027-04-13T00:00:00Z */
 export const LOCK_UNTIL = 1_807_574_400n;
 
 /** A deterministic address: 32 bytes of `n` (nothing has to sign for it). */
