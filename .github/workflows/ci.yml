@@ -27,6 +27,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+      # The prod config too (bindings, custom domain routes), on the mainnet build of the site.
+      - run: pnpm --filter @stakeward/web build:mainnet && pnpm --filter @stakeward/worker build:prod
 
   # Browser tests (CLAUDE.md section 13, layer 4): the devnet build under the production CSP, at 1280 and 360 px.
   e2e:
