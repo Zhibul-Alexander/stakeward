@@ -1,11 +1,11 @@
 import { t } from '@/i18n';
 import { useWalletSlots } from '@/ports';
+import type { SigningTestOptions } from '@/signing/create';
 import { ProtectWizard } from './protect/ProtectWizard.tsx';
-import type { SigningTimings } from './protect/SignStep.tsx';
 
 type ProtectPageProps = {
   /** Tests poll and re-read faster; the product uses the engine's defaults. */
-  signing?: SigningTimings | undefined;
+  signing?: SigningTestOptions | undefined;
 };
 
 /**

@@ -5,16 +5,11 @@ import { RiskNote } from '@/components/product/risk-note';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
 import { usePorts } from '@/ports';
+import { createPageSession, type SigningTestOptions } from '@/signing/create';
 import { initialSigningState, type SigningState } from '@/signing/machine';
-import { slotSignerResolver } from '@/signing/resolve';
-import { appendsTail } from '@/signing/rules';
-import { SigningSession } from '@/signing/session';
 import { SigningPanel, SigningView, type SigningActions } from '@/signing/SigningPanel';
 import { useSigningSession } from '@/signing/use-signing-session';
 import { protectPlan } from './plan.ts';
-
-/** Faster polling and rereads for tests; the defaults are the product's. */
-export type SigningTimings = { pollIntervalMs?: number | undefined; rereadDelayMs?: number | undefined };
 
 type SignStepProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -22,7 +17,7 @@ type SignStepProps = {
   mainKey: Address;
   secondKey: Address;
   lockUntil: bigint;
-  signing?: SigningTimings | undefined;
+  signing?: SigningTestOptions | undefined;
   onFinished: (state: SigningState) => void;
   onBack: () => void;
 };
@@ -48,19 +43,11 @@ export function SignStep({ headingRef, run, mainKey, secondKey, lockUntil, signi
   const ports = usePorts();
   const headingId = useId();
   const create = () =>
-    new SigningSession({
-      chain: ports.chain,
-      plan: protectPlan({ mainKey, secondKey, lockUntil }),
-      ids: run.ids,
-      resolveSigner: slotSignerResolver(ports),
-      appendsTail,
-      confirm: { pollIntervalMs: signing?.pollIntervalMs },
-      rereadDelayMs: signing?.rereadDelayMs,
-      onFinished,
-    });
+    createPageSession(ports, { plan: protectPlan({ mainKey, secondKey, lockUntil }), ids: run.ids, signing, onFinished });
   const { session, snapshot } = useSigningSession(create, `protect#${String(run.key)}`);
   const knownRoles = { main: mainKey, second: secondKey };
-  const renderKeySlot = (role: WalletRole) => <KeySlot role={role} mainKey={mainKey} />;
+  // The step names the exact account: a wallet that offers another one is told which account this step needs.
+  const renderKeySlot = (role: WalletRole, address: Address) => <KeySlot role={role} mainKey={mainKey} expected={address} />;
   const count = run.ids.length;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">

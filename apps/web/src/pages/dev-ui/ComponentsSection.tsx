@@ -267,6 +267,27 @@ export function ComponentsSection() {
               onDisconnect={noop}
             />
           </Demo>
+          <Demo label={t('devUi.states.wrongAccountExpected')}>
+            <WalletSlot
+              role="second"
+              status="wrong-account"
+              wallet={WALLET_B}
+              address={SAMPLE.mainKey}
+              expected={SAMPLE.secondKey}
+              onContinue={noop}
+              onDisconnect={noop}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.wrongAccountHeld')}>
+            <WalletSlot
+              role="main"
+              status="wrong-account"
+              wallet={WALLET_A}
+              address={SAMPLE.secondKey}
+              expected={SAMPLE.mainKey}
+              onDisconnect={noop}
+            />
+          </Demo>
         </div>
       </DemoGroup>
 

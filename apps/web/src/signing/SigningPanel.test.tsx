@@ -112,7 +112,7 @@ function actions(): ActionSpies {
 }
 
 function show(state: SigningState, spy = actions(), onBack = vi.fn()) {
-  const renderKeySlot = vi.fn((role: string) => <p data-testid="key-slot">{role}</p>);
+  const renderKeySlot = vi.fn((role: string, _address: Address) => <p data-testid="key-slot">{role}</p>);
   render(
     <SigningView state={state} actions={spy} knownRoles={{ main: MAIN, second: SECOND }} renderKeySlot={renderKeySlot} onBack={onBack} />,
   );
@@ -189,10 +189,11 @@ describe('SigningView', () => {
     expect(spy.oneAtATime).toHaveBeenCalledTimes(1);
   });
 
-  it('needs-wallet: the full address and the key slot of that role, then Continue', async () => {
+  it('needs-wallet: the full address and the key slot of that role for that address, then Continue', async () => {
     const { spy, renderKeySlot } = show(reduce(ready, { type: 'needs-wallet', step: 0 }));
     expect(screen.getByText('Connect your Main key to continue: it must sign these transactions.')).toBeInTheDocument();
-    expect(renderKeySlot).toHaveBeenCalledWith('main');
+    // The slot is told which account the step needs (KeySlot `expected`).
+    expect(renderKeySlot).toHaveBeenCalledWith('main', MAIN);
     expect(screen.getByTestId('key-slot')).toHaveTextContent('main');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(spy.continueWithWallet).toHaveBeenCalledTimes(1);
@@ -293,5 +294,101 @@ describe('SigningView', () => {
     expect(screen.getByText('Sending to the network: 1 of 2')).toBeInTheDocument();
     const jobs = within(screen.getByRole('list', { name: 'Stake accounts' })).getAllByRole('listitem');
     expect(jobs.map((item) => item.getAttribute('data-status'))).toEqual(['sending', 'waiting']);
+  });
+
+  it('without onBack there is no Back button (/cosign), while Stop here still ends a run that has a result', () => {
+    const spy = actions();
+    const props = { actions: spy, knownRoles: { main: MAIN, second: SECOND }, renderKeySlot: () => null };
+    const { rerender } = render(<SigningView state={ready} {...props} />);
+    expect(screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+
+    const signedTxs = ready.round?.txs.map((tx) => ({ ...tx, summary: { ...tx.summary, presentSignatures: [MAIN] } })) ?? [];
+    rerender(<SigningView state={reduce(ready, { type: 'asking', step: 0 }, { type: 'signed', step: 0, txs: signedTxs })} {...props} />);
+    expect(screen.queryByRole('button', { name: 'Stop and go back. Nothing was sent.' })).not.toBeInTheDocument();
+
+    const failed = reduce(ready, { type: 'refresh' }, {
+      type: 'prepare-failed',
+      problem: { kind: 'read', error: { code: 'network', title: 'x', detail: 'd' } },
+    });
+    rerender(<SigningView state={failed} {...props} />);
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+
+    rerender(<SigningView state={roundTwo} {...props} />);
+    expect(screen.getByRole('button', { name: 'Stop here and see the result' })).toBeInTheDocument();
+  });
+});
+
+describe('SigningView confirm (a required checkbox before any wallet is asked)', () => {
+  const LABEL = 'The owner told me they want this';
+  const props = (spy: SigningActions) => ({
+    actions: spy,
+    knownRoles: { main: MAIN, second: SECOND },
+    renderKeySlot: () => null,
+    onBack: vi.fn(),
+    confirm: { label: LABEL },
+  });
+
+  it('Sign stays aria-disabled until the box is ticked; pressing it says why, focuses the box and asks no wallet', async () => {
+    const spy = actions();
+    render(<SigningView state={ready} {...props(spy)} />);
+    const sign = screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' });
+    const box = screen.getByRole('checkbox', { name: LABEL });
+    expect(box).not.toBeChecked();
+    expect(box).toBeRequired();
+    expect(sign).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByText('Tick the box above to continue.')).not.toBeInTheDocument();
+
+    await userEvent.click(sign);
+    expect(spy.sign).not.toHaveBeenCalled();
+    expect(screen.getByText('Tick the box above to continue.')).toBeInTheDocument();
+    expect(box).toHaveFocus();
+    expect(box).toHaveAccessibleDescription('Tick the box above to continue.');
+    expect(sign).toHaveAccessibleDescription('Tick the box above to continue.');
+
+    await userEvent.click(box);
+    expect(box).toBeChecked();
+    expect(sign).not.toHaveAttribute('aria-disabled');
+    expect(screen.queryByText('Tick the box above to continue.')).not.toBeInTheDocument();
+    await userEvent.click(sign);
+    expect(spy.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it('the keyboard path is the same: Enter on Sign before ticking does not sign', async () => {
+    const spy = actions();
+    render(<SigningView state={ready} {...props(spy)} />);
+    screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' }).focus();
+    await userEvent.keyboard('{Enter}');
+    expect(spy.sign).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: LABEL })).toHaveFocus();
+    await userEvent.keyboard(' ');
+    expect(screen.getByRole('checkbox', { name: LABEL })).toBeChecked();
+  });
+
+  it('holds for every signer of the round and starts unticked in the next round', async () => {
+    const spy = actions();
+    const { rerender } = render(<SigningView state={ready} {...props(spy)} />);
+    await userEvent.click(screen.getByRole('checkbox', { name: LABEL }));
+
+    // The next signer of the same round, after a wait for the first wallet.
+    const signedTxs = ready.round?.txs.map((tx) => ({ ...tx, summary: { ...tx.summary, presentSignatures: [MAIN] } })) ?? [];
+    const asking = reduce(ready, { type: 'asking', step: 0 });
+    rerender(<SigningView state={asking} {...props(spy)} />);
+    expect(screen.queryByRole('checkbox', { name: LABEL })).not.toBeInTheDocument();
+    rerender(<SigningView state={reduce(asking, { type: 'signed', step: 0, txs: signedTxs })} {...props(spy)} />);
+    expect(screen.getByRole('checkbox', { name: LABEL })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Sign 2 transactions in Second Wallet as Second key' })).not.toHaveAttribute('aria-disabled');
+
+    // A new round (roundNumber 2): ticked again before anything is signed.
+    rerender(<SigningView state={roundTwo} {...props(spy)} />);
+    expect(screen.getByRole('checkbox', { name: LABEL })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Sign in Main Wallet as Main key' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('without confirm there is no checkbox and Sign is not aria-disabled', () => {
+    show(ready);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' })).not.toHaveAttribute('aria-disabled');
   });
 });

@@ -1,3 +1,4 @@
+import type { Address } from '@solana/kit';
 import type { WalletRole } from '@stakeward/core';
 import { cn } from 'cn';
 import {
@@ -65,7 +66,10 @@ export type WalletSlotProps = Common &
         address: string;
         /** The role this account already fills, when that is the problem. */
         conflictRole?: WalletRole | undefined;
-        onContinue: () => void;
+        /** The account this step needs, shown in full instead of the generic "switch" line. */
+        expected?: Address | undefined;
+        /** Continue after switching; without it only Disconnect is offered (a filled slot is never swapped). */
+        onContinue?: (() => void) | undefined;
         onDisconnect: () => void;
       }
   );
@@ -94,7 +98,8 @@ const CHIPS: Record<Exclude<WalletSlotStatus, 'loading'>, Chip> = {
  * One key role (Main key, Second key, New wallet) and the wallet account filling it (CLAUDE.md section 6: three slots
  * by role). States: loading (restoring slots), empty (wallet list), connecting (with a way out), connected
  * (icon, name, short address, disconnect), error (what happened, details, try again) and wrong-account (switch the
- * account in the wallet, then Continue). Presentational: the page owns the WalletPort and passes callbacks.
+ * account in the wallet, then Continue; with `expected`, the account the step needs in full, and Continue only when
+ * the page offers it). Presentational: the page owns the WalletPort and passes callbacks.
  */
 export function WalletSlot(props: WalletSlotProps) {
   const labelId = useId();
@@ -200,13 +205,22 @@ function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
               {props.conflictRole === undefined ? null : (
                 <p>{t('components.walletSlot.conflict', { role: roleLabel(props.conflictRole) })}</p>
               )}
-              <p className="font-medium">{t(`components.walletSlot.switch.${props.role}`)}</p>
+              {props.expected === undefined ? (
+                <p className="font-medium">{t(`components.walletSlot.switch.${props.role}`)}</p>
+              ) : (
+                <>
+                  <p className="font-medium">{t('components.walletSlot.expected')}</p>
+                  <AddressText address={props.expected} variant="full" />
+                </>
+              )}
             </AlertDescription>
           </Alert>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={props.onContinue}>
-              {t('common.continue')}
-            </Button>
+            {props.onContinue === undefined ? null : (
+              <Button size="sm" onClick={props.onContinue}>
+                {t('common.continue')}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

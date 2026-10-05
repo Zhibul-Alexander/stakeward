@@ -7,13 +7,14 @@ import { watchWithRetry, type WatchState } from '@/api/watch';
 import { t, type MessageKey } from '@/i18n';
 import { usePorts, useKnownSecondKeys, useSlot, useWalletSlots } from '@/ports';
 import { checkLanded, type LandedItem } from '@/signing/check';
+import type { SigningTestOptions } from '@/signing/create';
 import type { SigningState } from '@/signing/machine';
 import { AccountsStep } from './AccountsStep.tsx';
 import { DoneStep } from './DoneStep.tsx';
 import { useMainKeyAccounts } from './load.ts';
 import { PeriodStep } from './PeriodStep.tsx';
 import { SecondKeyStep } from './SecondKeyStep.tsx';
-import { SignStep, type SigningTimings } from './SignStep.tsx';
+import { SignStep } from './SignStep.tsx';
 import {
   accountParams,
   blockers,
@@ -43,7 +44,7 @@ const STEP_LABEL: Record<WizardStep, MessageKey> = {
 type ProtectWizardProps = {
   /** The main key slot's address; the page remounts the wizard when it changes. */
   mainKey: Address | null;
-  signing?: SigningTimings | undefined;
+  signing?: SigningTestOptions | undefined;
 };
 
 /**

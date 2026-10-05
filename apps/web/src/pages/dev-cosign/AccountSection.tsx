@@ -7,9 +7,9 @@ import { ErrorState } from '@/components/product/error-state';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { Load } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import type { Load } from './load.ts';
 
 export type AccountsData = { accounts: readonly StakeAccount[]; clock: ChainClock };
 

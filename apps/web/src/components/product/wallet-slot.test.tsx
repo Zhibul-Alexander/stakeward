@@ -1,3 +1,4 @@
+import { address } from '@solana/kit';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -8,6 +9,7 @@ const ALPHA = { id: 'alpha', name: 'Alpha Wallet', icon: ICON };
 const BETA = { id: 'beta', name: 'Beta Wallet', icon: ICON };
 const WALLETS = [ALPHA, BETA];
 const MAIN = 'B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8';
+const SECOND = address('9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi');
 
 describe('WalletSlot', () => {
   it('empty: the wallet list opens from the connect button and picking a wallet reports its id', async () => {
@@ -69,6 +71,37 @@ describe('WalletSlot', () => {
     expect(screen.getByText('Switch to your second account in the wallet, then press Continue.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledOnce();
+  });
+
+  it('wrong account with the expected one: names the account this step needs in full, Continue when offered', async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    const { rerender } = render(
+      <WalletSlot
+        role="second"
+        status="wrong-account"
+        wallet={ALPHA}
+        address={MAIN}
+        expected={SECOND}
+        onContinue={onContinue}
+        onDisconnect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('This step needs this account. Switch to it in the wallet:')).toBeInTheDocument();
+    expect(screen.getByText(SECOND)).toBeInTheDocument();
+    expect(screen.queryByText('Switch to your second account in the wallet, then press Continue.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(onContinue).toHaveBeenCalledOnce();
+
+    // A filled slot that holds another account: only Disconnect.
+    const onDisconnect = vi.fn();
+    rerender(
+      <WalletSlot role="second" status="wrong-account" wallet={ALPHA} address={MAIN} expected={SECOND} onDisconnect={onDisconnect} />,
+    );
+    expect(screen.getByText(SECOND)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Disconnect Alpha Wallet from Second key' }));
+    expect(onDisconnect).toHaveBeenCalledOnce();
   });
 
   it('error: what happened, details, try again', async () => {

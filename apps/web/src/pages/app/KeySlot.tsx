@@ -11,7 +11,14 @@ type Pending =
   | { kind: 'idle' }
   | { kind: 'connecting'; walletId: string }
   | { kind: 'error'; walletId: string; message: string; detail: string }
-  | { kind: 'conflict'; walletId: string; address: Address; conflictRole: WalletRole | undefined };
+  | {
+      kind: 'conflict';
+      walletId: string;
+      address: Address;
+      conflictRole: WalletRole | undefined;
+      /** The account this step needs, which the wallet did not offer. */
+      expected?: Address | undefined;
+    };
 
 type KeySlotProps = {
   role: WalletRole;
@@ -21,6 +28,12 @@ type KeySlotProps = {
    */
   mainKey?: Address | undefined;
   description?: string | undefined;
+  /**
+   * The exact account this slot must hold (a signing step names its signer). Only that account fills the slot; a wallet
+   * that offers another one is asked to switch to it, and a slot that holds another one says so and offers only
+   * Disconnect (replacing a key is Disconnect, then Connect: DECISIONS.md D35).
+   */
+  expected?: Address | undefined;
   /** Called with the address once it fills the slot. */
   onConnected?: ((address: Address) => void) | undefined;
   className?: string | undefined;
@@ -35,7 +48,7 @@ function option(wallet: WalletPort): WalletOption {
  * silent: it starts from the user's click. An account that already fills another role is refused with "switch to
  * your other account in the wallet, then press Continue"; Continue reads the wallet's accounts again.
  */
-export function KeySlot({ role, mainKey, description, onConnected, className }: KeySlotProps) {
+export function KeySlot({ role, mainKey, description, expected, onConnected, className }: KeySlotProps) {
   const { slots } = usePorts();
   const wallets = useWallets();
   const resolved = useSlot(role);
@@ -68,14 +81,20 @@ export function KeySlot({ role, mainKey, description, onConnected, className }: 
       role !== 'main' && address === mainKey
         ? 'main'
         : WALLET_ROLES.find((other) => other !== role && current[other]?.address === address);
-    const free = accounts.find((address) => roleOf(address) === undefined);
     const first = accounts[0];
     if (first === undefined) {
       setPending({ kind: 'error', walletId: wallet.id, message: t('app.connect.noAccount'), detail: '' });
       return;
     }
-    if (free === undefined) {
-      setPending({ kind: 'conflict', walletId: wallet.id, address: first, conflictRole: roleOf(first) });
+    // With an expected account only that one may fill the slot; otherwise the first account no other role holds.
+    if (expected !== undefined && !accounts.includes(expected)) {
+      setPending({ kind: 'conflict', walletId: wallet.id, address: first, conflictRole: undefined, expected });
+      return;
+    }
+    const free = expected ?? accounts.find((address) => roleOf(address) === undefined);
+    if (free === undefined || roleOf(free) !== undefined) {
+      const shown = free ?? first;
+      setPending({ kind: 'conflict', walletId: wallet.id, address: shown, conflictRole: roleOf(shown) });
       return;
     }
     const assigned = slots.assign(role, { walletId: wallet.id, address: free });
@@ -161,6 +180,7 @@ export function KeySlot({ role, mainKey, description, onConnected, className }: 
             wallet={wallet}
             address={pending.address}
             conflictRole={pending.conflictRole}
+            expected={pending.expected}
             onContinue={() => {
               continueWith(pendingWallet);
             }}
@@ -172,6 +192,22 @@ export function KeySlot({ role, mainKey, description, onConnected, className }: 
 
   if (resolved !== null && resolved.wallet !== null) {
     const { wallet, slot } = resolved;
+    // The slot holds another key than this step needs: say which one it needs. Only Disconnect: Continue must never
+    // swap the key in a filled slot.
+    if (expected !== undefined && slot.address !== expected) {
+      return (
+        <WalletSlot
+          {...common}
+          status="wrong-account"
+          wallet={option(wallet)}
+          address={slot.address}
+          expected={expected}
+          onDisconnect={() => {
+            slots.clear(role);
+          }}
+        />
+      );
+    }
     if (resolved.ready) {
       return (
         <WalletSlot
