@@ -210,6 +210,19 @@ FROM accounts WHERE state != 'closed' AND lock_until > ?1`,
   ALERTS_SENT: `SELECT value FROM meta WHERE key = 'alerts_sent'`,
 } as const;
 
+/** Latest unix ms a Date can show (ECMA-262: 8.64e15). */
+const MAX_DATE_MS = 8_640_000_000_000_000;
+
+/**
+ * The `meta.last_pass_at` marker of a LAST_PASS_AT row (ms of the last successful monitor pass), or null when there is
+ * none or it is not a time a Date can show.
+ */
+export function lastPassAtOf(row: { value: unknown } | null | undefined): number | null {
+  if (typeof row?.value !== 'string' || !/^[0-9]{1,16}$/.test(row.value)) return null;
+  const ms = Number(row.value);
+  return ms <= MAX_DATE_MS ? ms : null;
+}
+
 /** The stored snapshot of a row, for diffSnapshots. */
 export function snapshotOfRow(row: AccountRow): AccountSnapshot {
   return {

@@ -151,6 +151,8 @@ describe('body size limit on POST /api/rpc', () => {
 
 describe('security headers on every /api response', () => {
   it('success, JSON-RPC errors, transport errors, 404 and lookups all carry the section 11 headers', async () => {
+    // A fresh monitor marker: /api/health answers 200 (503 without one).
+    await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('last_pass_at', ?1)").bind(String(Date.now())).run();
     const ok = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
     const down = fakeUpstream(() => new Response('', { status: 503 }));
     const hang = fakeUpstream(() => 'hang');
@@ -167,6 +169,38 @@ describe('security headers on every /api response', () => {
       await testApp(ok).request('/api/health'),
     ];
     expect(responses.map((r) => r.status)).toEqual([200, 200, 200, 415, 502, 504, 400, 502, 404, 200]);
+    for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
+  });
+
+  it('the step 5 routes: health, accounts, stats, the Telegram link and the webhook', async () => {
+    const ok = fakeUpstream(() => {
+      throw new Error('these routes never call the RPC');
+    });
+    const webhook = (secret: string | null, body: string) =>
+      testApp(ok).request('/api/telegram/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(secret === null ? {} : { 'X-Telegram-Bot-Api-Secret-Token': secret }),
+        },
+        body,
+      });
+    const update = JSON.stringify({ update_id: 1, message: { chat: { id: 4242, type: 'private' }, text: '/help' } });
+    const responses = [
+      await testApp(ok).request('/api/health'),
+      await testApp(ok).request(`/api/accounts?wallet=${key(1)}`),
+      await testApp(ok).request('/api/accounts?wallet=bad'),
+      await testApp(ok).request('/api/stats'),
+      await testApp(ok).request(`/api/telegram/link?wallet=${key(1)}`),
+      await testApp(ok).request('/api/telegram/link'),
+      await testApp(ok, { env: { TELEGRAM_BOT_USERNAME: '' } }).request(`/api/telegram/link?wallet=${key(1)}`),
+      await webhook(env.TELEGRAM_WEBHOOK_SECRET, update),
+      await webhook(env.TELEGRAM_WEBHOOK_SECRET, 'garbage'),
+      await webhook('wrong', update),
+      await webhook(null, update),
+      await testApp(ok, { env: { TELEGRAM_WEBHOOK_SECRET: '' } }).request('/api/telegram/webhook', { method: 'POST', body: update }),
+    ];
+    expect(responses.map((r) => r.status)).toEqual([503, 200, 400, 200, 302, 400, 503, 200, 200, 401, 401, 503]);
     for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
   });
 });

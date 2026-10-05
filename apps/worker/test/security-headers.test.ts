@@ -39,6 +39,34 @@ describe('static _headers and API headers', () => {
   });
 });
 
+describe('the step 5 routes through the deployed entry point carry the section 11 headers', () => {
+  it('health (503 and 200), accounts, stats, the Telegram link and the webhook', async () => {
+    // `manual`: a Fetcher follows redirects by default, and the link answers 302 to t.me.
+    const get = (path: string) =>
+      exports.default.fetch(`https://stakeward.test${path}`, {
+        headers: { 'CF-Connecting-IP': freshIp() },
+        redirect: 'manual',
+      });
+    const unhealthy = await get('/api/health');
+    await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('last_pass_at', ?1)").bind(String(Date.now())).run();
+    const responses = [
+      unhealthy,
+      await get('/api/health'),
+      await get(`/api/accounts?wallet=${key(1)}`),
+      await get('/api/stats'),
+      await get(`/api/telegram/link?wallet=${key(1)}`),
+      await exports.default.fetch('https://stakeward.test/api/telegram/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': env.TELEGRAM_WEBHOOK_SECRET },
+        body: JSON.stringify({ update_id: 1, message: { chat: { id: 4343, type: 'private' }, text: '/help' } }),
+      }),
+      await exports.default.fetch('https://stakeward.test/api/telegram/webhook', { method: 'POST', body: '{}' }),
+    ];
+    expect(responses.map((r) => r.status)).toEqual([503, 200, 200, 200, 302, 200, 401]);
+    for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
+  });
+});
+
 describe('POST /api/watch responses carry the section 11 headers', () => {
   it('watched, rejected, bad requests, upstream failures and the deployed entry point', async () => {
     const stake = key(10);

@@ -87,14 +87,25 @@ export type TestApp = ReturnType<typeof testApp>;
 
 /**
  * The API with a scripted upstream, short timeouts and no retry pause. Requests run through Hono's app.request with
- * the real bindings (rate limiters, D1) of the test environment and a fresh client IP per app.
+ * the real bindings (rate limiters, D1) of the test environment, `env` overrides on top, a fresh client IP per app
+ * and the worker clock `now` (default Date.now).
  */
 export function testApp(
   upstream: { fetch: typeof fetch },
-  options: { fallback?: boolean; timeoutMs?: number; ip?: string; rpcUrl?: string } = {},
+  options: {
+    fallback?: boolean;
+    timeoutMs?: number;
+    ip?: string;
+    rpcUrl?: string;
+    now?: () => number;
+    env?: Partial<Env>;
+  } = {},
 ) {
-  const app = createApp({ upstream: { fetch: upstream.fetch, timeoutMs: options.timeoutMs ?? 200, retryDelayMs: 0 } });
-  const bindings: Env = { ...env, RPC_URL: options.rpcUrl ?? PRIMARY_URL };
+  const app = createApp({
+    upstream: { fetch: upstream.fetch, timeoutMs: options.timeoutMs ?? 200, retryDelayMs: 0 },
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const bindings: Env = { ...env, RPC_URL: options.rpcUrl ?? PRIMARY_URL, ...options.env };
   if (options.fallback === true) bindings.RPC_FALLBACK_URL = FALLBACK_URL;
   const ip = options.ip ?? freshIp();
   const request = (path: string, init: RequestInit = {}) => {

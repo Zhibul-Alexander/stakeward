@@ -111,6 +111,12 @@ export function botUsernameOf(env: Env): string | null {
   return /^[A-Za-z0-9_]{5,32}$/.test(value) ? value : null;
 }
 
+/** TELEGRAM_WEBHOOK_SECRET, null when empty (the webhook then answers 503). */
+export function webhookSecretOf(env: Env): string | null {
+  const value = textOf(env.TELEGRAM_WEBHOOK_SECRET);
+  return value === '' ? null : value;
+}
+
 function isCluster(value: string): value is Cluster {
   return value === 'devnet' || value === 'mainnet';
 }
