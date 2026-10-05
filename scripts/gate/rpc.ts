@@ -35,10 +35,8 @@ export const PUBLIC_RPC_URL = {
   mainnet: 'https://api.mainnet-beta.solana.com',
 } as const;
 
-export const GENESIS_HASH = {
-  devnet: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',
-  mainnet: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d',
-} as const;
+/** Moved to core (the worker's monitor checks it too); re-exported so the scripts keep importing it from here. */
+export { GENESIS_HASH } from '@stakeward/core';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 /** Public endpoints answer 429 when polled fast: retry with backoff (1, 2, 4, 8, 15 s). */

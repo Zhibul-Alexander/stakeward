@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
@@ -21,14 +21,31 @@ export default defineConfig({
     cloudflareTest(async () => {
       const migrations = await readD1Migrations(path.join(import.meta.dirname, 'migrations'));
       const staticHeaders = await readFile(path.join(import.meta.dirname, '../web/public/_headers'), 'utf8');
+      // The worker's own sources for the review tests that read code (test/sql-literals.review.test.ts).
+      const srcDir = path.join(import.meta.dirname, 'src');
+      const srcFiles = (await readdir(srcDir, { recursive: true })).filter((file) => file.endsWith('.ts')).sort();
+      const sources: Record<string, string> = Object.fromEntries(
+        await Promise.all(
+          srcFiles.map(async (file): Promise<[string, string]> => [
+            file.split(path.sep).join('/'),
+            await readFile(path.join(srcDir, file), 'utf8'),
+          ]),
+        ),
+      );
       return {
         wrangler: { configPath: './wrangler.jsonc', environment: 'dev' },
         miniflare: {
-          // RPC_URL is a placeholder: tests intercept fetch, nothing leaves the test runtime.
+          // RPC_URL and the Telegram values are placeholders: tests intercept fetch, nothing leaves the test runtime.
           bindings: {
             TEST_MIGRATIONS: migrations,
             TEST_STATIC_HEADERS_FILE: staticHeaders,
+            TEST_WORKER_SOURCES: sources,
             RPC_URL: 'https://primary.rpc.test/?api-key=test-primary-key',
+            TELEGRAM_BOT_TOKEN: '123456789:test-token',
+            TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret',
+            ADMIN_CHAT_ID: '700000001',
+            TELEGRAM_BOT_USERNAME: 'stakeward_test_bot',
+            SITE_ORIGIN: 'https://stakeward.test',
           },
         },
       };

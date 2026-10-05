@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { callUpstream } from '../src/upstream.ts';
+import { attemptPost, callUpstream } from '../src/upstream.ts';
 import { errorOf, FALLBACK_URL, fakeUpstream, PRIMARY_URL, rpcResponse, testApp } from './fakes.ts';
 import { b64, signedProtect } from './transactions.ts';
 
@@ -63,6 +63,72 @@ describe('upstream RPC: reads retry and fall back', () => {
     });
     expect(res.status).toBe(200);
     expect(upstream.calls.map((c) => c.endpoint)).toEqual(['primary', 'fallback']);
+  });
+});
+
+describe('upstream RPC: the endpoint that answered, and pinned reads', () => {
+  const options = (upstream: { fetch: typeof fetch }) => ({ timeoutMs: 200, retryDelayMs: 0, fetch: upstream.fetch });
+  const both = { primary: PRIMARY_URL, fallback: FALLBACK_URL };
+
+  it('a read says which endpoint answered', async () => {
+    const primary = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    expect(await callUpstream(both, '{}', 'read', options(primary))).toMatchObject({ ok: true, endpoint: 'primary' });
+    const fallback = fakeUpstream((c) => (c.endpoint === 'primary' ? failing(503) : rpcResponse(c.json.id, 1)));
+    expect(await callUpstream(both, '{}', 'read', options(fallback))).toMatchObject({ ok: true, endpoint: 'fallback' });
+  });
+
+  it('a read pinned to an endpoint makes all three attempts there and never asks the other', async () => {
+    const down = fakeUpstream(() => failing(503));
+    expect(await callUpstream(both, '{}', 'read', options(down), 'fallback')).toEqual({ ok: false, reason: 'unavailable' });
+    expect(down.calls.map((c) => c.endpoint)).toEqual(['fallback', 'fallback', 'fallback']);
+
+    const primaryOnly = fakeUpstream((c, i) => (i < 2 ? failing(503) : rpcResponse(c.json.id, 1)));
+    expect(await callUpstream(both, '{}', 'read', options(primaryOnly), 'primary')).toMatchObject({ ok: true, endpoint: 'primary' });
+    expect(primaryOnly.calls.map((c) => c.endpoint)).toEqual(['primary', 'primary', 'primary']);
+
+    // Without a fallback set, a fallback pin is the primary.
+    const single = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    const result = await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(single), 'fallback');
+    expect(result).toMatchObject({ ok: true, endpoint: 'primary' });
+    expect(single.calls.map((c) => c.endpoint)).toEqual(['primary']);
+  });
+});
+
+describe('upstream RPC: a cap on the answer', () => {
+  it('a read with maxBodyBytes stops reading past it: too-large, no retry, the stream cancelled', async () => {
+    // 1 MB in 4 KB chunks.
+    let pulls = 0;
+    let cancelled = false;
+    const huge = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull: (controller) => {
+            pulls += 1;
+            controller.enqueue(new Uint8Array(4_096).fill(0x20));
+            if (pulls === 256) controller.close();
+          },
+          cancel: () => {
+            cancelled = true;
+          },
+        }),
+      );
+    const upstream = fakeUpstream(huge);
+    const options = { timeoutMs: 1_000, retryDelayMs: 0, fetch: upstream.fetch, maxBodyBytes: 10_000 };
+    const result = await callUpstream({ primary: PRIMARY_URL, fallback: FALLBACK_URL }, '{}', 'read', options);
+    // Not the result itself: a diff of a megabyte of body text would hang the reporter.
+    expect(result.ok ? `read ${String(result.body.length)} characters` : result.reason).toBe('too-large');
+    expect(upstream.calls).toHaveLength(1);
+    expect(pulls).toBeLessThanOrEqual(5);
+    expect(cancelled).toBe(true);
+  });
+
+  it('an answer within maxBodyBytes is read as usual; a Content-Length over it is refused unread', async () => {
+    const options = (upstream: { fetch: typeof fetch }) => ({ timeoutMs: 1_000, retryDelayMs: 0, fetch: upstream.fetch, maxBodyBytes: 100 });
+    const small = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    expect(await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(small))).toMatchObject({ ok: true });
+    const declared = fakeUpstream(() => new Response('x'.repeat(101), { headers: { 'Content-Length': '101' } }));
+    const refused = await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(declared));
+    expect(refused.ok ? `read ${String(refused.body.length)} characters` : refused.reason).toBe('too-large');
   });
 });
 
@@ -139,5 +205,31 @@ describe('upstream RPC: secrets stay out of logs and responses', () => {
       expect(logged).not.toContain(secret);
       expect(text).not.toContain(secret);
     }
+  });
+});
+
+describe('attemptPost: one attempt, its status', () => {
+  it('a 2xx status comes back with the body; any other status with the body unread', async () => {
+    const ok = fakeUpstream(() => new Response('{"ok":true}', { status: 200 }));
+    expect(await attemptPost(PRIMARY_URL, '{"a":1}', { timeoutMs: 200, fetch: ok.fetch })).toEqual({ status: 200, body: '{"ok":true}' });
+    expect(ok.calls[0]?.raw).toBe('{"a":1}');
+    for (const status of [400, 403, 429, 500]) {
+      const failing = fakeUpstream(() => new Response('{"description":"secret detail"}', { status }));
+      expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: failing.fetch })).toEqual({ status, body: null });
+    }
+  });
+
+  it('a timeout and a network error have no status', async () => {
+    expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 30, fetch: fakeUpstream(() => 'hang').fetch })).toBe('timeout');
+    expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => 'network-error').fetch })).toBe('network');
+  });
+
+  it('logs nothing (the URL may carry an API key or a bot token)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => failing(500)).fetch });
+    await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => 'network-error').fetch });
+    expect(warn).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
   });
 });

@@ -30,4 +30,38 @@ describe('D1 migrations', () => {
     const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM alert_links').first<{ n: number }>();
     expect(count?.n).toBe(1);
   });
+
+  type Column = { name: string; type: string; notnull: number; dflt_value: string | null };
+  const columns = async (table: string) =>
+    (
+      await env.DB.prepare('SELECT name, type, "notnull", dflt_value FROM pragma_table_info(?1)').bind(table).all<Column>()
+    ).results;
+
+  it('0002 adds accounts.fingerprint (nullable TEXT) for the monitor fast path', async () => {
+    expect((await columns('accounts')).find((c) => c.name === 'fingerprint')).toEqual({
+      name: 'fingerprint',
+      type: 'TEXT',
+      notnull: 0,
+      dflt_value: null,
+    });
+  });
+
+  it('0003: events_pending is a partial index on events (id) for undelivered events', async () => {
+    const index = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'events_pending'").first<{
+      sql: string;
+    }>();
+    expect(index?.sql).toBe('CREATE INDEX events_pending ON events (id) WHERE notified_at IS NULL');
+  });
+
+  it('0002 adds alert_links.last_event_id, INTEGER NOT NULL DEFAULT 0', async () => {
+    expect((await columns('alert_links')).find((c) => c.name === 'last_event_id')).toEqual({
+      name: 'last_event_id',
+      type: 'INTEGER',
+      notnull: 1,
+      dflt_value: '0',
+    });
+    await env.DB.prepare('INSERT INTO alert_links (wallet, chat_id, created_at) VALUES (?1, ?2, ?3)').bind('W', '1', 1).run();
+    const row = await env.DB.prepare('SELECT last_event_id FROM alert_links').first<{ last_event_id: number }>();
+    expect(row?.last_event_id).toBe(0);
+  });
 });
