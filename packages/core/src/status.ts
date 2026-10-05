@@ -67,6 +67,31 @@ export function scannerStatus(
   return { status: expiring ? 'expiring' : 'protected', managedByService };
 }
 
+/** Why the protect flow cannot lock a stake account now. */
+export type ProtectBlock = 'not-main-key' | 'already-protected' | 'locked-by-other';
+
+/**
+ * Why the protect flow cannot lock `account` for `mainKey` now; null = it can.
+ * - The withdrawer is not `mainKey` -> `not-main-key`.
+ * - The lockup is in force and its custodian is not the withdrawer: the custodian is one of `secondKeys` ->
+ *   `already-protected` (only an extend can change it), otherwise -> `locked-by-other`.
+ * - Otherwise null: no lock, an ended lock, or a lock held by the main key itself (D14: the main key signs the
+ *   SetLockupChecked as custodian).
+ */
+export function protectBlock(
+  account: StakeAccount,
+  mainKey: Address,
+  secondKeys: readonly Address[],
+  clock: ClockView,
+): ProtectBlock | null {
+  if (account.withdrawer !== mainKey) return 'not-main-key';
+  const { lockup } = account;
+  if (isLockupInForce(lockup, clock) && lockup.custodian !== account.withdrawer) {
+    return secondKeys.includes(lockup.custodian) ? 'already-protected' : 'locked-by-other';
+  }
+  return null;
+}
+
 /**
  * Splits accounts found for `viewer` into the main list (viewer is the withdrawer) and the separate
  * "You are the second key for" list (viewer is only the custodian). Accounts where the viewer has neither role

@@ -1,12 +1,12 @@
 import { getAddressDecoder, getBase58Decoder, type Address, type Nonce } from '@solana/kit';
-import { NONCE_ACCOUNT_SIZE, SYSTEM_PROGRAM_ADDRESS, type RawAccount } from '@stakeward/core';
+import { NONCE_ACCOUNT_SIZE, SYSTEM_PROGRAM_ADDRESS } from './constants.ts';
+import type { RawAccount } from './decode.ts';
 
 /**
- * The durable nonce account of the main key, as the dev page needs it (created by core's `nonce-setup`).
+ * A durable nonce account as signing by nonce needs it (created by the `nonce-setup` builder).
  *
  * Layout (System program `nonce::state::Versions`, bincode, 80 bytes): u32 version (1 = current), u32 state
  * (1 = initialized), authority (32), durable nonce value (32, base58 like a blockhash), u64 lamports per signature.
- * Core has no nonce decoder yet; the product's rescue flow (step 8) needs one there.
  */
 export type NonceAccountState =
   | { kind: 'missing' }

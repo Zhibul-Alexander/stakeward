@@ -93,8 +93,14 @@ export interface ChainPort {
  *   accounts); the UI asks them to switch back and press Continue.
  * - WalletUnsupportedError: the wallet cannot sign legacy Solana transactions for this cluster.
  * - WalletBusyError: another request to this wallet is still open (Phantom allows one approval window).
+ * - WalletBatchUnsupportedError: the wallet did not return one signed transaction per transaction asked; sign one at a
+ *   time.
  */
-export type WalletPortErrorName = 'WalletAccountUnavailableError' | 'WalletUnsupportedError' | 'WalletBusyError';
+export type WalletPortErrorName =
+  | 'WalletAccountUnavailableError'
+  | 'WalletUnsupportedError'
+  | 'WalletBusyError'
+  | 'WalletBatchUnsupportedError';
 
 /**
  * Options of a wallet request. `signal`: the caller stops waiting (Stop waiting, leaving the screen). The request then

@@ -1,8 +1,19 @@
 // Decoding matches real mainnet stake accounts (raw getAccountInfo responses saved on 2026-10-02, epoch 1047).
 import { address, getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
-import { decodeStakeAccount, STAKE_ACCOUNT_SIZE, STAKE_PROGRAM_ADDRESS, U64_MAX, type RawAccount } from '../src/index.ts';
+import {
+  CLOCK_SYSVAR_SIZE,
+  decodeClockSysvar,
+  decodeStakeAccount,
+  STAKE_ACCOUNT_SIZE,
+  STAKE_PROGRAM_ADDRESS,
+  SYSVAR_CLOCK_ADDRESS,
+  SYSVAR_PROGRAM_ADDRESS,
+  U64_MAX,
+  type RawAccount,
+} from '../src/index.ts';
 import { FIXTURES, rawFromFixture, type Fixture } from './fixtures.ts';
+import { TestChain } from './svm.ts';
 
 const { deactivating, custodianIsWithdrawer, delegatedLockup, delegatedNoLockup, stakerIsNotWithdrawer, initializedLockup, initialized } =
   FIXTURES;
@@ -122,5 +133,45 @@ describe('decodeStakeAccount rejects what is not a usable stake account', () => 
 
   it('accepts only the stake program as owner', () => {
     expect(valid.owner).toBe(STAKE_PROGRAM_ADDRESS);
+  });
+});
+
+describe('decodeClockSysvar', () => {
+  /** The Clock sysvar of the HttpChain getClock test: slot, epoch start, epoch, leader schedule epoch, unix time. */
+  function clockBytes(unixTimestamp = 1_790_812_800n): Uint8Array {
+    const bytes = new Uint8Array(CLOCK_SYSVAR_SIZE);
+    const view = new DataView(bytes.buffer);
+    view.setBigUint64(0, 452_000_123n, true);
+    view.setBigInt64(8, 1_790_000_000n, true);
+    view.setBigUint64(16, 1_047n, true);
+    view.setBigUint64(24, 1_048n, true);
+    view.setBigInt64(32, unixTimestamp, true);
+    return bytes;
+  }
+
+  it('reads slot, epoch and unix timestamp', () => {
+    expect(decodeClockSysvar(clockBytes())).toEqual({ slot: 452_000_123n, epoch: 1_047n, unixTimestamp: 1_790_812_800n });
+  });
+
+  it('reads the unix timestamp as a signed integer', () => {
+    expect(decodeClockSysvar(clockBytes(-1n))?.unixTimestamp).toBe(-1n);
+  });
+
+  it('reads data that is a view into a larger buffer, and ignores bytes after the first 40', () => {
+    const buffer = new Uint8Array(CLOCK_SYSVAR_SIZE + 12).fill(0xff);
+    buffer.set(clockBytes(), 7);
+    expect(decodeClockSysvar(buffer.subarray(7))).toEqual({ slot: 452_000_123n, epoch: 1_047n, unixTimestamp: 1_790_812_800n });
+  });
+
+  it('returns null for data shorter than 40 bytes', () => {
+    expect(decodeClockSysvar(clockBytes().slice(0, CLOCK_SYSVAR_SIZE - 1))).toBeNull();
+    expect(decodeClockSysvar(new Uint8Array())).toBeNull();
+  });
+
+  it('decodes the Clock sysvar account of a LiteSVM chain, owned by the sysvar program', async () => {
+    const chain = await TestChain.create();
+    const raw = chain.account(SYSVAR_CLOCK_ADDRESS);
+    expect(raw?.owner).toBe(SYSVAR_PROGRAM_ADDRESS);
+    expect(decodeClockSysvar(raw?.data ?? new Uint8Array())).toEqual({ ...chain.clock(), slot: chain.svm.getClock().slot });
   });
 });

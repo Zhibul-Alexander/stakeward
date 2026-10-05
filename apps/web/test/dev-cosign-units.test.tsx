@@ -13,25 +13,15 @@ import {
   type Signature,
   type TransactionMessageBytes,
 } from '@solana/kit';
-import {
-  buildTransaction,
-  deriveNonceAccountAddress,
-  LIGHTHOUSE_PROGRAM_ADDRESS,
-  NONCE_ACCOUNT_SEED,
-  NONCE_ACCOUNT_SIZE,
-  SYSTEM_PROGRAM_ADDRESS,
-  type LegacyMessage,
-} from '@stakeward/core';
-import { TestChain } from '@stakeward/core/test/svm';
+import { buildTransaction, LIGHTHOUSE_PROGRAM_ADDRESS, type LegacyMessage } from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
 import { describeMessageChange } from '@/pages/dev-cosign/diff';
-import { readNonceAccount } from '@/pages/dev-cosign/nonce';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { createReportStore, formatReport, REPORTS_STORAGE_KEY, type RunReport } from '@/pages/dev-cosign/report';
 import type { StorageLike } from '@/ports';
 
-// The pieces of /dev/cosign that do not need a browser: the message diff, the nonce account reader, the report text
-// and the report list kept in localStorage.
+// The pieces of /dev/cosign that do not need a browser: the message diff, the report text and the report list kept in
+// localStorage.
 
 const BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N' as Blockhash;
 const OTHER_BLOCKHASH = '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin' as Blockhash;
@@ -129,41 +119,6 @@ describe('describeMessageChange', () => {
     const bytes = await protectBytes();
     const changed = describeMessageChange(bytes, Uint8Array.of(1, 2, 3));
     expect(changed.kind === 'other' && changed.parts[0]?.code).toBe('not-a-transaction');
-  });
-});
-
-describe('readNonceAccount', () => {
-  it('reads the nonce account core creates: authority and the value the chain stores', async () => {
-    const testChain = await TestChain.create();
-    const owner = await testChain.fundedKey();
-    const nonceAccount = await deriveNonceAccountAddress(owner.address);
-    const lamports = testChain.svm.minimumBalanceForRentExemption(BigInt(NONCE_ACCOUNT_SIZE));
-    const { bytes } = buildTransaction(
-      { kind: 'nonce-setup', nonceAccount, nonceAuthority: owner.address, seed: NONCE_ACCOUNT_SEED, lamports },
-      { feePayer: owner.address, lifetime: testChain.blockhashLifetime() },
-    );
-    expect((await testChain.send(bytes, [owner])).ok).toBe(true);
-
-    const raw = testChain.account(nonceAccount);
-    expect(readNonceAccount(raw, owner.address)).toEqual({
-      kind: 'ready',
-      authority: owner.address,
-      value: testChain.nonceValue(nonceAccount),
-      lamports,
-    });
-    const stranger = (await generateKeyPairSigner()).address;
-    expect(readNonceAccount(raw, stranger)).toEqual({ kind: 'unusable', reason: 'authority', lamports });
-  });
-
-  it('tells a missing account from one that is not a nonce account', () => {
-    const owner = '11111111111111111111111111111112' as Address;
-    expect(readNonceAccount(null, owner)).toEqual({ kind: 'missing' });
-    const wallet = { address: owner, data: new Uint8Array(), lamports: 5n, owner: SYSTEM_PROGRAM_ADDRESS };
-    expect(readNonceAccount(wallet, owner)).toEqual({ kind: 'unusable', reason: 'size', lamports: 5n });
-    const zeroes = { ...wallet, data: new Uint8Array(NONCE_ACCOUNT_SIZE) };
-    expect(readNonceAccount(zeroes, owner)).toEqual({ kind: 'unusable', reason: 'state', lamports: 5n });
-    const foreign = { ...zeroes, owner: LIGHTHOUSE_PROGRAM_ADDRESS };
-    expect(readNonceAccount(foreign, owner)).toEqual({ kind: 'unusable', reason: 'owner', lamports: 5n });
   });
 });
 

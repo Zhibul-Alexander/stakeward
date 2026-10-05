@@ -17,6 +17,9 @@ export type Cluster = 'mainnet' | 'devnet';
  */
 export const LIGHTHOUSE_PROGRAM_ADDRESS = address('L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95');
 
+/** Owner of every sysvar account (Clock included). */
+export const SYSVAR_PROGRAM_ADDRESS = address('Sysvar1111111111111111111111111111111111111');
+
 /** Sysvars inserted into the legacy (Ledger-parsable) stake instruction layouts (DECISIONS.md D1). */
 export const SYSVAR_CLOCK_ADDRESS = address('SysvarC1ock11111111111111111111111111111111');
 export const SYSVAR_STAKE_HISTORY_ADDRESS = address('SysvarStakeHistory1111111111111111111111111');

@@ -2,7 +2,7 @@ import { getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { U64_MAX, ZERO_ADDRESS } from './constants.ts';
 import type { Delegation, StakeAccount } from './decode.ts';
-import { groupForViewer, scannerStatus, stakeActivationStatus } from './status.ts';
+import { groupForViewer, protectBlock, scannerStatus, stakeActivationStatus } from './status.ts';
 
 const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
 const DAY = 86_400n;
@@ -82,6 +82,49 @@ describe('scannerStatus', () => {
   it('flags accounts whose staker is not the withdrawer as managed by a service', () => {
     expect(scannerStatus(account({}), [K], clock).managedByService).toBe(false);
     expect(scannerStatus(account({}, other), [K], clock).managedByService).toBe(true);
+  });
+});
+
+describe('protectBlock', () => {
+  const now = 1_800_000_000n;
+  const clock = { unixTimestamp: now, epoch: 1_000n };
+  const A = key(1);
+  const K = key(2);
+  const other = key(3);
+  const account = (lockup: Partial<StakeAccount['lockup']>, withdrawer: Address = A): StakeAccount => ({
+    address: key(9),
+    lamports: 5_000_000_000n,
+    kind: 'initialized',
+    rentExemptReserve: 2_282_880n,
+    staker: A,
+    withdrawer,
+    lockup: { unixTimestamp: 0n, epoch: 0n, custodian: ZERO_ADDRESS, ...lockup },
+    delegation: null,
+  });
+
+  it.each([
+    ['no lockup', account({}), null],
+    ['lockup ended at exactly now', account({ unixTimestamp: now, custodian: K }), null],
+    ['lockup ended, held by another key', account({ unixTimestamp: now - 1n, custodian: other }), null],
+    ['a lock held by the main key itself (D14)', account({ unixTimestamp: now + 100n * DAY, custodian: A }), null],
+    ['an epoch lock held by the main key itself', account({ epoch: 1_001n, custodian: A }), null],
+    ['withdrawer is another key', account({}, other), 'not-main-key'],
+    ['withdrawer is another key, locked by the second key', account({ unixTimestamp: now + DAY, custodian: K }, other), 'not-main-key'],
+    ['locked by the second key', account({ unixTimestamp: now + 100n * DAY, custodian: K }), 'already-protected'],
+    ['locked by the second key, one second left', account({ unixTimestamp: now + 1n, custodian: K }), 'already-protected'],
+    ['an epoch lock held by the second key', account({ epoch: 1_001n, custodian: K }), 'already-protected'],
+    ['locked by another key', account({ unixTimestamp: now + 100n * DAY, custodian: other }), 'locked-by-other'],
+    ['an epoch lock held by another key', account({ epoch: 1_001n, custodian: other }), 'locked-by-other'],
+    ['an epoch lock with the zero key as custodian', account({ epoch: 1_001n }), 'locked-by-other'],
+  ] as const)('%s -> %s', (_name, value, expected) => {
+    expect(protectBlock(value, A, [K], clock)).toBe(expected);
+  });
+
+  it('calls every lock held by another key locked-by-other when no second key is known', () => {
+    expect(protectBlock(account({ unixTimestamp: now + DAY, custodian: K }), A, [], clock)).toBe('locked-by-other');
+    expect(protectBlock(account({ unixTimestamp: now + DAY, custodian: other }), A, [K, other], clock)).toBe(
+      'already-protected',
+    );
   });
 });
 

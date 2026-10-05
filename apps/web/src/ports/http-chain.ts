@@ -13,6 +13,7 @@ import {
   type Signature,
 } from '@solana/kit';
 import {
+  decodeClockSysvar,
   stakeAccountsFromJson,
   SYSVAR_CLOCK_ADDRESS,
   type ChainClock,
@@ -37,8 +38,6 @@ export type HttpChainOptions = TransportOptions & {
 const MAX_ACCOUNTS_PER_CALL = 100;
 const MAX_SIGNATURES_PER_CALL = 256;
 const COMMITMENT = 'confirmed';
-/** Clock sysvar: slot u64, epoch_start_timestamp i64, epoch u64, leader_schedule_epoch u64, unix_timestamp i64. */
-const CLOCK_SIZE = 40;
 
 const READ = { retries: MAX_RETRIES } as const;
 
@@ -85,13 +84,9 @@ export class HttpChain implements ChainPort {
   async getClock(): Promise<ChainClock> {
     const result = await this.call('getAccountInfo', [SYSVAR_CLOCK_ADDRESS, { encoding: 'base64', commitment: COMMITMENT }]);
     const account = rawAccount(SYSVAR_CLOCK_ADDRESS, contextValue(result, 'getAccountInfo').value);
-    if (account === null || account.data.length < CLOCK_SIZE) throw malformed('the Clock sysvar is missing');
-    const view = new DataView(account.data.buffer, account.data.byteOffset, CLOCK_SIZE);
-    return {
-      slot: view.getBigUint64(0, true),
-      epoch: view.getBigUint64(16, true),
-      unixTimestamp: view.getBigInt64(32, true),
-    };
+    const clock = account === null ? null : decodeClockSysvar(account.data);
+    if (clock === null) throw malformed('the Clock sysvar is missing');
+    return clock;
   }
 
   async getLatestBlockhash(): Promise<LatestBlockhash> {

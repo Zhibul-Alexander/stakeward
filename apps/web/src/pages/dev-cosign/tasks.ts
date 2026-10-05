@@ -1,17 +1,19 @@
 import type { Address } from '@solana/kit';
 import {
   buildTransaction,
+  canPayFee,
   deriveNonceAccountAddress,
   inspectTransaction,
   lockupEnd,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
+  readNonceAccount,
   type BuiltTransaction,
   type ChainPort,
   type Cluster,
   type Lifetime,
+  type NonceAccountState,
 } from '@stakeward/core';
-import { readNonceAccount, type NonceAccountState } from './nonce.ts';
 import type { LifetimeChoice } from './report.ts';
 
 /**
@@ -84,9 +86,8 @@ export async function buildUnlock(
   const lifetime: Lifetime = { kind: 'blockhash', ...blockhash };
   const bySecond = buildTransaction(action, { feePayer: input.secondKey, lifetime });
   const inspected = await inspectTransaction(bySecond.bytes);
-  if (inspected.ok) {
-    const left = balance - inspected.summary.networkFeeLamports;
-    if (left === 0n || left >= rentExempt) return { built: bySecond, feePayer: 'second' };
+  if (inspected.ok && canPayFee(balance, inspected.summary.networkFeeLamports, rentExempt)) {
+    return { built: bySecond, feePayer: 'second' };
   }
   return { built: buildTransaction(action, { feePayer: input.mainKey, lifetime }), feePayer: 'main' };
 }

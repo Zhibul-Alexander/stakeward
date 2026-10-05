@@ -1,4 +1,5 @@
 import type { Address, Blockhash, Nonce } from '@solana/kit';
+import type { WalletRole } from './ports.ts';
 
 /**
  * The shared vocabulary of the builders and the inspector: what a Stakeward transaction does.
@@ -158,4 +159,16 @@ export function expectedFeePayer(action: TransactionAction): Address {
     case 'nonce-close':
       return action.nonceAuthority;
   }
+}
+
+/**
+ * Roles the action itself names: mainKey -> main, secondKey (when not null) -> second, newWallet -> new. Other keys
+ * (a staker, a nonce authority, a recipient) have no role of their own; the page knows whose they are.
+ */
+export function actionRoles(action: TransactionAction): Partial<Record<WalletRole, Address>> {
+  const roles: Partial<Record<WalletRole, Address>> = {};
+  if ('mainKey' in action) roles.main = action.mainKey;
+  if ('secondKey' in action && action.secondKey !== null) roles.second = action.secondKey;
+  if ('newWallet' in action) roles.new = action.newWallet;
+  return roles;
 }

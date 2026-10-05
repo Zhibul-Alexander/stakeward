@@ -52,6 +52,23 @@ export type DecodeError = 'wrong-owner' | 'wrong-size' | 'malformed' | 'uninitia
 
 export type DecodeResult = { ok: true; account: StakeAccount } | { ok: false; error: DecodeError };
 
+/** Size in bytes of the Clock sysvar account data. */
+export const CLOCK_SYSVAR_SIZE = 40;
+
+/**
+ * Clock sysvar: u64 slot @0, i64 epoch_start @8, u64 epoch @16, u64 leader_schedule_epoch @24, i64 unix_timestamp @32
+ * (little endian). Returns null when `data` is shorter than 40 bytes; the owner is the caller's to check.
+ */
+export function decodeClockSysvar(data: ReadonlyUint8Array): { slot: bigint; epoch: bigint; unixTimestamp: bigint } | null {
+  if (data.length < CLOCK_SYSVAR_SIZE) return null;
+  const view = new DataView(data.buffer, data.byteOffset, CLOCK_SYSVAR_SIZE);
+  return {
+    slot: view.getBigUint64(0, true),
+    epoch: view.getBigUint64(16, true),
+    unixTimestamp: view.getBigInt64(32, true),
+  };
+}
+
 /** Built once: the worker decodes up to hundreds of accounts per request, and building the decoder costs more. */
 const stakeStateAccountDecoder = /* @__PURE__ */ getStakeStateAccountDecoder();
 

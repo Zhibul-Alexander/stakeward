@@ -1,4 +1,5 @@
 import {
+  actionRoles,
   formatSol,
   formatUtcDate,
   isLockupInForce,
@@ -69,12 +70,11 @@ const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
 /** Roles named by the action itself: these win over the page's `knownRoles`. */
 function rolesOf(action: TransactionAction, known: Partial<Record<WalletRole, Address>>): Map<Address, WalletRole> {
   const roles = new Map<Address, WalletRole>();
-  for (const [role, address] of Object.entries(known) as [WalletRole, Address | undefined][]) {
-    if (address !== undefined) roles.set(address, role);
+  for (const source of [known, actionRoles(action)]) {
+    for (const [role, address] of Object.entries(source) as [WalletRole, Address | undefined][]) {
+      if (address !== undefined) roles.set(address, role);
+    }
   }
-  if ('mainKey' in action) roles.set(action.mainKey, 'main');
-  if ('secondKey' in action && action.secondKey !== null) roles.set(action.secondKey, 'second');
-  if ('newWallet' in action) roles.set(action.newWallet, 'new');
   return roles;
 }
 
