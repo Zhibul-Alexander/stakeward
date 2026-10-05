@@ -39,7 +39,7 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "recovery": "Recovery card",
-      "stats": "Stats"
+      "stats": "Stakeward in numbers"
     }
   },
   "nav": {
@@ -600,19 +600,33 @@
     }
   },
   "stats": {
+    "intro": "Three numbers, counted when you open this page: the stake accounts Stakeward watches whose lock is in force now, the SOL in them, and the Telegram alerts sent so far.",
+    "source": "Accounts and SOL come from public network data: Stakeward's monitor reads each watched stake account from Solana. Only totals are shown, never wallets.",
+    "monitoring": "Monitoring",
+    "refresh": "Refresh",
+    "loading": "Loading the numbers from Stakeward",
+    "countedAt": "Counted on {date}.",
+    "zero": "No stake account Stakeward watches has a lock in force right now.",
+    "zeroAction": "Check your stake",
+    "error": {
+      "title": "Could not load the numbers",
+      "network": "Stakeward did not answer. Check your connection, then try again.",
+      "rateLimited": "Too many requests from your network. Wait a minute, then try again.",
+      "server": "Stakeward could not count the numbers just now. Try again in a minute."
+    },
     "unavailable": "Not available",
     "tiles": {
       "accounts": {
         "label": "Stake accounts locked",
-        "note": "Stake accounts Stakeward watches whose lock is in force now."
+        "note": "A stake account leaves this count when its lock ends or the account is closed."
       },
       "sol": {
         "label": "SOL locked",
-        "note": "All the SOL in those stake accounts: a lock covers the whole balance."
+        "note": "A lock covers the whole balance of a stake account, so all of it counts."
       },
       "alerts": {
         "label": "Alerts sent",
-        "note": "Telegram alerts sent so far about changes to watched stake. Reminders are not counted."
+        "note": "Alerts about changes to watched stake. Reminders before a lock ends are not counted."
       }
     }
   },

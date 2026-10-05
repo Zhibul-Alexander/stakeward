@@ -10,6 +10,7 @@ import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { StatsPage } from '@/pages/StatsPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
@@ -62,7 +63,7 @@ export function AppRoutes() {
         <ComingSoonPage title={t('common.pages.recovery')} />
       </Route>
       <Route path="/stats">
-        <ComingSoonPage title={t('common.pages.stats')} />
+        <StatsPage />
       </Route>
       {DevUiPage === null ? null : (
         <Route path="/dev/ui">

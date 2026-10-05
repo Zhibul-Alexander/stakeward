@@ -48,16 +48,17 @@ export function StatTile(props: StatTileProps) {
         {label}
       </dt>
       {props.status === 'ready' ? (
-        <dd data-slot="stat-value" className="min-h-9 text-3xl font-semibold tabular-nums wrap-anywhere">
+        // text-2xl keeps a 16-digit SOL amount on one line in a 360 px column or a third of the page.
+        <dd data-slot="stat-value" className="min-h-8 text-2xl font-semibold tabular-nums wrap-anywhere">
           {props.value}
         </dd>
       ) : props.status === 'loading' ? (
-        <dd data-slot="stat-value" className="flex min-h-9 items-center">
-          <Skeleton className="h-8 w-28" />
+        <dd data-slot="stat-value" className="flex min-h-8 items-center">
+          <Skeleton className="h-7 w-28" />
           <span className="sr-only">{t('common.loading')}</span>
         </dd>
       ) : (
-        <dd data-slot="stat-value" className="flex min-h-9 items-center gap-1.5 font-medium text-muted">
+        <dd data-slot="stat-value" className="flex min-h-8 items-center gap-1.5 font-medium text-muted">
           <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
           {props.message}
         </dd>

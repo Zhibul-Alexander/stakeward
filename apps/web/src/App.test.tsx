@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { App } from './App.tsx';
+import { ComingSoonPage } from './pages/ComingSoonPage.tsx';
 
 function renderAt(path: string) {
   const { hook, searchHook } = memoryLocation({ path, static: true });
@@ -23,7 +24,7 @@ describe('app shell', () => {
     ['/rescue', 'Rescue your stake'],
     ['/cosign', 'Co-sign a transaction'],
     ['/recovery/Stake11111111111111111111111111111111111111', 'Recovery card'],
-    ['/stats', 'Stats'],
+    ['/stats', 'Stakeward in numbers'],
     ['/no-such-page', 'Page not found'],
   ])('%s shows its heading inside the layout', (path, heading) => {
     renderAt(path);
@@ -45,7 +46,13 @@ describe('app shell', () => {
   });
 
   it('placeholder pages offer a way back', () => {
-    renderAt('/stats');
+    // The component itself, whichever routes still use it.
+    const { hook, searchHook } = memoryLocation({ path: '/placeholder', static: true });
+    render(
+      <Router hook={hook} searchHook={searchHook}>
+        <ComingSoonPage title="Placeholder" />
+      </Router>,
+    );
     expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', '/app');
   });
 
