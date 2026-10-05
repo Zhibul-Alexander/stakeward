@@ -397,6 +397,61 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
   );
 });
 
+describe('/protect: one stake account at a time', () => {
+  it(
+    'stopping in round 2 shows and records what round 1 protected; nothing claims that nothing was sent',
+    async () => {
+      const w = await world();
+      const { S1, S2 } = await twoAccounts(w);
+      const [main, second] = await twoWallets(w);
+      const page = renderProtect(w, [S1, S2], [main, second]);
+      main.once({ fail: Object.assign(new Error('Main Wallet signs one transaction per request'), { name: 'WalletBatchUnsupportedError' }) });
+      await toSigning(page);
+      await click(page.user, 'Sign 2 transactions in Main Wallet as Main key');
+      await click(page.user, 'Sign one stake account at a time');
+      await click(page.user, 'Sign in Main Wallet as Main key');
+      await click(page.user, 'Sign in Second Wallet as Second key');
+
+      // Round 1 landed; round 2 says so and offers no way back that would drop it.
+      await screen.findByText('Round 2 of 2', undefined, WAIT);
+      await screen.findByRole('button', { name: 'Sign in Main Wallet as Main key' }, WAIT);
+      expect(lockOf(w, S1)?.custodian).toBe(w.K.address);
+      expect(screen.getByText(/^An earlier round already sent the transaction for 1 stake account\./)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+
+      second.once({ reject: true });
+      await click(page.user, 'Sign in Main Wallet as Main key');
+      await click(page.user, 'Sign in Second Wallet as Second key');
+      await screen.findByText('This round was not sent', undefined, WAIT);
+      expect(screen.queryByText('Nothing was sent')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Stop and go back. Nothing was sent.' })).toBeNull();
+
+      await page.user.click(screen.getByRole('button', { name: 'Stop here and see the result' }));
+      await finished('1 of 2 stake accounts are protected');
+      expect(within(screen.getByRole('region', { name: 'Protected' })).getByRole('article', { name: `Stake account ${shortAddress(S1)}` })).toBeInTheDocument();
+      const notYet = within(screen.getByRole('list', { name: 'Not protected yet' })).getAllByRole('listitem');
+      expect(notYet.map((item) => item.getAttribute('data-status'))).toEqual(['not-sent']);
+      // The lock round 1 put on the chain is remembered and watched (step 4 spec 4.6).
+      expect(page.ports.secondKeys.getSnapshot()).toEqual([w.K.address]);
+      expect(page.ports.protectedAccounts.getSnapshot()).toEqual([S1]);
+      await waitFor(() => {
+        expect(page.api.calls).toEqual([[S1]]);
+      });
+      expect(lockOf(w, S2)).toEqual(NO_LOCK);
+
+      await page.user.click(screen.getByRole('button', { name: 'Try again for 1 stake account' }));
+      await click(page.user, 'Sign in Main Wallet as Main key');
+      await click(page.user, 'Sign in Second Wallet as Second key');
+      await finished('2 stake accounts are protected');
+      expect(lockOf(w, S2)?.custodian).toBe(w.K.address);
+      await waitFor(() => {
+        expect(page.api.calls).toEqual([[S1], [S2]]);
+      });
+    },
+    TIMEOUT,
+  );
+});
+
 describe('/protect Done: uncertain outcomes', () => {
   it(
     'Stop waiting leaves the transactions uncertain; Check again reads the chain, then remembers and watches what landed',
@@ -538,6 +593,38 @@ describe('/protect step gates', () => {
       expect(screen.queryByText(/This wallet manages staking/)).toBeNull();
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'How long should the lock hold?' });
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'leaving out the only chosen account: Continue says none is left and goes no further; nothing is signed',
+    async () => {
+      const w = await world();
+      const S3 = await w.testChain.createStakeAccount({ staker: w.K.address, withdrawer: w.A.address });
+      const [main, second] = await twoWallets(w);
+      const { user, location, api } = renderProtect(w, [S3], [main, second]);
+
+      await connect(user, 'Main key', 'Main Wallet');
+      await waitFor(() => {
+        expect(selectBox(S3)).toBeChecked();
+      }, WAIT);
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      await connect(user, 'Second key', 'Second Wallet');
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
+      await user.click(screen.getByRole('button', { name: `Leave ${shortAddress(S3)} out` }));
+      expect(location.history.at(-1)).toBe('/protect');
+
+      await user.click(continueButton());
+      const noneLeft = 'No stake account is left to protect. Go back and choose at least one.';
+      expect(screen.getByText(noneLeft)).toBeInTheDocument();
+      expect(continueButton()).toHaveAccessibleDescription(noneLeft);
+      expect(screen.getByRole('heading', { name: 'Connect your second key' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'How long should the lock hold?' })).toBeNull();
+      expect(main.requests).toHaveLength(0);
+      expect(second.requests).toHaveLength(0);
+      expect(api.calls).toEqual([]);
     },
     TIMEOUT,
   );

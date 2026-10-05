@@ -6,6 +6,7 @@ import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSlotStore, StaticWalletRegistry, type SlotStore } from '@/ports';
+import { HttpChain } from '@/ports/http-chain';
 import { checkLanded, type LandedItem } from '@/signing/check';
 import type { SigningState } from '@/signing/machine';
 import { REREAD_ATTEMPTS, appendsTail } from '@/signing/rules';
@@ -259,6 +260,139 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
     expect(second.requests.map((request) => request.transactions.length)).toEqual([1, 1]);
   });
 
+  it('the signing order the user chose holds: Sign again after an expiry keeps the second key first', async () => {
+    const s = session({ ids: [S1] });
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    second.once({ lighthouseTail: true });
+    s.sign();
+    const stopped = await until(s, phaseIs('stopped', 1));
+    expect(stopped.phase).toMatchObject({ reason: { kind: 'check', code: 'tail-not-first-signer', startWith: K, bothWays: false } });
+    s.restartRound(K);
+    const secondFirst = await until(s, phaseIs('ready', 0));
+    expect(secondFirst.round?.steps.map((step) => step.address)).toEqual([K, A]);
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    chain.expireBlockhash();
+    s.sign();
+    await until(s, phaseIs('expired'));
+
+    s.restartRound(); // "Sign again"
+    const again = await until(s, phaseIs('ready', 0));
+    expect(again.round?.steps.map((step) => step.address)).toEqual([K, A]);
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    s.sign();
+    const end = await until(s, phaseIs('finished'));
+    expect(jobKinds(end)).toEqual({ [S1]: 'done' });
+  });
+
+  it('the signing order the user chose holds in the next rounds', async () => {
+    const s = session({ roundSize: 1 });
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    second.once({ lighthouseTail: true });
+    s.sign();
+    await until(s, phaseIs('stopped', 1));
+    s.restartRound(K);
+    await until(s, phaseIs('ready', 0));
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    s.sign();
+    const next = await until(s, (state) => state.roundNumber === 2 && phaseIs('ready', 0)(state));
+    expect(next.jobs[S1]?.state.kind).toBe('done');
+    expect(next.round?.steps.map((step) => step.address)).toEqual([K, A]);
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    s.sign();
+    const end = await until(s, phaseIs('finished'));
+    expect(jobKinds(end)).toEqual({ [S1]: 'done', [S2]: 'done' });
+  });
+
+  it('finish in a later round: reports what earlier rounds landed (onFinished), the rest is not sent', async () => {
+    const onFinished = vi.fn();
+    const s = session({ roundSize: 1, onFinished });
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    s.sign();
+    await until(s, (state) => state.roundNumber === 2 && phaseIs('ready', 0)(state));
+    expect(testChain.stakeAccount(S1)?.lockup.custodian).toBe(K);
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    second.once({ reject: true });
+    s.sign();
+    await until(s, phaseIs('stopped', 1));
+
+    s.finish();
+    const end = s.getSnapshot();
+    expect(end.phase).toEqual({ kind: 'finished' });
+    expect(jobKinds(end)).toEqual({ [S1]: 'done', [S2]: 'not-sent' });
+    expect(onFinished).toHaveBeenCalledTimes(1);
+    expect(onFinished).toHaveBeenCalledWith(end);
+    expect(testChain.stakeAccount(S2)?.lockup.unixTimestamp).toBe(0n);
+  });
+
+  it('the block height read after Sign is a wait the screen shows (starting), and Stop waiting ends it', async () => {
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    const height = vi.spyOn(chain, 'getBlockHeight').mockImplementationOnce(() => new Promise<bigint>(() => undefined));
+    s.sign();
+    const starting = await until(s, phaseIs('starting', 0));
+    expect(starting.phase).toEqual({ kind: 'starting', step: 0, waitFor: 'network' });
+    s.sign(); // a second click does nothing while the first one waits
+    expect(height).toHaveBeenCalledTimes(1);
+    s.stopWaiting();
+    expect(s.getSnapshot().phase).toEqual({ kind: 'ready', step: 0, refreshed: false });
+    expect(main.requests).toHaveLength(0);
+
+    s.sign(); // the next read answers: the wallet is asked
+    await until(s, phaseIs('ready', 1));
+    expect(main.requests).toHaveLength(1);
+    s.dispose();
+  });
+
+  it('Continue after switching accounts waits for the wallet (starting) with Stop waiting; a second press asks nothing', async () => {
+    const both = await createTestWalletPort({ name: 'Both Wallet', signers: [mainKey, secondKey], connected: true });
+    wallets.add(both);
+    slots.clear('main');
+    slots.clear('second');
+    slots.assign('main', { walletId: both.id, address: A });
+    slots.assign('second', { walletId: both.id, address: K });
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    both.setExposedAccounts([A]);
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    s.sign();
+    await until(s, phaseIs('switch-account', 1));
+
+    const connect = vi.spyOn(both, 'connect').mockImplementation(
+      (options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            reject(walletError('AbortError'));
+          });
+        }),
+    );
+    s.continueAfterSwitch();
+    const waiting = await until(s, phaseIs('starting', 1));
+    expect(waiting.phase).toEqual({ kind: 'starting', step: 1, waitFor: 'wallet' });
+    s.continueAfterSwitch();
+    expect(connect).toHaveBeenCalledTimes(1);
+    s.stopWaiting();
+    expect(s.getSnapshot().phase).toEqual({ kind: 'switch-account', step: 1, again: false });
+    expect(both.requests).toHaveLength(1);
+    s.dispose();
+  });
+
   it('a wallet that returns its transactions unsigned: stopped by verify, nothing sent', async () => {
     const send = vi.spyOn(chain, 'send');
     const s = session();
@@ -302,6 +436,39 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
       const job = state.jobs[S1]?.state;
       return job?.kind === 'confirming' && job.indefinite && state.phase.kind === 'confirming';
     });
+    expect(waiting.jobs[S1]?.state).toEqual({ kind: 'confirming', indefinite: true });
+    chain.advanceBlocks(200n);
+    const end = await until(s, phaseIs('finished'));
+    expect(end.jobs[S1]?.state).toEqual({ kind: 'expired' });
+    expect(end.jobs[S2]?.state.kind).toBe('done');
+  });
+
+  it('a rate limit on the resend after a lost answer: still polled (the first attempt may land), never rebuilt', async () => {
+    // What HttpChain throws when the first send got no answer and the resend of the same bytes got HTTP 429.
+    const answers: (() => Promise<Response>)[] = [
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32005, message: 'Too many requests' } }), { status: 429 }),
+        ),
+    ];
+    const fetch: typeof globalThis.fetch = (_input, init) => {
+      const { method } = JSON.parse(init?.body as string) as { method: string };
+      if (method === 'sendTransaction') return (answers.shift() ?? (() => Promise.reject(new Error('unexpected send'))))();
+      return Promise.resolve(new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { context: { slot: 1 }, value: [null] } })));
+    };
+    const http = new HttpChain({ fetch, sleep: () => Promise.resolve() });
+
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    s.sign();
+    await until(s, phaseIs('ready', 1));
+    const { round } = s.getSnapshot();
+    const lost: unknown = await http.send(round?.txs[0]?.bytes ?? new Uint8Array()).catch((e: unknown) => e);
+    chain.failNext('send', lost as Error);
+    s.sign();
+    const waiting = await until(s, (state) => state.phase.kind === 'confirming');
     expect(waiting.jobs[S1]?.state).toEqual({ kind: 'confirming', indefinite: true });
     chain.advanceBlocks(200n);
     const end = await until(s, phaseIs('finished'));

@@ -19,12 +19,12 @@ import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import type { PrepareProblem, SignStep, SigningState, StopReason } from './machine.ts';
 import type { SigningSession } from './session.ts';
-import { backKind, jobItems, roundProgress, sendProgress, signerItems } from './view.ts';
+import { backKind, earlierSent, jobItems, roundProgress, sendProgress, signerItems } from './view.ts';
 
 /** What the panel's buttons call: a SigningSession, or no-ops for the /dev/ui fixtures. */
 export type SigningActions = Pick<
   SigningSession,
-  'sign' | 'continueWithWallet' | 'continueAfterSwitch' | 'stopWaiting' | 'restartRound' | 'oneAtATime' | 'retryPrepare'
+  'sign' | 'continueWithWallet' | 'continueAfterSwitch' | 'stopWaiting' | 'restartRound' | 'oneAtATime' | 'retryPrepare' | 'finish'
 >;
 
 type SigningViewProps = {
@@ -50,9 +50,19 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack 
   const shown = !building && phase.kind !== 'prepare-failed';
   const sent = phase.kind === 'sending' || phase.kind === 'confirming' || phase.kind === 'checking' || phase.kind === 'finished';
   const signers = shown ? signerItems(state) : [];
+  const earlier = earlierSent(state);
   return (
     <div data-slot="signing-panel" data-phase={phase.kind} className="flex flex-col gap-5">
-      {progress.total > 1 ? <p className="text-sm font-medium">{t('signing.roundOf', progress)}</p> : null}
+      {progress.total > 1 ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium">{t('signing.roundOf', progress)}</p>
+          {earlier === 0 ? null : (
+            <p className="text-sm text-muted">
+              {earlier === 1 ? t('signing.earlierSentOne') : t('signing.earlierSentOther', { count: earlier })}
+            </p>
+          )}
+        </div>
+      ) : null}
       {building ? <TransactionSummarySkeleton /> : shown ? <Summaries state={state} knownRoles={knownRoles} /> : null}
       {building ? <SignerListSkeleton /> : signers.length === 0 ? null : <SignerList items={signers} />}
       <div role="status" aria-live="polite" className="flex flex-col gap-3">
@@ -114,8 +124,20 @@ type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles'>;
 function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsProps) {
   const { phase, round } = state;
   const back = backKind(state);
+  // After an earlier round was sent, "Nothing was sent" is about this round only.
+  const roundOnly = earlierSent(state) > 0;
   const backButton =
-    back === null ? null : (
+    back === null ? null : back === 'finish' ? (
+      <Button
+        variant="ghost"
+        onClick={() => {
+          actions.finish();
+        }}
+        className="h-auto min-h-10 max-w-full whitespace-normal"
+      >
+        {t('signing.finishHere')}
+      </Button>
+    ) : (
       <Button variant="ghost" onClick={onBack} className="h-auto min-h-10 max-w-full whitespace-normal">
         {back === 'back' ? t('common.back') : t('signing.backNothingSent')}
       </Button>
@@ -207,6 +229,13 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
         </Alert>
       );
 
+    case 'starting':
+      return (
+        <Waiting text={phase.waitFor === 'wallet' ? t('signing.waitingWallet', { wallet }) : t('signing.checkingTime', { wallet })}>
+          <StopWaiting actions={actions} />
+        </Waiting>
+      );
+
     case 'signing':
       return (
         <Waiting text={t('signing.waitingWallet', { wallet })}>
@@ -215,7 +244,14 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
       );
 
     case 'stopped':
-      return <Stopped reason={phase.reason} actions={actions} backButton={backButton} />;
+      return (
+        <Stopped
+          title={roundOnly ? t('signing.stoppedTitleRound') : t('signing.stoppedTitle')}
+          reason={phase.reason}
+          actions={actions}
+          backButton={backButton}
+        />
+      );
 
     case 'expired': {
       const several = (round?.txs.length ?? 0) > 1;
@@ -224,7 +260,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
           <TriangleAlertIcon aria-hidden="true" />
           <AlertTitle>{t('signing.expiredTitle')}</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <p>{t('signing.expiredBody')}</p>
+            <p>{roundOnly ? t('signing.expiredBodyRound') : t('signing.expiredBody')}</p>
             {several ? <p>{t('signing.oneAtATimeHint')}</p> : null}
             <Buttons>
               <Button
@@ -333,7 +369,17 @@ function PrepareFailed({
   }
 }
 
-function Stopped({ reason, actions, backButton }: { reason: StopReason; actions: SigningActions; backButton: ReactNode }) {
+function Stopped({
+  title,
+  reason,
+  actions,
+  backButton,
+}: {
+  title: string;
+  reason: StopReason;
+  actions: SigningActions;
+  backButton: ReactNode;
+}) {
   const startAgain = (
     <Button
       variant="outline"
@@ -350,7 +396,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
       const batch = reason.portError === 'WalletBatchUnsupportedError';
       return (
         <ErrorState
-          title={t('signing.stoppedTitle')}
+          title={title}
           message={walletStopText(reason)}
           detail={reason.portError === 'cancelled' ? undefined : reason.error.detail}
           onRetry={
@@ -383,7 +429,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
       const { startWith } = reason;
       return (
         <ErrorState
-          title={t('signing.stoppedTitle')}
+          title={title}
           message={reason.bothWays ? t('signing.check.tailBothWays', { wallet: reason.walletName }) : t(`signing.check.${reason.code}`)}
           detail={`${reason.code}: ${reason.detail}`}
           actions={
@@ -409,7 +455,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
     case 'inspect':
       return (
         <ErrorState
-          title={t('signing.stoppedTitle')}
+          title={title}
           message={t('signing.inspect')}
           detail={`${reason.error.code}: ${reason.error.message}`}
           actions={
@@ -423,7 +469,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
     case 'verify':
       return (
         <ErrorState
-          title={t('signing.stoppedTitle')}
+          title={title}
           message={t(`signing.verify.${reason.code}`)}
           detail={`${reason.code}: ${reason.detail}`}
           actions={
@@ -472,11 +518,14 @@ function StopWaiting({ actions }: { actions: SigningActions }) {
   );
 }
 
+/** A wait: the spinner and its text stay together on one line group; only the way out wraps below them. */
 function Waiting({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      <Spinner className="size-5 text-muted" />
-      <span>{text}</span>
+      <span className="flex min-w-0 items-center gap-3">
+        <Spinner className="size-5 shrink-0 text-muted" />
+        <span className="min-w-0">{text}</span>
+      </span>
       {children}
     </div>
   );

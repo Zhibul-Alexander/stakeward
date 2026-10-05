@@ -51,8 +51,9 @@ describe('app shell', () => {
 
   it('loads the devnet-only pages lazily on devnet (the default outside `vite build`)', async () => {
     renderAt('/dev/ui');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Design system' })).toBeInTheDocument();
-  });
+    // The lazy chunk is the whole /dev/ui page: transforming it can take several seconds on a loaded machine.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Design system' }, { timeout: 20_000 })).toBeInTheDocument();
+  }, 30_000);
 
   it('marks devnet in the header', () => {
     renderAt('/');

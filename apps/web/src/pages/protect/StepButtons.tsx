@@ -13,6 +13,8 @@ export function blockerText(blocker: Blocker): string {
       return t('protect.accounts.needOne');
     case 'too-many':
       return t('protect.accounts.tooMany', { max: MAX_ACCOUNTS_PER_RUN });
+    case 'none-left':
+      return t('protect.accounts.noneLeft');
     case 'need-second':
       return t('protect.second.needSecond');
     case 'second-key-problem':

@@ -11,7 +11,7 @@ describe('/dev/ui flows', () => {
     const panels = () => [...document.querySelectorAll('#signing [data-slot="signing-panel"]')];
     await waitFor(
       () => {
-        expect(panels()).toHaveLength(12);
+        expect(panels()).toHaveLength(14);
       },
       { timeout: 10_000 },
     );
@@ -21,7 +21,9 @@ describe('/dev/ui flows', () => {
       'ready',
       'needs-wallet',
       'switch-account',
+      'starting',
       'signing',
+      'stopped',
       'stopped',
       'stopped',
       'expired',
@@ -35,6 +37,9 @@ describe('/dev/ui flows', () => {
       screen.getByText('Sample Wallet holds more than one of your keys. Switch Sample Wallet to the account of your Second key, then sign.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Start again with Demo Wallet signing first')).toBeInTheDocument();
+    expect(screen.getByText('Checking the network before asking Sample Wallet')).toBeInTheDocument();
+    expect(screen.getByText('This round was not sent')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop here and see the result' })).toBeInTheDocument();
 
     const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > h2')].map((heading) => heading.textContent);
     expect(titles).toEqual(['2 stake accounts are protected', '1 of 4 stake accounts are protected', 'No stake account was protected']);

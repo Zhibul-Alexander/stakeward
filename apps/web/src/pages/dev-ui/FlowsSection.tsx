@@ -20,6 +20,7 @@ const NO_SIGNING_ACTIONS: SigningActions = {
   restartRound: noop,
   oneAtATime: noop,
   retryPrepare: noop,
+  finish: noop,
 };
 
 const NO_DONE_ACTIONS: ProtectDoneActions = { retry: noop, choosePeriod: noop, checkAgain: noop, retryMonitoring: noop };

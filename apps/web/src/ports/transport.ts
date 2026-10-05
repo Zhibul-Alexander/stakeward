@@ -50,6 +50,17 @@ function noAnswer<T>(error: T): T {
   return error;
 }
 
+/** For a failure a request finally threw: the failure of an earlier attempt whose answer never arrived. */
+const lostBefore = new WeakMap<object, unknown>();
+
+/**
+ * The failure of an earlier attempt of the same request whose answer never arrived, when `error` is what a later
+ * attempt got; undefined otherwise. That earlier attempt may have reached the worker, which may have forwarded it.
+ */
+export function earlierUnanswered(error: unknown): unknown {
+  return typeof error === 'object' && error !== null ? lostBefore.get(error) : undefined;
+}
+
 export class Transport {
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
@@ -118,11 +129,17 @@ export class Transport {
   }
 
   private async withRetries<T>(retries: number, attempt: () => Promise<T>): Promise<T> {
+    let lost: unknown = undefined;
     for (let failures = 0; ; failures += 1) {
       try {
         return await attempt();
       } catch (error) {
-        if (failures >= retries || !isRetryable(error)) throw error;
+        const errorLost = typeof error === 'object' && error !== null && unanswered.has(error);
+        if (failures >= retries || !isRetryable(error)) {
+          if (lost !== undefined && !errorLost && typeof error === 'object' && error !== null) lostBefore.set(error, lost);
+          throw error;
+        }
+        if (errorLost) lost = error;
         await this.sleep(RETRY_DELAYS_MS[Math.min(failures, RETRY_DELAYS_MS.length - 1)] ?? 1_000);
       }
     }

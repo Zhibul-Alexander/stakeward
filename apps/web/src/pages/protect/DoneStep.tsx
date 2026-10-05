@@ -1,6 +1,15 @@
 import type { Address } from '@solana/kit';
 import { scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
-import { CircleCheckIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon } from 'lucide-react';
+import {
+  CircleAlertIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  LoaderCircleIcon,
+  RotateCcwIcon,
+  SearchIcon,
+  SendIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AccountRow } from '@/components/product/account-row';
@@ -144,7 +153,8 @@ export function ProtectDoneView({
         <List title={t('protect.done.notProtectedList')}>
           <JobStatusList items={others.map(notProtectedItem)} label={t('protect.done.notProtectedList')} />
           {checkFailed ? (
-            <p role="status" className="text-sm font-medium text-danger">
+            <p role="status" className="flex items-start gap-2 text-sm font-medium text-danger">
+              <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />
               {t('protect.done.checkFailed')}
             </p>
           ) : null}
@@ -342,12 +352,18 @@ function MonitoringCard({ watch, onRetry }: { watch: Exclude<WatchState, { kind:
           </p>
         ) : watch.kind === 'partial' ? (
           <>
-            <p>{t('protect.done.monitoring.partial')}</p>
+            <p className="flex items-start gap-2 font-medium">
+              <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
+              {t('protect.done.monitoring.partial')}
+            </p>
             <ErrorDetails detail={watch.rejected.map(({ account, reason }) => `${account}: ${reason}`).join('\n')} />
           </>
         ) : (
           <>
-            <p>{t('protect.done.monitoring.failed')}</p>
+            <p className="flex items-start gap-2 font-medium">
+              <CircleXIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />
+              {t('protect.done.monitoring.failed')}
+            </p>
             <ErrorDetails detail={watch.detail} />
           </>
         )}

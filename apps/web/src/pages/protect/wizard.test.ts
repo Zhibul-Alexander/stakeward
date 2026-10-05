@@ -140,6 +140,13 @@ describe('blockers', () => {
     expect(blockers('period', ok)).toEqual([]);
     expect(blockers('period', { ...ok, clockReady: false })).toEqual(['need-clock']);
   });
+
+  it('second key and period: an empty selection (every account left out) blocks, and only that is said', () => {
+    expect(blockers('second-key', { ...ok, selection: 0 })).toEqual(['none-left']);
+    expect(blockers('second-key', { ...ok, selection: 0, secondReady: false, seedConfirmed: false })).toEqual(['none-left']);
+    expect(blockers('period', { ...ok, selection: 0 })).toEqual(['none-left']);
+    expect(blockers('period', { ...ok, selection: 0, clockReady: false })).toEqual(['none-left']);
+  });
 });
 
 describe('wizardReducer', () => {

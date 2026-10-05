@@ -108,6 +108,11 @@ export type Phase =
   | { kind: 'prepare-failed'; problem: PrepareProblem }
   /** `refreshed`: the round was just built again because too few blocks were left to sign it. */
   | { kind: 'ready'; step: number; refreshed: boolean }
+  /**
+   * After a click, before the wallet request: the wallet is asked to offer the account again (`wallet`, after
+   * switch-account), or the block height is read to check there is time to sign (`network`). Stop waiting goes back.
+   */
+  | { kind: 'starting'; step: number; waitFor: 'wallet' | 'network' }
   | { kind: 'needs-wallet'; step: number }
   | { kind: 'switch-account'; step: number; again: boolean }
   | { kind: 'signing'; step: number }
@@ -129,7 +134,7 @@ export type SigningState = {
   round: Round | null;
   phase: Phase;
   clock: ChainClock | null;
-  /** The signer that goes first in this round ("Start again with <wallet> signing first"). */
+  /** The signer the user put first ("Start again with <wallet> signing first"); kept for the rest of the run. */
   first: Address | null;
   /** Every signer that was put first once; asking again would not help. */
   triedFirst: readonly Address[];
@@ -153,6 +158,7 @@ export type SigningEvent =
   /** The missing key is connected now: back to its turn, with the wallet names read again. */
   | { type: 'wallet-ready'; step: number; steps: readonly SignStep[] }
   | { type: 'switch-account'; step: number; again: boolean }
+  | { type: 'starting'; step: number; waitFor: 'wallet' | 'network' }
   | { type: 'asking'; step: number }
   | { type: 'signed'; step: number; txs: readonly RoundTx[] }
   | { type: 'stopped'; step: number; reason: StopReason }
@@ -163,7 +169,9 @@ export type SigningEvent =
   | { type: 'send-done' }
   | { type: 'confirm-done' }
   | { type: 'check-done' }
-  | { type: 'stop-waiting' };
+  | { type: 'stop-waiting' }
+  /** "Stop here and see the result": ends the run where it stands, outside a wait; what was not sent stays not sent. */
+  | { type: 'finish' };
 
 const QUEUED: JobState = { kind: 'queued' };
 const PREPARING: JobState = { kind: 'preparing' };
@@ -227,7 +235,9 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
     case 'refresh':
       // Only before the first signature: the user sees the new summaries and signs again.
       if (round === null || roundSigned(round) || stepAt(phase) !== 0) return state;
-      if (phase.kind !== 'ready' && phase.kind !== 'switch-account' && !walletStop(phase)) return state;
+      if (phase.kind !== 'ready' && phase.kind !== 'switch-account' && phase.kind !== 'starting' && !walletStop(phase)) {
+        return state;
+      }
       return {
         ...state,
         jobs: setStates(state.jobs, round.ids, () => PREPARING),
@@ -237,7 +247,9 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
 
     case 'needs-wallet':
       if (stepAt(phase) !== event.step) return state;
-      if (phase.kind !== 'ready' && phase.kind !== 'switch-account' && !walletStop(phase)) return state;
+      if (phase.kind !== 'ready' && phase.kind !== 'switch-account' && phase.kind !== 'starting' && !walletStop(phase)) {
+        return state;
+      }
       return { ...state, phase: { kind: 'needs-wallet', step: event.step } };
 
     case 'wallet-ready':
@@ -250,6 +262,7 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
         phase.kind !== 'ready' &&
         phase.kind !== 'needs-wallet' &&
         phase.kind !== 'switch-account' &&
+        phase.kind !== 'starting' &&
         phase.kind !== 'signing' &&
         !walletStop(phase)
       ) {
@@ -257,9 +270,27 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
       }
       return { ...state, phase: { kind: 'switch-account', step: event.step, again: event.again } };
 
+    case 'starting':
+      if (stepAt(phase) !== event.step) return state;
+      if (
+        phase.kind !== 'ready' &&
+        phase.kind !== 'switch-account' &&
+        !walletStop(phase) &&
+        !(phase.kind === 'starting' && phase.waitFor === 'wallet')
+      ) {
+        return state;
+      }
+      return { ...state, phase: { kind: 'starting', step: event.step, waitFor: event.waitFor } };
+
     case 'asking':
       if (stepAt(phase) !== event.step) return state;
-      if (phase.kind !== 'ready' && phase.kind !== 'needs-wallet' && phase.kind !== 'switch-account' && !walletStop(phase)) {
+      if (
+        phase.kind !== 'ready' &&
+        phase.kind !== 'needs-wallet' &&
+        phase.kind !== 'switch-account' &&
+        phase.kind !== 'starting' &&
+        !walletStop(phase)
+      ) {
         return state;
       }
       return { ...state, phase: { kind: 'signing', step: event.step } };
@@ -287,6 +318,7 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
       const allowed =
         phase.kind === 'ready' ||
         phase.kind === 'switch-account' ||
+        phase.kind === 'starting' ||
         walletStop(phase) ||
         (phase.kind === 'sending' && round.txs.every((tx) => state.jobs[tx.id]?.state.kind === 'ready'));
       if (!allowed) return state;
@@ -303,7 +335,8 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
         phase.kind === 'expired' ||
         (phase.kind === 'stopped' && (phase.reason.kind === 'check' || phase.reason.kind === 'inspect' || phase.reason.kind === 'verify'));
       if (!allowed) return state;
-      const { first } = event;
+      // "Start again with <wallet> signing first" sets the order; "Sign again" and plain "Start again" keep it.
+      const first = event.first ?? state.first;
       return {
         ...state,
         jobs: setStates(state.jobs, round.ids, (job) => (unsent(job.state) ? PREPARING : null)),
@@ -352,13 +385,42 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
       return phase.kind === 'checking' ? advance(state) : state;
 
     case 'stop-waiting':
+      // Before the wallet request: back to the click's own screen, nothing was asked.
+      if (phase.kind === 'starting') {
+        return {
+          ...state,
+          phase:
+            phase.waitFor === 'wallet'
+              ? { kind: 'switch-account', step: phase.step, again: false }
+              : { kind: 'ready', step: phase.step, refreshed: false },
+        };
+      }
       if (phase.kind !== 'sending' && phase.kind !== 'confirming' && phase.kind !== 'checking') return state;
       return { ...state, jobs: setStates(state.jobs, state.ids, stopWaitingState), phase: { kind: 'finished' } };
+
+    case 'finish': {
+      const allowed =
+        phase.kind === 'preparing' ||
+        phase.kind === 'prepare-failed' ||
+        phase.kind === 'ready' ||
+        phase.kind === 'needs-wallet' ||
+        phase.kind === 'switch-account' ||
+        phase.kind === 'stopped' ||
+        phase.kind === 'expired';
+      if (!allowed) return state;
+      return {
+        ...state,
+        jobs: setStates(state.jobs, state.ids, (job) => (waitingToSend(job.state) ? NOT_SENT : null)),
+        phase: { kind: 'finished' },
+        refreshing: false,
+      };
+    }
   }
 }
 
 /**
- * Next round: the first `roundSize` queued jobs in `ids` order are prepared; with none left the run is finished.
+ * Next round: the first `roundSize` queued jobs in `ids` order are prepared; with none left the run is finished. The
+ * signers stay the same, so the signing order the user chose ("Start again with <wallet> signing first") holds.
  */
 function advance(state: SigningState): SigningState {
   const ids = state.ids.filter((id) => state.jobs[id]?.state.kind === 'queued').slice(0, state.roundSize);
@@ -367,7 +429,6 @@ function advance(state: SigningState): SigningState {
     ...state,
     jobs: setStates(state.jobs, ids, () => PREPARING),
     roundNumber: state.roundNumber + 1,
-    first: null,
     round: { ids, txs: [], steps: [] },
     phase: { kind: 'preparing' },
     refreshing: false,
@@ -410,6 +471,11 @@ function unsent(state: JobState): boolean {
   return state.kind === 'ready' || state.kind === 'not-sent';
 }
 
+/** Not sent yet, and would be in this run: queued for a later round, being prepared, or built and ready to sign. */
+function waitingToSend(state: JobState): boolean {
+  return state.kind === 'queued' || state.kind === 'preparing' || state.kind === 'ready';
+}
+
 function roundHas(state: SigningState, kind: JobState['kind']): boolean {
   return state.round?.ids.some((id) => state.jobs[id]?.state.kind === kind) ?? false;
 }
@@ -422,6 +488,7 @@ export function roundSigned(round: Round): boolean {
 function stepAt(phase: Phase): number | null {
   switch (phase.kind) {
     case 'ready':
+    case 'starting':
     case 'needs-wallet':
     case 'switch-account':
     case 'signing':

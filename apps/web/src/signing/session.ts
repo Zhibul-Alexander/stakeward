@@ -136,9 +136,17 @@ export class SigningSession {
     if (phase.kind === 'switch-account') void this.afterSwitch(phase.step);
   }
 
-  /** Signing: stop waiting for the wallet (nothing was sent). Sending, confirming, checking: stop and finish. */
+  /**
+   * Starting: back to the screen of the click (nothing was asked). Signing: stop waiting for the wallet (nothing was
+   * sent). Sending, confirming, checking: stop and finish.
+   */
   stopWaiting(): void {
     const { phase } = this.state;
+    if (phase.kind === 'starting') {
+      this.cancel();
+      this.dispatch({ type: 'stop-waiting' });
+      return;
+    }
     if (phase.kind === 'signing') {
       this.cancel();
       const reason: StopReason = {
@@ -168,6 +176,16 @@ export class SigningSession {
 
   retryPrepare(): void {
     this.dispatch({ type: 'retry-prepare' });
+  }
+
+  /**
+   * "Stop here and see the result", outside the waits: the run ends where it stands, so onFinished reports what earlier
+   * rounds landed; what was not sent stays not sent.
+   */
+  finish(): void {
+    if (signingReducer(this.state, { type: 'finish' }) === this.state) return;
+    this.cancel();
+    this.dispatch({ type: 'finish' });
   }
 
   /** Aborts everything; no listener and no onFinished is called afterwards. */
@@ -363,6 +381,7 @@ export class SigningSession {
     if (!wallet.accounts.includes(step.address)) {
       // A wallet that dropped this site's access to the account asks again (the user's own click).
       const work = this.begin();
+      this.dispatch({ type: 'starting', step: index, waitFor: 'wallet' });
       try {
         await wallet.connect({ signal: work.signal });
       } catch {
@@ -395,6 +414,7 @@ export class SigningSession {
     }
 
     // Enough time left? A read error is ignored: the wallet is asked and the send reports an expiry.
+    this.dispatch({ type: 'starting', step: index, waitFor: 'network' });
     const height = await blockHeight(this.options.chain);
     if (this.stale(work)) return;
     const lastValid = lastValidOf(round.txs);
@@ -681,7 +701,8 @@ function signatureOf(bytes: Uint8Array): Signature | null {
 
 /**
  * A send that failed: definite errors fail; a lost answer may still have reached the network, so it is polled until
- * its blockhash expires. A 429 is definite: the worker's rate limit runs before the proxy forwards anything.
+ * its blockhash expires. A 429 is definite: the worker's rate limit runs before the proxy forwards anything. A resend
+ * after a lost answer is not: HttpChain then throws SendOutcomeUnknownError, which reads as a network failure.
  */
 function sendFailure(error: FriendlyError): JobState {
   switch (error.code) {

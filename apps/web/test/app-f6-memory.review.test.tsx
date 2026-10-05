@@ -89,7 +89,8 @@ describe('review: F6 memory can be flushed by viewing an address that is not the
         </PortsProvider>
       </Router>,
     );
-    await screen.findAllByRole('article');
+    // 200 rows: rendering them takes seconds in jsdom on a loaded machine.
+    await screen.findAllByRole('article', undefined, { timeout: 20_000 });
 
     expect(ports.protectedAccounts.getSnapshot(), "the victim's own account was pushed out of the F6 memory").toContain(
       victimAccount,

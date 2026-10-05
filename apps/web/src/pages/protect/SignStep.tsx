@@ -36,6 +36,7 @@ const NO_ACTIONS: SigningActions = {
   restartRound: noop,
   oneAtATime: noop,
   retryPrepare: noop,
+  finish: noop,
 };
 
 /**

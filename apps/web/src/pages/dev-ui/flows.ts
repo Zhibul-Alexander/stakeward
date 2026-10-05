@@ -103,6 +103,36 @@ export async function sampleSigningStates(clock: ClockView): Promise<SigningSamp
     { type: 'signed', step: 1, txs: signedBy(SAMPLE.mainKey, SAMPLE.secondKey) },
   );
   const rejected = translateError(Object.assign(new Error('User rejected the request.'), { code: 4001 }));
+  // One stake account per round: round 1 (C) landed, round 2 (F) was declined by the second wallet.
+  const [txC, txF] = txs as [RoundTx, RoundTx];
+  const single = (tx: RoundTx): SigningEvent => ({
+    type: 'prepared',
+    clock: chainClock,
+    jobs: { [tx.id]: jobs[tx.id] as JobView },
+    txs: [tx],
+    steps: steps(WALLET_B.name).map((step) => ({ ...step, count: 1 })),
+  });
+  const signedOne = (tx: RoundTx, ...signers: Address[]): RoundTx => ({ ...tx, summary: { ...tx.summary, presentSignatures: signers } });
+  const laterRound = reduce(
+    initialSigningState(ids, 1),
+    { type: 'start' },
+    single(txC),
+    { type: 'asking', step: 0 },
+    { type: 'signed', step: 0, txs: [signedOne(txC, SAMPLE.mainKey)] },
+    { type: 'asking', step: 1 },
+    { type: 'signed', step: 1, txs: [signedOne(txC, SAMPLE.mainKey, SAMPLE.secondKey)] },
+    { type: 'job', id: txC.id, state: { kind: 'confirming', indefinite: false }, signature: TX },
+    { type: 'send-done' },
+    { type: 'job', id: txC.id, state: { kind: 'checking' } },
+    { type: 'confirm-done' },
+    { type: 'job', id: txC.id, state: { kind: 'done', after: locked(SAMPLE.stakeC, 3n) } },
+    { type: 'check-done' },
+    single(txF),
+    { type: 'asking', step: 0 },
+    { type: 'signed', step: 0, txs: [signedOne(txF, SAMPLE.mainKey)] },
+    { type: 'asking', step: 1 },
+    { type: 'stopped', step: 1, reason: { kind: 'wallet', walletName: WALLET_B.name, error: rejected, portError: null } },
+  );
 
   return [
     { key: 'idle', label: 'devUi.flows.idle', state: idle },
@@ -114,6 +144,7 @@ export async function sampleSigningStates(clock: ClockView): Promise<SigningSamp
       label: 'devUi.flows.switchAccount',
       state: reduce(afterMain(prepared(WALLET_A.name)), { type: 'switch-account', step: 1, again: false }),
     },
+    { key: 'starting', label: 'devUi.flows.starting', state: reduce(ready, { type: 'starting', step: 0, waitFor: 'network' }) },
     { key: 'signing', label: 'devUi.flows.signing', state: reduce(ready, { type: 'asking', step: 0 }) },
     {
       key: 'stopped-check',
@@ -140,6 +171,7 @@ export async function sampleSigningStates(clock: ClockView): Promise<SigningSamp
         reason: { kind: 'wallet', walletName: WALLET_A.name, error: rejected, portError: null },
       }),
     },
+    { key: 'later-round', label: 'devUi.flows.laterRound', state: laterRound },
     { key: 'expired', label: 'devUi.flows.expired', state: reduce(afterMain(ready), { type: 'expired' }) },
     {
       key: 'sending',

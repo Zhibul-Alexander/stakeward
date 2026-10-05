@@ -30,6 +30,7 @@ function signerStatus(state: SigningState, step: SignStep, index: number): Signe
   if (!('step' in phase) || phase.step !== index) return step.walletName === null ? 'missing' : 'waiting';
   switch (phase.kind) {
     case 'ready':
+    case 'starting':
     case 'signing':
       return 'current';
     case 'needs-wallet':
@@ -108,12 +109,23 @@ function errorDetail(state: JobState): string | undefined {
   return state.kind === 'failed' || state.kind === 'sim-failed' ? state.error.detail : undefined;
 }
 
+/** Jobs whose transaction was sent (landed or not). */
+const SENT: ReadonlySet<JobState['kind']> = new Set(['sending', 'confirming', 'checking', 'done', 'failed', 'expired', 'unknown']);
+
+/** What a run must report once it ends: a sent transaction, or a change the chain already showed. */
+function reported(kind: JobState['kind'] | undefined): boolean {
+  return kind === 'already-done' || (kind !== undefined && SENT.has(kind));
+}
+
 /**
  * The way back from the signing step: `back` while no wallet has signed, `stop-and-back` after one did (the signed
- * bytes are dropped; nothing was sent), none while a wallet or the network is being waited for, or at the end.
+ * bytes are dropped; nothing was sent), none while a wallet or the network is being waited for, or at the end. Once
+ * the run has something to report (an earlier round was sent, or the chain already showed a change), going back would
+ * drop it: `finish` ends the run instead, so the page shows and records what happened.
  */
-export function backKind(state: SigningState): 'back' | 'stop-and-back' | null {
+export function backKind(state: SigningState): 'back' | 'stop-and-back' | 'finish' | null {
   switch (state.phase.kind) {
+    case 'starting':
     case 'signing':
     case 'sending':
     case 'confirming':
@@ -121,8 +133,18 @@ export function backKind(state: SigningState): 'back' | 'stop-and-back' | null {
     case 'finished':
       return null;
     default:
+      if (state.ids.some((id) => reported(state.jobs[id]?.state.kind))) return 'finish';
       return state.round !== null && roundSigned(state.round) ? 'stop-and-back' : 'back';
   }
+}
+
+/** Stake accounts whose transaction an earlier round of this run already sent ("Nothing was sent" is about this round). */
+export function earlierSent(state: SigningState): number {
+  const current = state.round?.ids ?? [];
+  return state.ids.filter((id) => {
+    const kind = state.jobs[id]?.state.kind;
+    return !current.includes(id) && kind !== undefined && SENT.has(kind);
+  }).length;
 }
 
 /** "Round {current} of {total}": rounds started so far, plus the rounds the queued jobs still need. */

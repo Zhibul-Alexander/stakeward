@@ -32,9 +32,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('[data-slot="transaction-summary"][data-kind="protect"]').first()).toContainText(
     'This transaction cannot move your SOL.',
   );
-  // The flows: the signing panel in its 12 phases (built with core and inspected like the summaries above) and the
+  // The flows: the signing panel in its 14 samples (built with core and inspected like the summaries above) and the
   // protect wizard's Done screen (all, partial, none).
-  await expect(page.locator('#signing figure')).toHaveCount(12);
+  await expect(page.locator('#signing figure')).toHaveCount(14);
   await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
   await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
 

@@ -84,6 +84,8 @@ export type Blocker =
   | 'need-main'
   | 'need-one'
   | 'too-many'
+  /** Steps 2 and 3: every chosen account was left out ("Leave … out"); only the accounts step can add one. */
+  | 'none-left'
   | 'need-second'
   | 'second-key-problem'
   | 'need-seed-check'
@@ -110,11 +112,13 @@ export function blockers(step: 'accounts' | 'second-key' | 'period', input: Bloc
       else if (input.selection > MAX_ACCOUNTS_PER_RUN) found.push('too-many');
       return found;
     case 'second-key':
+      if (input.selection === 0) return ['none-left'];
       if (!input.secondReady) found.push('need-second');
       else if (input.problems > 0) found.push('second-key-problem');
       if (!input.seedConfirmed) found.push('need-seed-check');
       return found;
     case 'period':
+      if (input.selection === 0) return ['none-left'];
       if (!input.clockReady) found.push('need-clock');
       return found;
   }

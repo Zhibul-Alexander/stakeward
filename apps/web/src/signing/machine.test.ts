@@ -101,12 +101,14 @@ const stoppedWallet1 = reduce(signing1, { type: 'stopped', step: 1, reason: wall
 const stoppedBatch0 = reduce(signing0, { type: 'stopped', step: 0, reason: walletStop('WalletBatchUnsupportedError') });
 const stoppedCheck1 = reduce(signing1, { type: 'stopped', step: 1, reason: CHECK_STOP });
 const expired = reduce(ready1, { type: 'expired' });
+const starting0 = reduce(ready0, { type: 'starting', step: 0, waitFor: 'network' });
 
 const PHASES: Record<string, SigningState> = {
   idle,
   preparing,
   prepareFailed,
   ready0,
+  starting0,
   needsWallet0,
   switch1,
   signing0,
@@ -140,6 +142,7 @@ describe('the fixtures reach every phase', () => {
     preparing: 'preparing',
     prepareFailed: 'prepare-failed',
     ready0: 'ready',
+    starting0: 'starting',
     needsWallet0: 'needs-wallet',
     switch1: 'switch-account',
     signing0: 'signing',
@@ -292,6 +295,72 @@ describe('signingReducer: the transition table', () => {
     expect(reduce(signing1, { type: 'expired' })).toBe(signing1);
   });
 
+  it('starting: the wait before a wallet request (connect, then the block height) at that step', () => {
+    expect(starting0.phase).toEqual({ kind: 'starting', step: 0, waitFor: 'network' });
+    const connecting = reduce(switch1, { type: 'starting', step: 1, waitFor: 'wallet' });
+    expect(connecting.phase).toEqual({ kind: 'starting', step: 1, waitFor: 'wallet' });
+    expect(reduce(connecting, { type: 'starting', step: 1, waitFor: 'network' }).phase).toEqual({
+      kind: 'starting',
+      step: 1,
+      waitFor: 'network',
+    });
+    expect(reduce(connecting, { type: 'switch-account', step: 1, again: true }).phase).toEqual({
+      kind: 'switch-account',
+      step: 1,
+      again: true,
+    });
+    expect(reduce(stoppedWallet1, { type: 'starting', step: 1, waitFor: 'network' }).phase.kind).toBe('starting');
+    expect(reduce(starting0, { type: 'asking', step: 0 }).phase).toEqual({ kind: 'signing', step: 0 });
+    expect(reduce(starting0, { type: 'refresh' }).phase).toEqual({ kind: 'preparing' });
+    const late = reduce(ready1, { type: 'starting', step: 1, waitFor: 'network' }, { type: 'expired' });
+    expect(late.phase).toEqual({ kind: 'expired' });
+    expect(reduce(ready0, { type: 'starting', step: 1, waitFor: 'network' })).toBe(ready0);
+    expect(reduce(stoppedCheck1, { type: 'starting', step: 1, waitFor: 'network' })).toBe(stoppedCheck1);
+  });
+
+  it('stop-waiting while starting: back to where the click came from, nothing asked', () => {
+    expect(reduce(starting0, { type: 'stop-waiting' }).phase).toEqual({ kind: 'ready', step: 0, refreshed: false });
+    const connecting = reduce(switch1, { type: 'starting', step: 1, waitFor: 'wallet' });
+    expect(reduce(connecting, { type: 'stop-waiting' }).phase).toEqual({ kind: 'switch-account', step: 1, again: false });
+    expect(jobKinds(reduce(starting0, { type: 'stop-waiting' }))).toEqual({ [S1]: 'ready', [S2]: 'ready' });
+  });
+
+  it('finish: ends the run where it stands; what landed stays, nothing unsent is left waiting', () => {
+    const one = (id: string): SigningEvent => ({
+      type: 'prepared',
+      clock: CLOCK,
+      jobs: { [id]: view(id, { kind: 'ready' }) },
+      txs: [tx(id)],
+      steps: STEPS.map((step) => ({ ...step, count: 1 })),
+    });
+    // A run in rounds of one; round 1 (S1) landed, round 2 (S2) is being signed, S3 waits for round 3.
+    const roundTwo = reduce(
+      initialSigningState([S1, S2, S3], 1),
+      { type: 'start' },
+      one(S1),
+      { type: 'asking', step: 0 },
+      { type: 'signed', step: 0, txs: [tx(S1, [MAIN])] },
+      { type: 'asking', step: 1 },
+      { type: 'signed', step: 1, txs: [tx(S1, [MAIN, SECOND])] },
+      { type: 'job', id: S1, state: { kind: 'confirming', indefinite: false } },
+      { type: 'send-done' },
+      { type: 'job', id: S1, state: { kind: 'checking' } },
+      { type: 'confirm-done' },
+      { type: 'job', id: S1, state: { kind: 'done', after: null } },
+      { type: 'check-done' },
+    );
+    expect(roundTwo.phase).toEqual({ kind: 'preparing' });
+    const fromPreparing = reduce(roundTwo, { type: 'finish' });
+    expect(fromPreparing.phase).toEqual({ kind: 'finished' });
+    expect(jobKinds(fromPreparing)).toEqual({ [S1]: 'done', [S2]: 'not-sent', [S3]: 'not-sent' });
+    const stopped = reduce(roundTwo, one(S2), { type: 'asking', step: 0 }, { type: 'stopped', step: 0, reason: walletStop(null) });
+    const fromStopped = reduce(stopped, { type: 'finish' });
+    expect(fromStopped.phase).toEqual({ kind: 'finished' });
+    expect(jobKinds(fromStopped)).toEqual({ [S1]: 'done', [S2]: 'not-sent', [S3]: 'not-sent' });
+    expect(reduce(signing0, { type: 'finish' })).toBe(signing0);
+    expect(reduce(sending, { type: 'finish' })).toBe(sending);
+  });
+
   it('restart-round: stopped(check, inspect, verify) or expired -> preparing; first is remembered once', () => {
     const state = reduce(stoppedCheck1, { type: 'restart-round', first: SECOND });
     expect(state.phase).toEqual({ kind: 'preparing' });
@@ -315,6 +384,45 @@ describe('signingReducer: the transition table', () => {
     const fromExpired = reduce(expired, { type: 'restart-round', first: null });
     expect(jobKinds(fromExpired)).toEqual({ [S1]: 'preparing', [S2]: 'preparing' });
     expect(reduce(stoppedWallet1, { type: 'restart-round', first: null })).toBe(stoppedWallet1);
+  });
+
+  it('the chosen first signer holds: Sign again, plain Start again and the next round keep it', () => {
+    const chosen = reduce(stoppedCheck1, { type: 'restart-round', first: SECOND }, prepared);
+    const fromExpired = reduce(chosen, { type: 'expired' }, { type: 'restart-round', first: null });
+    expect(fromExpired.first).toBe(SECOND);
+    const verifyStop: StopReason = { kind: 'verify', code: 'missing-signatures', detail: 'd' };
+    const plain = reduce(chosen, { type: 'asking', step: 0 }, { type: 'stopped', step: 0, reason: verifyStop }, {
+      type: 'restart-round',
+      first: null,
+    });
+    expect(plain.first).toBe(SECOND);
+    expect(plain.triedFirst).toEqual([SECOND]);
+
+    const three = reduce(initialSigningState([S1, S2, S3], 2), { type: 'start' }, prepared, { type: 'asking', step: 0 }, {
+      type: 'stopped',
+      step: 0,
+      reason: CHECK_STOP,
+    });
+    const next = reduce(
+      three,
+      { type: 'restart-round', first: SECOND },
+      prepared,
+      { type: 'asking', step: 0 },
+      { type: 'signed', step: 0, txs: [tx(S1, [SECOND]), tx(S2, [SECOND])] },
+      { type: 'asking', step: 1 },
+      { type: 'signed', step: 1, txs: [tx(S1, [MAIN, SECOND]), tx(S2, [MAIN, SECOND])] },
+      { type: 'job', id: S1, state: { kind: 'confirming', indefinite: false } },
+      { type: 'job', id: S2, state: { kind: 'confirming', indefinite: false } },
+      { type: 'send-done' },
+      { type: 'job', id: S1, state: { kind: 'checking' } },
+      { type: 'job', id: S2, state: { kind: 'checking' } },
+      { type: 'confirm-done' },
+      { type: 'job', id: S1, state: { kind: 'done', after: null } },
+      { type: 'job', id: S2, state: { kind: 'done', after: null } },
+      { type: 'check-done' },
+    );
+    expect(next.round?.ids).toEqual([S3]);
+    expect(next.first).toBe(SECOND);
   });
 
   it('restart-round keeps the jobs the round already settled (refused, already done)', () => {
@@ -441,19 +549,22 @@ describe('signingReducer: an event that does not fit the phase returns the same 
     { type: 'confirm-done' },
     { type: 'check-done' },
     { type: 'stop-waiting' },
+    { type: 'starting', step: 0, waitFor: 'network' },
+    { type: 'finish' },
   ];
   /** Which events each phase fixture accepts (at step 0 where a step matters). */
   const ACCEPTS: Record<string, readonly SigningEvent['type'][]> = {
     idle: ['start'],
-    preparing: ['prepared', 'prepare-failed'],
-    prepareFailed: ['retry-prepare'],
-    ready0: ['refresh', 'needs-wallet', 'switch-account', 'asking', 'stopped', 'expired'],
-    needsWallet0: ['wallet-ready', 'switch-account', 'asking', 'stopped'],
-    switch1: ['expired'],
+    preparing: ['prepared', 'prepare-failed', 'finish'],
+    prepareFailed: ['retry-prepare', 'finish'],
+    ready0: ['refresh', 'needs-wallet', 'switch-account', 'asking', 'stopped', 'expired', 'starting', 'finish'],
+    starting0: ['refresh', 'needs-wallet', 'switch-account', 'asking', 'expired', 'stop-waiting'],
+    needsWallet0: ['wallet-ready', 'switch-account', 'asking', 'stopped', 'finish'],
+    switch1: ['expired', 'finish'],
     signing0: ['switch-account', 'signed', 'stopped'],
-    stoppedWallet1: ['expired'],
-    stoppedCheck1: ['restart-round'],
-    expired: ['restart-round', 'one-at-a-time'],
+    stoppedWallet1: ['expired', 'finish'],
+    stoppedCheck1: ['restart-round', 'finish'],
+    expired: ['restart-round', 'one-at-a-time', 'finish'],
     sending: ['expired', 'job', 'send-done', 'stop-waiting'],
     confirming: ['job', 'confirm-done', 'stop-waiting'],
     checking: ['job', 'check-done', 'stop-waiting'],

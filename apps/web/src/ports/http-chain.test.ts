@@ -213,6 +213,38 @@ describe('HttpChain', () => {
     expect(calls[1]?.params).toEqual(calls[0]?.params);
   });
 
+  it('send: an attempt that got no answer may still land, so any later failure is uncertain (a network failure)', async () => {
+    const rateLimited = new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32005, message: 'Too many requests' } }), {
+      status: 429,
+    });
+    const expired = {
+      error: { code: -32002, message: 'Transaction simulation failed: Blockhash not found', data: { err: 'BlockhashNotFound', logs: [] } },
+    };
+    for (const [later, code] of [
+      [rateLimited, 'rate-limited'],
+      [expired, 'blockhash-expired'],
+    ] as const) {
+      const answers: (() => RpcAnswer)[] = [() => new TypeError('Failed to fetch'), () => later];
+      const { calls, chain } = fakeServer((call) =>
+        call.method === 'sendTransaction' ? (answers.shift() ?? (() => ({ result: null })))() : { result: { context: CONTEXT, value: [null] } },
+      );
+      const error: unknown = await chain.send(signed).catch((e: unknown) => e);
+      // The same bytes again after the lost answer, then one status read (still in flight: null).
+      expect(calls.map((call) => call.method), code).toEqual(['sendTransaction', 'sendTransaction', 'getSignatureStatuses']);
+      expect(error, code).toMatchObject({ name: 'SendOutcomeUnknownError' });
+      expect(translateError(error, { transaction: signed }).code, code).toBe('network');
+      // What the retry got stays readable for Details.
+      expect(translateError((error as { answer: unknown }).answer, { transaction: signed }).code).toBe(code);
+    }
+    // Without a lost attempt, a rate limit stays definite (the worker refused before forwarding anything).
+    const once = fakeServer((call) =>
+      call.method === 'sendTransaction'
+        ? new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32005, message: 'Too many requests' } }), { status: 429 })
+        : { result: { context: CONTEXT, value: [null] } },
+    );
+    expect(translateError(await once.chain.send(signed).catch((e: unknown) => e)).code).toBe('rate-limited');
+  });
+
   it("does not retry the worker's own answers: an upstream failure (502/504), a rate limit, a refusal", async () => {
     const answers: [RpcAnswer, string][] = [
       [new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32603, message: 'Upstream RPC unavailable' } }), { status: 502 }), 'network'],

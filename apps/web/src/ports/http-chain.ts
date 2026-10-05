@@ -25,7 +25,7 @@ import {
   type StakeAccountFilter,
   type TransactionStatus,
 } from '@stakeward/core';
-import { isRecord, MAX_RETRIES, Transport, type TransportOptions } from './transport.ts';
+import { earlierUnanswered, isRecord, MAX_RETRIES, Transport, type TransportOptions } from './transport.ts';
 
 export type HttpChainOptions = TransportOptions & {
   /** JSON-RPC proxy of the worker (CLAUDE.md section 8). */
@@ -40,6 +40,22 @@ const MAX_SIGNATURES_PER_CALL = 256;
 const COMMITMENT = 'confirmed';
 
 const READ = { retries: MAX_RETRIES } as const;
+
+/**
+ * A send whose answer was lost on an earlier attempt (that attempt may have reached the network) and whose resend of
+ * the same bytes then failed, e.g. with a rate limit or a lagging node's BlockhashNotFound: the first attempt may still
+ * land until its blockhash expires, so the outcome is not known. `cause` is the lost attempt's failure, so
+ * translateError reads it as a network failure (polled, never rebuilt); `answer` is what the resend got.
+ */
+export class SendOutcomeUnknownError extends Error {
+  readonly answer: unknown;
+
+  constructor(lost: unknown, answer: unknown) {
+    super('An earlier attempt to send got no answer, so the transaction may still go through', { cause: lost });
+    this.name = 'SendOutcomeUnknownError';
+    this.answer = answer;
+  }
+}
 
 /**
  * Exactly what HttpChain sends to POST /api/rpc, method by method (the worker's allow-list checks the same shapes):
@@ -138,6 +154,7 @@ export class HttpChain implements ChainPort {
    * signature: whether it succeeded is the status's business. A blockhash transaction tells by AlreadyProcessed; a
    * durable-nonce one cannot, since landing advanced its nonce and the resend fails preflight with BlockhashNotFound
    * first. So when a send fails, the signature's status decides: known to the cluster, the transaction went in.
+   * Not known yet after an attempt whose answer was lost, it may still be in flight: SendOutcomeUnknownError.
    */
   async send(transaction: ReadonlyUint8Array): Promise<Signature> {
     // The fee payer's signature is the transaction id. Throws when it is missing (translateError: missing-signature).
@@ -151,6 +168,8 @@ export class HttpChain implements ChainPort {
     } catch (error) {
       if (isSolanaError(unwrapSimulationError(error), SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED)) return signature;
       if (await this.knownToCluster(signature)) return signature;
+      const lost = earlierUnanswered(error);
+      if (lost !== undefined) throw new SendOutcomeUnknownError(lost, error);
       throw error;
     }
     if (returned !== signature) throw malformed(`sendTransaction answered ${String(returned)} for ${signature}`);
