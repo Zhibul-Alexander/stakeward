@@ -20,6 +20,7 @@ import {
   type ClockView,
   type InspectError,
   type Lockup,
+  type NonceLifetime,
   type ProtectionStatus,
   type StakeAccount,
   type TransactionAction,
@@ -31,6 +32,7 @@ import type { StatusBadgeStatus } from '@/components/product/status-badge';
 import type { SummaryBatch } from '@/components/product/transaction-summary';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import { cosignUrl } from '@/signing/link';
 import walletSampleA from './wallet-sample-a.svg';
 import walletSampleB from './wallet-sample-b.svg';
 
@@ -62,7 +64,8 @@ export const SAMPLE = {
 
 /** A transaction signature for AddressText kind="tx" (random bytes, base58). */
 export const SAMPLE_SIGNATURE = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW';
-const SAMPLE_TX: Signature = signature(SAMPLE_SIGNATURE);
+/** The same signature, typed (LinkCard, JobStatusList). */
+export const SAMPLE_TX: Signature = signature(SAMPLE_SIGNATURE);
 
 /** Raw error texts as they would appear under "Details" (sample data, not UI strings). */
 export const SAMPLE_ERROR_DETAIL = {
@@ -318,7 +321,31 @@ export function sampleSignersEveryStatus(): SignerListItem[] {
     { role: 'second', walletName: walletA.name, address: SAMPLE.otherKey, count: 3, status: 'switch' },
     { role: 'main', walletName: walletB.name, address: SAMPLE.stranger, count: 3, status: 'stopped' },
     { role: 'new', walletName: null, address: SAMPLE.serviceStaker, count: 1, status: 'missing' },
+    { role: 'second', walletName: null, address: SAMPLE.secondKey, count: 1, status: 'link' },
   ];
+}
+
+/** A rescue of stake A to the new wallet on its durable nonce: the longest link Stakeward makes (a real core build). */
+export async function sampleRescueOnNonce(): Promise<{ bytes: Uint8Array; lifetime: NonceLifetime }> {
+  const lifetime: NonceLifetime = {
+    kind: 'nonce',
+    nonceAccount: await deriveNonceAccountAddress(SAMPLE.newWallet),
+    nonceAuthority: SAMPLE.newWallet,
+    nonceValue: SAMPLE.nonceValue,
+  };
+  const action: TransactionAction = {
+    kind: 'rescue',
+    stakeAccount: SAMPLE.stakeA,
+    mainKey: SAMPLE.mainKey,
+    secondKey: SAMPLE.secondKey,
+    newWallet: SAMPLE.newWallet,
+  };
+  return { bytes: buildTransaction(action, { feePayer: SAMPLE.newWallet, lifetime }).bytes, lifetime };
+}
+
+/** The signing link of that rescue on this site, as the first device shows it (LinkCard, QrCode). */
+export async function sampleLinkUrl(origin: string): Promise<string> {
+  return cosignUrl((await sampleRescueOnNonce()).bytes, origin);
 }
 
 /** One stake account in each status of a signing run, with the reason texts the pages give them. */

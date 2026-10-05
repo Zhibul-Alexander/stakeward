@@ -92,6 +92,8 @@ export const SWATCH_CLASS: Record<string, string> = {
   'danger-solid': 'bg-danger-solid',
   'danger-solid-hover': 'bg-danger-solid-hover',
   'on-danger': 'bg-on-danger',
+  'qr-dark': 'bg-qr-dark',
+  'qr-light': 'bg-qr-light',
 };
 
 export const TEXT_CLASS: Record<string, string> = {

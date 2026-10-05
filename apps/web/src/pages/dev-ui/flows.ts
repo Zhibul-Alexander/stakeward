@@ -28,7 +28,14 @@ import {
   type SigningState,
 } from '@/signing/machine';
 import type { ProtectDoneViewProps } from '@/pages/protect/DoneStep';
-import { SAMPLE, SAMPLE_ERROR_DETAIL, SAMPLE_LOCK_END, SAMPLE_SIGNATURE, SAMPLE_WALLETS } from './samples.ts';
+import {
+  SAMPLE,
+  SAMPLE_ERROR_DETAIL,
+  SAMPLE_LOCK_END,
+  SAMPLE_SIGNATURE,
+  SAMPLE_WALLETS,
+  sampleRescueOnNonce,
+} from './samples.ts';
 
 /**
  * Fixtures for the flows on /dev/ui: the signing panel in each phase (real transactions built by core and read back by
@@ -57,7 +64,8 @@ function sampleStake(address: Address, sol: bigint, lockup: Lockup = NO_LOCK): S
 const locked = (address: Address, sol: bigint) =>
   sampleStake(address, sol, { unixTimestamp: SAMPLE_LOCK_END, epoch: 0n, custodian: SAMPLE.secondKey });
 
-export type SigningSample = { key: string; label: MessageKey; state: SigningState };
+/** `confirm`: the panel asks to tick a box with this label before the wallet is asked (SigningView `confirm`). */
+export type SigningSample = { key: string; label: MessageKey; state: SigningState; confirm?: MessageKey };
 
 /** The signing panel of a protect round over two stake accounts, in every phase the panel explains. */
 export async function sampleSigningStates(clock: ClockView): Promise<SigningSample[]> {
@@ -196,6 +204,71 @@ export async function sampleSigningStates(clock: ClockView): Promise<SigningSamp
         problem: { kind: 'fee-balance', payer: SAMPLE.mainKey, role: 'main', balance: 1_000n, needed: 900_000n },
       }),
     },
+  ];
+}
+
+/**
+ * Signing by link (spec step 7 section 11): a rescue of stake A to the new wallet on its durable nonce, one
+ * transaction. On the first device the new wallet and the main key sign here and the second key signs by link (link
+ * open, then paused after 30 minutes). On the device that opened the link the second key is the one signer left, and
+ * the page asks for a confirmation first (`confirm`, the /cosign look).
+ */
+export async function sampleLinkStates(clock: ClockView): Promise<SigningSample[]> {
+  const { bytes, lifetime } = await sampleRescueOnNonce();
+  const inspected = await inspectTransaction(bytes);
+  if (!inspected.ok) throw new Error(`the sample rescue transaction was refused: ${inspected.error.message}`);
+  const chainClock: ChainClock = { ...clock, slot: 300_000_000n };
+  const tx: RoundTx = { id: SAMPLE.stakeA, bytes, summary: inspected.summary, lifetime };
+  const job: JobView = {
+    id: tx.id,
+    state: { kind: 'ready' },
+    before: locked(SAMPLE.stakeA, 1_250n),
+    action: tx.summary.action,
+    lifetime,
+    signature: null,
+    bytes,
+  };
+  const signedBy = (...signers: Address[]): RoundTx => ({ ...tx, summary: { ...tx.summary, presentSignatures: signers } });
+  const step = (address: Address, role: SignStep['role'], walletName: string | null, local: boolean): SignStep => ({
+    address,
+    role,
+    walletName,
+    count: 1,
+    status: 'pending',
+    local,
+  });
+  const reduce = (state: SigningState, ...events: SigningEvent[]): SigningState => events.reduce(signingReducer, state);
+  const linkOpen = reduce(
+    initialSigningState([tx.id], 1),
+    { type: 'start' },
+    {
+      type: 'prepared',
+      clock: chainClock,
+      jobs: { [tx.id]: job },
+      txs: [tx],
+      steps: [
+        step(SAMPLE.newWallet, 'new', WALLET_B.name, true),
+        step(SAMPLE.mainKey, 'main', WALLET_A.name, true),
+        step(SAMPLE.secondKey, 'second', null, false),
+      ],
+    },
+    { type: 'asking', step: 0 },
+    { type: 'signed', step: 0, txs: [signedBy(SAMPLE.newWallet)] },
+    { type: 'asking', step: 1 },
+    { type: 'signed', step: 1, txs: [signedBy(SAMPLE.newWallet, SAMPLE.mainKey)], signature: TX },
+  );
+  // The device that opened the link: the bytes already carry the new wallet's and the main key's signatures.
+  const cosign = reduce(initialSigningState([tx.id], 1), { type: 'start' }, {
+    type: 'prepared',
+    clock: chainClock,
+    jobs: { [tx.id]: job },
+    txs: [signedBy(SAMPLE.newWallet, SAMPLE.mainKey)],
+    steps: [step(SAMPLE.secondKey, 'second', WALLET_A.name, true)],
+  });
+  return [
+    { key: 'link-watching', label: 'devUi.flows.linkWatching', state: linkOpen },
+    { key: 'link-paused', label: 'devUi.flows.linkPaused', state: reduce(linkOpen, { type: 'link-paused' }) },
+    { key: 'cosign-confirm', label: 'devUi.flows.cosignConfirm', state: cosign, confirm: 'devUi.sample.confirmRescue' },
   ];
 }
 

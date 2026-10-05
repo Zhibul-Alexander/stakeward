@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LinkCard } from './link-card.tsx';
+import { qrModules } from './qr-code.tsx';
 
 const MAIN = 'B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8' as Address;
 const SECOND = '9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi' as Address;
@@ -24,6 +25,11 @@ describe('LinkCard', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Send this link to your Second key' })).toBeInTheDocument();
     expect(screen.getByText(SECOND)).toBeInTheDocument();
     expect(screen.getByText(/never a key/)).toBeInTheDocument();
+    expect(screen.getByText(/Scan the code with the other device's camera/)).toBeInTheDocument();
+    // The QR code holds the link itself (same text as the field below it).
+    const qr = screen.getByRole('img', { name: 'QR code of the signing link' });
+    expect(qr.querySelector('path')?.getAttribute('d')).not.toBe('');
+    expect(qr.getAttribute('viewBox')).toBe(`-4 -4 ${String((qrModules(URL_TEXT) ?? 0) + 8)} ${String((qrModules(URL_TEXT) ?? 0) + 8)}`);
     expect(screen.getByLabelText('Signing link')).toHaveValue(URL_TEXT);
     expect(screen.getByRole('link', { name: /on Solana Explorer/ })).toHaveAttribute('href', expect.stringContaining(`/tx/${TX_ID}`));
     expect(screen.getByText(/Waiting for the other device to sign and send/).closest('[role="status"]')).not.toBeNull();

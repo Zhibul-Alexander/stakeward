@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { AddressText } from './address-text.tsx';
+import { QrCode } from './qr-code.tsx';
 import { roleLabel } from './wallet-slot.tsx';
 
 type CopyState = 'idle' | 'copied' | 'failed';
@@ -31,9 +32,9 @@ export type LinkCardProps = {
 
 /**
  * Signing by link, on the first device (CLAUDE.md section 6): whom to send the link to, what it holds (partial
- * signatures, never a key), the link itself with Copy, the transaction id, and whether this page is still waiting for
- * the other device (UX rule 7: the wait is explained, and Stop waiting and Cancel are the ways out). Presentational:
- * the signing panel computes the props (`linkView`).
+ * signatures, never a key), the link as a QR code for the other device's camera and as text with Copy, the
+ * transaction id, and whether this page is still waiting for the other device (UX rule 7: the wait is explained, and
+ * Stop waiting and Cancel are the ways out). Presentational: the signing panel computes the props (`linkView`).
  */
 export function LinkCard({ url, signature, signers, watching, lastCheckFailed, cancel, className }: LinkCardProps) {
   const [copyState, setCopyState] = useState<CopyState>('idle');
@@ -67,7 +68,11 @@ export function LinkCard({ url, signature, signers, watching, lastCheckFailed, c
           </li>
         ))}
       </ul>
-      <p className="text-sm">{t('signing.link.body')}</p>
+      <div className="flex flex-col gap-2 text-sm">
+        <p>{t('signing.link.body')}</p>
+        <p>{t('signing.link.scan')}</p>
+      </div>
+      <QrCode value={url} label={t('signing.link.qrLabel')} className="self-center" />
       <div className="flex flex-col gap-2">
         <Label htmlFor={urlId}>{t('signing.link.url')}</Label>
         <div className="flex flex-wrap gap-2">

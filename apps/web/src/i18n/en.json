@@ -276,6 +276,9 @@
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
       "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
       "transaction": "Transaction"
+    },
+    "qr": {
+      "tooLong": "This link is too long for a QR code. Copy it instead."
     }
   },
   "signing": {
@@ -340,6 +343,8 @@
       "title": "Send this link to your {role}",
       "titleMany": "Send this link to the device with your {roles}",
       "body": "The link holds this transaction and the signatures made here, never a key. Whoever opens it sees exactly what it does and can only complete it. It works until it is used or you cancel it.",
+      "scan": "Scan the code with the other device's camera, then open the page in the wallet app's own browser. Or copy the link and send it.",
+      "qrLabel": "QR code of the signing link",
       "url": "Signing link",
       "copy": "Copy link",
       "copied": "Link copied",
@@ -433,7 +438,11 @@
       "pickerOpen": "Empty, wallet list open",
       "managedByService": "Managed by a service",
       "everyStatus": "Every status",
-      "batch": "One summary for {count} stake accounts"
+      "batch": "One summary for {count} stake accounts",
+      "tooLong": "Too long for a QR code",
+      "watching": "Waiting for the other device",
+      "checkFailed": "Last check could not reach the network",
+      "paused": "Stopped checking after 30 minutes"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -448,7 +457,8 @@
       "rescue": "Rescue",
       "checkAnother": "Check another address",
       "connectionLost": "The wallet did not answer. Check that it is unlocked, then try again.",
-      "jobs": "Stake accounts"
+      "jobs": "Stake accounts",
+      "confirmRescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
     },
     "names": {
       "statusBadge": "StatusBadge",
@@ -463,9 +473,12 @@
       "riskNote": "RiskNote",
       "errorState": "ErrorState",
       "signerList": "SignerList",
-      "jobStatusList": "JobStatusList"
+      "jobStatusList": "JobStatusList",
+      "qrCode": "QrCode",
+      "linkCard": "LinkCard"
     },
     "signing": "Signing",
+    "link": "Signing by link",
     "protectResult": "Protect result",
     "flows": {
       "signingNote": "The signing panel of every flow, in each phase. Real transactions built and read by core; the buttons do nothing here.",
@@ -486,7 +499,11 @@
       "feeBalance": "Not enough SOL for the fee",
       "all": "All protected",
       "partial": "Some protected",
-      "none": "None protected"
+      "none": "None protected",
+      "linkNote": "Signing by link: a rescue on the new wallet's link-signing account. The first device after its own signatures, and the device that opened the link, which must tick a box first. Real transactions built and read by core; the buttons do nothing here.",
+      "linkWatching": "Link open: waiting for the other device",
+      "linkPaused": "Link open: stopped checking after 30 minutes",
+      "cosignConfirm": "The device that opened the link: confirm, then sign"
     }
   },
   "app": {
