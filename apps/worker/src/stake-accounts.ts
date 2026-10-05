@@ -26,7 +26,11 @@ import type { AppEnv } from './app.ts';
 export const STAKE_ACCOUNTS_CACHE_SECONDS = 30;
 
 const address = z.string().refine(isAddress, 'Expected a base58 address');
-const query = z.union([z.strictObject({ withdrawer: address }), z.strictObject({ custodian: address })]);
+/** The query string: exactly one role. Exported for the warm-up (warm-up.ts). */
+export const stakeAccountsQuery = z.union([
+  z.strictObject({ withdrawer: address }),
+  z.strictObject({ custodian: address }),
+]);
 
 type Role = 'withdrawer' | 'custodian';
 
@@ -41,7 +45,7 @@ export function stakeAccountsHandler(upstreamOptions: UpstreamOptions) {
   return async (c: Context<AppEnv>): Promise<Response> => {
     const url = new URL(c.req.url);
     const entries = [...url.searchParams.entries()];
-    const parsed = query.safeParse(Object.fromEntries(entries));
+    const parsed = stakeAccountsQuery.safeParse(Object.fromEntries(entries));
     if (!parsed.success || entries.length !== 1) {
       return c.json(
         { error: 'invalid-query', message: 'Pass exactly one of withdrawer=<address> or custodian=<address>' },

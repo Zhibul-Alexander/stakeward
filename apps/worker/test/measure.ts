@@ -9,10 +9,10 @@ const BATCH_RUNS = 40;
 export type Measurement = { firstMs: number; minMs: number; medianMs: number };
 
 /**
- * `firstMs`: the first call (in the first test of this file, the first in a fresh isolate: cold). Then WARMUP_RUNS
- * untimed calls, then BATCHES batches of BATCH_RUNS calls: `minMs` and `medianMs` are the lowest and the median batch
- * average (warm). The clock is wall time in whole milliseconds and the machine may be busy, so the lowest batch is
- * the closest to the CPU cost.
+ * `firstMs`: the first call (in the first test of this file, the first in a fresh isolate after the entry module's
+ * warm-up at load, src/warm-up.ts, as in production). Then WARMUP_RUNS untimed calls, then BATCHES batches of
+ * BATCH_RUNS calls: `minMs` and `medianMs` are the lowest and the median batch average (warm). The clock is wall time
+ * in whole milliseconds and the machine may be busy, so the lowest batch is the closest to the CPU cost.
  */
 export async function measure(run: () => Promise<unknown>): Promise<Measurement> {
   const start = performance.now();

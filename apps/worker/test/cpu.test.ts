@@ -22,7 +22,7 @@ import { b64, clockData, key, signedNonceRescue, stakeAccountData } from './tran
 describe('CPU budget (measurement)', () => {
   it('inspectAndVerifyTransaction on a signed durable-nonce rescue (what the proxy runs before sending)', { timeout: 120_000 }, async () => {
     const bytes = await signedNonceRescue();
-    // First: the first inspection in this isolate (cold: nothing compiled or warmed up yet).
+    // First: the first inspection in this isolate after the entry module's warm-up at load (src/warm-up.ts).
     const result = await measure(async () => {
       const checked = await inspectAndVerifyTransaction(bytes);
       expect(checked.ok && checked.signatures.ok).toBe(true);

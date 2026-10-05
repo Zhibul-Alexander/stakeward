@@ -1,7 +1,11 @@
 import { createApp } from './app.ts';
 import { monitorDepsFromEnv, runMonitorPass } from './monitor/pass.ts';
+import { startWarmUp } from './warm-up.ts';
 
 export const app = createApp();
+
+// The hot paths run on synthetic data while the isolate loads, outside every invocation's CPU limit (warm-up.ts).
+void startWarmUp();
 
 export default {
   fetch: app.fetch,

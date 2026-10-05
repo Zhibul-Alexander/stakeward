@@ -1,6 +1,7 @@
 // CPU of the monitor pass inside workerd (step 5 spec section 6.3; the numbers go to DECISIONS.md D56). Prints the
 // numbers; run `pnpm --filter @stakeward/worker exec vitest run test/monitor-cpu.test.ts --reporter=verbose`.
-// The first test measures the first kit decode of this isolate (cold); the rows are built without decoding.
+// `first` is the first call in this isolate after the warm-up the entry module runs at load (src/warm-up.ts), as in
+// production; the rows are built without decoding.
 import { getAddressDecoder, type Address } from '@solana/kit';
 import {
   STAKE_PROGRAM_ADDRESS,
