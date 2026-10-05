@@ -17,6 +17,7 @@
     "opensInNewTab": "(opens in a new tab)",
     "details": "Details",
     "tryAgain": "Try again",
+    "checkAgain": "Check again",
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
@@ -639,6 +640,56 @@
         "body": "What to do if you lose a key or your main key is stolen, with commands that work without Stakeward. It holds no secrets.",
         "link": "Recovery card for {address}"
       }
+    }
+  },
+  "stakePage": {
+    "invalid": "This page address does not contain a valid stake account address.",
+    "loading": "Reading this stake account from the network",
+    "loadError": "Could not load this stake account",
+    "notFound": "This stake account does not exist. If you just withdrew from it, the SOL is with its main key.",
+    "notStake": "This address is not a stake account."
+  },
+  "withdraw": {
+    "intro": "Take the SOL out of this stake account. It always goes to the stake's main key.",
+    "rescueLink": "Rescue your stake instead",
+    "deactivate": {
+      "title": "First, stop staking",
+      "body": "This stake is earning rewards. Stop staking first: it stops at the end of the current epoch, in about {time}. Then come back to withdraw. Only your main key signs.",
+      "action": "Review and sign"
+    },
+    "serviceStaker": "Another key manages staking for this stake account. Stop staking with that key, or in the service you staked through, then come back. If you did not set this up, someone may have your main key: rescue your stake.",
+    "deactivating": {
+      "title": "Waiting for the epoch to end",
+      "label": "Withdraw opens in about",
+      "body": "The network releases stake at the end of the epoch. The time is an estimate. You can close this page and come back."
+    },
+    "ready": {
+      "title": "Withdraw {amount} to your main key",
+      "mainKey": "Your main key receives it and pays the network fee:",
+      "secondSigns": "{lock}. Your second key co-signs:",
+      "mainAlone": "The lock has ended, so your main key signs alone.",
+      "action": "Review and sign"
+    },
+    "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, or remove the lock first.",
+    "fallback": {
+      "title": "Second key not at hand?",
+      "body": "Your second key can remove the lock on its own, from any device. After that your main key withdraws alone, in any wallet.",
+      "action": "Remove the lock first"
+    },
+    "unsupportedLock": "Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key. Use the Solana command line (solana withdraw-stake), or wait until the lock ends.",
+    "result": "Withdrawal",
+    "done": {
+      "title": "{amount} went to your main key",
+      "deactivated": "Staking stops at the end of this epoch. Come back then to withdraw."
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-main-key": "The main key of this stake account changed. Reload to see it.",
+      "not-inactive": "This stake is still staked or stopping. Wait until it is inactive.",
+      "unsupported-lock": "This lock is held by the main key itself or by no key. Stakeward cannot withdraw this stake.",
+      "not-active": "This stake is not staking, so there is nothing to stop.",
+      "not-staker": "Another key manages staking for this stake account."
     }
   },
   "devCosign": {

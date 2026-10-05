@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import type { PrepareProblem, SignStep, SigningState, StopReason } from './machine.ts';
+import { initialSigningState, type PrepareProblem, type SignStep, type SigningState, type StopReason } from './machine.ts';
 import type { SigningSession } from './session.ts';
 import { backKind, earlierSent, jobItems, roundProgress, sendProgress, signerItems } from './view.ts';
 
@@ -111,6 +111,42 @@ export function SigningPanel({
       confirm={confirm}
     />
   );
+}
+
+const noop = () => undefined;
+
+/** The buttons of a panel whose session is not attached yet: nothing to do until it is. */
+const IDLE_ACTIONS: SigningActions = {
+  sign: noop,
+  continueWithWallet: noop,
+  continueAfterSwitch: noop,
+  stopWaiting: noop,
+  restartRound: noop,
+  oneAtATime: noop,
+  retryPrepare: noop,
+  finish: noop,
+};
+
+/**
+ * A page's panel over the result of useSigningSession. In the first frame, before the session is attached, it shows
+ * the same "building" view the session starts with (`ids` in rounds of `roundSize`), so the page does not flash.
+ */
+export function PageSigningPanel({
+  session,
+  state,
+  ids,
+  roundSize,
+  ...props
+}: Omit<SigningViewProps, 'actions' | 'state'> & {
+  session: SigningSession | null;
+  state: SigningState | null;
+  ids: readonly string[];
+  roundSize: number;
+}) {
+  if (session === null || state === null) {
+    return <SigningView state={initialSigningState(ids, roundSize)} actions={IDLE_ACTIONS} {...props} />;
+  }
+  return <SigningView state={state} actions={session} {...props} />;
 }
 
 /**

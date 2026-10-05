@@ -47,6 +47,7 @@ describe('loadAccountState', () => {
     const A = await testChain.fundedKey();
     const stake = await testChain.createStakeAccount({ staker: A.address, withdrawer: A.address });
     const { chain, calls } = recorded(new LiteSvmChain(testChain));
+    const deviceNow = BigInt(Math.floor(Date.now() / 1000));
 
     const state = await loadAccountState(chain, stake);
 
@@ -55,6 +56,9 @@ describe('loadAccountState', () => {
     expect(state.account).toMatchObject({ address: stake, withdrawer: A.address, staker: A.address });
     expect(state.clock).toMatchObject({ epoch: START_EPOCH, unixTimestamp: START_UNIX_TIMESTAMP });
     expect(state.epoch).toMatchObject({ epoch: START_EPOCH, slotsInEpoch: SLOTS_PER_EPOCH });
+    // The device clock when the reads arrived (epoch-end countdowns tick on it), not the cluster clock.
+    expect(state.readAt).toBeGreaterThanOrEqual(deviceNow);
+    expect(state.readAt).toBeLessThanOrEqual(BigInt(Math.floor(Date.now() / 1000)));
   });
 
   it('a missing account has no raw data; a wallet is present but not a stake account', async () => {

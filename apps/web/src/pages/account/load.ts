@@ -18,6 +18,11 @@ export type AccountState = {
   account: StakeAccount | null;
   clock: ChainClock;
   epoch: EpochInfo;
+  /**
+   * The device clock (unix seconds) when the reads arrived. Epoch-end estimates count from it, because the countdown
+   * that shows them ticks on the device clock (the cluster clock can differ from it).
+   */
+  readAt: bigint;
 };
 
 /** The `:account` of the page address: a base58 address that is not the zero key; null otherwise. */
@@ -34,7 +39,8 @@ export async function loadAccountState(chain: ChainPort, address: Address): Prom
   const [{ accounts }, clock, epoch] = await Promise.all([chain.getAccounts([address]), chain.getClock(), chain.getEpochInfo()]);
   const raw = accounts[0] ?? null;
   const decoded = raw === null ? null : decodeStakeAccount(raw);
-  return { raw, account: decoded?.ok === true ? decoded.account : null, clock, epoch };
+  const readAt = BigInt(Math.floor(Date.now() / 1000));
+  return { raw, account: decoded?.ok === true ? decoded.account : null, clock, epoch, readAt };
 }
 
 /** The read for `address`, again whenever `attempt` changes (Try again, Check again); idle without an address. */
