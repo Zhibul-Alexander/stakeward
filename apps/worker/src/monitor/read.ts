@@ -8,7 +8,7 @@ import {
 import { isAddressText } from '../address.ts';
 import { decodeBase64, isCanonicalBase64 } from '../base64.ts';
 import { isRecord, parseJsonExactLamports } from '../stake-accounts.ts';
-import { callUpstream, type UpstreamEndpoints, type UpstreamOptions } from '../upstream.ts';
+import { callUpstream, type EndpointName, type UpstreamEndpoints, type UpstreamOptions } from '../upstream.ts';
 
 /**
  * Chain reads of the monitor pass and of POST /api/watch: one getMultipleAccounts per chunk, with the Clock sysvar as
@@ -84,8 +84,9 @@ function rawItem(entry: unknown): RawItem | null {
   return { owner, dataBase64: data[0], lamports };
 }
 
+/** `endpoint`: the node that answered (callUpstream). */
 export type ChunkReadResult =
-  | { ok: true; read: ChunkRead }
+  | { ok: true; read: ChunkRead; endpoint: EndpointName }
   | { ok: false; reason: 'timeout' | 'unavailable' | 'malformed' };
 
 /** One getMultipleAccounts for `keys` (the Clock sysvar first), with the read retries of callUpstream. Never throws. */
@@ -96,7 +97,7 @@ export async function readChunk(
   const result = await callUpstream(deps.endpoints, multipleAccountsRequest(keys), 'read', deps.options);
   if (!result.ok) return result;
   const read = parseMultipleAccounts(result.body, keys.length);
-  return read === null ? { ok: false, reason: 'malformed' } : { ok: true, read };
+  return read === null ? { ok: false, reason: 'malformed' } : { ok: true, read, endpoint: result.endpoint };
 }
 
 export const GENESIS_REQUEST = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getGenesisHash', params: [] });
@@ -114,12 +115,10 @@ export function parseGenesisHash(text: string): string | null {
 }
 
 /**
- * True when at least max(3, half) of the accounts are missing or no longer stake accounts: before such a chunk turns
- * into ACCOUNT_CLOSED events, the pass checks that the RPC serves the right cluster (a wrong RPC_URL reads as every
- * account gone).
+ * True when any account is missing or no longer a stake account: before such a chunk can turn into ACCOUNT_CLOSED
+ * events, the pass checks that the node that answered serves the right cluster (a wrong RPC_URL or RPC_FALLBACK_URL
+ * reads as every account gone, and with one or two rows watched that is one or two accounts).
  */
-export function massNull(items: readonly (RawItem | null)[]): boolean {
-  let gone = 0;
-  for (const item of items) if (item === null || item.owner !== STAKE_PROGRAM_ADDRESS) gone += 1;
-  return gone >= Math.max(3, Math.ceil(items.length / 2));
+export function anyGone(items: readonly (RawItem | null)[]): boolean {
+  return items.some((item) => item === null || item.owner !== STAKE_PROGRAM_ADDRESS);
 }

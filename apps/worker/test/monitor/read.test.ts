@@ -8,8 +8,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import { encodeBase64 } from '../../src/base64.ts';
 import {
+  anyGone,
   GENESIS_REQUEST,
-  massNull,
   multipleAccountsRequest,
   parseGenesisHash,
   parseMultipleAccounts,
@@ -17,6 +17,7 @@ import {
   type RawItem,
 } from '../../src/monitor/read.ts';
 import {
+  FALLBACK_URL,
   fakeUpstream,
   multipleAccountsAnswer,
   multipleAccountsText,
@@ -115,11 +116,18 @@ describe('readChunk', () => {
     options: { timeoutMs, retryDelayMs: 0, fetch: upstream.fetch },
   });
 
-  it('one getMultipleAccounts for the keys; the parsed read', async () => {
+  it('one getMultipleAccounts for the keys; the parsed read and the endpoint that answered', async () => {
     const upstream = fakeUpstream((call) => multipleAccountsAnswer(call.json.id, 5000, [CLOCK, STAKE, null, STAKE]));
     const result = await readChunk(KEYS, deps(upstream));
     expect(result.ok && result.read.items).toHaveLength(3);
+    expect(result.ok && result.endpoint).toBe('primary');
     expect(upstream.calls.map((c) => c.raw)).toEqual([multipleAccountsRequest(KEYS)]);
+
+    const fallback = fakeUpstream((call, i) =>
+      i === 0 ? new Response('no', { status: 503 }) : multipleAccountsAnswer(call.json.id, 5000, [CLOCK, STAKE, null, STAKE]),
+    );
+    const viaFallback = await readChunk(KEYS, { ...deps(fallback), endpoints: { primary: PRIMARY_URL, fallback: FALLBACK_URL } });
+    expect(viaFallback.ok && viaFallback.endpoint).toBe('fallback');
   });
 
   it('a malformed answer is not retried and reads as malformed', async () => {
@@ -153,21 +161,19 @@ describe('genesis hash', () => {
   });
 });
 
-describe('massNull', () => {
+describe('anyGone', () => {
   const stake: RawItem = { owner: STAKE_PROGRAM_ADDRESS, dataBase64: '', lamports: 1n };
   const system: RawItem = { owner: SYSTEM_PROGRAM_ADDRESS, dataBase64: '', lamports: 1n };
   const items = (gone: number, total: number, as: RawItem | null = null) =>
-    Array.from({ length: total }, (_, i) => (i < gone ? as : stake));
+    Array.from({ length: total }, (_, i) => (total - i <= gone ? as : stake));
 
-  it('needs at least max(3, half) accounts missing or no longer owned by the stake program', () => {
-    expect(massNull(items(1, 1))).toBe(false);
-    expect(massNull(items(2, 2))).toBe(false);
-    expect(massNull(items(3, 3))).toBe(true);
-    expect(massNull(items(2, 4))).toBe(false);
-    expect(massNull(items(3, 4))).toBe(true);
-    expect(massNull(items(49, 99))).toBe(false);
-    expect(massNull(items(50, 99))).toBe(true);
-    expect(massNull(items(50, 99, system))).toBe(true);
-    expect(massNull([])).toBe(false);
+  it('true as soon as one account is missing or no longer owned by the stake program', () => {
+    expect(anyGone(items(1, 1))).toBe(true);
+    expect(anyGone(items(1, 2))).toBe(true);
+    expect(anyGone(items(1, 99))).toBe(true);
+    expect(anyGone(items(1, 99, system))).toBe(true);
+    expect(anyGone(items(99, 99))).toBe(true);
+    expect(anyGone(items(0, 99))).toBe(false);
+    expect(anyGone([])).toBe(false);
   });
 });

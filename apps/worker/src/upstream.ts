@@ -4,7 +4,8 @@
  * and neither are error messages, which may quote them.
  *
  * - Every attempt times out after `timeoutMs` (8 s), including reading the body.
- * - Reads: up to two retries, three attempts in all: primary, fallback (or primary again), primary.
+ * - Reads: up to two retries, three attempts in all: primary, fallback (or primary again), primary. A read pinned to
+ *   one endpoint makes all three attempts there (the monitor's genesis check of the node that answered a chunk).
  * - sendTransaction: one attempt on the primary. Resending the same signed bytes is safe, but the site owns retries.
  * - An attempt fails on a network error, a timeout or any non-2xx status. A 2xx body is returned as it is, JSON-RPC
  *   errors included; parsing it is the caller's business.
@@ -22,7 +23,12 @@ export const DEFAULT_UPSTREAM_OPTIONS: UpstreamOptions = { timeoutMs: 8_000, ret
 
 export type UpstreamEndpoints = { primary: string; fallback?: string | undefined };
 
-export type UpstreamResult = { ok: true; body: string } | { ok: false; reason: 'timeout' | 'unavailable' };
+export type EndpointName = 'primary' | 'fallback';
+
+/** `endpoint`: the one that answered (the primary's URL when no fallback is set). */
+export type UpstreamResult =
+  | { ok: true; body: string; endpoint: EndpointName }
+  | { ok: false; reason: 'timeout' | 'unavailable' };
 
 /**
  * One POST attempt: the HTTP status and, for a 2xx status only, the body text (any other body is cancelled unread);
@@ -32,22 +38,23 @@ export type AttemptResult = { status: number; body: string | null } | 'timeout' 
 
 type AttemptFailure = 'timeout' | 'network' | `http-${string}`;
 
-/** POSTs a JSON-RPC payload upstream. Never throws. */
+/**
+ * POSTs a JSON-RPC payload upstream. Never throws. `pin` (reads only): every attempt goes to that endpoint; a fallback
+ * pin without a fallback set is the primary.
+ */
 export async function callUpstream(
   endpoints: UpstreamEndpoints,
   payload: string,
   kind: 'read' | 'send',
   options: UpstreamOptions,
+  pin?: EndpointName,
 ): Promise<UpstreamResult> {
   const fallback = endpoints.fallback !== undefined && endpoints.fallback !== '' ? endpoints.fallback : undefined;
-  const plan: { name: 'primary' | 'fallback'; url: string }[] =
-    kind === 'send'
-      ? [{ name: 'primary', url: endpoints.primary }]
-      : [
-          { name: 'primary', url: endpoints.primary },
-          fallback === undefined ? { name: 'primary', url: endpoints.primary } : { name: 'fallback', url: fallback },
-          { name: 'primary', url: endpoints.primary },
-        ];
+  const primary = { name: 'primary', url: endpoints.primary } as const;
+  const second = fallback === undefined ? primary : ({ name: 'fallback', url: fallback } as const);
+  const pinned = pin === 'fallback' ? second : primary;
+  const plan: readonly { name: EndpointName; url: string }[] =
+    kind === 'send' ? [primary] : pin === undefined ? [primary, second, primary] : [pinned, pinned, pinned];
 
   let last: AttemptFailure = 'network';
   for (const [index, endpoint] of plan.entries()) {
@@ -59,7 +66,7 @@ export async function callUpstream(
       console.warn(JSON.stringify(log));
       continue;
     }
-    return { ok: true, body: result.body };
+    return { ok: true, body: result.body, endpoint: endpoint.name };
   }
   return { ok: false, reason: last === 'timeout' ? 'timeout' : 'unavailable' };
 }

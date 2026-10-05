@@ -66,6 +66,34 @@ describe('upstream RPC: reads retry and fall back', () => {
   });
 });
 
+describe('upstream RPC: the endpoint that answered, and pinned reads', () => {
+  const options = (upstream: { fetch: typeof fetch }) => ({ timeoutMs: 200, retryDelayMs: 0, fetch: upstream.fetch });
+  const both = { primary: PRIMARY_URL, fallback: FALLBACK_URL };
+
+  it('a read says which endpoint answered', async () => {
+    const primary = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    expect(await callUpstream(both, '{}', 'read', options(primary))).toMatchObject({ ok: true, endpoint: 'primary' });
+    const fallback = fakeUpstream((c) => (c.endpoint === 'primary' ? failing(503) : rpcResponse(c.json.id, 1)));
+    expect(await callUpstream(both, '{}', 'read', options(fallback))).toMatchObject({ ok: true, endpoint: 'fallback' });
+  });
+
+  it('a read pinned to an endpoint makes all three attempts there and never asks the other', async () => {
+    const down = fakeUpstream(() => failing(503));
+    expect(await callUpstream(both, '{}', 'read', options(down), 'fallback')).toEqual({ ok: false, reason: 'unavailable' });
+    expect(down.calls.map((c) => c.endpoint)).toEqual(['fallback', 'fallback', 'fallback']);
+
+    const primaryOnly = fakeUpstream((c, i) => (i < 2 ? failing(503) : rpcResponse(c.json.id, 1)));
+    expect(await callUpstream(both, '{}', 'read', options(primaryOnly), 'primary')).toMatchObject({ ok: true, endpoint: 'primary' });
+    expect(primaryOnly.calls.map((c) => c.endpoint)).toEqual(['primary', 'primary', 'primary']);
+
+    // Without a fallback set, a fallback pin is the primary.
+    const single = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    const result = await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(single), 'fallback');
+    expect(result).toMatchObject({ ok: true, endpoint: 'primary' });
+    expect(single.calls.map((c) => c.endpoint)).toEqual(['primary']);
+  });
+});
+
 describe('upstream RPC: sendTransaction', () => {
   it('makes one attempt on the primary only, even with a fallback configured', async () => {
     const { bytes } = await signedProtect();

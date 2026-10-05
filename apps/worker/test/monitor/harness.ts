@@ -15,8 +15,11 @@ export const ADMIN_CHAT = '700000001';
 
 export type NetworkCall = { host: string; path: string };
 
-/** Routes the worker's fetch by host: the RPC hosts to the chain, api.telegram.org to Telegram. */
-export function network(chain: FakeChain, telegram: FakeTelegram) {
+/**
+ * Routes the worker's fetch by host: the RPC hosts to the chain (the fallback host to `fallback` when given: a node
+ * of its own), api.telegram.org to Telegram.
+ */
+export function network(chain: FakeChain, telegram: FakeTelegram, fallback?: FakeChain) {
   const calls: NetworkCall[] = [];
   const unexpected: string[] = [];
   const fetchFn: typeof fetch = async (input, init) => {
@@ -27,7 +30,7 @@ export function network(chain: FakeChain, telegram: FakeTelegram) {
       case 'primary.rpc.test':
         return chain.handle('primary', body, init?.signal);
       case 'fallback.rpc.test':
-        return chain.handle('fallback', body, init?.signal);
+        return (fallback ?? chain).handle('fallback', body, init?.signal);
       case 'api.telegram.org':
         return telegram.handle(url, body, init?.signal);
       default:
@@ -143,8 +146,9 @@ export function makeDeps(options: {
   telegram: FakeTelegram;
   env?: Record<string, string | undefined>;
   db?: CountingDb;
+  fallback?: FakeChain;
 }) {
-  const net = network(options.chain, options.telegram);
+  const net = network(options.chain, options.telegram, options.fallback);
   const db = options.db ?? countingDb(env.DB);
   const logs: Record<string, unknown>[] = [];
   let passes = 0;
@@ -171,12 +175,21 @@ const SLOT_ORIGIN = 300_000_000;
 
 export type Harness = ReturnType<typeof createHarness>;
 
-/** A fake chain, a fake Telegram, the counting D1 and deps over them, plus seed and read helpers. */
-export function createHarness(options: { env?: Record<string, string | undefined> } = {}) {
+/**
+ * A fake chain, a fake Telegram, the counting D1 and deps over them, plus seed and read helpers. With `fallback`, the
+ * fallback RPC host is that chain (set RPC_FALLBACK_URL in `env`); its slot and clock are the test's to set.
+ */
+export function createHarness(options: { env?: Record<string, string | undefined>; fallback?: FakeChain } = {}) {
   const clock: TestClock = { ms: Date.UTC(2026, 9, 5, 12) };
   const chain = new FakeChain();
   const telegram = new FakeTelegram();
-  const made = makeDeps({ clock, chain, telegram, ...(options.env === undefined ? {} : { env: options.env }) });
+  const made = makeDeps({
+    clock,
+    chain,
+    telegram,
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.fallback === undefined ? {} : { fallback: options.fallback }),
+  });
   const { deps, net, db, logs } = made;
 
   const setTime = (ms: number) => {

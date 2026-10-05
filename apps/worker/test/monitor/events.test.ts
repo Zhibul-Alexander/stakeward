@@ -1,10 +1,12 @@
 // Done-when of step 5: every event appears once and never again (monitor passes against the fake chain and the
 // real local D1).
 import type { Address } from '@solana/kit';
-import { I64_MAX, type MonitorEventType } from '@stakeward/core';
+import { GENESIS_HASH, I64_MAX, type MonitorEventType } from '@stakeward/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FALLBACK_URL } from '../fakes.ts';
 import type { StakeAccountSpec } from '../transactions.ts';
 import { key, LOCK_UNTIL } from '../transactions.ts';
+import { FakeChain } from './fake-chain.ts';
 import { createHarness, type Harness } from './harness.ts';
 
 const MAIN = key(1);
@@ -316,7 +318,7 @@ describe('exactly once under failures and overlapping passes', () => {
   });
 });
 
-describe('mass null and the genesis check', () => {
+describe('accounts gone and the genesis check', () => {
   const STAKES = [10, 11, 12, 13].map((n) => key(n));
 
   async function allGone(): Promise<Harness> {
@@ -360,6 +362,71 @@ describe('mass null and the genesis check', () => {
     expect(events.map((e) => e.type)).toEqual(Array<string>(4).fill('ACCOUNT_CLOSED'));
     expect(new Set(events.map((e) => e.stake_account))).toEqual(new Set<Address>(STAKES));
   });
+
+  /** STAKES watched, with RPC_FALLBACK_URL on a node of its own (`fallback`) at a later slot. */
+  async function withFallback(fallback: FakeChain): Promise<Harness> {
+    const h = createHarness({ env: { RPC_FALLBACK_URL: FALLBACK_URL }, fallback });
+    h.at('2026-10-05T01:00:00Z');
+    for (const address of STAKES) h.chain.putStake(address, SPEC);
+    await h.seedWatched(STAKES);
+    h.at('2026-10-05T01:02:00Z');
+    fallback.slot = h.chain.slot + 50_000_000;
+    fallback.clock = { ...h.chain.clock };
+    return h;
+  }
+
+  it('a fallback on another cluster answers the chunk after one 503: its genesis is checked, nothing closed', async () => {
+    quiet();
+    const fallback = new FakeChain();
+    fallback.genesis(GENESIS_HASH.mainnet);
+    const h = await withFallback(fallback);
+    h.chain.failNext('getMultipleAccounts', [503]);
+    expect(await h.pass()).toMatchObject({ outcome: 'read-failed', closed: 0, events: 0 });
+    expect(fallback.callsOf('getGenesisHash')).toHaveLength(1);
+    expect(h.chain.callsOf('getGenesisHash')).toEqual([]);
+    expect(await h.readEvents()).toEqual([]);
+    expect((await h.readAccounts()).every((a) => a.state === 'delegated')).toBe(true);
+    expect(h.adminMessages()).toEqual([
+      'Stakeward devnet monitor: RPC_URL answers for another cluster. Account closures were not recorded.',
+    ]);
+  });
+
+  it('RPC_URL on another cluster, a 503 on its genesis: the right fallback does not answer for it', async () => {
+    quiet();
+    const fallback = new FakeChain();
+    const h = await withFallback(fallback);
+    for (const address of STAKES) {
+      const account = h.chain.accounts.get(address);
+      if (account !== undefined) fallback.set(address, account);
+      h.chain.remove(address);
+    }
+    h.chain.genesis(GENESIS_HASH.mainnet);
+    h.chain.failNext('getGenesisHash', [503]);
+    expect(await h.pass()).toMatchObject({ outcome: 'read-failed', closed: 0, events: 0 });
+    expect(fallback.callsOf('getGenesisHash')).toEqual([]);
+    expect(await h.readEvents()).toEqual([]);
+  });
+
+  for (const watchedRows of [1, 2]) {
+    it(`${String(watchedRows)} of ${String(watchedRows)} rows gone: another cluster closes nothing, the right one closes them`, async () => {
+      const h = createHarness();
+      h.at('2026-10-05T01:00:00Z');
+      const some = STAKES.slice(0, watchedRows);
+      for (const address of some) h.chain.putStake(address, SPEC);
+      await h.seedWatched(some);
+      for (const address of some) h.chain.remove(address);
+      h.chain.genesis(GENESIS_HASH.mainnet);
+      h.at('2026-10-05T01:02:00Z');
+      expect(await h.pass()).toMatchObject({ outcome: 'read-failed', closed: 0, events: 0 });
+      expect(h.chain.callsOf('getGenesisHash')).toHaveLength(1);
+      expect(await h.readEvents()).toEqual([]);
+
+      h.chain.genesis(GENESIS_HASH.devnet);
+      h.at('2026-10-05T01:04:00Z');
+      expect(await h.pass()).toMatchObject({ outcome: 'ok', closed: watchedRows, events: watchedRows });
+      expect(h.chain.callsOf('getGenesisHash')).toHaveLength(2);
+    });
+  }
 });
 
 /** Pauses the first getMultipleAccounts after its answer is computed (a pass stuck right after its read). */

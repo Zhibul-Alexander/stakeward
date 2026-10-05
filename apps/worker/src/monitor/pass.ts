@@ -13,7 +13,7 @@ import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
 import { sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
-import { callUpstream, DEFAULT_UPSTREAM_OPTIONS, type UpstreamOptions } from '../upstream.ts';
+import { callUpstream, DEFAULT_UPSTREAM_OPTIONS, type EndpointName, type UpstreamOptions } from '../upstream.ts';
 import {
   adminAllowed,
   adminKindToSend,
@@ -34,7 +34,7 @@ import {
   settleDeliveries,
   type SendResult,
 } from './deliver.ts';
-import { GENESIS_REQUEST, massNull, parseGenesisHash, readChunk } from './read.ts';
+import { anyGone, GENESIS_REQUEST, parseGenesisHash, readChunk } from './read.ts';
 import {
   chunkEventsStatement,
   chunkUpdateStatement,
@@ -59,8 +59,9 @@ import {
  * 1. config  - the environment (a bad CLUSTER or MONITOR_PLAN fails the pass).
  * 2. load    - one batch: every meta value, the lease, one page of watched rows from the cursor on. A pass that does
  *              not get the lease writes nothing and returns 'skipped-lease'.
- * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check when most
- *              accounts read as gone, classifyChunk, and one batch with the events, the row writes and the cursor.
+ * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
+ *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
+ *              writes and the cursor.
  * 4. daily   - on the first pass after 06:00 UTC: every (main key, second key) pair joins the rescan queue, and the
  *              reminders due (REMINDER_<d> events) are written.
  * 5. sends   - Telegram delivery (step 5 spec section 7): one message per chat, committed before the rescans.
@@ -325,7 +326,8 @@ async function readChunks(pass: LoadedPass): Promise<void> {
   const perChunk = MONITOR_LIMITS.accountsPerChunk;
   const shortPage = rows.length < config.plan.maxChunks * perChunk;
   let cursor = pass.meta.cursor;
-  let genesisChecked = false;
+  // Endpoints whose genesis hash this pass checked.
+  const verified = new Set<EndpointName>();
 
   if (rows.length === 0) {
     pass.resetCursor = cursor !== '';
@@ -347,17 +349,18 @@ async function readChunks(pass: LoadedPass): Promise<void> {
       pass.readFailed = true;
       return;
     }
-    const { read } = result;
-    if (!genesisChecked && massNull(read.items)) {
-      // Most accounts read as gone: a wrong RPC_URL looks exactly like this. Prove the cluster before closing rows.
-      const genesis = await checkGenesis(pass);
+    const { read, endpoint } = result;
+    if (!verified.has(endpoint) && anyGone(read.items)) {
+      // An account reads as gone: a node on another cluster looks exactly like this. Prove the cluster of the node
+      // that answered before closing rows (another node answering the check would prove nothing about this one).
+      const genesis = await checkGenesis(pass, endpoint);
       if (genesis !== 'ok') {
         report.chunksFailed += 1;
         pass.readFailed = true;
         if (genesis === 'mismatch') pass.adminDue.add('wrong-cluster');
         return;
       }
-      genesisChecked = true;
+      verified.add(endpoint);
     }
     report.chunks += 1;
 
@@ -381,9 +384,9 @@ async function readChunks(pass: LoadedPass): Promise<void> {
   }
 }
 
-/** getGenesisHash against the configured cluster: 'failed' when it cannot be read. */
-async function checkGenesis(pass: LoadedPass): Promise<'ok' | 'mismatch' | 'failed'> {
-  const result = await callUpstream(pass.config.rpc, GENESIS_REQUEST, 'read', pass.upstream);
+/** getGenesisHash of `endpoint` against the configured cluster: 'failed' when it cannot be read there. */
+async function checkGenesis(pass: LoadedPass, endpoint: EndpointName): Promise<'ok' | 'mismatch' | 'failed'> {
+  const result = await callUpstream(pass.config.rpc, GENESIS_REQUEST, 'read', pass.upstream, endpoint);
   const hash = result.ok ? parseGenesisHash(result.body) : null;
   if (hash === null) return 'failed';
   return hash === GENESIS_HASH[pass.config.cluster] ? 'ok' : 'mismatch';
