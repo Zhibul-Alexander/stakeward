@@ -28,7 +28,49 @@ type SmokeRoute = {
 };
 
 const ROUTES: readonly SmokeRoute[] = [
-  { path: '/', heading: 'Protect your staked SOL', ready: null, screen: null },
+  {
+    // The landing page (step 8): three steps, what Stakeward cannot do, and every question opened from the keyboard,
+    // so axe checks the answers too and the screenshot holds the whole text.
+    path: '/',
+    heading: 'Protect your staked SOL',
+    ready: null,
+    shows: async (page) => {
+      // The footer's /#cannot-do, followed from another page, loads this page fresh: the section comes into view.
+      await page.evaluate(() => {
+        window.location.hash = 'cannot-do';
+      });
+      await page.reload();
+      await expect(page.getByRole('heading', { level: 2, name: 'What Stakeward cannot do', exact: true })).toBeInViewport();
+
+      const steps = page.locator('#how-it-works ol > li');
+      await expect(steps).toHaveCount(3);
+      for (const step of await steps.all()) await expect(step).toBeVisible();
+      await expect(page.locator('#cannot-do')).toBeVisible();
+
+      const questions = page.locator('#faq details');
+      const count = await questions.count();
+      expect(count).toBeGreaterThanOrEqual(12);
+      await questions.first().locator('summary').focus();
+      for (let i = 0; i < count; i += 1) {
+        const question = questions.nth(i);
+        const summary = question.locator('summary');
+        // Tab from the question before (past any link in its answer) to this one, then Enter opens it.
+        for (let presses = 0; presses < 4 && !(await summary.evaluate((node) => node === document.activeElement)); presses += 1) {
+          await page.keyboard.press('Tab');
+        }
+        await expect(summary).toBeFocused();
+        await page.keyboard.press('Enter');
+        await expect(question).toHaveAttribute('open', '');
+        await expect(question.locator('[data-slot="faq-answer"]')).toBeVisible();
+      }
+      // Keeps the last question's focus ring out of the screenshot; the loop above has checked the keyboard path.
+      await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      });
+    },
+    noApi: true,
+    screen: 'landing',
+  },
   { path: '/app', heading: 'Your stake accounts', ready: null, screen: null },
   { path: '/protect', heading: 'Protect your stake', ready: null, screen: 'protect-start' },
   { path: `/withdraw/${SMOKE_STAKE}`, heading: 'Withdraw', ready: 'Withdraw 1,250.5 SOL to your main key', screen: 'withdraw' },
