@@ -7,6 +7,7 @@ import {
 } from '@solana/kit';
 import {
   buildTransaction,
+  deriveNonceAccountAddress,
   inspectTransaction,
   translateError,
   ZERO_ADDRESS,
@@ -28,6 +29,7 @@ import {
   type SigningState,
 } from '@/signing/machine';
 import type { ProtectDoneViewProps } from '@/pages/protect/DoneStep';
+import { nonceOutcomeItem, type NonceStepViewProps } from '@/signing/NonceStep';
 import {
   SAMPLE,
   SAMPLE_ERROR_DETAIL,
@@ -269,6 +271,48 @@ export async function sampleLinkStates(clock: ClockView): Promise<SigningSample[
     { key: 'link-watching', label: 'devUi.flows.linkWatching', state: linkOpen },
     { key: 'link-paused', label: 'devUi.flows.linkPaused', state: reduce(linkOpen, { type: 'link-paused' }) },
     { key: 'cosign-confirm', label: 'devUi.flows.cosignConfirm', state: cosign, confirm: 'devUi.sample.confirmRescue' },
+  ];
+}
+
+/** NonceStepView as a page shows it (`onStart` is the page's), or NonceGate's notice for a taken address. */
+export type NonceSample =
+  | { key: string; label: MessageKey; kind: 'step'; props: Omit<NonceStepViewProps, 'onStart' | 'headingRef'> }
+  | { key: string; label: MessageKey; kind: 'gate-blocked' };
+
+/** Rent for an 80-byte nonce account at 6960 lamports per byte-year (the deposit a setup locks). */
+export const SAMPLE_NONCE_DEPOSIT = 1_447_680n;
+
+/**
+ * The link-signing account's cards: set up by the main key (protect or withdraw by link), close and cancel a link by
+ * the new wallet (rescue), a setup refused because the address is taken, and the gate's notice for that case.
+ */
+export async function sampleNonceSteps(): Promise<NonceSample[]> {
+  const nonceAccount = await deriveNonceAccountAddress(SAMPLE.mainKey);
+  const refused: JobView = {
+    id: nonceAccount,
+    state: { kind: 'refused', reason: 'nonce-unusable' },
+    before: null,
+    action: null,
+    lifetime: null,
+    signature: null,
+    bytes: null,
+  };
+  return [
+    { key: 'setup', label: 'devUi.flows.nonceSetup', kind: 'step', props: { mode: 'setup', role: 'main', amount: SAMPLE_NONCE_DEPOSIT } },
+    { key: 'close', label: 'devUi.flows.nonceClose', kind: 'step', props: { mode: 'close', role: 'new', amount: SAMPLE_NONCE_DEPOSIT } },
+    {
+      key: 'cancel-link',
+      label: 'devUi.flows.nonceCancel',
+      kind: 'step',
+      props: { mode: 'close', variant: 'cancel-link', role: 'new', amount: SAMPLE_NONCE_DEPOSIT },
+    },
+    {
+      key: 'blocked',
+      label: 'devUi.flows.nonceBlocked',
+      kind: 'step',
+      props: { mode: 'setup', role: 'main', amount: SAMPLE_NONCE_DEPOSIT, outcome: nonceOutcomeItem(refused) },
+    },
+    { key: 'gate-blocked', label: 'devUi.flows.nonceGateBlocked', kind: 'gate-blocked' },
   ];
 }
 

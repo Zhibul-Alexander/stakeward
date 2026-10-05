@@ -6,7 +6,17 @@ import { WalletSlot } from '@/components/product/wallet-slot';
 import { t } from '@/i18n';
 import { ProtectDoneView, type ProtectDoneActions } from '@/pages/protect/DoneStep';
 import { SigningView, type SigningActions } from '@/signing/SigningPanel';
-import { sampleDoneViews, sampleLinkStates, sampleSigningStates, type SigningSample } from './flows.ts';
+import { NonceBlocked } from '@/signing/NonceGate';
+import { NonceStepView } from '@/signing/NonceStep';
+import {
+  SAMPLE_NONCE_DEPOSIT,
+  sampleDoneViews,
+  sampleLinkStates,
+  sampleNonceSteps,
+  sampleSigningStates,
+  type NonceSample,
+  type SigningSample,
+} from './flows.ts';
 import { Demo, DevSection } from './layout.tsx';
 import { SAMPLE, SAMPLE_WALLETS, sampleClock } from './samples.ts';
 
@@ -34,6 +44,19 @@ function keySlot(role: WalletRole) {
   return <WalletSlot role={role} status="empty" wallets={SAMPLE_WALLETS} onConnect={noop} />;
 }
 
+/** The link card's cancel slot as the rescue page fills it (NonceCloseCard, variant cancel-link). */
+function linkCancel() {
+  return <NonceStepView mode="close" variant="cancel-link" role="new" amount={SAMPLE_NONCE_DEPOSIT} onStart={noop} />;
+}
+
+function NonceDemo({ sample }: { sample: NonceSample }) {
+  return (
+    <Demo label={t(sample.label)}>
+      {sample.kind === 'step' ? <NonceStepView {...sample.props} onStart={noop} /> : <NonceBlocked hint={t('nonce.blockedHere')} />}
+    </Demo>
+  );
+}
+
 /**
  * Flows on /dev/ui (devnet only, loaded lazily like the product components): the signing panel in every phase it
  * explains, signing by link, and the protect wizard's Done screen. Presentational views fed with fixtures; the buttons
@@ -43,6 +66,7 @@ export function FlowsSection() {
   const [clock] = useState(sampleClock);
   const [signing, setSigning] = useState<SigningSample[] | null>(null);
   const [link, setLink] = useState<SigningSample[] | null>(null);
+  const [nonceSteps, setNonceSteps] = useState<NonceSample[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [doneViews] = useState(() => sampleDoneViews(clock));
 
@@ -56,6 +80,9 @@ export function FlowsSection() {
     }, fail);
     sampleLinkStates(clock).then((result) => {
       if (!cancelled) setLink(result);
+    }, fail);
+    sampleNonceSteps().then((result) => {
+      if (!cancelled) setNonceSteps(result);
     }, fail);
     return () => {
       cancelled = true;
@@ -105,10 +132,14 @@ export function FlowsSection() {
                   knownRoles={RESCUE_ROLES}
                   renderKeySlot={keySlot}
                   confirm={sample.confirm === undefined ? undefined : { label: t(sample.confirm) }}
+                  renderLinkCancel={linkCancel}
                 />
               </Demo>
             ))
           )}
+        </div>
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {nonceSteps?.map((sample) => <NonceDemo key={sample.key} sample={sample} />)}
         </div>
       </DevSection>
       <DevSection id="protect-result" title={t('devUi.protectResult')}>

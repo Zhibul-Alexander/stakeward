@@ -7,6 +7,7 @@ import { CLUSTER } from '@/config';
 import { useLoad } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { resolveSlot, type ResolvedSlot } from '@/ports';
+import { readNonceInfo } from '@/signing/nonce';
 import { AccountSection, type AccountsData } from './AccountSection.tsx';
 import { OptionsSection } from './OptionsSection.tsx';
 import type { DevCosignPorts } from './ports.ts';
@@ -17,7 +18,6 @@ import { RunSection } from './RunSection.tsx';
 import { Section } from './shared.tsx';
 import type { ConfirmOptions } from './SigningRun.tsx';
 import { SlotsSection, type DevSlot } from './SlotsSection.tsx';
-import { readNonceInfo } from './tasks.ts';
 
 export type DevCosignProps = DevCosignPorts & {
   cluster?: Cluster | undefined;

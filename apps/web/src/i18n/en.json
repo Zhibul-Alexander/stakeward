@@ -279,6 +279,11 @@
     },
     "qr": {
       "tooLong": "This link is too long for a QR code. Copy it instead."
+    },
+    "addressField": {
+      "empty": "Paste an address first.",
+      "invalid": "This is not a Solana address.",
+      "zero": "This is the empty address, not a wallet."
     }
   },
   "signing": {
@@ -355,7 +360,10 @@
       "paused": "Stopped checking after 30 minutes. The link still works.",
       "checkAgain": "Check again",
       "stopWaiting": "Stop waiting here",
-      "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed."
+      "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed.",
+      "cancelTitle": "Cancel the link",
+      "cancelBody": "Cancelling closes your link-signing account, so this link stops working. Its deposit of {amount} comes back to your {role}. If the other device already sent the transaction, that change stays.",
+      "cancelAction": "Cancel the link"
     },
     "prepare": {
       "nonce": {
@@ -363,6 +371,13 @@
         "unusable": "Your link-signing account cannot be used. Go back and sign in this browser instead.",
         "stale": "The network has not caught up with your last transaction yet. Try again in a few seconds."
       }
+    },
+    "where": {
+      "legend": "Where does your {role} sign?",
+      "here": "In this browser",
+      "hereHint": "Connect it here and approve here.",
+      "link": "On another device, by link",
+      "linkHint": "You get a link and a QR code. The other device opens it, checks the transaction and signs. Needs a small deposit that comes back."
     }
   },
   "devUi": {
@@ -500,10 +515,15 @@
       "all": "All protected",
       "partial": "Some protected",
       "none": "None protected",
-      "linkNote": "Signing by link: a rescue on the new wallet's link-signing account. The first device after its own signatures, and the device that opened the link, which must tick a box first. Real transactions built and read by core; the buttons do nothing here.",
+      "linkNote": "Signing by link: a rescue on the new wallet's link-signing account. The first device after its own signatures, the device that opened the link (it must tick a box first), then the link-signing account's own cards. Real transactions built and read by core; the buttons do nothing here.",
       "linkWatching": "Link open: waiting for the other device",
       "linkPaused": "Link open: stopped checking after 30 minutes",
-      "cosignConfirm": "The device that opened the link: confirm, then sign"
+      "cosignConfirm": "The device that opened the link: confirm, then sign",
+      "nonceSetup": "Link-signing account: set up",
+      "nonceClose": "Link-signing account: close",
+      "nonceCancel": "Cancel a link",
+      "nonceBlocked": "Set up refused: the address is taken",
+      "nonceGateBlocked": "Address taken before set up: the page's way around it"
     }
   },
   "app": {
@@ -1004,5 +1024,23 @@
     "rate-limited": "Too many requests. Wait a minute and try again.",
     "network": "The Solana network did not respond. Check your connection and try again.",
     "unknown": "Something went wrong. Refresh to see the current state, then try again."
+  },
+  "nonce": {
+    "loading": "Checking your link-signing account",
+    "loadError": "Could not read your link-signing account",
+    "setup": {
+      "title": "Set up signing by link",
+      "body": "Signing on another device needs a small account that keeps the transaction valid until it is signed, even hours later. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "action": "Create the link-signing account"
+    },
+    "close": {
+      "title": "Close the link-signing account",
+      "body": "Closing returns {amount} to your {role}. Any link still open stops working.",
+      "action": "Close it",
+      "done": "Closed. The deposit went back to your {role}."
+    },
+    "blocked": "The address of your link-signing account is already taken by another account, so it cannot be created. Anyone can do this by sending a tiny amount of SOL to it.",
+    "blockedHere": "Sign in this browser instead.",
+    "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address."
   }
 }
