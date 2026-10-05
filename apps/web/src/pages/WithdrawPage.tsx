@@ -1,8 +1,9 @@
 import type { Address } from '@solana/kit';
 import { isLockupInForce } from '@stakeward/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { RiskNote } from '@/components/product/risk-note';
+import { useThrottledCall } from '@/hooks/use-throttled-call';
 import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount, type LoadedAccount } from '@/pages/account/AccountView';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
@@ -56,7 +57,6 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
   const runKey = useRef(0);
-  const lastAutoReread = useRef(0);
   const checkOp = useRef(0);
 
   // Focus follows the page (UX rule 2): the heading of what is shown now, never on the first render. After the user's
@@ -77,13 +77,9 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const reread = () => {
     setAttempt((value) => value + 1);
   };
-  // The countdown ran out: read again, at most once per AUTO_REREAD_MS.
-  const autoReread = useCallback(() => {
-    const now = Date.now();
-    if (now - lastAutoReread.current < AUTO_REREAD_MS) return;
-    lastAutoReread.current = now;
-    setAttempt((value) => value + 1);
-  }, []);
+  // The countdown ran out: read again, at most once per AUTO_REREAD_MS. An end inside that window (an estimate that was
+  // a little early leaves a few seconds to count) reads again when the window ends, so the page never stays at "Ended".
+  const autoReread = useThrottledCall(reread, AUTO_REREAD_MS);
 
   function start(what: WithdrawWhat, keys: { mainKey: Address; secondKey: Address | null }, lamports: bigint) {
     runKey.current += 1;

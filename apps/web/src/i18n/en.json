@@ -727,6 +727,7 @@
     "deactivate": {
       "title": "First, stop staking",
       "body": "This stake is earning rewards. Stop staking first: it stops at the end of the current epoch, in about {time}. Then come back to withdraw. Only your main key signs.",
+      "bodyActivating": "This stake starts earning rewards at the end of this epoch. Stop it now and you can withdraw right away. Only your main key signs.",
       "action": "Review and sign"
     },
     "serviceStaker": "Another key manages staking for this stake account. Stop staking with that key, or in the service you staked through, then come back. If you did not set this up, someone may have your main key: rescue your stake.",
@@ -748,11 +749,12 @@
       "body": "Your second key can remove the lock on its own, from any device. After that your main key withdraws alone, in any wallet.",
       "action": "Remove the lock first"
     },
-    "unsupportedLock": "Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key. Use the Solana command line (solana withdraw-stake), or wait until the lock ends.",
+    "unsupportedLock": "Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key. If the main key holds it, the Solana command line can withdraw when the main key also signs as the lock's key: solana withdraw-stake --help names that option. Otherwise wait until the lock ends.",
     "result": "Withdrawal",
     "done": {
       "title": "{amount} went to your main key",
-      "deactivated": "Staking stops at the end of this epoch. Come back then to withdraw."
+      "deactivated": "Staking stops at the end of this epoch. Come back then to withdraw.",
+      "deactivatedNow": "Staking stopped. You can withdraw now."
     },
     "refused": {
       "not-found": "This stake account no longer exists.",
@@ -1121,7 +1123,7 @@
       "endsSoon": "The lock on {address} ends on {date}. Finish the move before then.",
       "unlocked": "Not locked: anyone with your main key can withdraw it right now. It moves first.",
       "otherKey": "Locked by another second key. Move it in another run with that key:",
-      "unsupported": "Locked by the main key itself or by no key: Stakeward cannot move it. The Solana command line can (solana stake-authorize).",
+      "unsupported": "Locked by the main key itself or by no key: Stakeward cannot move it. If the main key holds the lock, the Solana command line can, when the main key also signs as the lock's key: solana stake-authorize --help names that option.",
       "tooMany": "{count} stake accounts: the {max} most urgent move in this run, the rest in the next.",
       "splitsNote": "This includes stake accounts split off by anyone; a split keeps your lock. One made in the last minute may not show yet: look again at the end.",
       "needMain": "Paste the main key's address or connect it first.",

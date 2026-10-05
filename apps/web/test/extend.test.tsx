@@ -140,6 +140,36 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
   );
 
   it(
+    'E2c: the "main key pays" Check again is gone once the transaction may be in flight: it never builds a second one',
+    async () => {
+      const w = await world(0n);
+      const S = await stake(w);
+      const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
+      const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
+
+      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await click(user, 'Review and sign');
+      await connectAndContinue(user, 'Main key', 'Main Wallet');
+      await screen.findByText(/so your main key pays and signs too/, undefined, WAIT);
+      expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+      await click(user, 'Sign in Main Wallet as Main key');
+      await connectAndContinue(user, 'Second key', 'Second Wallet');
+      // Before the last signature nothing was sent: Check again may still start over.
+      expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+      w.chain.holdTransactions();
+      await click(user, 'Sign in Second Wallet as Second key');
+      await screen.findByText('Waiting for the network to confirm. This usually takes a few seconds, at most 2 minutes.', undefined, WAIT);
+      expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument();
+
+      w.chain.landHeld();
+      await heading(`The lock now ends on ${formatUtcDate(SIX_MONTHS) ?? ''}`);
+      expect(main.requests).toHaveLength(1);
+      expect(second.requests).toHaveLength(1);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'E2b: a second key without SOL: the main key signs first and pays for both signatures',
     async () => {
       const w = await world(0n);

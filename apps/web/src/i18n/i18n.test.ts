@@ -42,6 +42,14 @@ describe('en.json', () => {
     expect(offending).toEqual([]);
   });
 
+  // A lock held by the main key itself: the command line can act when the main key also signs as the lock's key. The
+  // flag's name has the program's word, so the texts point to the command's --help, which names it (never a bare
+  // command, which fails with LockupInForce or CustodianMissing).
+  it('points the command line hints for locks Stakeward cannot handle to the option that makes them work', () => {
+    expect(en.withdraw.unsupportedLock).toContain('solana withdraw-stake --help');
+    expect(en.rescue.stake.unsupported).toContain('solana stake-authorize --help');
+  });
+
   it('never calls the product a 2FA wallet', () => {
     expect(entries.filter(([, text]) => /2fa|two-factor/i.test(text)).map(([key]) => key)).toEqual([]);
   });

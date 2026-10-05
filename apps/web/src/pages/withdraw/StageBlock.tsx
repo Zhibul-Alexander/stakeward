@@ -1,4 +1,4 @@
-import { epochEndEstimate, formatSol, isLockupInForce } from '@stakeward/core';
+import { epochEndEstimate, formatSol, isLockupInForce, stakeActivationStatus } from '@stakeward/core';
 import { RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -51,10 +51,16 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
   switch (withdrawStage(account, clock)) {
     case 'deactivate': {
       const left = epochEndEstimate(epoch, nowSec) - nowSec;
+      // Delegated in this epoch: stopping it now makes it inactive at once (activation epoch = deactivation epoch).
+      const activating = stakeActivationStatus(account.delegation, clock.epoch) === 'activating';
       return (
         <Stage headingId={headingId}>
           {heading(withdrawTitle('deactivate', account.lamports))}
-          <p className="max-w-prose">{t('withdraw.deactivate.body', { time: formatRemaining(Number(left), true) })}</p>
+          <p className="max-w-prose">
+            {activating
+              ? t('withdraw.deactivate.bodyActivating')
+              : t('withdraw.deactivate.body', { time: formatRemaining(Number(left), true) })}
+          </p>
           <div>
             <Button
               onClick={() => {

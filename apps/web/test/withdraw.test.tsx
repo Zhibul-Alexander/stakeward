@@ -159,6 +159,44 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
   );
 });
 
+describe('/withdraw/:account: a stake delegated in this epoch', () => {
+  it(
+    'W2b: stopping a stake that has not started earning opens the withdrawal at once; no text says to wait for the epoch',
+    async () => {
+      const w = await world();
+      // Delegated in START_EPOCH and read in it: activating.
+      const S = await lockedStake(w, true);
+      const [main, second] = await wallets(w);
+      const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main, second]);
+
+      await heading('First, stop staking');
+      expect(
+        screen.getByText('This stake starts earning rewards at the end of this epoch. Stop it now and you can withdraw right away. Only your main key signs.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/stops at the end of the current epoch/)).not.toBeInTheDocument();
+      await click(user, 'Review and sign');
+      await connectAndContinue(user, 'Main key', 'Main Wallet');
+      await click(user, 'Sign in Main Wallet as Main key');
+
+      await heading('Staking stopped. You can withdraw now.');
+      const delegation = w.testChain.stakeAccount(S)?.delegation;
+      expect(delegation?.deactivationEpoch).toBe(START_EPOCH);
+      expect(delegation?.activationEpoch).toBe(START_EPOCH);
+      expect(screen.queryByText(/Come back then to withdraw/)).not.toBeInTheDocument();
+      // The fresh read offers the withdrawal in the same epoch, with both keys.
+      const lamports = w.testChain.account(S)?.lamports ?? 0n;
+      await heading(`Withdraw ${formatSol(lamports)} to your main key`);
+      await click(user, 'Review and sign');
+      await click(user, 'Sign in Main Wallet as Main key');
+      await connectAndContinue(user, 'Second key', 'Second Wallet');
+      await click(user, 'Sign in Second Wallet as Second key');
+      await heading(`${formatSol(lamports)} went to your main key`);
+      expect(w.testChain.account(S)).toBeNull();
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
 describe('/withdraw/:account: an uncertain outcome', () => {
   it(
     'W4: Stop waiting leaves it uncertain; Check again says when the network cannot be read, then finds the withdrawal',

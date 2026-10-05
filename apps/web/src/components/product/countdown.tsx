@@ -73,7 +73,10 @@ type CountdownProps = {
   to: bigint;
   /** What is counted down, e.g. "Current epoch ends in". */
   label: string;
-  /** Called once when the countdown reaches zero (keep it stable: useCallback). */
+  /**
+   * Called once when the countdown reaches zero, or once right after it is shown already over (the wait it shows has
+   * ended either way). Keep it stable: useCallback.
+   */
   onEnd?: (() => void) | undefined;
   /** Milliseconds since the epoch; tests pass a fake clock. Keep it stable. */
   clock?: (() => number) | undefined;
@@ -98,8 +101,15 @@ export function Countdown({ to, label, onEnd, clock = Date.now, className }: Cou
 
   useEffect(() => {
     let bucket = milestoneBucket(remainingSeconds(to, clock()));
-    // Already over when shown: nothing to tick or announce (onEnd is for a countdown that runs out on screen).
-    if (bucket > MILESTONES.length) return undefined;
+    // Already over when shown: nothing to tick or announce, but the wait is over: say so once (outside the render).
+    if (bucket > MILESTONES.length) {
+      const ended = setTimeout(() => {
+        onEndRef.current?.();
+      }, 0);
+      return () => {
+        clearTimeout(ended);
+      };
+    }
     let ended = false;
     const tick = () => {
       const ms = clock();

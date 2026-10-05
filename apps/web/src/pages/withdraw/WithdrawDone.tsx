@@ -44,7 +44,8 @@ function TransactionLink({ signature }: { signature: Signature | null }) {
 
 /**
  * The end of a run on /withdraw/:account: the SOL that went to the main key, or that staking stops at the end of the
- * epoch (the page shows the countdown below from a fresh read), or what did not happen and the way forward.
+ * epoch (the page shows the countdown below from a fresh read) or stopped at once, or what did not happen and the way
+ * forward.
  */
 export function WithdrawDone(props: WithdrawDoneProps) {
   const { headingRef, what, job, mainKey, byLink, signing, checking, checkFailed, onRetry, onCheckAgain, onBack } = props;
@@ -70,12 +71,16 @@ export function WithdrawDone(props: WithdrawDoneProps) {
     );
   }
   if (what === 'deactivate') {
+    // A stake stopped in the epoch it was delegated in never earned: it is inactive at once (the status rule:
+    // activation epoch = deactivation epoch), so the withdrawal is open now, not at the epoch's end.
+    const after = job.state.kind === 'done' || job.state.kind === 'already-done' ? job.state.after : null;
+    const stoppedAtOnce = after?.delegation !== null && after?.delegation !== undefined && after.delegation.activationEpoch === after.delegation.deactivationEpoch;
     return (
       <Alert tone="success" role="status" data-slot="withdraw-done">
         <CircleCheckIcon aria-hidden="true" />
         <AlertDescription className="flex flex-col gap-2 text-foreground">
           <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
-            {t('withdraw.done.deactivated')}
+            {stoppedAtOnce ? t('withdraw.done.deactivatedNow') : t('withdraw.done.deactivated')}
           </h2>
           <TransactionLink signature={job.signature} />
         </AlertDescription>
