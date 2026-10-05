@@ -16,6 +16,7 @@ export * from './link.ts';
 export * from './lockup.ts';
 export * from './nonce.ts';
 export * from './ports.ts';
+export * from './recovery.ts';
 export * from './signing-order.ts';
 export * from './status.ts';
 export * from './verify.ts';
