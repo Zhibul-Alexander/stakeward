@@ -1088,5 +1088,101 @@
       "link-used": "This link was already used or cancelled.",
       "stale": "The stake account has changed since this link was made."
     }
+  },
+  "rescue": {
+    "intro": "If someone may have your main key, move your stake to a new wallet. While the lock holds, nobody can withdraw it or take it over without your second key.",
+    "desktop": "Rescue works best in a desktop browser where your new wallet is connected. Your main key and your second key can sign here or on another device by link.",
+    "steps": {
+      "stake": "Your stake",
+      "newWallet": "New wallet",
+      "keys": "Keys",
+      "move": "Move",
+      "done": "Done"
+    },
+    "stake": {
+      "heading": "Which main key may be stolen?",
+      "address": "Main key address",
+      "addressHint": "Paste its address, or connect it. Connecting signs nothing.",
+      "check": "Find its stake",
+      "loading": "Reading the stake accounts of this main key",
+      "loadError": "Could not load the stake accounts",
+      "none": "No stake account has this main key now. If it was moved already, Stakeward cannot bring it back.",
+      "safeUntil": "Your stake is locked until {date}. Until then, someone with only your main key cannot withdraw it.",
+      "endsSoon": "The lock on {address} ends on {date}. Finish the move before then.",
+      "unlocked": "Not locked: anyone with your main key can withdraw it right now. It moves first.",
+      "otherKey": "Locked by another second key. Move it in another run with that key:",
+      "unsupported": "Locked by the main key itself or by no key: Stakeward cannot move it. The Solana command line can (solana stake-authorize).",
+      "tooMany": "{count} stake accounts: the {max} most urgent move in this run, the rest in the next.",
+      "splitsNote": "This includes stake accounts split off by anyone; a split keeps your lock. One made in the last minute may not show yet: look again at the end.",
+      "needMain": "Paste the main key's address or connect it first.",
+      "needMovable": "None of these stake accounts can be moved here."
+    },
+    "newWallet": {
+      "heading": "Connect a new wallet",
+      "body": "Create a new wallet with a NEW seed phrase in your wallet app, on a device you trust. A new account under your current seed phrase is not safe: whoever has that phrase has the account too. Your stake moves to this wallet.",
+      "slot": "Your new wallet. It signs, pays the network fees and owns the link-signing account. Connecting signs nothing.",
+      "seedCheck": "My new wallet comes from a new seed phrase that no one else has seen",
+      "needSeedCheck": "Confirm that your new wallet has a new seed phrase.",
+      "needNew": "Connect your new wallet to continue.",
+      "problem": {
+        "zero-key": "This is the empty address, not a wallet.",
+        "main-key": "This is your main key. Use a new wallet.",
+        "second-key": "This is a second key of your stake. Use a new wallet.",
+        "stake-account": "This is a stake account, not a wallet."
+      },
+      "fixProblem": "Connect another wallet as your new wallet.",
+      "balance": "Your new wallet has {balance}. It needs at least {needed} for network fees and a deposit that comes back; we suggest {suggested}.",
+      "balanceLoading": "Reading the balance of your new wallet",
+      "balanceError": "Could not read the balance of your new wallet",
+      "fund": "Send SOL to this address from an exchange or another wallet. Not from your main key: a thief's bot may take it first.",
+      "qr": "QR code of your new wallet's address",
+      "checkBalance": "Check the balance again",
+      "lowBalance": "Add SOL to your new wallet to continue."
+    },
+    "keys": {
+      "heading": "Who approves the move",
+      "secondKey": "Your second key that co-signs:",
+      "chooseSecond": "Your stake is locked by more than one second key. Which one moves stake in this run?",
+      "noLock": "None of these stake accounts is locked. The move still needs one more wallet of yours to approve: connect any wallet you control, other than your main key and your new wallet, as the second key.",
+      "noLockLink": "Without a lock, connect that wallet in this browser.",
+      "needSecond": "Connect your second key, or choose to sign by link.",
+      "secondProblem": "Your second key must be another wallet than your main key and your new wallet.",
+      "linkSame": "If both keys sign by link, open the link on one device where both are connected."
+    },
+    "move": {
+      "heading": "Move your stake",
+      "newOwner": "New owner of your stake. Check it is the wallet you just made:",
+      "countOne": "1 transaction. Your new wallet, your main key and your second key each approve it.",
+      "countOther": "{count} transactions, one per stake account, one after another. Your new wallet, your main key and your second key approve each one.",
+      "ledger": "On a Ledger, check that the new authority it shows is your new wallet's address before you approve."
+    },
+    "done": {
+      "titleOne": "Your stake account is safe",
+      "titleOther": "{count} stake accounts are safe",
+      "titlePartial": "{done} of {total} stake accounts moved",
+      "titleNone": "No stake account was moved",
+      "movedList": "Moved to your new wallet",
+      "notMovedList": "Not moved yet",
+      "owner": "Now controlled by your new wallet:",
+      "useNew": "From now on your new wallet is the main key of these stake accounts. Your second key still holds the lock. Stop using the old main key: anything sent to it may be taken.",
+      "delegate": {
+        "title": "Earn rewards again",
+        "body": "These stake accounts are no longer staking. Your new wallet can delegate them to the same validator again. Check that this is your validator:",
+        "action": "Review and sign"
+      },
+      "more": "Look for more stake accounts",
+      "view": "View your stake with your new wallet",
+      "telegram": "Get alerts for your new wallet"
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists. It may have been merged into another one: look again.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-main-key": "The main key no longer controls this stake account.",
+      "other-second-key": "Another second key holds this lock now.",
+      "unsupported-lock": "Locked by the main key itself or by no key: Stakeward cannot move it.",
+      "key-rule": "The new wallet, the main key and the second key must all be different wallets.",
+      "not-new-wallet": "Your new wallet does not manage staking for this stake account.",
+      "no-validator": "This stake was never delegated, so there is no validator to return to."
+    }
   }
 }

@@ -12,6 +12,7 @@ import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
+import { RescuePage } from '@/pages/RescuePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
   createProtectedAccountMemory,
@@ -30,10 +31,10 @@ export const WAIT = { timeout: 20_000 };
 /** Polls, re-reads and link polls as fast as the tests can go (step 7 spec 13). */
 export const FAST_SIGNING: SigningTestOptions = { pollIntervalMs: 1, rereadDelayMs: 1, link: { firstPollMs: 1, maxPollMs: 1 } };
 
-export type StakePage = { ports: Ports; location: ReturnType<typeof memoryLocation>; user: UserEvent };
-
 /** Queries over the whole document (`screen`) or over one React root (`within(container)`). */
 export type Scope = BoundFunctions<typeof queries>;
+
+export type StakePage = { ports: Ports; location: ReturnType<typeof memoryLocation>; user: UserEvent; view: Scope };
 
 /** Fresh ports for one browser: these wallets, no key slot filled, nothing remembered. */
 export function testPorts(chain: ChainPort, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): Ports {
@@ -53,7 +54,7 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
   const page = testPorts(chain, wallets, ports);
   const location = memoryLocation({ path, record: true });
   const user = userEvent.setup();
-  render(
+  const { container } = render(
     <StrictMode>
       <Router hook={location.hook} searchHook={location.searchHook}>
         <PortsProvider ports={page}>
@@ -64,12 +65,15 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
             <Route path="/extend/:account">
               <ExtendPage signing={FAST_SIGNING} />
             </Route>
+            <Route path="/rescue">
+              <RescuePage signing={FAST_SIGNING} />
+            </Route>
           </Switch>
         </PortsProvider>
       </Router>
     </StrictMode>,
   );
-  return { ports: page, location, user };
+  return { ports: page, location, user, view: within(container) };
 }
 
 export type RoleName = 'Main key' | 'Second key' | 'New wallet';

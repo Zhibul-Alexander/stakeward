@@ -20,6 +20,8 @@ type NonceGateProps = {
   blockedHint: string;
   /** What needs the account, once it is ready (the signing session on that nonce). */
   children: (nonceAccount: Address) => ReactNode;
+  /** The page's way out while the account is not ready (e.g. Back), shown below the gate; never next to `children`. */
+  actions?: ReactNode;
   signing?: SigningTestOptions | undefined;
 };
 
@@ -29,13 +31,31 @@ type NonceGateProps = {
  * wait is explained and an error has Try again (UX rules 7 and 8). An address taken by another account cannot be
  * used: the gate says so with the page's way around it.
  */
-export function NonceGate({ authority, role, blockedHint, children, signing }: NonceGateProps) {
+export function NonceGate({ authority, role, blockedHint, children, actions, signing }: NonceGateProps) {
   const chain = useChain();
   const [attempt, setAttempt] = useState(0);
   const nonce = useNonceAccount(chain, authority, attempt);
   const again = () => {
     setAttempt((value) => value + 1);
   };
+  if (nonce.status === 'ready' && nonce.value.state.kind === 'ready') return children(nonce.value.address);
+  const gate = <GateState nonce={nonce} authority={authority} role={role} blockedHint={blockedHint} again={again} signing={signing} />;
+  if (actions === undefined) return gate;
+  return (
+    <div className="flex flex-col gap-4">
+      {gate}
+      <div className="flex flex-wrap gap-2">{actions}</div>
+    </div>
+  );
+}
+
+type GateStateProps = Omit<NonceGateProps, 'children' | 'actions'> & {
+  nonce: ReturnType<typeof useNonceAccount>;
+  again: () => void;
+};
+
+/** The gate while the account is not ready to use: reading it, a read error, setting it up, or its address taken. */
+function GateState({ nonce, authority, role, blockedHint, again, signing }: GateStateProps) {
   switch (nonce.status) {
     case 'idle':
     case 'loading':
@@ -51,7 +71,8 @@ export function NonceGate({ authority, role, blockedHint, children, signing }: N
       const { address, state, deposit } = nonce.value;
       switch (state.kind) {
         case 'ready':
-          return children(address);
+          // NonceGate renders its children before it gets here.
+          return null;
         case 'missing':
           return (
             <NonceStep

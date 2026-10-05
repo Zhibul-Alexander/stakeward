@@ -9,6 +9,7 @@ import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
+import { RescuePage } from '@/pages/RescuePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
@@ -52,7 +53,7 @@ export function AppRoutes() {
         <ExtendPage />
       </Route>
       <Route path="/rescue">
-        <ComingSoonPage title={t('common.pages.rescue')} />
+        <RescuePage />
       </Route>
       <Route path="/cosign">
         <CosignPage />
