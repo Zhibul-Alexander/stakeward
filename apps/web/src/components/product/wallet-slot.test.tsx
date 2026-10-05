@@ -98,6 +98,8 @@ describe('WalletSlot', () => {
     rerender(
       <WalletSlot role="second" status="wrong-account" wallet={ALPHA} address={MAIN} expected={SECOND} onDisconnect={onDisconnect} />,
     );
+    expect(screen.getByText('This step needs this account. Disconnect, then connect again with this account:')).toBeInTheDocument();
+    expect(screen.queryByText(/Switch to it in the wallet/)).not.toBeInTheDocument();
     expect(screen.getByText(SECOND)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Disconnect Alpha Wallet from Second key' }));

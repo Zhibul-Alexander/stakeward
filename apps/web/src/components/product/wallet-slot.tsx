@@ -209,7 +209,11 @@ function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
                 <p className="font-medium">{t(`components.walletSlot.switch.${props.role}`)}</p>
               ) : (
                 <>
-                  <p className="font-medium">{t('components.walletSlot.expected')}</p>
+                  {/* Without Continue the slot is filled and keeps its account whatever the wallet offers (D35): the
+                      way to the expected one is Disconnect, then Connect. */}
+                  <p className="font-medium">
+                    {props.onContinue === undefined ? t('components.walletSlot.expectedReconnect') : t('components.walletSlot.expected')}
+                  </p>
                   <AddressText address={props.expected} variant="full" />
                 </>
               )}

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { JobView } from '@/signing/machine';
 import {
   initialRescueState,
+  lockEndDate,
   movedIds,
   newWalletProblems,
   rescueBlockers,
@@ -63,6 +64,18 @@ describe('rescueGroups', () => {
     const groups = rescueGroups([...all, byEpoch], A, null, CLOCK);
     expect(addresses(groups.movable)).toEqual(addresses([unlockedBig, ended, unlockedSmall]));
     expect(addresses(groups.otherKey)).toEqual(addresses([lockedLate, otherKey, lockedSoon, byEpoch]));
+  });
+
+  it('a lock an epoch holds has no date: it comes after the locks that end on a date, by epoch', () => {
+    const byEpochLate = account(9, { epoch: 990n, custodian: K, lamports: 9_000_000_000n });
+    const byEpochSoon = account(10, { epoch: 905n, custodian: K });
+    const groups = rescueGroups([byEpochLate, lockedLate, byEpochSoon, lockedSoon, unlockedSmall], A, K, CLOCK);
+    expect(addresses(groups.movable)).toEqual(addresses([unlockedSmall, lockedSoon, lockedLate, byEpochSoon, byEpochLate]));
+    expect(lockEndDate(byEpochSoon, CLOCK)).toBeNull();
+    expect(lockEndDate(lockedSoon, CLOCK)).toBe(NOW + 3n * DAY);
+    expect(lockEndDate(unlockedSmall, CLOCK)).toBeNull();
+    // Held by its date and by an epoch: the date is not when it ends.
+    expect(lockEndDate(account(11, { until: NOW + DAY, epoch: 950n, custodian: K }), CLOCK)).toBeNull();
   });
 
   it('secondKeyChoices: the keys of locks in force, most locked SOL first, never the main key or the zero key', () => {

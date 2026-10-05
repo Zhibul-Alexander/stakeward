@@ -22,7 +22,7 @@ import { KeySlot } from '@/pages/app/KeySlot';
 import type { MainKeyAccountsState } from '@/pages/protect/load';
 import { ContinueButtons } from '@/pages/protect/StepButtons';
 import { AddressField, addressInputError, parseAddressInput } from '@/signing/AddressField';
-import { ENDS_SOON_SECONDS, MAX_RESCUE_ACCOUNTS, type RescueGroups } from './wizard.ts';
+import { ENDS_SOON_SECONDS, lockEndDate, MAX_RESCUE_ACCOUNTS, type RescueGroups } from './wizard.ts';
 
 type StakeStepProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -128,12 +128,13 @@ function MainKeyField({ typed, onTyped, onFind }: Pick<StakeStepProps, 'typed' |
 
 function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; clock: ClockView; knownSecondKeys: readonly Address[] }) {
   const { movable, otherKey, unsupported } = groups;
-  const locked = movable.filter((account) => isLockupInForce(account.lockup, clock));
-  const earliest = locked.reduce<bigint | null>(
-    (lowest, account) => (lowest === null || account.lockup.unixTimestamp < lowest ? account.lockup.unixTimestamp : lowest),
-    null,
-  );
-  const endsSoon = locked.filter((account) => account.lockup.unixTimestamp - clock.unixTimestamp <= ENDS_SOON_SECONDS);
+  // Only locks that end on a date have one to state (a lock an epoch holds has none: lockEndDate).
+  const dated = movable.flatMap((account) => {
+    const end = lockEndDate(account, clock);
+    return end === null ? [] : [{ account, end }];
+  });
+  const earliest = dated.reduce<bigint | null>((lowest, { end }) => (lowest === null || end < lowest ? end : lowest), null);
+  const endsSoon = dated.filter(({ end }) => end - clock.unixTimestamp <= ENDS_SOON_SECONDS);
   const row = (account: StakeAccount, actions?: ReactNode) => {
     const view = scannerStatus(account, knownSecondKeys, clock);
     return (
@@ -156,12 +157,12 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
       )}
       {endsSoon.length === 0 ? null : (
         <ul className="flex flex-col gap-2">
-          {endsSoon.map((account) => (
+          {endsSoon.map(({ account, end }) => (
             <li key={account.address} className="flex items-start gap-2 text-sm font-medium text-danger">
               <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
               {t('rescue.stake.endsSoon', {
                 address: shortAddress(account.address),
-                date: formatUtcDate(account.lockup.unixTimestamp) ?? '',
+                date: formatUtcDate(end) ?? '',
               })}
             </li>
           ))}

@@ -36,7 +36,8 @@ export const ENDS_SOON_SECONDS = 7n * 86_400n;
  * - `unsupported`: a lock in force held by the main key itself or by no key; Stakeward cannot move it;
  * - `otherKey`: a lock in force held by another key than `secondKey` (another run, with that key);
  * - `movable`: the rest (no lock in force, or one `secondKey` holds), most urgent first: unlocked (anyone with the main
- *   key can withdraw them now), then by lock end, then the larger balance first.
+ *   key can withdraw them now), then by lock end (locks an epoch holds, which have no date, after those that end on a
+ *   date, by epoch), then the larger balance first.
  */
 export type RescueGroups = { movable: StakeAccount[]; otherKey: StakeAccount[]; unsupported: StakeAccount[] };
 
@@ -58,11 +59,26 @@ export function rescueGroups(
     const aLocked = isLockupInForce(a.lockup, clock);
     const bLocked = isLockupInForce(b.lockup, clock);
     if (aLocked !== bLocked) return aLocked ? 1 : -1;
-    if (aLocked && a.lockup.unixTimestamp !== b.lockup.unixTimestamp) return a.lockup.unixTimestamp < b.lockup.unixTimestamp ? -1 : 1;
+    if (aLocked) {
+      const aDate = lockEndDate(a, clock);
+      const bDate = lockEndDate(b, clock);
+      if ((aDate === null) !== (bDate === null)) return aDate === null ? 1 : -1;
+      if (aDate !== null && bDate !== null && aDate !== bDate) return aDate < bDate ? -1 : 1;
+      if (aDate === null && a.lockup.epoch !== b.lockup.epoch) return a.lockup.epoch < b.lockup.epoch ? -1 : 1;
+    }
     if (a.lamports !== b.lamports) return a.lamports > b.lamports ? -1 : 1;
     return 0;
   });
   return groups;
+}
+
+/**
+ * The date a lock in force ends, when a date is what holds it; null when no lock is in force or an epoch holds it (its
+ * timestamp is then 0 or already past, or the epoch may outlast it): the screen never states a date the lock lacks.
+ */
+export function lockEndDate(account: StakeAccount, clock: ClockView): bigint | null {
+  const { lockup } = account;
+  return lockup.unixTimestamp > clock.unixTimestamp && lockup.epoch <= clock.epoch ? lockup.unixTimestamp : null;
 }
 
 /** Second keys that hold a lock in force on the main key's stake (not the main key, not the zero key), most SOL first. */

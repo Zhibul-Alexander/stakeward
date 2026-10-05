@@ -117,6 +117,7 @@
       "chooseAnother": "Choose another wallet",
       "conflict": "This account is already your {role}.",
       "expected": "This step needs this account. Switch to it in the wallet:",
+      "expectedReconnect": "This step needs this account. Disconnect, then connect again with this account:",
       "switch": {
         "main": "Switch to your main account in the wallet, then press Continue.",
         "second": "Switch to your second account in the wallet, then press Continue.",

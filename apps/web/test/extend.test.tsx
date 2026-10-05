@@ -297,7 +297,7 @@ describe('/extend/:account: gates', () => {
       await click(user, 'Review and sign');
       await screen.findByText('Connect your Second key to continue: it must sign these transactions.', undefined, WAIT);
       const slot = screen.getByRole('group', { name: 'Second key' });
-      expect(within(slot).getByText('This step needs this account. Switch to it in the wallet:')).toBeInTheDocument();
+      expect(within(slot).getByText('This step needs this account. Disconnect, then connect again with this account:')).toBeInTheDocument();
       expect(within(slot).getByText(w.K.address)).toBeInTheDocument();
       expect(within(slot).getByRole('button', { name: /^Disconnect/ })).toBeInTheDocument();
       expect(within(slot).queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();

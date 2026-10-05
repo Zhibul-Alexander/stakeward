@@ -25,6 +25,8 @@ import { createFakeApi } from './support/fake-api.ts';
 const noChain = {} as unknown as ChainPort;
 
 const EXPECTED_TEXT = 'This step needs this account. Switch to it in the wallet:';
+/** A filled slot keeps its account whatever the wallet offers: the way to the expected one is Disconnect, then Connect. */
+const RECONNECT_TEXT = 'This step needs this account. Disconnect, then connect again with this account:';
 
 function setup(wallet: TestWalletPort): Ports {
   return {
@@ -98,9 +100,16 @@ describe('KeySlot expected', () => {
     expect(ports.slots.assign('main', { walletId: wallet.id, address: other.address })).toEqual({ ok: true });
     const group = show(ports, { role: 'main', expected: main });
 
-    expect(within(group).getByText(EXPECTED_TEXT)).toBeInTheDocument();
+    expect(within(group).getByText(RECONNECT_TEXT)).toBeInTheDocument();
+    expect(within(group).queryByText(EXPECTED_TEXT)).not.toBeInTheDocument();
     expect(within(group).getByText(main.address)).toBeInTheDocument();
     expect(within(group).queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+    // Switching in the wallet changes nothing here: the slot holds its account.
+    act(() => {
+      wallet.setExposedAccounts([main.address]);
+    });
+    expect(within(group).getByText(RECONNECT_TEXT)).toBeInTheDocument();
+    expect(ports.slots.getSnapshot().main).toEqual({ walletId: wallet.id, address: other.address });
 
     await userEvent.click(within(group).getByRole('button', { name: 'Disconnect Two Accounts from Main key' }));
     expect(ports.slots.getSnapshot().main).toBeNull();

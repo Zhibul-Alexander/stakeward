@@ -185,6 +185,36 @@ async function expectNonceRescue(wallet: TestWalletPort, D: Address, from = 0) {
   }
 }
 
+describe('/rescue: the first step never states a date a lock does not have', () => {
+  it(
+    'R0: a lock an epoch holds (no date) next to one that ends on a date: the reassurance names the real date',
+    async () => {
+      const w = await world();
+      const byEpoch = await w.testChain.createStakeAccount({
+        staker: w.A.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: 0n, epoch: START_EPOCH + 5n, custodian: w.K.address },
+      });
+      const LATER = START_UNIX_TIMESTAMP + 60n * DAY;
+      const byDate = await w.testChain.createStakeAccount({
+        staker: w.A.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: LATER, epoch: 0n, custodian: w.K.address },
+      });
+      renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [w.newWallet, w.main, w.second]);
+
+      await heading(en.rescue.stake.heading);
+      await screen.findByText(en.rescue.stake.safeUntil.replace('{date}', formatUtcDate(LATER) ?? ''), undefined, WAIT);
+      await waitFor(() => {
+        expect(movableOrder()).toEqual([rowLabel(byDate), rowLabel(byEpoch)]);
+      }, WAIT);
+      expect(screen.queryByText(/1 January 1970/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Finish the move before then/)).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
 describe('/rescue: move the stake to a new wallet (F4)', () => {
   it(
     'DW7-1 (R1): three wallets move three accounts, one whose staker a thief changed and deactivated; the rest is left',
