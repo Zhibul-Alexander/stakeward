@@ -21,6 +21,8 @@ const NO_SIGNING_ACTIONS: SigningActions = {
   oneAtATime: noop,
   retryPrepare: noop,
   finish: noop,
+  resumeLink: noop,
+  checkLinkNow: noop,
 };
 
 const NO_DONE_ACTIONS: ProtectDoneActions = { retry: noop, choosePeriod: noop, checkAgain: noop, retryMonitoring: noop };

@@ -1,4 +1,4 @@
-import type { Address, Blockhash } from '@solana/kit';
+import type { Address, Blockhash, Nonce, Signature } from '@solana/kit';
 import type { ChainClock, FriendlyError, TransactionSummary } from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
 import {
@@ -46,8 +46,8 @@ function tx(id: string, present: readonly Address[] = []): RoundTx {
 }
 
 const STEPS: readonly SignStep[] = [
-  { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 2, status: 'pending' },
-  { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 2, status: 'pending' },
+  { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 2, status: 'pending', local: true },
+  { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 2, status: 'pending', local: true },
 ];
 
 function view(id: string, state: JobState): JobView {
@@ -103,6 +103,32 @@ const stoppedCheck1 = reduce(signing1, { type: 'stopped', step: 1, reason: CHECK
 const expired = reduce(ready1, { type: 'expired' });
 const starting0 = reduce(ready0, { type: 'starting', step: 0, waitFor: 'network' });
 
+// Signing by link: rounds of one on the main key's durable nonce; the main key signs here, the second key by link.
+const NONCE_ACCOUNT = '5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj' as Address;
+const NONCE_VALUE = 'GfnhkAa2bfg4dTjLfwhLSWg1b8zrJw9u8jCmVSUJhy9Y' as Nonce;
+const TX_ID = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW' as Signature;
+function nonceTx(id: string, present: readonly Address[] = []): RoundTx {
+  return {
+    ...tx(id, present),
+    lifetime: { kind: 'nonce', nonceAccount: NONCE_ACCOUNT, nonceAuthority: MAIN, nonceValue: NONCE_VALUE },
+  };
+}
+const LINK_STEPS: readonly SignStep[] = [
+  { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending', local: true },
+  { address: SECOND, role: 'second', walletName: null, count: 1, status: 'pending', local: false },
+];
+const linkPreparing = reduce(initialSigningState([S1, S2], 1), { type: 'start' });
+const linkReady0 = reduce(linkPreparing, {
+  type: 'prepared',
+  clock: CLOCK,
+  jobs: { [S1]: { ...view(S1, { kind: 'ready' }), lifetime: nonceTx(S1).lifetime } },
+  txs: [nonceTx(S1)],
+  steps: LINK_STEPS,
+});
+const linkSigning0 = reduce(linkReady0, { type: 'asking', step: 0 });
+const linkWatching = reduce(linkSigning0, { type: 'signed', step: 0, txs: [nonceTx(S1, [MAIN])], signature: TX_ID });
+const linkPaused = reduce(linkWatching, { type: 'link-paused' });
+
 const PHASES: Record<string, SigningState> = {
   idle,
   preparing,
@@ -119,6 +145,8 @@ const PHASES: Record<string, SigningState> = {
   confirming,
   checking,
   finished,
+  linkWatching,
+  linkPaused,
 };
 
 function jobKinds(state: SigningState): Record<string, string> {
@@ -153,6 +181,8 @@ describe('the fixtures reach every phase', () => {
     confirming: 'confirming',
     checking: 'checking',
     finished: 'finished',
+    linkWatching: 'link',
+    linkPaused: 'link',
   };
   it.each(Object.entries(PHASES))('%s', (name, state) => {
     expect(state.phase.kind).toBe(KINDS[name]);
@@ -503,6 +533,63 @@ describe('signingReducer: the transition table', () => {
     expect(jobKinds(after)).toEqual({ [S1]: 'done', [S2]: 'failed', [S3]: 'preparing' });
   });
 
+  it('signed, the next step signs by link: link (watching); the job gets the transaction id and the link bytes, stays ready', () => {
+    expect(linkWatching.phase).toEqual({ kind: 'link', watching: true, lastCheckFailed: false });
+    expect(linkWatching.round?.steps.map((step) => step.status)).toEqual(['signed', 'pending']);
+    expect(linkWatching.round?.txs[0]?.summary.presentSignatures).toEqual([MAIN]);
+    const job = linkWatching.jobs[S1];
+    expect(job?.state).toEqual({ kind: 'ready' });
+    expect(job?.signature).toBe(TX_ID);
+    expect(job?.bytes).toBe(linkWatching.round?.txs[0]?.bytes);
+    expect(jobKinds(linkWatching)).toEqual({ [S1]: 'ready', [S2]: 'queued' });
+  });
+
+  it('link-checked: records whether the last check reached the network; the same object when nothing changes', () => {
+    const failed = reduce(linkWatching, { type: 'link-checked', ok: false });
+    expect(failed.phase).toEqual({ kind: 'link', watching: true, lastCheckFailed: true });
+    expect(reduce(failed, { type: 'link-checked', ok: false })).toBe(failed);
+    expect(reduce(failed, { type: 'link-checked', ok: true }).phase).toEqual(linkWatching.phase);
+    expect(reduce(linkWatching, { type: 'link-checked', ok: true })).toBe(linkWatching);
+  });
+
+  it('link-paused, then link-resume: a new watching phase object (the driver starts a new watch)', () => {
+    expect(linkPaused.phase).toEqual({ kind: 'link', watching: false, lastCheckFailed: false });
+    const failedPaused = reduce(linkWatching, { type: 'link-checked', ok: false }, { type: 'link-paused' });
+    const resumed = reduce(failedPaused, { type: 'link-resume' });
+    expect(resumed.phase).toEqual({ kind: 'link', watching: true, lastCheckFailed: false });
+    expect(resumed.phase).not.toBe(linkWatching.phase);
+    expect(reduce(linkWatching, { type: 'link-resume' })).toBe(linkWatching);
+    expect(reduce(linkPaused, { type: 'link-paused' })).toBe(linkPaused);
+  });
+
+  it('link-result: the job takes the outcome, then the next round (or finished)', () => {
+    const next = reduce(linkWatching, { type: 'link-result', id: S1, state: { kind: 'done', after: null } });
+    expect(jobKinds(next)).toEqual({ [S1]: 'done', [S2]: 'preparing' });
+    expect(next.jobs[S1]?.signature).toBe(TX_ID);
+    expect(next.phase).toEqual({ kind: 'preparing' });
+    expect(next.round?.ids).toEqual([S2]);
+    expect(next.roundNumber).toBe(2);
+    const fromPaused = reduce(linkPaused, { type: 'link-result', id: S1, state: { kind: 'expired' } });
+    expect(jobKinds(fromPaused)).toEqual({ [S1]: 'expired', [S2]: 'preparing' });
+    const last = reduce(
+      linkWatching,
+      { type: 'link-result', id: S1, state: { kind: 'failed', error: ERROR } },
+      { type: 'prepared', clock: CLOCK, jobs: { [S2]: view(S2, { kind: 'refused', reason: 'not-found' }) }, txs: [], steps: [] },
+    );
+    expect(last.phase).toEqual({ kind: 'finished' });
+    expect(reduce(linkWatching, { type: 'link-result', id: S2, state: { kind: 'done', after: null } })).toBe(linkWatching);
+  });
+
+  it('stop-waiting while a link is open: the signed job is unknown(link-open), later jobs not sent; finished', () => {
+    for (const open of [linkWatching, linkPaused]) {
+      const stopped = reduce(open, { type: 'stop-waiting' });
+      expect(stopped.phase).toEqual({ kind: 'finished' });
+      expect(stopped.jobs[S1]?.state).toEqual({ kind: 'unknown', why: 'link-open' });
+      expect(stopped.jobs[S1]?.signature).toBe(TX_ID);
+      expect(stopped.jobs[S2]?.state).toEqual({ kind: 'not-sent' });
+    }
+  });
+
   it('stop-waiting: maps every job and finishes', () => {
     const three = reduce(initialSigningState([S1, S2, S3], 2), { type: 'start' }, prepared, { type: 'asking', step: 0 }, {
       type: 'signed',
@@ -551,6 +638,10 @@ describe('signingReducer: an event that does not fit the phase returns the same 
     { type: 'stop-waiting' },
     { type: 'starting', step: 0, waitFor: 'network' },
     { type: 'finish' },
+    { type: 'link-checked', ok: false },
+    { type: 'link-paused' },
+    { type: 'link-resume' },
+    { type: 'link-result', id: S1, state: { kind: 'done', after: null } },
   ];
   /** Which events each phase fixture accepts (at step 0 where a step matters). */
   const ACCEPTS: Record<string, readonly SigningEvent['type'][]> = {
@@ -569,6 +660,9 @@ describe('signingReducer: an event that does not fit the phase returns the same 
     confirming: ['job', 'confirm-done', 'stop-waiting'],
     checking: ['job', 'check-done', 'stop-waiting'],
     finished: [],
+    // Never expired, restart-round, refresh, one-at-a-time or finish while a link is open: the other device may sign.
+    linkWatching: ['stop-waiting', 'link-checked', 'link-paused', 'link-result'],
+    linkPaused: ['stop-waiting', 'link-checked', 'link-resume', 'link-result'],
   };
 
   it.each(Object.entries(PHASES))('%s', (name, state) => {

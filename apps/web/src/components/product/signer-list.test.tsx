@@ -15,6 +15,7 @@ const EXPECTED: [SignerStatus, string, string][] = [
   ['switch', 'Switch account', 'warning'],
   ['stopped', 'Stopped', 'danger'],
   ['missing', 'Not connected', 'neutral'],
+  ['link', 'Signs by link', 'info'],
 ];
 
 function item(status: SignerStatus): SignerListItem {

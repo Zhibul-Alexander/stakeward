@@ -1,7 +1,10 @@
 import type { JobStatus, JobStatusItem } from '@/components/product/job-status-list';
 import type { SignerListItem, SignerStatus } from '@/components/product/signer-list';
+import type { Address, Signature } from '@solana/kit';
+import type { WalletRole } from '@stakeward/core';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import { cosignUrl } from './link.ts';
 import { roundSigned, type JobState, type JobView, type SignStep, type SigningState } from './machine.ts';
 
 /**
@@ -26,6 +29,7 @@ export function signerItems(state: SigningState): SignerListItem[] {
 
 function signerStatus(state: SigningState, step: SignStep, index: number): SignerStatus {
   if (step.status === 'signed') return 'signed';
+  if (!step.local) return 'link';
   const { phase } = state;
   if (!('step' in phase) || phase.step !== index) return step.walletName === null ? 'missing' : 'waiting';
   switch (phase.kind) {
@@ -55,7 +59,8 @@ export function defaultJobReason(job: JobView): string | undefined {
       return lockUntil === undefined ? errorMessage(state.error) : errorMessage(state.error, lockUntil);
     }
     case 'expired':
-      return t('components.jobs.expired');
+      // A durable nonce does not run out: the nonce moved on without this transaction.
+      return job.lifetime?.kind === 'nonce' ? t('components.jobs.linkExpired') : t('components.jobs.expired');
     case 'unknown':
       return t(`components.jobs.unknown.${state.why}`);
     default:
@@ -109,6 +114,32 @@ function errorDetail(state: JobState): string | undefined {
   return state.kind === 'failed' || state.kind === 'sim-failed' ? state.error.detail : undefined;
 }
 
+/** What the link card shows while the rest of the round signs on another device (phase `link`). */
+export type LinkView = {
+  /** The /cosign link with the partly signed transaction in its fragment. */
+  url: string;
+  /** The transaction id (the fee payer's signature). */
+  signature: Signature | null;
+  /** The keys that sign through the link, in signing order. */
+  signers: { role: WalletRole; address: Address }[];
+  watching: boolean;
+  lastCheckFailed: boolean;
+};
+
+/** The open link, only in phase `link`; `origin` is this site's (window.location.origin). */
+export function linkView(state: SigningState, origin: string): LinkView | null {
+  const { phase, round } = state;
+  const tx = round?.txs[0];
+  if (phase.kind !== 'link' || round === null || tx === undefined) return null;
+  return {
+    url: cosignUrl(tx.bytes, origin),
+    signature: state.jobs[tx.id]?.signature ?? null,
+    signers: round.steps.filter((step) => !step.local).map((step) => ({ role: step.role, address: step.address })),
+    watching: phase.watching,
+    lastCheckFailed: phase.lastCheckFailed,
+  };
+}
+
 /** Jobs whose transaction was sent (landed or not). */
 const SENT: ReadonlySet<JobState['kind']> = new Set(['sending', 'confirming', 'checking', 'done', 'failed', 'expired', 'unknown']);
 
@@ -127,6 +158,7 @@ export function backKind(state: SigningState): 'back' | 'stop-and-back' | 'finis
   switch (state.phase.kind) {
     case 'starting':
     case 'signing':
+    case 'link':
     case 'sending':
     case 'confirming':
     case 'checking':

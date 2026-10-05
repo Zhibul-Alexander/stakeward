@@ -42,6 +42,7 @@ export function createPageSession(ports: Ports, input: PageSessionInput): Signin
     roundSize,
     confirm: { pollIntervalMs: signing?.pollIntervalMs },
     rereadDelayMs: signing?.rereadDelayMs,
+    link: signing?.link,
     onFinished,
   });
 }

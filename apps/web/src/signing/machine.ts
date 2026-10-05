@@ -1,9 +1,9 @@
 import type { Address, Signature } from '@solana/kit';
 import type {
-  BlockhashLifetime,
   ChainClock,
   FriendlyError,
   InspectError,
+  Lifetime,
   SignatureCheckError,
   SigningStepErrorCode,
   StakeAccount,
@@ -20,6 +20,10 @@ import type {
  * A run signs `ids` (one job per stake account) in rounds of `roundSize`. Each round is prepared (fresh chain reads,
  * build, inspect, simulate, fee check), then every signer approves all of the round's transactions in ONE wallet
  * request, in core `signingOrder`, then the round is sent automatically, confirmed and checked on the chain.
+ *
+ * Signing by link (DECISIONS.md D67): a round on a durable nonce has one transaction. Signers in this browser sign
+ * first; when the rest sign on another device (remote steps), the round waits in phase `link` after the last local
+ * signature: the other device sends, and this one learns the outcome from the chain (`link-result`).
  */
 
 /** One transaction of the round being signed. */
@@ -29,7 +33,8 @@ export type RoundTx = {
   bytes: Uint8Array;
   /** `inspectTransaction(bytes)`, run again after every signature: the screen shows only what the bytes say. */
   summary: TransactionSummary;
-  lifetime: BlockhashLifetime;
+  /** A recent blockhash, or a durable nonce (signing by link, rescue, /cosign). */
+  lifetime: Lifetime;
 };
 
 /** One wallet request of the round: `address` approves `count` transactions. */
@@ -40,15 +45,19 @@ export type SignStep = {
   walletName: string | null;
   count: number;
   status: 'pending' | 'signed';
+  /** Signs in this browser. False: signs on another device by link (plan `remote`); such a step is never asked here. */
+  local: boolean;
 };
 
-export type UnknownWhy = 'timeout' | 'stopped' | 'not-applied' | 'unverified';
+/** `link-open`: signed here and shown as a link; the other device may still sign and send it. */
+export type UnknownWhy = 'timeout' | 'stopped' | 'not-applied' | 'unverified' | 'link-open';
 
 export type JobState =
   | { kind: 'queued' }
   | { kind: 'preparing' }
   | { kind: 'refused'; reason: string }
-  | { kind: 'already-done'; after: StakeAccount }
+  /** `after` is null when the target is not a stake account (a nonce account) or was closed. */
+  | { kind: 'already-done'; after: StakeAccount | null }
   | { kind: 'sim-failed'; error: FriendlyError }
   /** Built and simulated, in the round being signed. */
   | { kind: 'ready' }
@@ -60,7 +69,10 @@ export type JobState =
   | { kind: 'checking' }
   | { kind: 'done'; after: StakeAccount | null }
   | { kind: 'failed'; error: FriendlyError }
-  /** Sent; its blockhash passed with no status: it never lands. */
+  /**
+   * Never lands: sent and its blockhash passed with no status, or (durable nonce) its nonce moved on without it (a link
+   * that was used, cancelled or failed).
+   */
   | { kind: 'expired' }
   | { kind: 'unknown'; why: UnknownWhy };
 
@@ -71,7 +83,7 @@ export type JobView = {
   before: StakeAccount | null;
   /** From the inspected bytes. */
   action: TransactionAction | null;
-  lifetime: BlockhashLifetime | null;
+  lifetime: Lifetime | null;
   /** The fee payer's signature (the transaction id), once known. */
   signature: Signature | null;
   /** The last bytes (fully signed once sent). */
@@ -83,7 +95,12 @@ export type PrepareProblem =
   /** `needed` = the round's fees plus the minimum balance the payer must keep. */
   | { kind: 'fee-balance'; payer: Address; role: WalletRole; balance: bigint; needed: bigint }
   /** Stakeward's own bytes were refused, or they say another action or fee payer: a bug. */
-  | { kind: 'inspector'; error: InspectError };
+  | { kind: 'inspector'; error: InspectError }
+  /**
+   * The plan's durable nonce account: `missing` (closed, or never made), `unusable` (another owner, size, state or
+   * authority), `stale` (it still holds a value this session already used: the RPC node has not caught up).
+   */
+  | { kind: 'nonce'; state: 'missing' | 'unusable' | 'stale' };
 
 export type WalletStopCode = 'WalletBusyError' | 'WalletUnsupportedError' | 'WalletBatchUnsupportedError' | 'cancelled';
 
@@ -118,6 +135,11 @@ export type Phase =
   | { kind: 'signing'; step: number }
   | { kind: 'stopped'; step: number; reason: StopReason }
   | { kind: 'expired' }
+  /**
+   * Every local signature is there; the rest sign on another device through the link. `watching`: this page checks the
+   * chain for the outcome (paused after LINK_WATCH_MS). `lastCheckFailed`: the latest check could not reach the network.
+   */
+  | { kind: 'link'; watching: boolean; lastCheckFailed: boolean }
   | { kind: 'sending' }
   | { kind: 'confirming' }
   | { kind: 'checking' }
@@ -160,7 +182,8 @@ export type SigningEvent =
   | { type: 'switch-account'; step: number; again: boolean }
   | { type: 'starting'; step: number; waitFor: 'wallet' | 'network' }
   | { type: 'asking'; step: number }
-  | { type: 'signed'; step: number; txs: readonly RoundTx[] }
+  /** `signature`: the transaction id, when the next step signs by link (it becomes the job's signature). */
+  | { type: 'signed'; step: number; txs: readonly RoundTx[]; signature?: Signature | null }
   | { type: 'stopped'; step: number; reason: StopReason }
   | { type: 'expired' }
   | { type: 'restart-round'; first: Address | null }
@@ -171,7 +194,15 @@ export type SigningEvent =
   | { type: 'check-done' }
   | { type: 'stop-waiting' }
   /** "Stop here and see the result": ends the run where it stands, outside a wait; what was not sent stays not sent. */
-  | { type: 'finish' };
+  | { type: 'finish' }
+  /** A link check found nothing new (`ok`), or could not reach the network. */
+  | { type: 'link-checked'; ok: boolean }
+  /** The link watch ran out of time (LINK_WATCH_MS). */
+  | { type: 'link-paused' }
+  /** "Check again" after the pause: a new watch. */
+  | { type: 'link-resume' }
+  /** The chain shows the link's outcome: landed (`done`), failed, or the nonce moved on without it (`expired`). */
+  | { type: 'link-result'; id: string; state: JobState };
 
 const QUEUED: JobState = { kind: 'queued' };
 const PREPARING: JobState = { kind: 'preparing' };
@@ -298,12 +329,36 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
     case 'signed': {
       if (phase.kind !== 'signing' || phase.step !== event.step || round === null) return state;
       const steps = round.steps.map((step, index) => (index === event.step ? { ...step, status: 'signed' as const } : step));
-      const last = event.step >= round.steps.length - 1;
-      return {
-        ...state,
-        round: { ...round, txs: event.txs, steps },
-        phase: last ? { kind: 'sending' } : { kind: 'ready', step: event.step + 1, refreshed: false },
-      };
+      const next = round.steps[event.step + 1];
+      const signedRound = { ...round, txs: event.txs, steps };
+      if (next === undefined) return { ...state, round: signedRound, phase: { kind: 'sending' } };
+      if (next.local) return { ...state, round: signedRound, phase: { kind: 'ready', step: event.step + 1, refreshed: false } };
+      // The rest sign by link: the round's one transaction (a nonce round) now has its id and the bytes of the link.
+      const jobs: Record<string, JobView> = { ...state.jobs };
+      const [tx] = event.txs;
+      const job = tx === undefined ? undefined : jobs[tx.id];
+      if (tx !== undefined && job !== undefined) jobs[tx.id] = { ...job, signature: event.signature ?? null, bytes: tx.bytes };
+      return { ...state, jobs, round: signedRound, phase: { kind: 'link', watching: true, lastCheckFailed: false } };
+    }
+
+    case 'link-checked':
+      if (phase.kind !== 'link' || phase.lastCheckFailed === !event.ok) return state;
+      return { ...state, phase: { ...phase, lastCheckFailed: !event.ok } };
+
+    case 'link-paused':
+      if (phase.kind !== 'link' || !phase.watching) return state;
+      return { ...state, phase: { ...phase, watching: false } };
+
+    case 'link-resume':
+      // A new phase object: the driver starts a new watch.
+      if (phase.kind !== 'link' || phase.watching) return state;
+      return { ...state, phase: { kind: 'link', watching: true, lastCheckFailed: false } };
+
+    case 'link-result': {
+      if (phase.kind !== 'link' || round === null || !round.ids.includes(event.id)) return state;
+      const job = state.jobs[event.id];
+      if (job === undefined) return state;
+      return advance({ ...state, jobs: { ...state.jobs, [event.id]: { ...job, state: event.state } } });
     }
 
     case 'stopped':
@@ -395,6 +450,10 @@ export function signingReducer(state: SigningState, event: SigningEvent): Signin
               : { kind: 'ready', step: phase.step, refreshed: false },
         };
       }
+      if (phase.kind === 'link') {
+        // Signed here, and the link may still be used: unknown until the chain says otherwise (Check again).
+        return { ...state, jobs: setStates(state.jobs, state.ids, linkStopState), phase: { kind: 'finished' } };
+      }
       if (phase.kind !== 'sending' && phase.kind !== 'confirming' && phase.kind !== 'checking') return state;
       return { ...state, jobs: setStates(state.jobs, state.ids, stopWaitingState), phase: { kind: 'finished' } };
 
@@ -444,6 +503,18 @@ function stopWaitingState(job: JobView): JobState | null {
     case 'checking':
       return { kind: 'unknown', why: 'unverified' };
     case 'ready':
+    case 'queued':
+      return NOT_SENT;
+    default:
+      return null;
+  }
+}
+
+/** What Stop waiting leaves while a link is open: the signed job may still land; later rounds were not sent. */
+function linkStopState(job: JobView): JobState | null {
+  switch (job.state.kind) {
+    case 'ready':
+      return { kind: 'unknown', why: 'link-open' };
     case 'queued':
       return NOT_SENT;
     default:

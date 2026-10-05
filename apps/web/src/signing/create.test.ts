@@ -54,6 +54,16 @@ describe('createPageSession', () => {
     session.dispose();
   });
 
+  it('a plan on a durable nonce signs one stake account per round, whatever the page asks', () => {
+    const plan: SigningPlan = {
+      ...donePlan().plan,
+      nonce: { nonceAccount: 'nonce' as Address, nonceAuthority: 'authority' as Address },
+    };
+    const session = createPageSession(ports(), { plan, ids: IDS, roundSize: 5 });
+    expect(session.getSnapshot().roundSize).toBe(1);
+    session.dispose();
+  });
+
   it('takes the round size a page asks for', () => {
     const signing = { pollIntervalMs: 1, rereadDelayMs: 1 };
     const session = createPageSession(ports(), { plan: donePlan().plan, ids: IDS, roundSize: 1, signing });

@@ -86,8 +86,8 @@ export async function sampleSigningStates(clock: ClockView): Promise<SigningSamp
     ]),
   );
   const steps = (secondWallet: string | null, mainWallet: string = WALLET_A.name): SignStep[] => [
-    { address: SAMPLE.mainKey, role: 'main', walletName: mainWallet, count: 2, status: 'pending' },
-    { address: SAMPLE.secondKey, role: 'second', walletName: secondWallet, count: 2, status: 'pending' },
+    { address: SAMPLE.mainKey, role: 'main', walletName: mainWallet, count: 2, status: 'pending', local: true },
+    { address: SAMPLE.secondKey, role: 'second', walletName: secondWallet, count: 2, status: 'pending', local: true },
   ];
   const signedBy = (...signers: Address[]): RoundTx[] =>
     txs.map((tx) => ({ ...tx, summary: { ...tx.summary, presentSignatures: signers } }));

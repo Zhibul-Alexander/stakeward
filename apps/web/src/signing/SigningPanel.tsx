@@ -1,10 +1,11 @@
 import type { Address } from '@solana/kit';
 import { formatSol, summariesMatchExceptStakeAccount, type WalletRole } from '@stakeward/core';
 import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from 'lucide-react';
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AddressText } from '@/components/product/address-text';
 import { ErrorState } from '@/components/product/error-state';
 import { JobStatusList } from '@/components/product/job-status-list';
+import { LinkCard } from '@/components/product/link-card';
 import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import {
   TransactionSummary,
@@ -21,12 +22,21 @@ import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { initialSigningState, type PrepareProblem, type SignStep, type SigningState, type StopReason } from './machine.ts';
 import type { SigningSession } from './session.ts';
-import { backKind, earlierSent, jobItems, roundProgress, sendProgress, signerItems } from './view.ts';
+import { backKind, earlierSent, jobItems, linkView, roundProgress, sendProgress, signerItems } from './view.ts';
 
 /** What the panel's buttons call: a SigningSession, or no-ops for the /dev/ui fixtures. */
 export type SigningActions = Pick<
   SigningSession,
-  'sign' | 'continueWithWallet' | 'continueAfterSwitch' | 'stopWaiting' | 'restartRound' | 'oneAtATime' | 'retryPrepare' | 'finish'
+  | 'sign'
+  | 'continueWithWallet'
+  | 'continueAfterSwitch'
+  | 'stopWaiting'
+  | 'restartRound'
+  | 'oneAtATime'
+  | 'retryPrepare'
+  | 'finish'
+  | 'resumeLink'
+  | 'checkLinkNow'
 >;
 
 type SigningViewProps = {
@@ -46,6 +56,8 @@ type SigningViewProps = {
    * button, kept for the round and cleared when the next round starts.
    */
   confirm?: { label: string } | undefined;
+  /** While a signing link is open: the page's way to cancel it (NonceCloseCard), shown in the link card. */
+  renderLinkCancel?: (() => ReactNode) | undefined;
 };
 
 /**
@@ -53,8 +65,20 @@ type SigningViewProps = {
  * exact bytes about to be signed, who signs in which order, then one action area that explains the current wait and
  * offers exactly one way forward, and from sending on each stake account's outcome.
  */
-export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack, confirm }: SigningViewProps) {
+export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack, confirm, renderLinkCancel }: SigningViewProps) {
   const { phase } = state;
+  const linkOpen = phase.kind === 'link';
+  // Back on this tab (the other device may have signed meanwhile): check the link now instead of after the pause.
+  useEffect(() => {
+    if (!linkOpen) return undefined;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') actions.checkLinkNow();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [linkOpen, actions]);
   const progress = roundProgress(state);
   const building = phase.kind === 'idle' || phase.kind === 'preparing';
   // A round that could not be prepared has nothing current to show (a failed rebuild must not show the old bytes).
@@ -85,6 +109,7 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack,
           renderKeySlot={renderKeySlot}
           onBack={onBack}
           confirm={confirm}
+          renderLinkCancel={renderLinkCancel}
         />
       </div>
       {sent ? <JobStatusList items={jobItems(state)} label={t('signing.transactions')} /> : null}
@@ -100,6 +125,7 @@ export function SigningPanel({
   renderKeySlot,
   onBack,
   confirm,
+  renderLinkCancel,
 }: Omit<SigningViewProps, 'actions'> & { session: SigningSession }) {
   return (
     <SigningView
@@ -109,6 +135,7 @@ export function SigningPanel({
       renderKeySlot={renderKeySlot}
       onBack={onBack}
       confirm={confirm}
+      renderLinkCancel={renderLinkCancel}
     />
   );
 }
@@ -125,6 +152,8 @@ const IDLE_ACTIONS: SigningActions = {
   oneAtATime: noop,
   retryPrepare: noop,
   finish: noop,
+  resumeLink: noop,
+  checkLinkNow: noop,
 };
 
 /**
@@ -186,7 +215,7 @@ function Summaries({ state, knownRoles }: { state: SigningState; knownRoles: Par
 type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles'>;
 
 /** What happens now and the one way forward (UX rule 7: every wait is explained and has a way out). */
-function PhaseActions({ state, actions, renderKeySlot, onBack, confirm }: PhaseActionsProps) {
+function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLinkCancel }: PhaseActionsProps) {
   const { phase, round } = state;
   const back = backKind(state);
   // The confirmation box (`confirm`): ticked once per round; pressing Sign before that says so and moves focus to it.
@@ -394,6 +423,40 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm }: PhaseA
       );
     }
 
+    case 'link': {
+      // The rest of the round signs on another device; this page watches the chain for the outcome.
+      const link = linkView(state, window.location.origin);
+      if (link === null) return null;
+      const stopWaiting = (
+        <Button
+          variant={phase.watching ? 'outline' : 'ghost'}
+          onClick={() => {
+            actions.stopWaiting();
+          }}
+          className="h-auto min-h-10 max-w-full whitespace-normal"
+        >
+          {t('signing.link.stopWaiting')}
+        </Button>
+      );
+      return (
+        <div className="flex flex-col gap-3">
+          <LinkCard {...link} cancel={renderLinkCancel?.()} />
+          <Buttons>
+            {phase.watching ? null : (
+              <Button
+                onClick={() => {
+                  actions.resumeLink();
+                }}
+              >
+                {t('signing.link.checkAgain')}
+              </Button>
+            )}
+            {stopWaiting}
+          </Buttons>
+        </div>
+      );
+    }
+
     case 'sending':
       return (
         <Waiting text={t('signing.sending', sendProgress(state))}>
@@ -469,6 +532,16 @@ function PrepareFailed({
           title={t('signing.prepareFailed')}
           message={t('signing.inspector')}
           detail={`${problem.error.code}: ${problem.error.message}`}
+          actions={backButton}
+        />
+      );
+    case 'nonce':
+      // A missing or unusable link-signing account needs the page's previous step; a lagging node only time.
+      return (
+        <ErrorState
+          title={t('signing.prepareFailed')}
+          message={t(`signing.prepare.nonce.${problem.state}`)}
+          onRetry={problem.state === 'stale' ? retry : undefined}
           actions={backButton}
         />
       );

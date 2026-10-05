@@ -249,7 +249,8 @@
         "signed": "Signed",
         "switch": "Switch account",
         "stopped": "Stopped",
-        "missing": "Not connected"
+        "missing": "Not connected",
+        "link": "Signs by link"
       }
     },
     "jobs": {
@@ -269,9 +270,11 @@
         "timeout": "No confirmation within 2 minutes. It may still go through: check again.",
         "stopped": "You stopped waiting. It may still go through: check again.",
         "not-applied": "The network confirmed it, but the stake account does not show the change yet. Check again.",
-        "unverified": "Sent, but the result could not be read. Check again."
+        "unverified": "Sent, but the result could not be read. Check again.",
+        "link-open": "Signed here; the other device has not sent it yet. The link still works: check again, or cancel it."
       },
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
+      "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
       "transaction": "Transaction"
     }
   },
@@ -332,7 +335,30 @@
     "oneAtATimeHint": "With a hardware wallet, approving several transactions can take longer than a minute. One at a time avoids that.",
     "sending": "Sending to the network: {current} of {total}",
     "confirming": "Waiting for the network to confirm. This usually takes a few seconds, at most 2 minutes.",
-    "checking": "Checking the stake accounts on the network"
+    "checking": "Checking the stake accounts on the network",
+    "link": {
+      "title": "Send this link to your {role}",
+      "titleMany": "Send this link to the device with your {roles}",
+      "body": "The link holds this transaction and the signatures made here, never a key. Whoever opens it sees exactly what it does and can only complete it. It works until it is used or you cancel it.",
+      "url": "Signing link",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy. Select the link and copy it by hand.",
+      "txId": "Transaction",
+      "waiting": "Waiting for the other device to sign and send. This page checks the network every few seconds.",
+      "checkFailed": "Could not reach the network. Still trying.",
+      "paused": "Stopped checking after 30 minutes. The link still works.",
+      "checkAgain": "Check again",
+      "stopWaiting": "Stop waiting here",
+      "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed."
+    },
+    "prepare": {
+      "nonce": {
+        "missing": "Your link-signing account is missing. Go back and set it up again.",
+        "unusable": "Your link-signing account cannot be used. Go back and sign in this browser instead.",
+        "stale": "The network has not caught up with your last transaction yet. Try again in a few seconds."
+      }
+    }
   },
   "devUi": {
     "title": "Design system",

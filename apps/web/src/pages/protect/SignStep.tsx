@@ -32,6 +32,8 @@ const NO_ACTIONS: SigningActions = {
   oneAtATime: noop,
   retryPrepare: noop,
   finish: noop,
+  resumeLink: noop,
+  checkLinkNow: noop,
 };
 
 /**

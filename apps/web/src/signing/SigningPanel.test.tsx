@@ -1,6 +1,14 @@
-import type { Address, Blockhash } from '@solana/kit';
-import { buildTransaction, inspectTransaction, type BlockhashLifetime, type ChainClock, type StakeAccount } from '@stakeward/core';
-import { render, screen, within } from '@testing-library/react';
+import type { Address, Blockhash, Nonce, Signature } from '@solana/kit';
+import {
+  buildTransaction,
+  inspectTransaction,
+  parseCosignFragment,
+  type BlockhashLifetime,
+  type ChainClock,
+  type NonceLifetime,
+  type StakeAccount,
+} from '@stakeward/core';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi, type Mock } from 'vitest';
 import { initialSigningState, signingReducer, type RoundTx, type SigningEvent, type SigningState } from './machine.ts';
@@ -55,8 +63,8 @@ beforeAll(async () => {
     },
     txs: [tx],
     steps: [
-      { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending' },
-      { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 1, status: 'pending' },
+      { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending', local: true },
+      { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 1, status: 'pending', local: true },
     ],
   });
   const [tx1, tx2] = txs as [RoundTx, RoundTx];
@@ -87,8 +95,8 @@ beforeAll(async () => {
     ),
     txs,
     steps: [
-      { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 2, status: 'pending' },
-      { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 2, status: 'pending' },
+      { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 2, status: 'pending', local: true },
+      { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 2, status: 'pending', local: true },
     ],
   };
   ready = [{ type: 'start' } as const, prepared].reduce(signingReducer, initialSigningState([S1, S2], 2));
@@ -108,6 +116,8 @@ function actions(): ActionSpies {
     oneAtATime: vi.fn<SigningActions['oneAtATime']>(),
     retryPrepare: vi.fn<SigningActions['retryPrepare']>(),
     finish: vi.fn<SigningActions['finish']>(),
+    resumeLink: vi.fn<SigningActions['resumeLink']>(),
+    checkLinkNow: vi.fn<SigningActions['checkLinkNow']>(),
   };
 }
 
@@ -390,5 +400,150 @@ describe('SigningView confirm (a required checkbox before any wallet is asked)',
     show(ready);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' })).not.toHaveAttribute('aria-disabled');
+  });
+});
+
+describe('SigningView: signing by link', () => {
+  const NONCE: NonceLifetime = {
+    kind: 'nonce',
+    nonceAccount: '5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj' as Address,
+    nonceAuthority: MAIN,
+    nonceValue: 'GfnhkAa2bfg4dTjLfwhLSWg1b8zrJw9u8jCmVSUJhy9Y' as Nonce,
+  };
+  const TX_ID = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW' as Signature;
+  let linkTx: RoundTx;
+  let watching: SigningState;
+
+  beforeAll(async () => {
+    const { bytes } = buildTransaction(
+      { kind: 'protect', stakeAccount: S1, mainKey: MAIN, secondKey: SECOND, lockUntil: LOCK_END },
+      { feePayer: MAIN, lifetime: NONCE },
+    );
+    const inspected = await inspectTransaction(bytes);
+    if (!inspected.ok) throw new Error(inspected.error.message);
+    linkTx = { id: S1, bytes, summary: inspected.summary, lifetime: NONCE };
+    const signedTx: RoundTx = { ...linkTx, summary: { ...linkTx.summary, presentSignatures: [MAIN] } };
+    watching = reduce(
+      initialSigningState([S1], 1),
+      { type: 'start' },
+      {
+        type: 'prepared',
+        clock: CLOCK,
+        jobs: { [S1]: { id: S1, state: { kind: 'ready' }, before: before(S1), action: linkTx.summary.action, lifetime: NONCE, signature: null, bytes } },
+        txs: [linkTx],
+        steps: [
+          { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending', local: true },
+          { address: SECOND, role: 'second', walletName: null, count: 1, status: 'pending', local: false },
+        ],
+      },
+      { type: 'asking', step: 0 },
+      { type: 'signed', step: 0, txs: [signedTx], signature: TX_ID },
+    );
+  });
+
+  function showLink(state: SigningState, spy = actions()) {
+    const onBack = vi.fn();
+    const view = render(
+      <SigningView
+        state={state}
+        actions={spy}
+        knownRoles={{ main: MAIN, second: SECOND }}
+        renderKeySlot={() => null}
+        onBack={onBack}
+        renderLinkCancel={() => <button type="button">Cancel the link (page slot)</button>}
+      />,
+    );
+    return { spy, onBack, view };
+  }
+
+  it('link (watching): the card with the link, the key that signs by link and the transaction; Stop waiting here', async () => {
+    const user = userEvent.setup();
+    const { spy, onBack } = showLink(watching);
+    expect(screen.getByRole('heading', { level: 3, name: 'Send this link to your Second key' })).toBeInTheDocument();
+    const url = screen.getByLabelText('Signing link');
+    expect(url).toHaveAttribute('readonly');
+    const link = new URL((url as HTMLInputElement).value);
+    expect(link.origin).toBe(window.location.origin);
+    expect(link.pathname).toBe('/cosign');
+    expect(parseCosignFragment(link.hash)).toEqual(linkTx.bytes);
+    const card = document.querySelector('[data-slot="link-card"]') as HTMLElement;
+    expect(within(card).getByText(SECOND)).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: /on Solana Explorer/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/tx/${TX_ID}`),
+    );
+    expect(within(card).getByText(/Waiting for the other device to sign and send/)).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: 'Cancel the link (page slot)' })).toBeInTheDocument();
+
+    const signers = within(screen.getByRole('list', { name: 'Signatures' })).getAllByRole('listitem');
+    expect(signers.map((item) => item.getAttribute('data-status'))).toEqual(['signed', 'link']);
+    expect(within(signers[1] as HTMLElement).getByText('Signs by link')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: /Back|Stop here/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop waiting here' }));
+    expect(spy.stopWaiting).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(forbiddenRoleWords()).toEqual([]);
+  });
+
+  it('link: a failed check says so; paused offers Check again (a new watch) and Stop waiting here', async () => {
+    const user = userEvent.setup();
+    const { view } = showLink(reduce(watching, { type: 'link-checked', ok: false }));
+    expect(screen.getByText('Could not reach the network. Still trying.')).toBeInTheDocument();
+    view.unmount();
+
+    const { spy } = showLink(reduce(watching, { type: 'link-paused' }));
+    expect(screen.getByText('Stopped checking after 30 minutes. The link still works.')).toBeInTheDocument();
+    expect(screen.queryByText(/Waiting for the other device/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Check again' }));
+    expect(spy.resumeLink).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Stop waiting here' }));
+    expect(spy.stopWaiting).toHaveBeenCalledTimes(1);
+  });
+
+  it('back on the tab while a link is open: checks the link now; never on a hidden tab or without a link', () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    const changed = () => {
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    };
+    const spy = actions();
+    const props = { actions: spy, knownRoles: { main: MAIN, second: SECOND }, renderKeySlot: () => null };
+    const { rerender, unmount } = render(<SigningView state={watching} {...props} />);
+    visibility.mockReturnValue('hidden');
+    changed();
+    expect(spy.checkLinkNow).not.toHaveBeenCalled();
+    visibility.mockReturnValue('visible');
+    changed();
+    expect(spy.checkLinkNow).toHaveBeenCalledTimes(1);
+
+    rerender(<SigningView state={reduce(watching, { type: 'stop-waiting' })} {...props} />);
+    changed();
+    rerender(<SigningView state={ready} {...props} />);
+    changed();
+    expect(spy.checkLinkNow).toHaveBeenCalledTimes(1);
+    unmount();
+    visibility.mockRestore();
+  });
+
+  it.each([
+    ['missing', 'Your link-signing account is missing. Go back and set it up again.', false],
+    ['unusable', 'Your link-signing account cannot be used. Go back and sign in this browser instead.', false],
+    ['stale', 'The network has not caught up with your last transaction yet. Try again in a few seconds.', true],
+  ] as const)('prepare-failed nonce %s: says what to do; Try again only for a lagging node', async (state, text, retry) => {
+    const user = userEvent.setup();
+    const failed = reduce(initialSigningState([S1], 1), { type: 'start' }, { type: 'prepare-failed', problem: { kind: 'nonce', state } });
+    const { spy, onBack } = showLink(failed);
+    expect(screen.getByText(text)).toBeInTheDocument();
+    if (retry) {
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(spy.retryPrepare).toHaveBeenCalledTimes(1);
+    } else {
+      expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    }
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

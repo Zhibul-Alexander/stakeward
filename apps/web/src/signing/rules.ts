@@ -23,3 +23,15 @@ export const REREAD_ATTEMPTS = 3;
 
 /** Pause between those reads (a lagging RPC node catches up). */
 export const REREAD_DELAY_MS = 2_000;
+
+/** Signing by link: the first device checks whether the link landed this long after showing it. */
+export const LINK_FIRST_POLL_MS = 3_000;
+
+/** Each further check waits this much longer than the one before... */
+export const LINK_POLL_FACTOR = 1.5;
+
+/** ...up to this pause. */
+export const LINK_MAX_POLL_MS = 15_000;
+
+/** After this long the first device stops checking and offers Check again; the link itself keeps working. */
+export const LINK_WATCH_MS = 30 * 60_000;
