@@ -32,14 +32,19 @@ describe('en.json', () => {
     expect(entries.filter(([, text]) => text.trim() === '').map(([key]) => key)).toEqual([]);
   });
 
-  // UX rule 4: role names are Main key / Second key / New wallet; the program's words appear only in the FAQ and
-  // on the recovery card. The product is never called a 2FA wallet (CLAUDE.md section 1).
-  it('uses the program words custodian/withdrawer/staker only in faq.* and recovery.*', () => {
+  // UX rule 4: role names are Main key / Second key / New wallet; the program's words appear only in the FAQ's answers
+  // (the landing page, landing.faq.<question>.answer.*) and on the recovery card. The product is never called a 2FA
+  // wallet (CLAUDE.md section 1).
+  it('uses the program words custodian/withdrawer/staker only in FAQ answers and recovery.*', () => {
+    const allowed = /^(?:landing\.faq\.[^.]+\.answer\.|recovery\.)/;
     const offending = entries
-      .filter(([key]) => !key.startsWith('faq.') && !key.startsWith('recovery.'))
+      .filter(([key]) => !allowed.test(key))
       .filter(([, text]) => /custodian|withdrawer|staker/i.test(text))
       .map(([key]) => key);
     expect(offending).toEqual([]);
+    // The answers do map the names to the command line's (positive control: the filter above is not vacuous).
+    expect(en.landing.faq.lock.answer.names).toMatch(/withdrawer/);
+    expect(en.landing.faq.lock.answer.what).toMatch(/custodian/);
   });
 
   // A lock held by the main key itself: the command line can act when the main key also signs as the lock's key. The
