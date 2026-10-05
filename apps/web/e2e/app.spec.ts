@@ -1,23 +1,20 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Page, Route } from '@playwright/test';
-import { getAddressEncoder, type Address } from '@solana/kit';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
+import { DAY, MAIN, mockApi, NOW, rememberOnDevice, SECOND, SOL, stakeJson, type ApiFixture } from './mock-api.ts';
 
 /**
- * /app on the built site with the worker's API mocked (CLAUDE.md section 13, layer 4): the stake account search, the
- * Clock sysvar and the stake accounts themselves through the RPC proxy, and /api/health answer as the worker does. Screenshots go to docs/screens only
- * with UPDATE_SCREENS=1.
+ * /app on the built site with the worker's API mocked (CLAUDE.md section 13, layer 4; e2e/mock-api.ts): the stake
+ * account search, the Clock sysvar and the stake accounts themselves through the RPC proxy, and /api/health answer as
+ * the worker does. Screenshots go to docs/screens only with UPDATE_SCREENS=1.
  */
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
 const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 
-const MAIN = 'B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8';
-const SECOND = '9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi';
 const STRANGER = '57M4tyxx6Rk1gz3uYVvfoB3KdQGQkyveqqmZzJUdw3Sz';
 const SERVICE = 'B4LfFcz7EuD8wWFM9qxMswgryP36jbGvKWhzLGXBR5t9';
 const OTHER_OWNER = '21KaHQkRg8ntwcEF3Q1Y5wooZ1GC372Eu4yFQc5LRRFH';
-const VOTE = '2YH4Dt2o14vVVS9wW8q1UkfodZLpE2Fj6cjTqCLFi4Tv';
 const STAKE = {
   protected: 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW',
   expiring: '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6',
@@ -27,33 +24,6 @@ const STAKE = {
   service: 'CQDtFDsjfViMT8Sgfe3TbeiAFaDgZfzGsiLsQCqa4tpE',
   secondKeyFor: '9g4dYJmEszBwLq4itZhnatz9BPWCkcFT4ni5CkNMDHAy',
 } as const;
-
-/** Cluster time of the mocked Clock sysvar: 2 October 2026 12:00 UTC, epoch 850. */
-const NOW = 1_790_942_400n;
-const EPOCH = 850n;
-const DAY = 86_400n;
-const SOL = 1_000_000_000n;
-const ZERO = '11111111111111111111111111111111';
-const U64_MAX = '18446744073709551615';
-
-type Mock = { lamports: bigint; staker?: string; withdrawer?: string; lockEnd?: bigint; custodian?: string; delegated?: boolean };
-
-function stakeJson(address: string, mock: Mock) {
-  const withdrawer = mock.withdrawer ?? MAIN;
-  return {
-    address,
-    lamports: mock.lamports.toString(),
-    kind: mock.delegated === false ? 'initialized' : 'delegated',
-    rentExemptReserve: '1666240',
-    staker: mock.staker ?? withdrawer,
-    withdrawer,
-    lockup: { unixTimestamp: (mock.lockEnd ?? 0n).toString(), epoch: '0', custodian: mock.custodian ?? ZERO },
-    delegation:
-      mock.delegated === false
-        ? null
-        : { voter: VOTE, stake: (mock.lamports - 1_666_240n).toString(), activationEpoch: '700', deactivationEpoch: U64_MAX },
-  };
-}
 
 const BY_MAIN_KEY = [
   stakeJson(STAKE.protected, { lamports: 1_250n * SOL + 500_000_000n, lockEnd: NOW + 190n * DAY, custodian: SECOND }),
@@ -67,92 +37,9 @@ const BY_SECOND_KEY = [
   stakeJson(STAKE.secondKeyFor, { lamports: 7n * SOL, withdrawer: OTHER_OWNER, lockEnd: NOW + 90n * DAY, custodian: MAIN }),
 ];
 
-type StakeJson = ReturnType<typeof stakeJson>;
-const ALL_STAKE: readonly StakeJson[] = [...BY_MAIN_KEY, ...BY_SECOND_KEY];
-const addressEncoder = getAddressEncoder();
-
-/** A stake account as getMultipleAccounts returns it: the 200 bytes of CLAUDE.md section 4, base64. */
-function stakeData(account: StakeJson): string {
-  const data = Buffer.alloc(200);
-  const key = (address: string, offset: number) => {
-    data.set(addressEncoder.encode(address as Address), offset);
-  };
-  data.writeUInt32LE(account.delegation === null ? 1 : 2, 0);
-  data.writeBigUInt64LE(BigInt(account.rentExemptReserve), 4);
-  key(account.staker, 12);
-  key(account.withdrawer, 44);
-  data.writeBigInt64LE(BigInt(account.lockup.unixTimestamp), 76);
-  data.writeBigUInt64LE(BigInt(account.lockup.epoch), 84);
-  key(account.lockup.custodian, 92);
-  if (account.delegation !== null) {
-    key(account.delegation.voter, 124);
-    data.writeBigUInt64LE(BigInt(account.delegation.stake), 156);
-    data.writeBigUInt64LE(BigInt(account.delegation.activationEpoch), 164);
-    data.writeBigUInt64LE(BigInt(account.delegation.deactivationEpoch), 172);
-    data.writeDoubleLE(0.25, 180);
-  }
-  return data.toString('base64');
-}
-
-/** The Clock sysvar as getAccountInfo returns it: slot, epoch start, epoch, leader schedule epoch, unix time. */
-function clockData(): string {
-  const data = Buffer.alloc(40);
-  data.writeBigUInt64LE(EPOCH * 432_000n + 1_000n, 0);
-  data.writeBigInt64LE(NOW - 3_600n, 8);
-  data.writeBigUInt64LE(EPOCH, 16);
-  data.writeBigUInt64LE(EPOCH + 1n, 24);
-  data.writeBigInt64LE(NOW, 32);
-  return data.toString('base64');
-}
-
-async function json(route: Route, body: unknown, status = 200) {
-  await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-}
-
-/** The worker's API for one main key; `requests` records the stake account searches. */
-async function mockApi(page: Page, requests: string[] = []) {
-  await page.route('**/api/stake-accounts?*', async (route) => {
-    const url = new URL(route.request().url());
-    requests.push(url.search);
-    const accounts = url.searchParams.get('withdrawer') === MAIN ? BY_MAIN_KEY : url.searchParams.get('custodian') === MAIN ? BY_SECOND_KEY : [];
-    await json(route, { slot: '367201000', accounts });
-  });
-  await page.route('**/api/rpc', async (route) => {
-    const request = route.request().postDataJSON() as { id: number; method: string; params: unknown[] };
-    if (request.method === 'getMultipleAccounts') {
-      // The page reads the found accounts again (the search is cached at the edge, DECISIONS D51).
-      const keys = request.params[0] as string[];
-      await json(route, {
-        jsonrpc: '2.0',
-        id: request.id,
-        result: {
-          context: { slot: 367_201_000 },
-          value: keys.map((address) => {
-            const account = ALL_STAKE.find((known) => known.address === address);
-            return account === undefined
-              ? null
-              : { data: [stakeData(account), 'base64'], executable: false, lamports: Number(account.lamports), owner: 'Stake11111111111111111111111111111111111111', space: 200 };
-          }),
-        },
-      });
-      return;
-    }
-    if (request.method !== 'getAccountInfo' || request.params[0] !== 'SysvarC1ock11111111111111111111111111111111') {
-      await json(route, { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not mocked' } }, 400);
-      return;
-    }
-    await json(route, {
-      jsonrpc: '2.0',
-      id: request.id,
-      result: {
-        context: { slot: 367_201_000 },
-        value: { data: [clockData(), 'base64'], executable: false, lamports: 1_169_280, owner: 'Sysvar1111111111111111111111111111111111111', space: 40 },
-      },
-    });
-  });
-  await page.route('**/api/health', async (route) => {
-    await json(route, { ok: true, lastMonitorRunAt: new Date(Date.now() - 2 * 60_000).toISOString() });
-  });
+/** The cluster for one main key; `searches` records the stake account searches. */
+function fixture(searches: string[] = []): ApiFixture {
+  return { accounts: [...BY_MAIN_KEY, ...BY_SECOND_KEY], searches };
 }
 
 async function noHorizontalScroll(page: Page) {
@@ -172,7 +59,7 @@ async function screenshot(page: Page, name: string) {
 
 test('/app without an address: a form, then the stake of the address it checked', async ({ page, expectNoA11yViolations }) => {
   const requests: string[] = [];
-  await mockApi(page, requests);
+  await mockApi(page, fixture(requests));
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/app');
   await expect(page.getByRole('heading', { level: 1, name: 'Your stake accounts' })).toBeVisible();
@@ -199,15 +86,9 @@ test('/app without an address: a form, then the stake of the address it checked'
 });
 
 test('/app?address= shows every status, the red banner and the second-key list', async ({ page, expectNoA11yViolations }) => {
-  await mockApi(page);
+  await mockApi(page, fixture());
   // This device knows the second key and saw STAKE.ended protected (F6).
-  await page.addInitScript(
-    ({ second, ended }) => {
-      localStorage.setItem('stakeward:second-keys:v1', JSON.stringify([second]));
-      localStorage.setItem('stakeward:protected-accounts:v1', JSON.stringify([ended]));
-    },
-    { second: SECOND, ended: STAKE.ended },
-  );
+  await rememberOnDevice(page, { secondKeys: [SECOND], protectedAccounts: [STAKE.ended] });
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto(`/app?address=${MAIN}`);
 
