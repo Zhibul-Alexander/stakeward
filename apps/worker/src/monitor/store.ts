@@ -138,7 +138,8 @@ FROM json_each(?1) AS r
 WHERE accounts.stake_account = r.value ->> '$.a'
   AND accounts.slot = r.value ->> '$.ps' AND accounts.checked_at = r.value ->> '$.pc'`,
 
-  // ?1 = how many
+  // ?1 = how many. Walks the partial index events_pending (id) WHERE notified_at IS NULL (migration 0003): it reads
+  // the undelivered rows only, however many events were delivered before.
   PENDING: `SELECT e.id, e.stake_account, e.type, e.details_json, e.detected_at,
        a.withdrawer, a.custodian, CAST(a.lock_until AS TEXT) AS lock_until
 FROM events e JOIN accounts a ON a.stake_account = e.stake_account

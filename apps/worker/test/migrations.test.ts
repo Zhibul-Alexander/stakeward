@@ -46,6 +46,13 @@ describe('D1 migrations', () => {
     });
   });
 
+  it('0003: events_pending is a partial index on events (id) for undelivered events', async () => {
+    const index = await env.DB.prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'events_pending'").first<{
+      sql: string;
+    }>();
+    expect(index?.sql).toBe('CREATE INDEX events_pending ON events (id) WHERE notified_at IS NULL');
+  });
+
   it('0002 adds alert_links.last_event_id, INTEGER NOT NULL DEFAULT 0', async () => {
     expect((await columns('alert_links')).find((c) => c.name === 'last_event_id')).toEqual({
       name: 'last_event_id',

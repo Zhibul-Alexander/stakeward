@@ -434,6 +434,29 @@ describe('delivery statements', () => {
     ]);
   });
 
+  it('PENDING reads the undelivered events only, however many were delivered before (D1 rows read)', async () => {
+    await seed(watchRow(10));
+    // Events are never deleted: 3000 delivered ones, then 2 waiting.
+    await db
+      .prepare(
+        `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3000)
+         INSERT INTO events (stake_account, type, details_json, slot, detected_at, notified_at)
+         SELECT ?1, 'DEACTIVATED', '{}', i, ?2, ?2 FROM n`,
+      )
+      .bind(key(10), NOW_MS)
+      .run();
+    await insertEvent(key(10), 'STAKER_CHANGED', 1);
+    await insertEvent(key(10), 'BALANCE_DECREASED', 2);
+    const result = await db.prepare(SQL.PENDING).bind(100).all();
+    expect(result.results.map((r) => r.type)).toEqual(['STAKER_CHANGED', 'BALANCE_DECREASED']);
+    expect(result.meta.rows_read).toBeLessThanOrEqual(10);
+
+    await db.prepare('UPDATE events SET notified_at = ?1 WHERE notified_at IS NULL').bind(NOW_MS).run();
+    const quiet = await db.prepare(SQL.PENDING).bind(100).all();
+    expect(quiet.results).toEqual([]);
+    expect(quiet.meta.rows_read).toBeLessThanOrEqual(2);
+  });
+
   it('LINKS_FOR, LINK_PROGRESS (never backwards, every link of the chat), UNLINK_CHATS', async () => {
     await link(MAIN, '-100500', 1, 0);
     await link(SECOND, '-100500', 2, 5);
