@@ -3,8 +3,6 @@
     "appName": "Stakeward",
     "tagline": "Lock your natively staked SOL with a second key you control, so a stolen wallet key cannot withdraw it.",
     "loading": "Loading",
-    "comingSoon": "Coming soon",
-    "comingSoonBody": "Coming soon: this page is not ready yet.",
     "backToAccounts": "Back to your accounts",
     "backHome": "Back to the start page",
     "notFoundTitle": "Page not found",
@@ -37,8 +35,7 @@
       "withdraw": "Withdraw",
       "extend": "Extend the lock",
       "rescue": "Rescue your stake",
-      "cosign": "Co-sign a transaction",
-      "stats": "Stats"
+      "cosign": "Co-sign a transaction"
     }
   },
   "nav": {
@@ -49,6 +46,7 @@
   "footer": {
     "sourceCode": "Source code",
     "cannotDo": "What Stakeward cannot do",
+    "stats": "Stats",
     "license": "No warranty. MIT license."
   },
   "landing": {
@@ -1567,6 +1565,20 @@
     "printed": {
       "again": "Open this card again:"
     }
+  },
+  "stats": {
+    "title": "Stakeward in numbers",
+    "intro": "From the Stakeward monitor: the locked stake accounts it watches and the alerts it has sent. Reload the page for fresh numbers.",
+    "loading": "Loading the numbers",
+    "accountsLocked": "Locked stake accounts Stakeward watches",
+    "solLocked": "SOL in those stake accounts",
+    "alertsSent": "Telegram alerts sent",
+    "note": "Counted from watched stake accounts whose lock is in force right now. Anyone can ask Stakeward to watch a locked stake account, so locks set with other tools count too. SOL is rounded down to whole SOL.",
+    "emptyTitle": "Nothing locked yet",
+    "emptyBody": "Stakeward does not watch any locked stake account yet. The numbers appear here once someone protects their stake.",
+    "emptyAction": "Check your stake",
+    "errorTitle": "Could not load the numbers",
+    "errorBody": "Could not get the numbers from the Stakeward server. Wait a minute, then try again."
   },
   "faq": {
     "title": "Questions and answers",

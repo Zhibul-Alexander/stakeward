@@ -23,7 +23,7 @@ describe('app shell', () => {
     ['/rescue', 'Rescue your stake'],
     ['/cosign', 'Co-sign a transaction'],
     ['/recovery/Stake11111111111111111111111111111111111111', 'Stakeward recovery card'],
-    ['/stats', 'Stats'],
+    ['/stats', 'Stakeward in numbers'],
     ['/no-such-page', 'Page not found'],
   ])('%s shows its heading inside the layout', (path, heading) => {
     renderAt(path);
@@ -41,12 +41,9 @@ describe('app shell', () => {
       'https://github.com/Zhibul-Alexander/stakeward',
     );
     expect(screen.getByRole('link', { name: 'What Stakeward cannot do' })).toHaveAttribute('href', '/#cannot-do');
+    expect(footer).toContainElement(screen.getByRole('link', { name: 'Stats' }));
+    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/stats');
     expect(screen.getByText('No warranty. MIT license.')).toBeInTheDocument();
-  });
-
-  it('placeholder pages offer a way back', () => {
-    renderAt('/stats');
-    expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', '/app');
   });
 
   it('loads the devnet-only pages lazily on devnet (the default outside `vite build`)', async () => {
