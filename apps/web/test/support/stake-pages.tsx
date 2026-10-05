@@ -9,6 +9,7 @@ import { StrictMode } from 'react';
 import { expect } from 'vitest';
 import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
+import { ExtendPage } from '@/pages/ExtendPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
   createProtectedAccountMemory,
@@ -49,6 +50,9 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
           <Switch>
             <Route path="/withdraw/:account">
               <WithdrawPage signing={FAST_SIGNING} />
+            </Route>
+            <Route path="/extend/:account">
+              <ExtendPage signing={FAST_SIGNING} />
             </Route>
           </Switch>
         </PortsProvider>

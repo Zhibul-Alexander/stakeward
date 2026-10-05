@@ -692,6 +692,37 @@
       "not-staker": "Another key manages staking for this stake account."
     }
   },
+  "extend": {
+    "intro": "Your second key moves the end of the lock, or removes the lock early. It cannot move your SOL.",
+    "current": "{lock}. Held by this second key:",
+    "notLocked": "This stake account has no lock that a second key holds.",
+    "protect": "Protect it",
+    "epochLocked": "This lock is held until epoch {epoch}. Stakeward can only move a lock's date, so it cannot change this one.",
+    "legend": "New end of the lock",
+    "option": "{period}: until {date}",
+    "remove": "Remove the lock now",
+    "removeHint": "Anyone with your main key can then withdraw this stake.",
+    "noLater": "No period ends later than the current lock. You can still remove the lock.",
+    "continue": "Review and sign",
+    "phone": "In a phone wallet's own browser this works when your second key holds a little SOL for the fee.",
+    "removeConfirm": "I understand that after this, anyone with my main key can withdraw this stake right away",
+    "mainPays": "Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least {amount}, then press Check again.",
+    "result": "Lock change",
+    "done": {
+      "extended": "The lock now ends on {date}",
+      "removed": "The lock is removed",
+      "withdraw": "Withdraw now"
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "epoch-locked": "An epoch holds this lock, so Stakeward cannot change it.",
+      "not-locked": "This stake account has no lock in force any more.",
+      "other-second-key": "Another key holds this lock now. Only that key can change it.",
+      "not-later": "The lock already ends later than this. Choose again.",
+      "lock-end-passed": "The chosen end is too close or has passed. Choose again."
+    }
+  },
   "devCosign": {
     "title": "Wallet co-signing test",
     "intro": "Two wallets sign one transaction that sets a 10-minute lock on a test stake account, by blockhash or durable nonce, in either order. The page shows whether a wallet changed the transaction and how, then sends it and writes a report for the wallet matrix.",

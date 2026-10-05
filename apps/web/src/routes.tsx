@@ -4,6 +4,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { AppPage } from '@/pages/AppPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
+import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
@@ -47,7 +48,7 @@ export function AppRoutes() {
         <WithdrawPage />
       </Route>
       <Route path="/extend/:account">
-        <ComingSoonPage title={t('common.pages.extend')} />
+        <ExtendPage />
       </Route>
       <Route path="/rescue">
         <ComingSoonPage title={t('common.pages.rescue')} />
