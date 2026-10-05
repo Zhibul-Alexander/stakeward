@@ -91,8 +91,7 @@
         {
           "binding": "DB",
           "database_name": "stakeward-dev",
-          // PLACEHOLDER: replace with the id printed by `wrangler d1 create stakeward-dev`.
-          "database_id": "00000000-0000-0000-0000-000000000001",
+          "database_id": "ba00f60b-bd9d-443c-8928-268070d4967d",
           "migrations_dir": "migrations"
         }
       ]
@@ -121,12 +120,12 @@
         {
           "binding": "DB",
           "database_name": "stakeward-prod",
-          // PLACEHOLDER: replace with the id printed by `wrangler d1 create stakeward-prod`.
-          "database_id": "00000000-0000-0000-0000-000000000002",
+          "database_id": "6fd2892c-c158-4235-9ef2-055e490eccf3",
           "migrations_dir": "migrations"
         }
       ]
-      // Permanent domain, once it is on Cloudflare:
+      // Served on workers.dev for now: https://stakeward-prod.zhibul-alexander.workers.dev (DECISIONS.md, «Развёртывание»).
+      // A permanent domain, once it is on Cloudflare:
       // "routes": [{ "pattern": "<domain>", "custom_domain": true }]
     }
   }
