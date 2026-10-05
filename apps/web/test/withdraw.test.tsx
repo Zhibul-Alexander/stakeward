@@ -30,7 +30,10 @@ type World = { testChain: TestChain; chain: LiteSvmChain; A: KeyPairSigner; K: K
 
 async function world(): Promise<World> {
   const testChain = await TestChain.create();
-  const [A, K, vote] = await Promise.all([testChain.fundedKey(), generateKeyPairSigner(), testChain.createVoteAccount()]);
+  const [A, K] = await Promise.all([testChain.fundedKey(), generateKeyPairSigner()]);
+  // Not alongside the airdrop: an airdrop expires LiteSVM's only blockhash, and the vote account's setup transaction,
+  // signed in between, then failed with BlockhashNotFound (now and then, under the load of the whole suite).
+  const vote = await testChain.createVoteAccount();
   return { testChain, chain: new LiteSvmChain(testChain), A, K, vote };
 }
 
