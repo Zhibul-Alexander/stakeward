@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Stakeward">
+  <path d="M16 1.5 28.5 5.8v9.4c0 7.6-5.3 13.3-12.5 15.3C8.8 28.5 3.5 22.8 3.5 15.2V5.8Z" fill="#4338ca"/>
+  <path d="M11.8 14.5v-2.7a4.2 4.2 0 0 1 8.4 0v2.7" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+  <rect x="9.6" y="14" width="12.8" height="9.6" rx="2.2" fill="#ffffff"/>
+  <circle cx="16" cy="17.9" r="1.5" fill="#4338ca"/>
+  <rect x="15.25" y="18.4" width="1.5" height="3.2" rx="0.6" fill="#4338ca"/>
+</svg>

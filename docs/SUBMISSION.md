@@ -83,8 +83,8 @@ lock keeps the SOL in place. Out of scope: liquid staking tokens, exchange stake
 
 ## Logo
 
-**OWNER**: not made yet. Suggestion: the wordmark "Stakeward" in Geist semibold next to a shield whose inner shape is a
-padlock, primary colour `#4338ca` on white (the site's primary token).
+`docs/logo.png` (512 x 512, transparent) and the site icon `apps/web/public/favicon.svg`: a padlock on a shield in the
+site's primary colour `#4338ca`. **OWNER:** replace if you have a better one; the favicon file is the source.
 
 ## Code written before 14 September 2026
 
