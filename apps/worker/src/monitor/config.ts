@@ -30,7 +30,10 @@ export const MONITOR_PLANS = {
     name: 'free',
     subrequestCap: 48,
     maxChunks: 1,
-    decodeCap: 20,
+    // A pass with 20 decodes measured 10-15 ms CPU on Cloudflare even in a warm isolate (DECISIONS.md D63); 8 keeps a
+    // pass with real changes near the 10 ms limit. Rewards take the fast path and need no decode, so changes that do
+    // are rare and the rest wait one pass.
+    decodeCap: 8,
     maxRescans: 3,
     rescanMaxBodyChars: 100_000,
     rescanParseChars: 120_000,

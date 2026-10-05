@@ -84,7 +84,7 @@ function programAccountsText(count: number): string {
 }
 
 describe('CPU of the monitor pass (measurement)', () => {
-  it('classifyChunk, 20 accounts that changed (20 decodes; first = the first decode of this isolate)', { timeout: 120_000 }, async () => {
+  it('classifyChunk, 20 accounts that changed (20 decodes; first = the first call of the measurement after the warm-up)', { timeout: 120_000 }, async () => {
     const changed = readOf(Array.from({ length: 20 }, () => itemOf({ ...SPEC, deactivationEpoch: 951n })));
     const twenty = rows(20);
     const result = await measure(() => Promise.resolve(classifyChunk(twenty, changed, 20)));

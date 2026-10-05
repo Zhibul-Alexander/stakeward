@@ -195,6 +195,9 @@ describe('limits of a pass', () => {
       const { h, addresses, indexOf } = await worstCase(plan);
       const preset = MONITOR_PLANS[plan];
       const watched = new Set<string>(addresses);
+      // Twice the passes the decodes alone need (the rows at the decode cap a pass), and never fewer than 60.
+      const decodesPerPass = Math.min(preset.decodeCap, preset.maxChunks * 99);
+      const maxPasses = Math.max(60, 2 * Math.ceil(addresses.length / decodesPerPass));
       let passes = 0;
       let daily = 0;
       let sendsSeen = 0;
@@ -205,16 +208,15 @@ describe('limits of a pass', () => {
         if (report.daily) daily += 1;
         sendsSeen = Math.max(sendsSeen, report.messages);
         if (passes === 1) {
-          // Free: the decode cap (20) stops the first chunk; paid: five full chunks, 495 decodes.
-          const decoded = Math.min(preset.decodeCap, preset.maxChunks * 99);
-          expect(report).toMatchObject({ daily: true, chunks: plan === 'free' ? 1 : 5, decoded });
+          // Free: the decode cap stops the first chunk; paid: five full chunks, 495 decodes.
+          expect(report).toMatchObject({ daily: true, chunks: plan === 'free' ? 1 : 5, decoded: decodesPerPass });
         }
         const rows = (await h.readAccounts()).filter((r) => watched.has(r.stake_account));
         const done = rows.every((r) => r.deactivation_epoch === '951');
         const queue = JSON.parse((await h.readMeta()).rescan_queue ?? '[]') as unknown[];
         const pending = (await h.readEvents()).filter((e) => e.notified_at === null);
         if (done && queue.length === 0 && pending.length === 0) break;
-        expect(passes).toBeLessThan(60);
+        expect(passes).toBeLessThan(maxPasses);
       }
       expect(daily).toBe(1);
       // The sends were held back by the budget only as far as the plan says (step 5 spec section 6.2).
@@ -260,19 +262,24 @@ describe('limits of a pass', () => {
   it('free: the decode cap stops the chunk with the cursor on the last row handled; the next pass reads on from there', async () => {
     const h = createHarness();
     h.at('2026-10-05T01:00:00Z');
-    const addresses = Array.from({ length: 30 }, (_, n) => stakeAddress(0, n)).sort();
+    // Half the cap more changed rows than the cap, all in one short chunk.
+    const cap = MONITOR_PLANS.free.decodeCap;
+    const total = cap + Math.ceil(cap / 2);
+    expect(total).toBeLessThan(MONITOR_LIMITS.accountsPerChunk);
+    const addresses = Array.from({ length: total }, (_, n) => stakeAddress(0, n)).sort();
     for (const address of addresses) h.chain.putStake(address, spec(key(1)));
     await h.seedWatched(addresses);
     for (const address of addresses) h.chain.putStake(address, { ...spec(key(1)), deactivationEpoch: 951n });
 
     h.at('2026-10-05T01:02:00Z');
-    expect(await h.pass()).toMatchObject({ rows: 30, decoded: 20, deferred: true, events: 20 });
-    expect((await h.readMeta()).cursor).toBe(addresses[19]);
+    expect(await h.pass()).toMatchObject({ rows: total, decoded: cap, deferred: true, events: cap });
+    expect((await h.readMeta()).cursor).toBe(addresses[cap - 1]);
     h.at('2026-10-05T01:04:00Z');
-    expect(await h.pass()).toMatchObject({ rows: 10, decoded: 10, deferred: false, events: 10 });
-    expect(h.chain.callsOf('getMultipleAccounts').at(-1)?.keys.slice(1)).toEqual(addresses.slice(20));
+    const rest = total - cap;
+    expect(await h.pass()).toMatchObject({ rows: rest, decoded: rest, deferred: false, events: rest });
+    expect(h.chain.callsOf('getMultipleAccounts').at(-1)?.keys.slice(1)).toEqual(addresses.slice(cap));
     expect((await h.readMeta()).cursor).toBe('');
-    expect(new Set((await h.readEvents()).map((e) => e.stake_account)).size).toBe(30);
+    expect(new Set((await h.readEvents()).map((e) => e.stake_account)).size).toBe(total);
   });
 
   it('a quiet pass: one getMultipleAccounts, the load batch, the pending read and the finish', async () => {

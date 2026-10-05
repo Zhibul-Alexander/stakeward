@@ -41,7 +41,7 @@ import { judgeAccounts, watchBody } from './watch.ts';
 
 /** Rounds of the synchronous paths. The inspector runs once per synthetic transaction. */
 export const WARM_UP_ROUNDS = 2;
-/** Accounts per synthetic read: the Free plan's decode cap per pass (MONITOR_PLANS.free.decodeCap). */
+/** Accounts per synthetic read: more than the Free plan's decode cap per pass, so every decode path is warm. */
 export const WARM_UP_ACCOUNTS = 20;
 
 /** What one call of `warmUp` did, per path: every round must do the same, or the synthetic data missed something. */

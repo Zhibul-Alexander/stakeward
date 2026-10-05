@@ -69,6 +69,8 @@
   "env": {
     "dev": {
       "name": "stakeward-dev",
+      // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
+      "preview_urls": false,
       "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [
@@ -98,6 +100,8 @@
     },
     "prod": {
       "name": "stakeward-prod",
+      // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
+      "preview_urls": false,
       "vars": { "CLUSTER": "mainnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [

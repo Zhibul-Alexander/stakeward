@@ -4,6 +4,7 @@ import { getAddressDecoder, type Address } from '@solana/kit';
 import { SYSVAR_CLOCK_ADDRESS } from '@stakeward/core';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MONITOR_PLANS } from '../../src/monitor/config.ts';
 import type { StakeAccountSpec } from '../transactions.ts';
 import { key, LOCK_UNTIL } from '../transactions.ts';
 import { createHarness, type Harness } from './harness.ts';
@@ -17,6 +18,9 @@ const S2 = key(11);
 const S3 = key(12);
 const SPEC: StakeAccountSpec = { state: 'delegated', staker: MAIN, withdrawer: MAIN, custodian: SECOND, unixTimestamp: LOCK_UNTIL };
 const LAMPORTS = 10_000_000_000n;
+/** The Free plan's decode cap per pass (the harness runs the Free preset), and a quarter of it: what is left over for the next pass. */
+const CAP = MONITOR_PLANS.free.decodeCap;
+const OVER = Math.ceil(CAP / 4);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -341,40 +345,55 @@ describe('the queue survives every stop', () => {
     expect(await h.pass()).toMatchObject({ rescans: 2, rescanQueue: 0 });
   });
 
-  it('the decode cap (20 on Free): the pair goes to the back and the next search takes the rest', async () => {
+  it('the decode cap: the pair goes to the back and the next search takes the rest', async () => {
     const h = await watched();
-    for (let i = 0; i < 25; i++) h.chain.putStake(addr(i), SPEC, 1_000_000_000n);
+    // More locked splits than one pass may decode: the cap, and a quarter of it over.
+    for (let i = 0; i < CAP + OVER; i++) h.chain.putStake(addr(i), SPEC, 1_000_000_000n);
     await h.setMeta({ rescan_queue: JSON.stringify([[MAIN, SECOND]]) });
     h.at('2026-10-05T01:02:00Z');
-    expect(await h.pass()).toMatchObject({ rescans: 1, decoded: 20, autoWatched: 20, rescanQueue: 1 });
+    expect(await h.pass()).toMatchObject({ rescans: 1, decoded: CAP, autoWatched: CAP, rescanQueue: 1 });
     h.at('2026-10-05T01:04:00Z');
-    expect(await h.pass()).toMatchObject({ rows: 21, fastPath: 21, rescans: 1, decoded: 5, autoWatched: 5, rescanQueue: 0 });
-    expect(await h.readAccounts()).toHaveLength(26);
+    expect(await h.pass()).toMatchObject({
+      rows: 1 + CAP,
+      fastPath: 1 + CAP,
+      rescans: 1,
+      decoded: OVER,
+      autoWatched: OVER,
+      rescanQueue: 0,
+    });
+    expect(await h.readAccounts()).toHaveLength(1 + CAP + OVER);
     expect(await h.readEvents()).toEqual([]);
   });
 
-  it('the chunk and the rescans share the decode cap: 10 decoded in the chunk leave 10 for the splits', async () => {
+  it('the chunk and the rescans share the decode cap: half of it decoded in the chunk leaves the other half for the splits', async () => {
     const h = createHarness();
     h.at('2026-10-05T01:00:00Z');
-    const rows = Array.from({ length: 10 }, (_, i) => addr(i, 0x78));
+    const inChunk = Math.floor(CAP / 2);
+    const forSplits = CAP - inChunk;
+    expect(inChunk).toBeGreaterThan(0);
+    const rows = Array.from({ length: inChunk }, (_, i) => addr(i, 0x78));
     for (const at of rows) h.chain.putStake(at, SPEC);
     await h.seedWatched(rows);
-    // Each watched row loses SOL (an urgent rescan of the pair); 25 locked splits wait to be found.
+    // Each watched row loses SOL (an urgent rescan of the pair); more locked splits than the cap wait to be found.
+    const splits = CAP + OVER;
     for (const at of rows) h.chain.putStake(at, SPEC, LAMPORTS - 1n);
-    for (let i = 0; i < 25; i++) h.chain.putStake(addr(i), SPEC, 1_000_000_000n);
+    for (let i = 0; i < splits; i++) h.chain.putStake(addr(i), SPEC, 1_000_000_000n);
     h.at('2026-10-05T01:02:00Z');
-    expect(await h.pass()).toMatchObject({ events: 10, rescans: 1, decoded: 20, autoWatched: 10, rescanQueue: 1 });
+    expect(await h.pass()).toMatchObject({ events: inChunk, rescans: 1, decoded: CAP, autoWatched: forSplits, rescanQueue: 1 });
     h.at('2026-10-05T01:04:00Z');
-    expect(await h.pass()).toMatchObject({ events: 0, rescans: 1, decoded: 15, autoWatched: 15, rescanQueue: 0 });
-    expect(await h.readAccounts()).toHaveLength(35);
+    const rest = splits - forSplits;
+    expect(rest).toBeLessThanOrEqual(CAP);
+    expect(await h.pass()).toMatchObject({ events: 0, rescans: 1, decoded: rest, autoWatched: rest, rescanQueue: 0 });
+    expect(await h.readAccounts()).toHaveLength(inChunk + splits);
   });
 
   it('accounts a search rejects do not hold the pair at the cap: the next search goes on after them', async () => {
     const h = await watched();
-    // 25 accounts of the pair whose lock ended (a Split after the lock ran out, or planted by anyone: Initialize needs
-    // no signature of the keys), then one locked split that comes last in address order.
+    // More accounts of the pair whose lock ended than the cap (a Split after the lock ran out, or planted by anyone:
+    // Initialize needs no signature of the keys), then one locked split that comes last in address order.
     const ended = BigInt(Date.parse('2026-10-04T01:00:00Z') / 1000);
-    const addresses = Array.from({ length: 26 }, (_, i) => addr(i)).sort();
+    const rejected = CAP + OVER;
+    const addresses = Array.from({ length: rejected + 1 }, (_, i) => addr(i)).sort();
     const late = addresses.at(-1) ?? S1;
     for (const at of addresses.slice(0, -1)) h.chain.putStake(at, { ...SPEC, unixTimestamp: ended }, 1_000_000_000n);
     h.chain.putStake(late, SPEC, 1_000_000_000n);
@@ -384,17 +403,22 @@ describe('the queue survives every stop', () => {
     await h.setMeta({ rescan_queue: JSON.stringify([[MAIN, SECOND], [otherMain, SECOND]]) });
 
     h.at('2026-10-05T01:02:00Z');
-    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: 20, autoWatched: 0, rescanQueue: 2 });
-    // The pair waits with the last account that search got through: the one before the 21st unknown, by address.
+    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: CAP, autoWatched: 0, rescanQueue: 2 });
+    // The pair waits with the last account that search got through: the one before the first unknown over the cap,
+    // by address.
     const answer = [S1, ...addresses].sort();
-    const stop = answer.filter((at) => at !== S1)[20];
+    const stop = answer.filter((at) => at !== S1)[CAP];
     const reached = stop === undefined ? undefined : answer[answer.indexOf(stop) - 1];
+    expect(reached).toBeDefined();
     expect(JSON.parse((await h.readMeta()).rescan_queue ?? '')).toEqual([
       [MAIN, SECOND, reached],
       [otherMain, SECOND],
     ]);
     h.at('2026-10-05T01:04:00Z');
-    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: 7, autoWatched: 2, rescanQueue: 0 });
+    // The rejected accounts left, the late split and the other pair's split.
+    const rest = rejected - CAP + 2;
+    expect(rest).toBeLessThanOrEqual(CAP);
+    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: rest, autoWatched: 2, rescanQueue: 0 });
     expect((await h.readAccounts()).map((r) => r.stake_account).sort()).toEqual([S1, late, addr(0, 0x78)].sort());
     expect((await h.readMeta()).rescan_queue).toBe('[]');
     expect(searchedPairs(h)).toHaveLength(4);
