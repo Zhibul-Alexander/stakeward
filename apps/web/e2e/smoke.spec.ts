@@ -24,12 +24,27 @@ type SmokeRoute = {
   shows?: ((page: Page) => Promise<void>) | undefined;
   /** The route reads nothing from the API (a page that needs no wallet and no chain read to say what it says). */
   noApi?: boolean | undefined;
+  /** The API paths the route reads, and no others (a page of the worker's numbers reads no chain). */
+  apiPaths?: readonly string[] | undefined;
   screen: string | null;
 };
 
 const ROUTES: readonly SmokeRoute[] = [
   { path: '/', heading: 'Protect your staked SOL', ready: null, screen: null },
   { path: '/app', heading: 'Your stake accounts', ready: null, screen: null },
+  {
+    // The worker's public numbers and the monitor's freshness (CLAUDE.md section 8): no wallet, no chain read.
+    path: '/stats',
+    heading: 'Stakeward in numbers',
+    ready: null,
+    shows: async (page) => {
+      await expect(page.locator('[data-slot="stat-value"]')).toHaveText(['3', '2,750.5 SOL', '5']);
+      await expect(page.getByText('Counted on 2 October 2026, 12:00 UTC.')).toBeVisible();
+      await expect(page.locator('[data-slot="monitoring"]')).toHaveAttribute('data-state', 'fresh');
+    },
+    apiPaths: ['/api/health', '/api/stats'],
+    screen: 'stats',
+  },
   { path: '/protect', heading: 'Protect your stake', ready: null, screen: 'protect-start' },
   { path: `/withdraw/${SMOKE_STAKE}`, heading: 'Withdraw', ready: 'Withdraw 1,250.5 SOL to your main key', screen: 'withdraw' },
   { path: `/extend/${SMOKE_STAKE}`, heading: 'Extend the lock', ready: 'New end of the lock', screen: 'extend' },
@@ -62,7 +77,7 @@ test('every entry route renders under the production headers, without console er
   page,
   expectNoA11yViolations,
 }) => {
-  // Seven pages, each checked by axe in two themes.
+  // Every route above, each checked by axe in two themes.
   test.setTimeout(180_000);
   const width = page.viewportSize()?.width ?? 0;
   const apiRequests: string[] = [];
@@ -102,6 +117,9 @@ test('every entry route renders under the production headers, without console er
       }
       await route.shows?.(page);
       if (route.noApi === true) expect(apiRequests).toEqual([]);
+      if (route.apiPaths !== undefined) {
+        expect([...new Set(apiRequests.map((url) => new URL(url).pathname))].sort()).toEqual([...route.apiPaths].sort());
+      }
       if (route.ready !== null) {
         // A stake account page reads its own account, never the search (step 6 spec 4.3).
         await expect(page.getByRole('heading', { level: 2, name: route.ready, exact: true })).toBeVisible();
