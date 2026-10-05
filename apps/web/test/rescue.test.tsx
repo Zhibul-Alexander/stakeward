@@ -298,7 +298,11 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
         lamports: w.testChain.account(S1)?.lamports ?? 0n,
       };
       const { bytes } = buildTransaction(theft, { feePayer: payer.address, lifetime: w.testChain.blockhashLifetime() });
-      expect((await w.testChain.send(bytes, [payer, w.A, w.K])).ok).toBe(false);
+      // Refused for the key, not for the amount (S1 still stakes, so a full withdrawal fails anyway on its balance).
+      expect(await w.testChain.send(bytes, [payer, w.A, w.K])).toMatchObject({
+        ok: false,
+        error: { kind: 'instruction', name: 'MissingRequiredSignature' },
+      });
 
       // Earn rewards again: only S2 stopped staking; the new wallet delegates it back to the same validator.
       const delegateCard = (await heading(en.rescue.done.delegate.title)).closest<HTMLElement>('[data-slot="card"]');
@@ -373,9 +377,14 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
         expect(cosign.view.getAllByText(w.D.address).length).toBeGreaterThan(0);
         await connectAndContinue(cosign.user, 'Second key', 'Second Wallet', cosign.view);
         if (account === S1) {
-          // What was: the lock as the chain shows it now, which the move keeps.
-          const summary = document.querySelectorAll<HTMLElement>('[data-slot="signing-panel"] [data-slot="transaction-summary"]');
-          expect([...summary].some((item) => within(item).queryAllByText(/^Locked until /).length > 0)).toBe(true);
+          // What was, on /cosign itself (this page's own panel shows its summary too): the lock as /cosign read it from
+          // the chain, which the move keeps.
+          const summary = await waitFor(() => {
+            const found = cosign.container.querySelector<HTMLElement>('[data-slot="signing-panel"] [data-slot="transaction-summary"]');
+            expect(found).not.toBeNull();
+            return found as HTMLElement;
+          }, WAIT);
+          expect(within(summary).getByText(`Locked until ${formatUtcDate(T) ?? ''}`)).toBeInTheDocument();
         }
         await cosign.user.click(await cosign.view.findByRole('checkbox', { name: en.cosign.confirm.rescue }, WAIT));
         await click(cosign.user, 'Sign in Second Wallet as Second key', cosign.view);

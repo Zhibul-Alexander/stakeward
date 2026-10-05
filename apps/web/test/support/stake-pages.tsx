@@ -88,7 +88,8 @@ export function renderStakePage(
 export type RoleName = 'Main key' | 'Second key' | 'New wallet';
 
 /** One /cosign page in its own React root (the other device): its own ports, wallets and key slots. */
-export type CosignRoot = { ports: Ports; user: UserEvent; view: Scope; unmount: () => void };
+/** `container`: this root's own element, for DOM queries that must not reach another root on the page. */
+export type CosignRoot = { ports: Ports; user: UserEvent; view: Scope; container: HTMLElement; unmount: () => void };
 
 /** Renders /cosign for `fragment` (`#tx=...`) in a root of its own, with these wallets and no key slot filled. */
 export function renderCosignPage(
@@ -109,7 +110,7 @@ export function renderCosignPage(
       </Router>
     </StrictMode>,
   );
-  return { ports: page, user, view: within(container), unmount };
+  return { ports: page, user, view: within(container), container, unmount };
 }
 
 /** Connects `walletName` in the key slot of `role` that the page shows now. */

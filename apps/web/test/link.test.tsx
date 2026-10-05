@@ -141,7 +141,8 @@ describe('signing by link: /withdraw on the first device, /cosign on the second 
       expect(main.requests).toHaveLength(2);
       expect(second.requests).toHaveLength(1);
       // Done after signing by link: the link-signing account can be closed, its deposit comes back.
-      expect(page.view.getByRole('heading', { name: en.nonce.close.title })).toBeInTheDocument();
+      // The card reads the link-signing account itself once it mounts: wait for it.
+      expect(await page.view.findByRole('heading', { name: en.nonce.close.title }, WAIT)).toBeInTheDocument();
     },
     SCENARIO_TIMEOUT,
   );
@@ -227,7 +228,8 @@ describe('signing by link: /withdraw on the first device, /cosign on the second 
       await click(page.user, en.signing.link.stopWaiting, page.view);
       await page.view.findByText(en.components.jobs.unknown['link-open'], undefined, WAIT);
       // The link-signing account can still be closed from here, which would cancel the link.
-      expect(page.view.getByRole('heading', { name: en.nonce.close.title })).toBeInTheDocument();
+      // The card reads the link-signing account itself once it mounts: wait for it.
+      expect(await page.view.findByRole('heading', { name: en.nonce.close.title }, WAIT)).toBeInTheDocument();
 
       const other = await cosign(w, url, second);
       other.unmount();
