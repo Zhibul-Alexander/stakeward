@@ -9,6 +9,8 @@ import { TokensSection } from '@/pages/dev-ui/TokensSection';
 const ComponentsSection = lazy(() =>
   import('@/pages/dev-ui/ComponentsSection').then((module) => ({ default: module.ComponentsSection })),
 );
+// The flows (signing panel, protect result) build their fixtures with core too, and pull in the signing engine.
+const FlowsSection = lazy(() => import('@/pages/dev-ui/FlowsSection').then((module) => ({ default: module.FlowsSection })));
 
 // Devnet-only page: tokens and every component in every state (CLAUDE.md section 9). It replaces Storybook: screenshots
 // and the accessibility check run on it (e2e/dev-ui.spec.ts). Loaded lazily from routes.tsx behind the literal
@@ -19,7 +21,17 @@ const SECTIONS = [
   ['tokens', 'devUi.tokens'],
   ['primitives', 'devUi.primitives'],
   ['components', 'devUi.productComponents'],
+  ['signing', 'devUi.signing'],
+  ['protect-result', 'devUi.protectResult'],
 ] as const;
+
+function Loading() {
+  return (
+    <div className="flex justify-center py-12">
+      <Spinner className="size-6 text-muted" />
+    </div>
+  );
+}
 
 export default function DevUiPage() {
   return (
@@ -41,14 +53,11 @@ export default function DevUiPage() {
       </header>
       <TokensSection />
       <PrimitivesSection />
-      <Suspense
-        fallback={
-          <div className="flex justify-center py-12">
-            <Spinner className="size-6 text-muted" />
-          </div>
-        }
-      >
+      <Suspense fallback={<Loading />}>
         <ComponentsSection />
+      </Suspense>
+      <Suspense fallback={<Loading />}>
+        <FlowsSection />
       </Suspense>
     </div>
   );

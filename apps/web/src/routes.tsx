@@ -6,6 +6,7 @@ import { AppPage } from '@/pages/AppPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProtectPage } from '@/pages/ProtectPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
 // bundler drop these imports from a mainnet build: Vite turns it into "mainnet" === "devnet", the branch is dead and
@@ -39,7 +40,7 @@ export function AppRoutes() {
         <AppPage />
       </Route>
       <Route path="/protect">
-        <ComingSoonPage title={t('common.pages.protect')} />
+        <ProtectPage />
       </Route>
       <Route path="/withdraw/:account">
         <ComingSoonPage title={t('common.pages.withdraw')} />

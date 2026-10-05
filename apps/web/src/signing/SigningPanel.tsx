@@ -116,7 +116,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
   const back = backKind(state);
   const backButton =
     back === null ? null : (
-      <Button variant="ghost" onClick={onBack} className="h-auto min-h-10 whitespace-normal">
+      <Button variant="ghost" onClick={onBack} className="h-auto min-h-10 max-w-full whitespace-normal">
         {back === 'back' ? t('common.back') : t('signing.backNothingSent')}
       </Button>
     );
@@ -151,7 +151,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
               onClick={() => {
                 actions.sign();
               }}
-              className="h-auto min-h-10 whitespace-normal"
+              className="h-auto min-h-10 max-w-full whitespace-normal"
             >
               {step.count === 1
                 ? t('signing.signWith', { wallet, role })
@@ -240,7 +240,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack }: PhaseActionsPro
                   onClick={() => {
                     actions.oneAtATime();
                   }}
-                  className="h-auto min-h-10 whitespace-normal"
+                  className="h-auto min-h-10 max-w-full whitespace-normal"
                 >
                   {t('signing.oneAtATime')}
                 </Button>
@@ -368,7 +368,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
                   onClick={() => {
                     actions.oneAtATime();
                   }}
-                  className="h-auto min-h-8 whitespace-normal"
+                  className="h-auto min-h-8 max-w-full whitespace-normal"
                 >
                   {t('signing.oneAtATime')}
                 </Button>
@@ -394,7 +394,7 @@ function Stopped({ reason, actions, backButton }: { reason: StopReason; actions:
                   onClick={() => {
                     actions.restartRound(startWith);
                   }}
-                  className="h-auto min-h-8 whitespace-normal"
+                  className="h-auto min-h-8 max-w-full whitespace-normal"
                 >
                   {t('signing.startWith', { wallet: reason.walletName })}
                 </Button>

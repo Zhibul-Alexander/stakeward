@@ -427,6 +427,27 @@
       "errorState": "ErrorState",
       "signerList": "SignerList",
       "jobStatusList": "JobStatusList"
+    },
+    "signing": "Signing",
+    "protectResult": "Protect result",
+    "flows": {
+      "signingNote": "The signing panel of every flow, in each phase. Real transactions built and read by core; the buttons do nothing here.",
+      "protectResultNote": "The Done screen of the protect wizard.",
+      "idle": "Building the transactions",
+      "readyBatch": "First signer, two stake accounts",
+      "readySameWallet": "Second signer in the same wallet",
+      "needsWallet": "Key not connected",
+      "switchAccount": "Wallet offers another account",
+      "signing": "Waiting for the wallet",
+      "stoppedCheck": "Stopped by a check of the returned transaction",
+      "stoppedWallet": "Declined in the wallet",
+      "expired": "Expired before every wallet signed",
+      "sending": "Sending",
+      "confirming": "Confirming",
+      "feeBalance": "Not enough SOL for the fee",
+      "all": "All protected",
+      "partial": "Some protected",
+      "none": "None protected"
     }
   },
   "app": {
@@ -439,7 +460,7 @@
       "submit": "Check",
       "empty": "Paste a wallet address first.",
       "invalid": "This is not a Solana address. Check it: it should be 32 to 44 letters and digits.",
-    "zero": "This is the System Program, not a wallet. Paste the address of the wallet that holds the stake."
+      "zero": "This is the System Program, not a wallet. Paste the address of the wallet that holds the stake."
     },
     "connect": {
       "mainTitle": "Or connect your main key",
@@ -456,9 +477,9 @@
       "errorTitle": "Could not load the stake accounts",
       "countOne": "1 stake account",
       "countOther": "{count} stake accounts",
-    "announceNone": "No stake accounts found",
-    "announceOne": "Found 1 stake account",
-    "announceOther": "Found {count} stake accounts",
+      "announceNone": "No stake accounts found",
+      "announceOne": "Found 1 stake account",
+      "announceOther": "Found {count} stake accounts",
       "total": "{amount} in total",
       "protected": "{amount} protected",
       "rescueNote": "Main key stolen or seen by someone else?",
@@ -493,6 +514,118 @@
       "stale": "Alerts may be late.",
       "notYet": "Monitoring has not run yet",
       "unavailable": "Monitoring status unavailable. Press Refresh to try again."
+    }
+  },
+  "protect": {
+    "intro": "Lock your stake accounts with a second key you control. While the lock holds, withdrawing the SOL or changing which wallet can withdraw it needs your second key too.",
+    "steps": {
+      "accounts": "Accounts",
+      "secondKey": "Second key",
+      "period": "Lock period",
+      "sign": "Review and sign",
+      "done": "Done"
+    },
+    "accounts": {
+      "heading": "Choose the stake accounts to protect",
+      "connectMain": "The wallet that can withdraw your stake. It signs the lock and pays the network fee. Connecting signs nothing.",
+      "fromLinkOne": "From your link: 1 stake account. Connect its main key to continue.",
+      "fromLinkOther": "From your link: {count} stake accounts. Connect their main key to continue.",
+      "loading": "Reading your stake accounts from the network",
+      "loadError": "Could not load your stake accounts",
+      "select": "Protect stake account {address}",
+      "selectedOne": "1 stake account selected",
+      "selectedOther": "{count} stake accounts selected",
+      "needMain": "Connect your main key to continue.",
+      "needOne": "Choose at least one stake account.",
+      "tooMany": "Choose up to {max} stake accounts at a time. Protect these first, then come back for the rest.",
+      "alreadyProtected": "Already locked by your second key until {date}. To change the date, extend the lock.",
+      "extend": "Extend the lock",
+      "lockedByOther": "Locked by another key. Only that key can change this lock.",
+      "leftOut": "Left out: the connected main key cannot withdraw these stake accounts, so it cannot protect them.",
+      "noneProtectable": "None of these stake accounts can be protected right now."
+    },
+    "second": {
+      "heading": "Connect your second key",
+      "body": "Use a wallet made from a different seed phrase. It signs once now to show it works. Later it is needed to withdraw this stake or to move it to a new wallet.",
+      "slotDescription": "Your second key. Connecting signs nothing.",
+      "oneBrowser": "Both keys must be connected in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
+      "sameWallet": "Both keys are in {wallet}. While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
+      "problem": {
+        "zero-key": "This is the empty address, not a wallet. Choose another wallet as your second key.",
+        "main-key": "This is your main key. Choose a wallet from a different seed phrase.",
+        "staker": "This wallet manages staking for stake account {address}. Choose another wallet as your second key, or leave that stake account out.",
+        "stake-account": "This is one of the stake accounts, not a wallet. Choose another wallet as your second key."
+      },
+      "leaveOut": "Leave {address} out",
+      "fixProblem": "This second key cannot lock every chosen stake account. Choose another second key, or leave those stake accounts out.",
+      "seedCheck": "My second key comes from a different seed phrase",
+      "seedHint": "If both keys come from one seed phrase, whoever gets that phrase has both keys and the lock stops nothing.",
+      "needSecond": "Connect your second key to continue.",
+      "needSeedCheck": "Confirm that your second key comes from a different seed phrase."
+    },
+    "period": {
+      "heading": "How long should the lock hold?",
+      "legend": "Lock period",
+      "options": {
+        "1-month": "1 month",
+        "3-months": "3 months",
+        "6-months": "6 months (recommended)",
+        "12-months": "12 months",
+        "10-minutes": "10 minutes (devnet test)",
+        "1-hour": "1 hour (devnet test)"
+      },
+      "until": "Locked until {date}",
+      "renew": "Before it ends, your second key can extend it.",
+      "loading": "Reading the network time",
+      "loadError": "Could not read the network time",
+      "needClock": "The lock end needs the network time. Wait for it, or press Try again."
+    },
+    "sign": {
+      "heading": "Review and sign",
+      "countOne": "1 transaction for 1 stake account. Your main key and your second key each approve it.",
+      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request."
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-main-key": "The connected main key can no longer withdraw this stake account.",
+      "locked-by-other": "Another key has locked this stake account. Only that key can change the lock.",
+      "already-protected": "Already locked by your second key with another end date. To change the date, extend the lock.",
+      "second-key-rule": "Your second key manages staking for this stake account or is the account itself, so it cannot hold its lock.",
+      "lock-end-passed": "The chosen lock end is too close or has passed. Choose the lock period again."
+    },
+    "done": {
+      "titleOne": "Your stake account is protected",
+      "titleOther": "{count} stake accounts are protected",
+      "titlePartial": "{done} of {total} stake accounts are protected",
+      "titleNone": "No stake account was protected",
+      "protectedList": "Protected",
+      "notProtectedList": "Not protected yet",
+      "retryOne": "Try again for 1 stake account",
+      "retryOther": "Try again for {count} stake accounts",
+      "choosePeriod": "Choose the lock period again",
+      "checkAgain": "Check again",
+      "checkFailed": "Could not read the network. Try again in a moment.",
+      "transaction": "Transaction",
+      "secondKey": "Your second key",
+      "monitoring": {
+        "title": "Monitoring",
+        "working": "Turning on monitoring",
+        "on": "Monitoring is on: Stakeward checks these stake accounts every few minutes.",
+        "partial": "Monitoring is on for some of them. Turn it on for the rest in a minute.",
+        "failed": "Monitoring could not be turned on right now. Your stake is still protected on the network.",
+        "retry": "Turn on monitoring"
+      },
+      "telegram": {
+        "title": "Get alerts in Telegram",
+        "body": "The Stakeward bot messages you if anything changes, for example a deactivation you did not make. It only needs your public main key address.",
+        "action": "Open the Stakeward bot in Telegram"
+      },
+      "recovery": {
+        "title": "Keep a recovery card",
+        "body": "What to do if you lose a key or your main key is stolen, with commands that work without Stakeward. It holds no secrets.",
+        "link": "Recovery card for {address}"
+      }
     }
   },
   "devCosign": {

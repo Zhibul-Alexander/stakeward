@@ -10,8 +10,8 @@ const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.
 const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 
 /**
- * Real inspector output rendered on the page: protect, a batch of two protects, extend, withdraw, rescue, unlock and
- * one rejected link.
+ * Real inspector output rendered in the product components section: protect, a batch of two protects, extend,
+ * withdraw, rescue, unlock and one rejected link. The flows sections below it render more (signing panel phases).
  */
 const SUMMARIES = 7;
 
@@ -19,6 +19,8 @@ test('/dev/ui shows every token and component without console errors, axe violat
   page,
   expectNoA11yViolations,
 }) => {
+  // The page holds every component and flow; axe over all of it in two themes takes longer than the default 30 s.
+  test.setTimeout(90_000);
   const width = page.viewportSize()?.width ?? 0;
   await page.emulateMedia({ colorScheme: 'light' });
   const response = await page.goto('/dev/ui');
@@ -26,10 +28,13 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.getByRole('heading', { level: 1, name: 'Design system' })).toBeVisible();
 
   // The transaction summaries are built with core and inspected in the browser (Web Crypto), then rendered.
-  await expect(page.locator('[data-slot="transaction-summary"]')).toHaveCount(SUMMARIES);
+  await expect(page.locator('#components [data-slot="transaction-summary"]')).toHaveCount(SUMMARIES);
   await expect(page.locator('[data-slot="transaction-summary"][data-kind="protect"]').first()).toContainText(
     'This transaction cannot move your SOL.',
   );
+  // The flows: the signing panel in its phases and the protect wizard's Done screen.
+  await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
+  await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
 
   // Token tables come from tokens.css: every colour has a swatch class (a missing one would stay transparent),
   // and the dark panel really shows other values than the light one.

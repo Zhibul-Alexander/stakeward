@@ -94,5 +94,6 @@ describe('review: F6 memory can be flushed by viewing an address that is not the
     expect(ports.protectedAccounts.getSnapshot(), "the victim's own account was pushed out of the F6 memory").toContain(
       victimAccount,
     );
-  });
+    // 200 rows and a role query over them take about 5 s in jsdom on their own: more than Vitest's default limit.
+  }, 30_000);
 });
