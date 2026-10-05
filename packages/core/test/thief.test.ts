@@ -2,7 +2,7 @@ import type { KeyPairSigner } from '@solana/kit';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { U64_MAX } from '../src/index.ts';
 import { LAMPORTS_PER_SOL, START_UNIX_TIMESTAMP, TestChain } from './svm.ts';
-import { changeStaker, deactivateAs, splitStake } from './thief.ts';
+import { changeStaker, deactivateAs, splitStake, THIEF_MARKER } from './thief.ts';
 
 // The thief's moves for the rescue tests (CLAUDE.md section 4): each lands, and the main key never pays.
 
@@ -52,4 +52,11 @@ describe('thief helpers', { timeout: 30_000 }, () => {
     const stake = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address });
     await expect(changeStaker(chain, { stake, withdrawer: X, newStaker: K })).rejects.toThrow(/changeStaker failed/);
   });
+
+  it('a move the program refuses throws, and its error carries the test-only marker', async () => {
+    expect(THIEF_MARKER.startsWith('stakeward-test-only:')).toBe(true);
+    const stake = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address });
+    await expect(deactivateAs(chain, { stake, staker: X })).rejects.toThrow(THIEF_MARKER);
+  });
 });
+

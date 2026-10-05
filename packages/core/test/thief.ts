@@ -1,6 +1,7 @@
 // What a thief who holds only the main key A can do to a stake account (CLAUDE.md section 4: deactivate, change the
-// staker, split), for the rescue tests. Test-only code (Node): it runs on the LiteSVM harness (svm.ts), so the web
-// test-code guard's litesvm check catches it in any build. No product code imports it.
+// staker, split), for the rescue tests. Test-only code: product code never imports it. It takes svm.ts's harness by
+// type only, so a bundle of it carries no LiteSVM: every helper carries THIEF_MARKER instead, which no build may
+// contain (apps/web/test/test-code-guard.test.ts).
 import {
   appendTransactionMessageInstructions,
   createTransactionMessage,
@@ -24,6 +25,9 @@ import {
   toLegacyLayout,
 } from '../src/index.ts';
 import type { SendResult, TestChain } from './svm.ts';
+
+/** In every helper's code path (`check`), so any bundle that takes one of them shows it. */
+export const THIEF_MARKER = 'stakeward-test-only:thief';
 
 /**
  * AuthorizeChecked(Staker -> newStaker) in the legacy layout (LEGACY_SYSVAR_SLOTS, like the product's rescue), signed by
@@ -105,5 +109,5 @@ async function sendInstructions(
 }
 
 function check(what: string, result: SendResult): void {
-  if (!result.ok) throw new Error(`${what} failed: ${JSON.stringify(result.error)}\n${result.logs.join('\n')}`);
+  if (!result.ok) throw new Error(`${THIEF_MARKER} ${what} failed: ${JSON.stringify(result.error)}\n${result.logs.join('\n')}`);
 }

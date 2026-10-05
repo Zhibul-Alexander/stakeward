@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LITESVM_CHAIN_MARKER } from '@stakeward/core/test/litesvm-chain';
 import { TEST_WALLET_PORT_MARKER } from '@stakeward/core/test/test-wallet-port';
+import { THIEF_MARKER } from '@stakeward/core/test/thief';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { COUNTING_CHAIN_MARKER } from './support/counting-chain.ts';
 import { FAKE_API_MARKER } from './support/fake-api.ts';
@@ -24,6 +25,7 @@ const TEST_MARKERS = [
   FAKE_STANDARD_WALLET_MARKER,
   FAKE_API_MARKER,
   COUNTING_CHAIN_MARKER,
+  THIEF_MARKER,
 ];
 /** Never in the shipped site: test code, LiteSVM, key generation, private-key import, forbidden wallet features. */
 const FORBIDDEN_IN_PRODUCTION: readonly (string | RegExp)[] = [
@@ -142,6 +144,14 @@ describe('test code never ships', () => {
     const code = bundle(`export { CountingChain } from '../../test/support/counting-chain.ts';\n`);
     expect(code).toContain(COUNTING_CHAIN_MARKER);
   }, 120_000);
+
+  // thief.ts imports svm.ts for types only, so a bundle of it carries no LiteSVM: its marker is what gives it away.
+  it('positive control: a bundle of any one thief helper keeps its marker', () => {
+    for (const name of ['changeStaker', 'deactivateAs', 'splitStake']) {
+      const code = bundle(`export { ${name} } from '@stakeward/core/test/thief';\n`);
+      expect(code, name).toContain(THIEF_MARKER);
+    }
+  }, 360_000);
 
   it('positive control: a (Node) bundle of LiteSvmChain keeps its marker and its LiteSVM import', () => {
     const code = bundle(`export { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';\n`, { ssr: true });
