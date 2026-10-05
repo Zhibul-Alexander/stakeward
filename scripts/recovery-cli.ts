@@ -18,6 +18,7 @@ import {
   DEFAULT_FUNDER_FILE,
   parseRecoveryCliArgs,
   RecoveryCliRefusal,
+  redactText,
   USAGE,
   UsageError,
 } from './recovery-cli/args.ts';
@@ -79,14 +80,14 @@ async function loadRunKeys(runName: string) {
 
 /** An earlier run's folder: return what its keys hold, then keep it under a new name (it is never deleted). */
 async function retireEarlierRun(ctx: RunContext, funder: KeyFile, runName: string, runDir: string): Promise<void> {
-  log(`.keys/${runName}/ holds the keys of an earlier run: returning what they hold to the funder`);
+  ctx.log(`.keys/${runName}/ holds the keys of an earlier run: returning what they hold to the funder`);
   const { wallets, stakes } = await loadRunKeys(runName);
   const result = await returnFunds(ctx, funder, wallets, stakes);
-  if (result.notes.length > 0) log(`  returned: ${result.notes.join(', ')}`);
-  for (const leftover of result.leftovers) log(`  left behind: ${leftover}`);
+  if (result.notes.length > 0) ctx.log(`  returned: ${result.notes.join(', ')}`);
+  for (const leftover of result.leftovers) ctx.log(`  left behind: ${leftover}`);
   const target = `${runDir.replace(/\/$/, '')}.old-${new Date().toISOString().replace(/[:.]/g, '-')}`;
   renameSync(runDir, target);
-  log(`  kept as .keys/${target.split('/').at(-1) ?? ''}`);
+  ctx.log(`  kept as .keys/${target.split('/').at(-1) ?? ''}`);
 }
 
 function shellVersions(cli: SolanaCli): string[] {
@@ -104,6 +105,12 @@ async function main(): Promise<void> {
   const probeHome = mkdtempSync(join(tmpdir(), 'recovery-cli-'));
   try {
     await run(args, createSolanaCli({ home: probeHome, bin }), bin);
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message = redactText(error.message, args.url);
+      if (error.stack !== undefined) error.stack = redactText(error.stack, args.url);
+    }
+    throw error;
   } finally {
     rmSync(probeHome, { recursive: true, force: true });
   }
@@ -114,6 +121,10 @@ async function run(
   probe: SolanaCli,
   bin: string | undefined,
 ): Promise<void> {
+  // The console never shows a provider's API key either (the doc is redacted in report.ts).
+  const say = (line: string) => {
+    log(redactText(line, args.url));
+  };
   // 1. The CLI and the pinned installer.
   const version = probe.run('solana', ['--version']);
   if (!version.ok) {
@@ -123,43 +134,46 @@ async function run(
     );
   }
   const cliVersion = version.output.trim();
-  log(cliVersion);
+  say(cliVersion);
   if (parseCliVersion(cliVersion) !== RECOVERY_CLI_VERSION) {
-    log(`warning: the card's commands were checked with Solana CLI ${RECOVERY_CLI_VERSION}`);
+    say(`warning: the card's commands were checked with Solana CLI ${RECOVERY_CLI_VERSION}`);
   }
   const installer = await installerCheck();
-  log(`I1   ${installer.passed ? 'ok' : 'FAILED'}  ${installer.title}: ${installer.outcome}`);
+  say(`I1   ${installer.passed ? 'ok' : 'FAILED'}  ${installer.title}: ${installer.outcome}`);
 
   // 2. Which cluster.
   const genesis = probe.run('solana', ['genesis-hash', '--url', args.url]);
-  if (!genesis.ok) throw new RecoveryCliRefusal(`solana genesis-hash --url ${args.url}: ${genesis.output.trim()}`);
+  if (!genesis.ok) {
+    const reason = `solana genesis-hash --url ${args.url}: ${genesis.output.trim()}`;
+    throw new RecoveryCliRefusal(redactText(reason, args.url));
+  }
   const cluster = clusterOfGenesis(genesis.output.trim());
-  log(`cluster: ${cluster} (${args.url})`);
+  say(`cluster: ${cluster} (${args.url})`);
 
   // 3. Help pages.
   const templates = recoveryCommands({ mainKeyAddress: RECOVERY_PLACEHOLDERS.mainKeyAddress, url: args.url });
   const help = helpCheck(probe, templates);
-  log(`H    ${help.passed ? 'ok' : 'FAILED'}  ${help.outcome}`);
+  say(`H    ${help.passed ? 'ok' : 'FAILED'}  ${help.outcome}`);
 
   // 4. Funding plan.
   if (!existsSync(args.funder)) {
     if (!args.defaultFunder) throw new RecoveryCliRefusal(`--funder ${args.funder}: no such file`);
     await loadOrCreateKey(DEFAULT_FUNDER_FILE);
-    log(`created .keys/${DEFAULT_FUNDER_FILE}.json`);
+    say(`created .keys/${DEFAULT_FUNDER_FILE}.json`);
   }
   const pubkey = probe.run('solana-keygen', ['pubkey', args.funder]);
   if (!pubkey.ok) throw new RecoveryCliRefusal(`--funder ${args.funder}: ${pubkey.output.trim()}`);
   const funder: KeyFile = { path: args.funder, address: pubkey.output.trim() };
-  const probeCtx: RunContext = { cli: probe, url: args.url, cluster, log };
+  const probeCtx: RunContext = { cli: probe, url: args.url, cluster, log: say };
   const plan = fundingPlan({
     rent: await readLamports(probeCtx, ['rent', '200']),
     minDelegation: await readLamports(probeCtx, ['stake-minimum-delegation']),
     skipDelegated: args.skipDelegated,
   });
   let funderBalance = await balance(probeCtx, funder.address);
-  for (const line of renderPlan(plan, funder, funderBalance)) log(line);
+  for (const line of renderPlan(plan, funder, funderBalance)) say(line);
   if (args.dryRun) {
-    log('Dry run: nothing sent.');
+    say('Dry run: nothing sent.');
     return;
   }
 
@@ -171,8 +185,8 @@ async function run(
     funderBalance = await balance(probeCtx, funder.address);
   }
   if (funderBalance < plan.required) {
-    log(`Fund ${funder.address}: it holds ${formatSol(funderBalance)}, the run needs ${formatSol(plan.required)}.`);
-    log('Not run.');
+    say(`Fund ${funder.address}: it holds ${formatSol(funderBalance)}, the run needs ${formatSol(plan.required)}.`);
+    say('Not run.');
     return; // not an error: the run waits for funds
   }
   const cliHome = join(runDir, 'cli-home');
@@ -182,11 +196,11 @@ async function run(
   const stakes = {} as Record<StakeName, KeyFile>;
   for (const name of STAKE_NAMES) stakes[name] = await newKeyFile(`${runName}/stake-${name}`);
   const keys: RunKeys = { ...roles, stakes };
-  log(`keys: .keys/${runName}/ (${ROLE_NAMES.map((role) => `${role} ${roles[role].address}`).join(', ')})`);
+  say(`keys: .keys/${runName}/ (${ROLE_NAMES.map((role) => `${role} ${roles[role].address}`).join(', ')})`);
 
   // 6-8. Setup, checks, cleanup.
   const cli = createSolanaCli({ home: cliHome, bin });
-  const ctx: RunContext = { cli, url: args.url, cluster, log };
+  const ctx: RunContext = { cli, url: args.url, cluster, log: say };
   const startedAt = new Date();
   let outcome: ChecksOutcome = { results: [], locks: [], notes: [], aborted: null };
   try {
@@ -194,14 +208,14 @@ async function run(
   } catch (error) {
     outcome.aborted = `сбой прогона: ${message(error)}`;
   }
-  log('cleanup: returning everything to the funder');
+  say('cleanup: returning everything to the funder');
   const cleanup = await returnFunds(
     ctx,
     funder,
     ROLE_NAMES.map((role) => roles[role]),
     STAKE_NAMES.map((name) => ({ name, key: stakes[name] })),
   ).catch((error: unknown) => ({ notes: [], leftovers: [`cleanup failed: ${message(error)}`] }));
-  if (cleanup.notes.length > 0) log(`  returned: ${cleanup.notes.join(', ')}`);
+  if (cleanup.notes.length > 0) say(`  returned: ${cleanup.notes.join(', ')}`);
   const funderEnd = await balance(ctx, funder.address).catch(() => null);
   const spent = funderEnd === null ? null : funderBalance - funderEnd;
 
@@ -232,11 +246,11 @@ async function run(
   };
   const doc = existsSync(RECOVERY_CLI_DOC) ? readFileSync(RECOVERY_CLI_DOC, 'utf8') : null;
   writeFileSync(RECOVERY_CLI_DOC, upsertSection(doc, cluster, renderSection(report)));
-  log(`docs/recovery-cli.md: ${cluster} section updated`);
-  log('');
-  log(consoleReport(report));
-  if (spent !== null) log(`funder spent ${formatSol(spent)} (expected about ${formatSol(plan.fees)})`);
-  for (const leftover of cleanup.leftovers) log(`left behind: ${leftover}`);
+  say(`docs/recovery-cli.md: ${cluster} section updated`);
+  say('');
+  say(consoleReport(report));
+  if (spent !== null) say(`funder spent ${formatSol(spent)} (expected about ${formatSol(plan.fees)})`);
+  for (const leftover of cleanup.leftovers) say(`left behind: ${leftover}`);
   const allPassed = outcome.aborted === null && results.every((result) => result.passed);
   process.exitCode = allPassed && cleanup.leftovers.length === 0 ? 0 : 1;
 }

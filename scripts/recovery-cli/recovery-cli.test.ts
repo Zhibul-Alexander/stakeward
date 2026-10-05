@@ -1,7 +1,9 @@
 // scripts/recovery-cli without the Solana CLI (CI has none): arguments, the mainnet refusal, the help-page check
 // against a saved 4.3.0 page, the docs section, the double-quote filling and the funding plan. The run itself is
 // docs/recovery-cli.md.
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   commandLine,
   recoveryCommands,
@@ -15,6 +17,8 @@ import {
   clusterOfGenesis,
   parseRecoveryCliArgs,
   RecoveryCliRefusal,
+  redactText,
+  redactUrl,
   resolveUrl,
   URL_MONIKERS,
   UsageError,
@@ -27,9 +31,10 @@ import {
   LAMPORTS_PER_SIGNATURE,
   type CheckResult,
 } from './checks.ts';
-import { renderSection, TABLE_HEADER, upsertSection, type RecoveryCliReport } from './report.ts';
+import { consoleReport, renderSection, TABLE_HEADER, upsertSection, type RecoveryCliReport } from './report.ts';
 import {
   clockUnixTimestamp,
+  createSolanaCli,
   fillCommand,
   flagsOf,
   helpListsFlag,
@@ -38,6 +43,7 @@ import {
   parseSignatures,
   placeholdersIn,
   quote,
+  shellArgv,
   solArgument,
   type CliResult,
   type SolanaCli,
@@ -80,6 +86,12 @@ describe('arguments', () => {
     expect(resolveUrl('https://devnet.helius-rpc.com/?api-key=x')).toBe('https://devnet.helius-rpc.com/?api-key=x');
     expect(() => resolveUrl('mainnet')).toThrow(UsageError);
     expect(() => resolveUrl('ftp://example.com')).toThrow(UsageError);
+  });
+
+  it('refuses a URL that double quotes would not keep as is in the typed line', () => {
+    const bad = ['https://h.example/?a="b"', 'https://h.example/$x', 'https://h.example/`id`', 'https://h.example/a\\b'];
+    for (const url of bad) expect(() => resolveUrl(url), url).toThrow(UsageError);
+    expect(resolveUrl('https://h.example/?a=1&b=2')).toBe('https://h.example/?a=1&b=2');
   });
 
   it('reads every flag, a pnpm `--` and a funder relative to where pnpm started', () => {
@@ -225,6 +237,21 @@ describe('filling a card command', () => {
     expect(commandLine(filled.argv)).toBe(filled.line.replace(/"/g, ''));
   });
 
+  it('puts a custom --url in double quotes when a shell would change it, so bash and zsh pass it as typed', () => {
+    const url = 'https://devnet.helius-rpc.com/?api-key=x&cluster=devnet';
+    const filled = fillCommand(recoveryCommands({ mainKeyAddress: MAIN, url }).epoch, VALUES);
+    expect(filled.line).toBe(`solana epoch-info --url "${url}"`);
+    expect(filled.argv).toEqual(['solana', 'epoch-info', '--url', url]);
+    expect(filled.displayLines).toEqual(['solana epoch-info \\', `  --url "${url}"`]);
+    // zsh stops at `?` (no matches found) and bash at `&` (a background job) when the URL is not quoted.
+    const home = mkdtempSync(join(tmpdir(), 'recovery-cli-test-'));
+    try {
+      expect(shellArgv(createSolanaCli({ home, bin: undefined }), 'bash', filled.line)).toEqual(filled.argv);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it('refuses a value the double quotes would not keep as is', () => {
     expect(quote('/a b/key.json')).toBe('"/a b/key.json"');
     for (const bad of ['a"b', '$HOME/key.json', '`id`', 'C:\\keys\\a.json']) expect(() => quote(bad), bad).toThrow();
@@ -330,5 +357,57 @@ describe('docs/recovery-cli.md', () => {
     expect(local).toContain('375 000 лампортов');
     const devnet = renderSection(report('devnet'));
     expect(devnet).toContain('[4rwu…8HNS](https://explorer.solana.com/tx/4rwut1VEnoQ28hQfG5ABVfsvH7KKUQSvy4PTVcwhXJn9GV8jeTuNiaoxDdyRb5JgnGUxDadbAFB1G5yHzMv48HNS?cluster=devnet)');
+    expect(local).toContain('RPC `http://127.0.0.1:8899`.');
+    expect(devnet).toContain('RPC `http://127.0.0.1:8899`.');
+  });
+
+  it('never writes the API key of a provider URL: not in the RPC line, not in any CLI text the run quotes', () => {
+    // The committed doc; Helius keeps the key in the query string (DECISIONS.md), the CLI prints the URL it failed on.
+    const url = 'https://devnet.helius-rpc.com?api-key=SECRET123';
+    const failed = `Error: error sending request for url (https://devnet.helius-rpc.com/?api-key=SECRET123)`;
+    const leaky: RecoveryCliReport = {
+      ...report('devnet'),
+      url,
+      results: [result({ passed: false, outcome: `bash: ${failed}`, message: failed })],
+      notes: [`note ${url}`],
+      aborted: `подготовка не прошла: ${failed}`,
+    };
+    for (const text of [renderSection(leaky), consoleReport(leaky)]) {
+      expect(text).not.toContain('SECRET123');
+      expect(text).not.toContain('api-key');
+    }
+    expect(renderSection(leaky)).toContain('RPC `https://devnet.helius-rpc.com/…`.');
+    expect(renderSection(leaky)).toContain('error sending request for url (https://devnet.helius-rpc.com/…)');
+  });
+});
+
+describe('RPC URL redaction', () => {
+  it('shows the origin only, with … when the URL has more', () => {
+    expect(redactUrl(URL_MONIKERS.devnet)).toBe('https://api.devnet.solana.com');
+    expect(redactUrl(URL_MONIKERS.localhost)).toBe('http://127.0.0.1:8899');
+    expect(redactUrl('https://devnet.helius-rpc.com/?api-key=k')).toBe('https://devnet.helius-rpc.com/…');
+    expect(redactUrl('https://solana-devnet.g.alchemy.com/v2/k')).toBe('https://solana-devnet.g.alchemy.com/…');
+    expect(redactUrl('https://user:pass@rpc.example')).toBe('https://rpc.example/…');
+  });
+
+  it('replaces the URL as typed, as the CLI prints it, and its secret parts in any text', () => {
+    const url = 'https://user:pw-secret@rpc.example/v2/path-secret?api-key=query-secret';
+    const text = [
+      url,
+      new URL(url).href,
+      'https://rpc.example/v2/path-secret?api-key=query-secret',
+      'key api-key=query-secret',
+      'path /v2/path-secret',
+      'password pw-secret',
+    ].join('\n');
+    const redacted = redactText(text, url);
+    for (const secret of ['path-secret', 'query-secret', 'pw-secret']) expect(redacted).not.toContain(secret);
+    expect(redacted.split('\n')[0]).toBe('https://rpc.example/…');
+  });
+
+  it('leaves text alone when the URL hides nothing', () => {
+    const text = 'Error: error sending request for url (http://127.0.0.1:8899/)';
+    expect(redactText(text, URL_MONIKERS.localhost)).toBe(text);
+    expect(redactText(text, URL_MONIKERS.devnet)).toBe(text);
   });
 });

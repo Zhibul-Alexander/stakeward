@@ -70,6 +70,11 @@ export function quote(value: string): string {
   return `"${value}"`;
 }
 
+/** A word bash and zsh pass on as typed: no glob (`?`, `*`, `[`), no `&`, `;`, `#`, quote or space. */
+function shellPlain(token: string): boolean {
+  return /^[\w@%+=:,./-]+$/.test(token);
+}
+
 /** The placeholders still in an argv or a line. */
 export function placeholdersIn(tokens: readonly string[]): string[] {
   return PLACEHOLDERS.filter((placeholder) => tokens.some((token) => token.includes(placeholder)));
@@ -89,7 +94,8 @@ export type FilledCommand = {
 /**
  * Fills a card template. `overrides` replace the value after a flag (`{ '--fee-payer': '<MAIN_KEY>' }`), with a
  * placeholder or a literal value; the variants are the card's own ("the main key may pay instead") or the user
- * errors the N-checks make.
+ * errors the N-checks make. A template word a shell would change goes in double quotes too: no word of the card is
+ * one, but a provider's `--url` with `?` or `&` is (zsh stops at an unmatched `?`, bash puts `&` in the background).
  */
 export function fillCommand(
   template: readonly string[],
@@ -99,7 +105,7 @@ export function fillCommand(
   const build = (wrap: (value: string) => string) => {
     const varied = template.map((token, index) => {
       const override = overrides[template[index - 1] ?? ''];
-      if (override === undefined) return token;
+      if (override === undefined) return isPlaceholder(token) || shellPlain(token) ? token : wrap(token);
       return isPlaceholder(override) ? override : wrap(override);
     });
     const wrapped: Partial<Record<RecoveryPlaceholder, string>> = {};

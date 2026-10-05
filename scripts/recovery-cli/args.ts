@@ -59,7 +59,39 @@ export function resolveUrl(value: string): string {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new UsageError(`--url takes devnet, localhost or an http(s) URL, got "${value}"`);
   }
+  // The card lines put the URL in double quotes (solana.ts fillCommand), which keep everything but these as typed.
+  if (/["$`\\]/.test(value)) throw new UsageError('--url cannot hold ", $, ` or \\');
   return value;
+}
+
+/**
+ * The URL as the console and docs/recovery-cli.md show it: the origin, plus `/…` when the URL has more. RPC providers
+ * keep the API key in the query string (Helius) or the path (Alchemy, QuickNode), and the doc is committed.
+ */
+export function redactUrl(url: string): string {
+  const parsed = new URL(url);
+  return hidesSomething(parsed) ? `${parsed.origin}/…` : parsed.origin;
+}
+
+function hidesSomething(url: URL): boolean {
+  return url.username !== '' || url.password !== '' || url.pathname !== '/' || url.search !== '' || url.hash !== '';
+}
+
+/**
+ * `text` (CLI output, an error, a report line) with the URL as typed and as the CLI prints it (`href`) replaced by
+ * redactUrl, then any query string, path or credentials of it left elsewhere replaced by `…`.
+ */
+export function redactText(text: string, url: string): string {
+  const parsed = new URL(url);
+  if (!hidesSomething(parsed)) return text;
+  // A NUL stands in for the whole URL while the parts go, so a short part cannot cut into the origin.
+  let result = text;
+  for (const whole of [url, parsed.href]) result = result.split(whole).join('\0');
+  const parts = [parsed.search.slice(1), parsed.hash.slice(1), parsed.pathname, parsed.username, parsed.password]
+    .filter((part) => part !== '' && part !== '/')
+    .sort((a, b) => b.length - a.length);
+  for (const part of parts) result = result.split(part).join('…');
+  return result.split('\0').join(redactUrl(url));
 }
 
 /** Relative paths are relative to where `pnpm` was started (INIT_CWD), not to scripts/. */

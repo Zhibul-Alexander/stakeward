@@ -62,9 +62,9 @@ The command line has its own names for the keys. Your main key is the withdraw a
 
 Without the second key, the thief cannot withdraw your stake or make it theirs. They can stop the staking and split the stake account. When the lock ends, the main key alone can withdraw, so the thief can too. Move every stake account to a new wallet well before then, at least a day earlier.
 
-1. Work on a computer you trust, not the one where the main key may have leaked. Keep the second key and the new wallet on a Ledger if you can: a Ledger key never leaves the device.
+1. Work on a computer you trust, not the one where the main key may have leaked. If you can, keep the second key and the new wallet each on its own Ledger, made from its own seed phrase: a Ledger key never leaves the device.
 2. If you cannot finish soon, first extend the lock with the second key alone, as in [Extend or remove the lock](#extend-or-remove-the-lock). The thief cannot undo that, and the stolen key signs nothing.
-3. Create a new wallet from a new seed phrase: a Ledger account you have never used, or a keypair file made with `solana-keygen new` on that trusted computer. Send it about 0.01 SOL for the fees. Do not send SOL to the stolen main key: a bot may take it at once.
+3. Create a new wallet from a new seed phrase: a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new` on that trusted computer. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from that Ledger's seed phrase, and whoever has the seed phrase has the new wallet too. Send the new wallet about 0.01 SOL for the fees. Do not send SOL to the stolen main key: a bot may take it at once.
 4. List every stake account of the main key, as in [Find your stake accounts](#find-your-stake-accounts).
 5. Run this for each stake account. The main key, the second key and the new wallet all sign; the new wallet pays:
 
@@ -188,7 +188,7 @@ If the thief got there first, only their key can change the lock now, and the st
 - If you lose the second key, you wait until the lock ends. Until then nobody can withdraw the stake or move it to a new wallet, not even you. After that, the main key alone can withdraw, so keep it safe until then.
 - The second key is not a backup of the main key. If you lose the main key, nobody can withdraw this stake or move it, not even with the second key. Keep a backup of the main key's seed phrase.
 - If you lost the main key and someone else may have it, extend the lock with the second key before each end time. The stake stays stuck, but nobody can take it.
-- A thief with only the main key can stop the staking, stake with another validator, split the stake account and change who manages staking. They cannot withdraw, take the main key's place or change the lock.
+- A thief with only the main key can stop the staking, stake with another validator, split the stake account and change who manages staking. While the lock holds, they cannot withdraw, take the main key's place or change the lock.
 - If the second key is lost and the main key is stolen, the thief can withdraw as soon as the lock ends.
 - If you lose both keys, nobody can recover this stake. If someone has both keys, they can take it.
 - The Solana command line cannot lock the stake again with the main key after a lock has ended: CLI 4.3.0 refuses because the old lock names another key. Protect the stake again in Stakeward.

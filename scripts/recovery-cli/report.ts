@@ -1,7 +1,7 @@
 // docs/recovery-cli.md: a short intro, then one section per cluster between markers. Each run rewrites only its own
 // section.
 import { formatLamports, formatSol } from '../gate/tx.ts';
-import type { RecoveryCluster } from './args.ts';
+import { redactText, redactUrl, type RecoveryCluster } from './args.ts';
 import type { CheckResult } from './checks.ts';
 
 export const RECOVERY_CLI_DOC = new URL('../../docs/recovery-cli.md', import.meta.url);
@@ -28,7 +28,9 @@ D — новый кошелёк, X — вор с украденным A. Про�
 - Devnet: \`pnpm recovery-cli --url devnet\`, спонсор \`.keys/devnet-funder.json\` (около 1,15 SOL; около 0,13 SOL с
   \`--skip-delegated\`, тогда N3, N9 и C8 не выполняются).
 
-Mainnet скрипт не запускает (проверка по genesis hash). Каждый прогон переписывает только свой раздел этого файла.`;
+Mainnet скрипт не запускает (проверка по genesis hash). Каждый прогон переписывает только свой раздел этого файла.
+Адрес RPC провайдера (\`--url <адрес>\`) этот файл и консоль показывают только началом, \`https://<хост>/…\`: ключ API из
+адреса никуда не записывается.`;
 
 const begin = (cluster: RecoveryCluster) => `<!-- recovery-cli:${cluster}:begin -->`;
 const end = (cluster: RecoveryCluster) => `<!-- recovery-cli:${cluster}:end -->`;
@@ -121,6 +123,7 @@ export function summary(report: RecoveryCliReport): string {
   return `${String(passed)} из ${String(report.results.length)} проверок прошли`;
 }
 
+/** The section for docs/recovery-cli.md, which is committed: the RPC URL is redacted everywhere in it. */
 export function renderSection(report: RecoveryCliReport): string {
   const { cluster } = report;
   const lines = [
@@ -129,7 +132,7 @@ export function renderSection(report: RecoveryCliReport): string {
     `Прогон ${report.startedAt.toISOString().slice(0, 19).replace('T', ' ')} UTC: ${summary(report)}.`,
     ...(report.aborted === null ? [] : ['', `**Прогон остановлен:** ${report.aborted}`]),
     '',
-    `- ${report.cliVersion}; RPC \`${report.url}\`.`,
+    `- ${report.cliVersion}; RPC \`${redactUrl(report.url)}\`.`,
     `- Оболочки: ${report.shells.join('; ')}.`,
     `- Ключи: ${report.keys.map((key) => `${key.role} ${addressCell(cluster, key.address)}`).join(', ')}. ` +
       `Спонсор ${addressCell(cluster, report.funder)}.`,
@@ -144,7 +147,7 @@ export function renderSection(report: RecoveryCliReport): string {
     '',
     resultsTable(report),
   ];
-  return lines.join('\n');
+  return redactText(lines.join('\n'), report.url);
 }
 
 /** Plain-text table for the terminal. */
@@ -155,5 +158,5 @@ export function consoleReport(report: RecoveryCliReport): string {
     return `${result.id.padEnd(5)}${status.padEnd(8)}${result.title}${detail}`;
   });
   const stopped = report.aborted === null ? '' : `; stopped: ${report.aborted}`;
-  return [...lines, '', `${HEADINGS[report.cluster]}: ${summary(report)}${stopped}`].join('\n');
+  return redactText([...lines, '', `${HEADINGS[report.cluster]}: ${summary(report)}${stopped}`].join('\n'), report.url);
 }

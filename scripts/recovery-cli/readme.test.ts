@@ -96,3 +96,30 @@ describe('README: Recover without Stakeward', () => {
     expect(named.filter((placeholder) => !known.has(placeholder))).toEqual([]);
   });
 });
+
+/** The lines of a level-3 subsection of "Recover without Stakeward". */
+function subsection(heading: string): string {
+  const start = SECTION.indexOf(`### ${heading}`);
+  if (start === -1) throw new Error(`README.md has no "### ${heading}" line`);
+  const end = SECTION.findIndex((line, index) => index > start && line.startsWith('### '));
+  return SECTION.slice(start + 1, end === -1 ? undefined : end).join('\n');
+}
+
+describe('README: the security advice a reader follows', () => {
+  it('never offers another account on a Ledger the reader already has as a new seed phrase', () => {
+    const stolen = subsection('Main key stolen');
+    // Every account on one Ledger comes from its one seed phrase (CLAUDE.md section 1: seed phrases phished from
+    // Ledger owners), so the new wallet must not share a device with the main key or the second key.
+    expect(stolen).not.toMatch(/account you have never used/i);
+    expect(stolen).not.toMatch(/second key and the new wallet on a Ledger/i);
+    expect(stolen).toContain('each on its own Ledger');
+    expect(stolen).toContain('Never use the Ledger that holds your main key or your second key');
+  });
+
+  it('says the thief with the main key is held back only while the lock holds', () => {
+    const limits = subsection('What no one can undo');
+    const thief = limits.split('\n').find((line) => line.startsWith('- A thief with only the main key'));
+    expect(thief).toBeDefined();
+    expect(thief).toContain('While the lock holds, they cannot withdraw');
+  });
+});
