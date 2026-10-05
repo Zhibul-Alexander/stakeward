@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { t } from '@/i18n';
 import type { LoadedAccount } from '@/pages/account/AccountView';
 import { appLinks } from '@/pages/app/view';
+import { SignWhere, type SignMode } from '@/signing/SignWhere';
 import { withdrawStage } from './stage.ts';
 import type { WithdrawWhat } from './WithdrawSigning.tsx';
 
@@ -19,6 +20,9 @@ type StageBlockProps = {
   headingRef: Ref<HTMLHeadingElement>;
   loaded: LoadedAccount;
   onSign: (what: WithdrawWhat) => void;
+  /** Where the second key signs a withdrawal while the lock holds: here, or on another device by link. */
+  secondMode: SignMode;
+  onSecondMode: (mode: SignMode) => void;
   /** Read the account again (Check again). */
   onCheckAgain: () => void;
   /** The countdown ran out: read the account again (the page throttles it). */
@@ -35,7 +39,7 @@ export function withdrawTitle(what: WithdrawWhat, lamports: bigint): string {
  * or withdraw; or why it cannot (another key manages staking, a lock no second key holds). One main action at a time
  * (UX rule 2).
  */
-export function StageBlock({ headingRef, loaded, onSign, onCheckAgain, onCountdownEnd }: StageBlockProps) {
+export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMode, onCheckAgain, onCountdownEnd }: StageBlockProps) {
   const headingId = useId();
   // Epoch ends are estimated from the device clock at the read: the countdown ticks on the device clock.
   const { account, clock, epoch, readAt: nowSec } = loaded;
@@ -108,6 +112,9 @@ export function StageBlock({ headingRef, loaded, onSign, onCheckAgain, onCountdo
                 <Line text={t('withdraw.ready.secondSigns', { lock: lockText(lockup, clock) })}>
                   <AddressText address={lockup.custodian} variant="full" />
                 </Line>
+                {/* Step 7: the second key signs here or on another device by link (spec 10.2). The note stays: a phone
+                    wallet's own browser offers only that wallet (UX rule 10). */}
+                <SignWhere role="second" value={secondMode} onChange={onSecondMode} />
                 <p className="max-w-prose text-sm text-muted">{t('withdraw.desktop')}</p>
               </>
             ) : (

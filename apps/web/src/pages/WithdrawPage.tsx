@@ -11,6 +11,7 @@ import { appLinks } from '@/pages/app/view';
 import { useChain } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
 import type { JobView, SigningState } from '@/signing/machine';
+import type { SignMode } from '@/signing/SignWhere';
 import { StageBlock, withdrawTitle } from './withdraw/StageBlock.tsx';
 import { WithdrawDone } from './withdraw/WithdrawDone.tsx';
 import { WithdrawSigning, type WithdrawWhat } from './withdraw/WithdrawSigning.tsx';
@@ -20,8 +21,11 @@ type WithdrawPageProps = {
   signing?: SigningTestOptions | undefined;
 };
 
-/** The keys of a run, fixed when it starts: who signs and what the signing section is titled. */
-type Run = { what: WithdrawWhat; key: number; title: string; mainKey: Address; secondKey: Address | null };
+/**
+ * The keys of a run, fixed when it starts: who signs, where the second key signs (`link` only for a withdrawal it
+ * co-signs) and what the signing section is titled.
+ */
+type Run = { what: WithdrawWhat; key: number; title: string; mainKey: Address; secondKey: Address | null; mode: SignMode };
 
 type PageState = { kind: 'view' } | { kind: 'sign'; run: Run } | { kind: 'done'; run: Run; job: JobView };
 
@@ -47,6 +51,8 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const load = useAccountState(chain, account, attempt);
   const loaded = loadedAccount(load);
   const [page, setPage] = useState<PageState>({ kind: 'view' });
+  // Where the second key signs a withdrawal (step 7 spec 10.2); kept across runs and Back.
+  const [secondMode, setSecondMode] = useState<SignMode>('here');
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
   const runKey = useRef(0);
@@ -82,7 +88,10 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   function start(what: WithdrawWhat, keys: { mainKey: Address; secondKey: Address | null }, lamports: bigint) {
     runKey.current += 1;
     setCheckFailed(false);
-    setPage({ kind: 'sign', run: { what, key: runKey.current, title: withdrawTitle(what, lamports), ...keys } });
+    // Only a withdrawal the second key co-signs can go by link; a deactivation and a lone main key sign here.
+    const mode: SignMode = what === 'withdraw' && keys.secondKey !== null ? secondMode : 'here';
+    const { mainKey, secondKey } = keys;
+    setPage({ kind: 'sign', run: { what, key: runKey.current, title: withdrawTitle(what, lamports), mainKey, secondKey, mode } });
   }
 
   function onFinished(run: Run, state: SigningState) {
@@ -149,6 +158,7 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
               account={account}
               mainKey={page.run.mainKey}
               secondKey={page.run.secondKey}
+              mode={page.run.mode}
               runKey={page.run.key}
               signing={signing}
               onFinished={(state) => {
@@ -163,6 +173,8 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
               what={page.run.what}
               job={page.job}
               mainKey={page.run.mainKey}
+              byLink={page.run.mode === 'link'}
+              signing={signing}
               checking={checking}
               checkFailed={checkFailed}
               onRetry={() => {
@@ -180,6 +192,8 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
               onSign={(what) => {
                 start(what, keysOf(loaded), loaded.account.lamports);
               }}
+              secondMode={secondMode}
+              onSecondMode={setSecondMode}
               onCheckAgain={() => {
                 // After a deactivation, Check again leaves its Done note behind: the fresh read says where it stands.
                 if (page.kind !== 'view') back();

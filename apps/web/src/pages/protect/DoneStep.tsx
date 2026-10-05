@@ -22,7 +22,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
 import { t } from '@/i18n';
+import type { SigningTestOptions } from '@/signing/create';
 import type { JobView } from '@/signing/machine';
+import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { defaultJobReason, jobStatus } from '@/signing/view';
 import { refusalText } from './plan.ts';
 import type { WizardState } from './wizard.ts';
@@ -55,6 +57,8 @@ export type ProtectDoneViewProps = {
   checking?: boolean | undefined;
   /** The last Check again could not read the chain. */
   checkFailed?: boolean | undefined;
+  /** After signing by link: the card that closes the main key's link-signing account (shown while it is there). */
+  nonceClose?: ReactNode;
   actions: ProtectDoneActions;
 };
 
@@ -66,12 +70,17 @@ export function DoneStep({
   state,
   mainKey,
   secondKeySlot,
+  byLink,
+  signing,
   ...rest
 }: Pick<ProtectDoneViewProps, 'headingRef' | 'watch' | 'checking' | 'checkFailed' | 'actions'> & {
   state: WizardState;
   mainKey: Address;
-  /** The second key slot's address, used when no protected account names the second key. */
+  /** The run's second key (its slot's, or the typed one by link), used when no protected account names it. */
   secondKeySlot: Address | null;
+  /** The run went by link: its link-signing account can be closed here (step 7 spec 10.1). */
+  byLink: boolean;
+  signing?: SigningTestOptions | undefined;
 }) {
   const outcomes = state.order.flatMap((id) => state.outcomes[id] ?? []);
   const secondKey = outcomes.map((job) => protectedAccountOf(job)?.lockup.custodian).find((key) => key !== undefined) ?? secondKeySlot;
@@ -84,6 +93,7 @@ export function DoneStep({
       secondKey={secondKey}
       lockUntil={state.lockUntil}
       telegramUrl={telegramLinkPath(mainKey)}
+      nonceClose={byLink ? <NonceCloseCard authority={mainKey} role="main" signing={signing} /> : undefined}
     />
   );
 }
@@ -109,6 +119,7 @@ export function ProtectDoneView({
   telegramUrl,
   checking = false,
   checkFailed = false,
+  nonceClose,
   actions,
 }: ProtectDoneViewProps) {
   const headingId = useId();
@@ -194,6 +205,7 @@ export function ProtectDoneView({
           </DoneCard>
         )}
         {watch.kind === 'idle' ? null : <MonitoringCard watch={watch} onRetry={actions.retryMonitoring} />}
+        {nonceClose}
         <DoneCard title={t('protect.done.telegram.title')} description={t('protect.done.telegram.body')}>
           <div>
             <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">

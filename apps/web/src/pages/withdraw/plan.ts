@@ -69,10 +69,13 @@ async function readAccounts(
  * 4. not inactive (by epochs) -> not-inactive; 5. a lock held by the main key itself or by no key -> unsupported-lock;
  * 6. otherwise build. The simulation is the real check: a stake still cooling down network-wide fails it with
  *    insufficient funds, whose text says to wait.
+ * With `link` (step 7 spec 10.2) every transaction is built on the main key's durable nonce (the main key pays and owns
+ * it) and the `remote` keys (the second key) sign on another device through a /cosign link.
  */
-export function withdrawPlan(input: { mainKey: Address }): SigningPlan {
-  const { mainKey } = input;
+export function withdrawPlan(input: { mainKey: Address; link?: { nonceAccount: Address; remote: readonly Address[] } | undefined }): SigningPlan {
+  const { mainKey, link } = input;
   return {
+    ...(link === undefined ? {} : { nonce: { nonceAccount: link.nonceAccount, nonceAuthority: mainKey }, remote: link.remote }),
     async prepare(chain, ids) {
       const { clock, reads } = await readAccounts(chain, ids, mainKey);
       const jobs: Record<string, JobPlan> = {};

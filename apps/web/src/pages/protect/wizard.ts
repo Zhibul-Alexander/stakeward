@@ -11,7 +11,9 @@ import {
   type SecondKeyViolation,
   type StakeAccount,
 } from '@stakeward/core';
+import { parseAddressInput } from '@/signing/AddressField';
 import type { JobState, JobView } from '@/signing/machine';
+import type { SignMode } from '@/signing/SignWhere';
 
 /**
  * The protect wizard's rules and state (F1, DECISIONS.md D48), pure. The selection lives only in the URL
@@ -127,6 +129,10 @@ export function blockers(step: 'accounts' | 'second-key' | 'period', input: Bloc
 export type WizardState = {
   step: WizardStep;
   seedConfirmed: boolean;
+  /** Where the second key signs: connected in this browser, or on another device by link (step 7 spec 10.1). */
+  secondMode: SignMode;
+  /** The second key's address as typed or pasted for signing by link (kept while the user goes back and forth). */
+  linkKey: string;
   period: LockPeriod;
   /** T, fixed when the period step's Continue is pressed; reused by every retry of the run. */
   lockUntil: bigint | null;
@@ -142,6 +148,8 @@ export type WizardState = {
 export type WizardAction =
   | { type: 'go'; step: 'accounts' | 'second-key' | 'period' }
   | { type: 'confirm-seed'; value: boolean }
+  | { type: 'second-mode'; value: SignMode }
+  | { type: 'link-key'; text: string }
   | { type: 'period'; value: LockPeriod }
   | { type: 'sign'; lockUntil: bigint; ids: readonly Address[] }
   | { type: 'finished'; jobs: readonly JobView[]; clock: ChainClock | null }
@@ -152,6 +160,8 @@ export function initialWizardState(): WizardState {
   return {
     step: 'accounts',
     seedConfirmed: false,
+    secondMode: 'here',
+    linkKey: '',
     period: DEFAULT_LOCK_PERIOD,
     lockUntil: null,
     run: null,
@@ -167,6 +177,10 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, step: action.step };
     case 'confirm-seed':
       return { ...state, seedConfirmed: action.value };
+    case 'second-mode':
+      return { ...state, secondMode: action.value };
+    case 'link-key':
+      return { ...state, linkKey: action.text };
     case 'period':
       return { ...state, period: action.value };
     case 'sign':
@@ -191,6 +205,17 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, outcomes };
     }
   }
+}
+
+/**
+ * The second key of the run: the second key slot's address when it signs here, the typed address when it signs by link
+ * (null until that is a valid address). A wrong typed address simply cannot sign; the joint signature on the chain is
+ * the only proof (F1.4).
+ */
+export function chosenSecondKey(state: Pick<WizardState, 'secondMode' | 'linkKey'>, slotAddress: Address | null): Address | null {
+  if (state.secondMode === 'here') return slotAddress;
+  const parsed = parseAddressInput(state.linkKey);
+  return parsed.ok ? parsed.address : null;
 }
 
 function nextRun(state: WizardState, ids: readonly Address[]): { key: number; ids: readonly Address[] } {

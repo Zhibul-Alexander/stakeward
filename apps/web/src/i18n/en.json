@@ -625,6 +625,8 @@
       "heading": "Connect your second key",
       "body": "Use a wallet made from a different seed phrase. It signs once now to show it works. Later it is needed to withdraw this stake or to move it to a new wallet.",
       "slotDescription": "Your second key. Connecting signs nothing.",
+      "linkAddress": "Second key address",
+      "linkHint": "Paste the address of the wallet that will be your second key. It signs on the other device; a wrong address simply cannot sign, and nothing changes.",
       "oneBrowser": "Both keys must be connected in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
       "sameWallet": "Both keys are in {wallet}. While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
       "problem": {
@@ -660,7 +662,9 @@
     "sign": {
       "heading": "Review and sign",
       "countOne": "1 transaction for 1 stake account. Your main key and your second key each approve it.",
-      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request."
+      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request.",
+      "linkOne": "1 transaction. Your main key signs here; your second key signs it from the link.",
+      "linkOther": "{count} transactions, one link each, one after another. Your main key signs here; your second key signs each link."
     },
     "refused": {
       "not-found": "This stake account no longer exists.",
@@ -733,7 +737,7 @@
       "mainAlone": "The lock has ended, so your main key signs alone.",
       "action": "Review and sign"
     },
-    "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, or remove the lock first.",
+    "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, sign by link, or remove the lock first.",
     "fallback": {
       "title": "Second key not at hand?",
       "body": "Your second key can remove the lock on its own, from any device. After that your main key withdraws alone, in any wallet.",

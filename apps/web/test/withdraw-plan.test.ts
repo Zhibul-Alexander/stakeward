@@ -108,6 +108,20 @@ describe('withdrawPlan', () => {
     expect(await decide(plan, w, ended)).toMatchObject({ kind: 'build', action: { secondKey: null } });
     expect(await decide(plan, w, byEpoch)).toMatchObject({ kind: 'build', action: { secondKey: w.K.address } });
   });
+
+  it('by link: builds on the main key\'s nonce, the second key signs remotely; live signing carries neither', async () => {
+    const w = await world();
+    const nonceAccount = (await generateKeyPairSigner()).address;
+    const live = withdrawPlan({ mainKey: w.A.address });
+    expect(live.nonce).toBeUndefined();
+    expect(live.remote).toBeUndefined();
+    const linked = withdrawPlan({ mainKey: w.A.address, link: { nonceAccount, remote: [w.K.address] } });
+    // The fee payer owns the nonce and always signs here (step 7 spec 1).
+    expect(linked.nonce).toEqual({ nonceAccount, nonceAuthority: w.A.address });
+    expect(linked.remote).toEqual([w.K.address]);
+    const locked = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address, lockup: lockBy(w.K.address) });
+    expect(await decide(linked, w, locked)).toEqual(await decide(live, w, locked));
+  });
 });
 
 describe('deactivatePlan', () => {

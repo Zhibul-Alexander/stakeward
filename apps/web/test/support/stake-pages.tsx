@@ -49,8 +49,17 @@ export function testPorts(chain: ChainPort, wallets: readonly TestWalletPort[], 
   };
 }
 
-/** Renders the site's stake account routes at `path` with these wallets in the browser and no key slot filled. */
-export function renderStakePage(chain: ChainPort, path: string, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): StakePage {
+/**
+ * Renders the site's stake account routes at `path` with these wallets in the browser and no key slot filled. `signing`
+ * replaces FAST_SIGNING (e.g. a link watch that waits, so a test acts before the page polls).
+ */
+export function renderStakePage(
+  chain: ChainPort,
+  path: string,
+  wallets: readonly TestWalletPort[],
+  ports: Partial<Ports> = {},
+  signing: SigningTestOptions = FAST_SIGNING,
+): StakePage {
   const page = testPorts(chain, wallets, ports);
   const location = memoryLocation({ path, record: true });
   const user = userEvent.setup();
@@ -60,13 +69,13 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
         <PortsProvider ports={page}>
           <Switch>
             <Route path="/withdraw/:account">
-              <WithdrawPage signing={FAST_SIGNING} />
+              <WithdrawPage signing={signing} />
             </Route>
             <Route path="/extend/:account">
-              <ExtendPage signing={FAST_SIGNING} />
+              <ExtendPage signing={signing} />
             </Route>
             <Route path="/rescue">
-              <RescuePage signing={FAST_SIGNING} />
+              <RescuePage signing={signing} />
             </Route>
           </Switch>
         </PortsProvider>

@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { isLanded } from '@/pages/account/check';
 import { JobOutcome } from '@/pages/account/JobOutcome';
+import type { SigningTestOptions } from '@/signing/create';
 import type { JobView } from '@/signing/machine';
+import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { withdrawRefusalText } from './plan.ts';
 import type { WithdrawWhat } from './WithdrawSigning.tsx';
 
@@ -19,6 +21,9 @@ type WithdrawDoneProps = {
   /** The run's outcome for this stake account. */
   job: JobView;
   mainKey: Address;
+  /** The run went by link: the main key's link-signing account can be closed here (its deposit comes back). */
+  byLink: boolean;
+  signing?: SigningTestOptions | undefined;
   checking: boolean;
   checkFailed: boolean;
   onRetry: () => void;
@@ -41,8 +46,12 @@ function TransactionLink({ signature }: { signature: Signature | null }) {
  * The end of a run on /withdraw/:account: the SOL that went to the main key, or that staking stops at the end of the
  * epoch (the page shows the countdown below from a fresh read), or what did not happen and the way forward.
  */
-export function WithdrawDone({ headingRef, what, job, mainKey, checking, checkFailed, onRetry, onCheckAgain, onBack }: WithdrawDoneProps) {
+export function WithdrawDone(props: WithdrawDoneProps) {
+  const { headingRef, what, job, mainKey, byLink, signing, checking, checkFailed, onRetry, onCheckAgain, onBack } = props;
   const headingId = useId();
+  // After signing by link: close the link-signing account (step 7 spec 10.2). While the outcome is open it also
+  // cancels the link; it is shown only while the account is there.
+  const closeCard = byLink ? <NonceCloseCard authority={mainKey} role="main" signing={signing} /> : null;
   if (!isLanded(job)) {
     return (
       <JobOutcome
@@ -55,7 +64,9 @@ export function WithdrawDone({ headingRef, what, job, mainKey, checking, checkFa
         onRetry={onRetry}
         onCheckAgain={onCheckAgain}
         onBack={onBack}
-      />
+      >
+        {closeCard}
+      </JobOutcome>
     );
   }
   if (what === 'deactivate') {
@@ -79,6 +90,7 @@ export function WithdrawDone({ headingRef, what, job, mainKey, checking, checkFa
         {t('withdraw.done.title', { amount: amount === null ? '' : formatSol(amount) })}
       </h2>
       <TransactionLink signature={job.signature} />
+      {closeCard}
       <div>
         <Button asChild>
           <Link href={`/app?${new URLSearchParams({ address: mainKey }).toString()}`}>{t('common.backToAccounts')}</Link>

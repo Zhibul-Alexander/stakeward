@@ -6,6 +6,7 @@ import {
   accountParams,
   blockers,
   candidates,
+  chosenSecondKey,
   effectiveSelection,
   initialWizardState,
   leftOut,
@@ -156,6 +157,8 @@ describe('wizardReducer', () => {
     expect(initialWizardState()).toEqual({
       step: 'accounts',
       seedConfirmed: false,
+      secondMode: 'here',
+      linkKey: '',
       period: DEFAULT_LOCK_PERIOD,
       lockUntil: null,
       run: null,
@@ -170,6 +173,8 @@ describe('wizardReducer', () => {
       initialWizardState(),
       { type: 'go', step: 'second-key' },
       { type: 'confirm-seed', value: true },
+      { type: 'second-mode', value: 'link' },
+      { type: 'link-key', text: ` ${K} ` },
       { type: 'go', step: 'period' },
       { type: 'period', value: '12-months' },
       { type: 'go', step: 'second-key' },
@@ -178,6 +183,24 @@ describe('wizardReducer', () => {
     expect(state.step).toBe('accounts');
     expect(state.seedConfirmed).toBe(true);
     expect(state.period).toBe('12-months');
+    expect(state.secondMode).toBe('link');
+    expect(state.linkKey).toBe(` ${K} `);
+  });
+
+  it('the second key: the slot\'s here, the typed address by link (step 7 spec 10.1)', () => {
+    const here = initialWizardState();
+    expect(chosenSecondKey(here, K)).toBe(K);
+    expect(chosenSecondKey(here, null)).toBeNull();
+    // By link the slot does not count; the typed text does, trimmed, once it is a wallet address.
+    const link = reduce(here, { type: 'second-mode', value: 'link' });
+    expect(chosenSecondKey(link, K)).toBeNull();
+    expect(chosenSecondKey(reduce(link, { type: 'link-key', text: ` ${OTHER}\n` }), K)).toBe(OTHER);
+    expect(chosenSecondKey(reduce(link, { type: 'link-key', text: 'not-an-address' }), K)).toBeNull();
+    expect(chosenSecondKey(reduce(link, { type: 'link-key', text: ZERO_ADDRESS }), K)).toBeNull();
+    // Back to here: the typed text is kept for later, the slot counts again.
+    const back = reduce(link, { type: 'link-key', text: OTHER }, { type: 'second-mode', value: 'here' });
+    expect(back.linkKey).toBe(OTHER);
+    expect(chosenSecondKey(back, K)).toBe(K);
   });
 
   it('sign and retry start a new run key; finished merges outcomes in first-signed order', () => {
