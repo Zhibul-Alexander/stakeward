@@ -17,6 +17,7 @@ import { key } from './transactions.ts';
 /** Limits configured in wrangler.jsonc (env dev). */
 const RPC_LIMIT = 30;
 const LOOKUP_LIMIT = 20;
+const WATCH_LIMIT = 10;
 
 const EPOCH_INFO = { jsonrpc: '2.0', id: 1, method: 'getEpochInfo', params: [] };
 
@@ -51,6 +52,24 @@ describe('rate limits per client IP', () => {
     expect(limited.status).toBe(429);
     expect(limited.headers.get('Retry-After')).toBe('60');
     expect(await limited.json()).toMatchObject({ error: 'rate-limited' });
+  });
+
+  it(`POST /api/watch: ${String(WATCH_LIMIT)} requests per 60 s, then HTTP 429, on its own counter`, async () => {
+    const upstream = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
+    const ip = freshIp();
+    // Invalid bodies count too: the limit runs before anything else, and they never reach upstream.
+    for (let i = 0; i < WATCH_LIMIT; i++) expect((await testApp(upstream, { ip }).watch({})).status).toBe(400);
+    const limited = await testApp(upstream, { ip }).watch({ accounts: [key(1)] });
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('Retry-After')).toBe('60');
+    expect(await limited.json()).toEqual({ error: 'rate-limited', message: 'Too many requests, try again in a minute' });
+    expect(securityHeadersOf(limited)).toEqual(SECURITY_HEADERS);
+    expect(upstream.calls).toHaveLength(0);
+
+    // The lookup and proxy limits of the same client are untouched, and another client is not affected.
+    expect((await testApp(upstream, { ip }).request('/api/stake-accounts')).status).toBe(400);
+    expect((await testApp(upstream, { ip }).rpc(EPOCH_INFO)).status).toBe(200);
+    expect((await testApp(upstream).watch({})).status).toBe(400);
   });
 
   it('the two limits are separate counters', async () => {

@@ -5,12 +5,14 @@ import { rateLimit } from './rate-limit.ts';
 import { JSON_RPC_ERRORS, jsonRpcError, MAX_RPC_BODY_BYTES, rpcHandler } from './rpc.ts';
 import { stakeAccountsHandler } from './stake-accounts.ts';
 import { DEFAULT_UPSTREAM_OPTIONS, type UpstreamOptions } from './upstream.ts';
+import { MAX_WATCH_BODY_BYTES, watchHandler } from './watch.ts';
 
 export type AppEnv = { Bindings: Env };
 
 /** Rate limit periods; the limits themselves live with the bindings in wrangler.jsonc. */
 const RPC_RATE_LIMIT_PERIOD_SECONDS = 10;
 const LOOKUP_RATE_LIMIT_PERIOD_SECONDS = 60;
+const WATCH_RATE_LIMIT_PERIOD_SECONDS = 60;
 
 export type AppOptions = { upstream?: Partial<UpstreamOptions> };
 
@@ -43,6 +45,18 @@ export function createApp(options: AppOptions = {}) {
       onError: (c) => jsonRpcError(c, 413, null, JSON_RPC_ERRORS.invalidRequest, 'Request body too large'),
     }),
     rpcHandler(upstream),
+  );
+
+  app.post(
+    '/watch',
+    rateLimit('WATCH_RATE_LIMIT', WATCH_RATE_LIMIT_PERIOD_SECONDS, (c) =>
+      c.json({ error: 'rate-limited', message: 'Too many requests, try again in a minute' }, 429),
+    ),
+    bodyLimit({
+      maxSize: MAX_WATCH_BODY_BYTES,
+      onError: (c) => c.json({ error: 'too-large', message: 'Request body too large' }, 413),
+    }),
+    watchHandler(upstream),
   );
 
   app.notFound((c) => c.json({ error: 'Not found' }, 404));

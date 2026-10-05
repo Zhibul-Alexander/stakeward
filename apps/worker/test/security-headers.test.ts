@@ -1,5 +1,9 @@
+import { STAKE_PROGRAM_ADDRESS, SYSVAR_CLOCK_ADDRESS, SYSVAR_PROGRAM_ADDRESS } from '@stakeward/core';
 import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import { MAX_WATCH_BODY_BYTES } from '../src/watch.ts';
+import { fakeUpstream, freshIp, multipleAccountsAnswer, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
+import { clockData, key, stakeAccountData } from './transactions.ts';
 
 /** Parses the `/*` block of a Workers Static Assets `_headers` file into name -> value. */
 function parseHeadersFile(text: string): Map<string, string> {
@@ -32,5 +36,41 @@ describe('static _headers and API headers', () => {
     for (const [name, value] of fileHeaders) {
       expect(res.headers.get(name), name).toBe(value);
     }
+  });
+});
+
+describe('POST /api/watch responses carry the section 11 headers', () => {
+  it('watched, rejected, bad requests, upstream failures and the deployed entry point', async () => {
+    const stake = key(10);
+    const clockUnix = BigInt(Math.floor(Date.now() / 1000));
+    const clock = { data: clockData(5000n, 950n, clockUnix), lamports: 1n, owner: SYSVAR_PROGRAM_ADDRESS };
+    const locked = {
+      data: stakeAccountData({ staker: key(1), withdrawer: key(1), custodian: key(2), unixTimestamp: clockUnix + 86_400n }),
+      lamports: 10_000_000_000n,
+      owner: STAKE_PROGRAM_ADDRESS,
+    };
+    const answer = (account: typeof locked | null) =>
+      fakeUpstream((call) => {
+        expect(call.json.params[0]).toEqual([SYSVAR_CLOCK_ADDRESS, stake]);
+        return multipleAccountsAnswer(call.json.id, 5000, [clock, account]);
+      });
+    const body = { accounts: [stake] };
+    const responses = [
+      await testApp(answer(locked)).watch(body),
+      await testApp(answer(null)).watch(body),
+      await testApp(answer(null)).watch({ accounts: [] }),
+      await testApp(answer(null)).watch(body, { headers: { 'Content-Type': 'text/plain' } }),
+      await testApp(answer(null)).watch(' '.repeat(MAX_WATCH_BODY_BYTES + 1)),
+      await testApp(fakeUpstream(() => new Response('', { status: 503 }))).watch(body),
+      await testApp(fakeUpstream(() => 'hang'), { timeoutMs: 20 }).watch(body),
+      await testApp(answer(null), { rpcUrl: '' }).watch(body),
+      await exports.default.fetch('https://stakeward.test/api/watch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': freshIp() },
+        body: '{}',
+      }),
+    ];
+    expect(responses.map((r) => r.status)).toEqual([200, 200, 400, 415, 413, 502, 504, 503, 400]);
+    for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
   });
 });

@@ -102,20 +102,24 @@ export function testApp(
     if (!headers.has('CF-Connecting-IP')) headers.set('CF-Connecting-IP', ip);
     return app.request(`${ORIGIN}${path}`, { ...init, headers }, bindings, createExecutionContext());
   };
+  /** POST with a JSON body (object or raw text); Content-Type application/json unless `init` sets one. */
+  const post = (path: string, body: unknown, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    return request(path, {
+      method: 'POST',
+      ...init,
+      headers,
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    });
+  };
   return {
     request,
     ip,
     /** POST /api/rpc with a JSON body (object or raw text). */
-    rpc: (body: unknown, init: RequestInit = {}) => {
-      const headers = new Headers(init.headers);
-      if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-      return request('/api/rpc', {
-        method: 'POST',
-        ...init,
-        headers,
-        body: typeof body === 'string' ? body : JSON.stringify(body),
-      });
-    },
+    rpc: (body: unknown, init: RequestInit = {}) => post('/api/rpc', body, init),
+    /** POST /api/watch with a JSON body (object or raw text). */
+    watch: (body: unknown, init: RequestInit = {}) => post('/api/watch', body, init),
   };
 }
 
