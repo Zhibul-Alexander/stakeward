@@ -107,7 +107,13 @@ describe('CPU of the monitor pass (measurement)', () => {
       lockUntil: LOCK_UNTIL,
     }));
     const links: Link[] = Array.from({ length: 25 }, (_, c) => ({ wallet: address(200 + c), chatId: String(1_000_000 + c), lastEventId: 0 }));
-    const opts = { maxMessages: 25, nowMs: ROW_MS + 120_000, siteOrigin: 'https://stakeward.test', cluster: 'devnet' } as const;
+    const opts = {
+      maxMessages: 25,
+      nowMs: ROW_MS + 120_000,
+      siteOrigin: 'https://stakeward.test',
+      cluster: 'devnet',
+      fullWindow: true,
+    } as const;
     const run = () => {
       const plan = planDeliveries(pending, links, opts);
       return settleDeliveries(pending, links, plan.messages, plan.messages.map(() => 'sent'), plan.doneWithoutSend);

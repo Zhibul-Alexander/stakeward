@@ -1,6 +1,6 @@
 // Done-when of step 5: a failed send is retried, 403 removes the link (step 5 spec sections 7 and 12.2). Monitor
 // passes against the fake chain, the fake Telegram and the real local D1; every chat gets every event once.
-import type { Address } from '@solana/kit';
+import { getAddressDecoder, type Address } from '@solana/kit';
 import { formatAlert, type MonitorEventDetails } from '@stakeward/core';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -401,5 +401,68 @@ describe('the delivery commit', () => {
     const batch = entries.filter((e) => e.call === commit[0]?.call).map((e) => e.name);
     expect(batch).toEqual(['LINK_PROGRESS', 'UNLINK_CHATS', 'MARK_NOTIFIED', 'PUT_META']);
     expect(entries.map((e) => e.name).indexOf('PENDING')).toBeLessThan(entries.map((e) => e.name).indexOf('LINK_PROGRESS'));
+  });
+});
+
+describe('a busy chat does not hold back the others', () => {
+  const BUSY = 'busy';
+  const VICTIM = 'victim';
+  const busyWallet = key(30);
+  const victimWallet = key(31);
+
+  /** `count` DEACTIVATED events of closed rows of `wallet` (never paged), oldest first; returns their alert texts. */
+  async function seedEvents(wallet: Address, count: number, first: number, nowMs: number): Promise<string[]> {
+    const texts: string[] = [];
+    const statements: D1PreparedStatement[] = [];
+    for (let i = first; i < first + count; i++) {
+      const bytes = new Uint8Array(32).fill(0x44);
+      bytes[0] = i >> 8;
+      bytes[1] = i & 0xff;
+      const stake = getAddressDecoder().decode(bytes);
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO accounts (stake_account, withdrawer, staker, custodian, lock_until, lamports, state, slot, checked_at, created_at)
+           VALUES (?1, ?2, ?2, ?3, CAST(?5 AS INTEGER), '1', 'closed', 1, ?4, ?4)`,
+        ).bind(stake, wallet, SECOND, nowMs, LOCK_UNTIL.toString()),
+        env.DB.prepare(
+          `INSERT INTO events (stake_account, type, details_json, slot, detected_at) VALUES (?1, 'DEACTIVATED', '{"deactivationEpoch":"951"}', 1, ?2)`,
+        ).bind(stake, nowMs),
+      );
+      texts.push(alertText({ type: 'DEACTIVATED', details: { deactivationEpoch: '951' } }, stake, wallet));
+    }
+    await env.DB.batch(statements);
+    return texts;
+  }
+
+  it('150 events of one chat, then one of another chat: the other chat gets it on the second pass', async () => {
+    const h = createHarness();
+    h.at('2026-10-05T01:00:00Z');
+    const busyTexts = await seedEvents(busyWallet, 150, 0, h.clock.ms);
+    const [victimText] = await seedEvents(victimWallet, 1, 150, h.clock.ms);
+    await h.linkChat(busyWallet, BUSY);
+    await h.linkChat(victimWallet, VICTIM);
+
+    // The window (the 100 oldest pending) holds only the busy chat's events: its message covers all of them.
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', pending: 100, messages: 1, alertsDelivered: 100 });
+    const [first] = h.telegram.delivered(BUSY);
+    expect(alertsIn(first?.text ?? '')).toEqual([
+      ...busyTexts.slice(0, 5),
+      'And 95 more alerts for the wallets this chat follows. The Stakeward accounts page lists every change.',
+    ]);
+    expect(first?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue` });
+
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', pending: 51, messages: 2 });
+    expect(texts(h, VICTIM)).toEqual([`Devnet: ${victimText ?? ''}`]);
+
+    // The busy chat gets the rest, each event once: shown, or counted in the first message's last line.
+    for (let pass = 0; pass < 12; pass++) {
+      h.advance(120_000);
+      await h.pass();
+    }
+    const shown = h.telegram.delivered(BUSY).flatMap((m) => alertsIn(m.text)).filter((text) => !text.startsWith('And '));
+    expect(shown).toEqual([...busyTexts.slice(0, 5), ...busyTexts.slice(100)]);
+    expect((await h.readEvents()).every((e) => e.notified_at !== null)).toBe(true);
+    expect((await h.readMeta()).alerts_sent).toBe('151');
   });
 });

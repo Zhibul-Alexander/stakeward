@@ -6,6 +6,7 @@ import {
   helpText,
   linkedText,
   linkLimitText,
+  moreAlertsText,
   notAnAddressText,
   stakeAccountsText,
   statusText,
@@ -17,7 +18,7 @@ const ROLE_WORDS = /custodian|withdrawer|staker/i;
 const NOW = Date.UTC(2026, 9, 5, 12);
 
 function everyText(): string[] {
-  const texts: string[] = [linkLimitText(), stopText(), statusText([], null, NOW)];
+  const texts: string[] = [linkLimitText(), stopText(), statusText([], null, NOW), moreAlertsText(1), moreAlertsText(95)];
   for (const origin of ['https://stakeward.test', null]) {
     texts.push(helpText(origin), notAnAddressText(origin));
     for (const watched of [0, 1, 2]) texts.push(linkedText(key(1), watched, origin));

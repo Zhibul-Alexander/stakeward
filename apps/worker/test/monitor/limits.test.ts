@@ -80,17 +80,29 @@ async function seedDeliveries(nowMs: number): Promise<Map<string, number>> {
   return indexOf;
 }
 
-/** Every chat got every event of the main keys it follows exactly once (the alert texts Telegram took). */
-function expectEachOnce(h: Harness, indexOf: Map<string, number>): void {
+/**
+ * Every chat got every event of the main keys it follows exactly once (the messages Telegram took): as its alert
+ * text, or counted in the last line of a message that covers more alerts than it shows (a full delivery window).
+ * meta.alerts_sent counts what every message covered: no event was covered twice.
+ */
+async function expectEachOnce(h: Harness, indexOf: Map<string, number>): Promise<void> {
+  let pairs = 0;
   CHATS.forEach((chat, c) => {
-    const received = h.telegram
-      .delivered(chat)
-      .flatMap((m) => m.text.replace(/^Devnet: /, '').split('\n\n'))
-      .map((text) => indexOf.get(text) ?? -1);
+    const shown: number[] = [];
+    let counted = 0;
+    for (const text of h.telegram.delivered(chat).flatMap((m) => m.text.replace(/^Devnet: /, '').split('\n\n'))) {
+      const more = /^And (\d+) more alerts? for the wallets this chat follows\./.exec(text);
+      if (more === null) shown.push(indexOf.get(text) ?? -1);
+      else counted += Number(more[1]);
+    }
     const wallets = followed(c);
     const expected = Array.from({ length: ALERT_EVENTS }, (_, i) => i).filter((i) => wallets.includes(alertWallet(i)));
-    expect(received.sort((a, b) => a - b)).toEqual(expected);
+    expect(new Set(shown).size).toBe(shown.length);
+    expect(shown.filter((i) => !expected.includes(i))).toEqual([]);
+    expect(shown.length + counted).toBe(expected.length);
+    pairs += expected.length;
   });
+  expect((await h.readMeta()).alerts_sent).toBe(String(pairs));
 }
 
 /** The n-th stake account of the w-th main key. */
@@ -207,7 +219,7 @@ describe('limits of a pass', () => {
       expect(daily).toBe(1);
       // The sends were held back by the budget only as far as the plan says (step 5 spec section 6.2).
       expect(sendsSeen).toBeGreaterThanOrEqual(plan === 'free' ? 19 : MONITOR_LIMITS.maxSends);
-      expectEachOnce(h, indexOf);
+      await expectEachOnce(h, indexOf);
 
       const events = (await h.readEvents()).filter((e) => watched.has(e.stake_account));
       expect(events.every((e) => e.type === 'DEACTIVATED')).toBe(true);

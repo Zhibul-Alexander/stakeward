@@ -10,6 +10,7 @@ import {
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { siteUrl } from '../telegram/api.ts';
+import { moreAlertsText } from '../telegram/texts.ts';
 import type { StoredEventType } from './classify.ts';
 import { MONITOR_LIMITS } from './config.ts';
 import type { LinkRow, PendingRow } from './store.ts';
@@ -20,11 +21,14 @@ import type { LinkRow, PendingRow } from './store.ts';
  *
  * Progress lives on the link: `alert_links.last_event_id` is the newest event id the chat has received for that
  * wallet (a new link starts at MAX(events.id)). A pass loads the oldest pending events (a prefix of all of them by
- * id), and each chat gets one message: the prefix of its own list, at most 5 alerts. After a message Telegram took
- * (or refused for good, 400), every link of the chat moves to the message's last id. That is exact: any event with a
- * smaller id that concerns the chat and is still undelivered is in the loaded prefix, so it was in the message. An
- * event is closed (`notified_at`) once every link of its recipients is past it, or when it cannot be sent at all.
- * The only repeat: Telegram took a message and the commit after it failed (at least once).
+ * id), and each chat gets one message: the prefix of its own list, at most 5 alerts. When the window is full (more
+ * events may wait behind it), the message covers the chat's whole list in it, the alerts past the shown ones counted
+ * in a last line: otherwise one chat with more than a window of events (a validator deactivating 150 accounts, or
+ * someone changing their own watched locks every pass) would keep every other chat's events out of the window. After
+ * a message Telegram took (or refused for good, 400), every link of the chat moves to the message's last id. That is
+ * exact: any event with a smaller id that concerns the chat and is still undelivered is in the loaded prefix, so it
+ * was in the message. An event is closed (`notified_at`) once every link of its recipients is past it, or when it
+ * cannot be sent at all. The only repeat: Telegram took a message and the commit after it failed (at least once).
  */
 
 /** An `events` row waiting for delivery, with its account's keys and lock end as stored now. */
@@ -103,7 +107,7 @@ export function alertOf(e: PendingEvent, nowSec: bigint): Alert | null {
 
 export type PlannedMessage = {
   chatId: string;
-  /** The events in this message, by id. */
+  /** The events this message covers, by id: shown, or counted in its last line. */
   eventIds: number[];
   /** The chat's progress once the message is through: the largest of eventIds. */
   lastEventId: number;
@@ -131,14 +135,15 @@ export type DeliveryPlan = {
  * 1. Events older than 7 days, events alertOf gives null for, and events no chat follows are closed unsent.
  * 2. A chat's list: the events, by id, that one of its links follows (a recipient wallet) and is not yet past.
  * 3. Chats by the first id of their list, then by chat id; the first `maxMessages` get one message each: the prefix
- *    of their list, at most 5 alerts and 3500 characters (the first alert always goes).
- * 4. Text: "Devnet: " on devnet, then the alerts separated by a blank line. Button: the first alert that opens
+ *    of their list, at most 5 alerts and 3500 characters (the first alert always goes). With `fullWindow` the message
+ *    covers the whole list: the rest is one last line (moreAlertsText).
+ * 4. Text: "Devnet: " on devnet, then the alerts separated by a blank line. Button: the first covered alert that opens
  *    Rescue, else the first alert; always on `siteOrigin` (siteUrl). Without a site origin no message is planned.
  */
 export function planDeliveries(
   pending: readonly PendingEvent[],
   links: readonly Link[],
-  opts: { maxMessages: number; nowMs: number; siteOrigin: string | null; cluster: Cluster },
+  opts: { maxMessages: number; nowMs: number; siteOrigin: string | null; cluster: Cluster; fullWindow: boolean },
 ): DeliveryPlan {
   const nowSec = BigInt(Math.floor(opts.nowMs / 1000));
   const linksByWallet = groupLinks(links);
@@ -195,13 +200,15 @@ export function planDeliveries(
     }
     const first = items[0];
     if (first === undefined) continue;
-    const buttonAlert = items.find((item) => item.alert.path === '/rescue')?.alert ?? first.alert;
-    const eventIds = items.map((item) => item.event.id);
+    const covered = opts.fullWindow ? list : items;
+    if (covered.length > items.length) text = `${text}\n\n${moreAlertsText(covered.length - items.length)}`;
+    const buttonAlert = covered.find((item) => item.alert.path === '/rescue')?.alert ?? first.alert;
+    const eventIds = covered.map((item) => item.event.id);
     plan.messages.push({
       chatId,
       eventIds,
       lastEventId: Math.max(...eventIds),
-      alertCount: items.filter((item) => !item.event.type.startsWith('REMINDER_')).length,
+      alertCount: covered.filter((item) => !item.event.type.startsWith('REMINDER_')).length,
       text,
       button: { label: buttonAlert.buttonLabel, url: siteUrl(origin, buttonAlert.path) },
     });

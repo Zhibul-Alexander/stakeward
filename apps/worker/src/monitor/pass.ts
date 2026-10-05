@@ -492,6 +492,7 @@ async function deliver(pass: LoadedPass): Promise<void> {
     nowMs: deps.now(),
     siteOrigin: config.siteOrigin,
     cluster: config.cluster,
+    fullWindow: pending.length >= MONITOR_LIMITS.pendingLimit,
   });
   report.expiredUndelivered = plan.expired;
   report.superseded = plan.superseded;

@@ -11,6 +11,15 @@ export const MAX_LINKS_PER_CHAT = 20;
 const NO_SEED_PHRASE = 'Stakeward never asks for your seed phrase.';
 const COMMANDS = '/status lists the wallets of this chat, /stop turns all alerts off.';
 
+/**
+ * The last line of an alert message that covers more alerts than it shows (monitor/deliver.ts, a full delivery
+ * window). The message's button opens the site.
+ */
+export function moreAlertsText(count: number): string {
+  const alerts = count === 1 ? '1 more alert' : `${String(count)} more alerts`;
+  return `And ${alerts} for the wallets this chat follows. The Stakeward accounts page lists every change.`;
+}
+
 /** "1 stake account", "3 stake accounts". */
 export function stakeAccountsText(count: number): string {
   return count === 1 ? '1 stake account' : `${String(count)} stake accounts`;
