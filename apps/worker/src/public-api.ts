@@ -150,25 +150,57 @@ function parseDetails(text: string): unknown {
 }
 
 /**
- * GET /api/stats: watched accounts whose lock is in force now, the lamports in them (a decimal string: SQLite sums
- * integers exactly and all SOL is below 2^63 lamports) and the alerts delivered so far (meta.alerts_sent).
+ * How long /api/stats answers with its stored count before it counts again. Counting reads every watched row, and D1's
+ * free plan allows 5 million rows read a day for everything, monitoring included: counted on every request (20 a
+ * minute per IP), 1,000 watched rows would let one client read 28.8 million a day and stop the alerts. Stored, it is
+ * at most 144 counts a day, whoever asks.
+ */
+export const STATS_TTL_MS = 10 * 60_000;
+
+type StatsCount = { at: number; accounts: number; lamports: string };
+
+/**
+ * GET /api/stats: watched accounts whose lock is in force, the lamports in them (a decimal string: SQLite sums integers
+ * exactly and all SOL is below 2^63 lamports) and the alerts delivered so far (meta.alerts_sent, read on every
+ * request). The two counts come from meta.stats_cache while it is younger than STATS_TTL_MS; `now` is when they were
+ * counted, so the site says "counted at" truthfully.
  */
 export function statsHandler(now: () => number) {
   return async (c: Context<AppEnv>): Promise<Response> => {
     const db = c.env.DB;
     const nowMs = now();
-    const [stats, sent] = await db.batch([
-      db.prepare(SQL.STATS).bind(Math.floor(nowMs / 1000)),
-      db.prepare(SQL.ALERTS_SENT),
-    ]);
-    const row = stats?.results[0] as { accounts: unknown; lamports: unknown } | undefined;
+    const [cache, sent] = await db.batch([db.prepare(SQL.STATS_CACHE), db.prepare(SQL.ALERTS_SENT)]);
     const sentValue = (sent?.results[0] as { value: unknown } | undefined)?.value;
     const alertsSent = typeof sentValue === 'string' && /^[0-9]{1,15}$/.test(sentValue) ? Number(sentValue) : 0;
-    return c.json({
-      accountsLocked: Number(row?.accounts ?? 0),
-      lamportsLocked: typeof row?.lamports === 'string' ? row.lamports : '0',
-      alertsSent,
-      now: isoOf(nowMs),
-    });
+
+    let count = statsCountOf((cache?.results[0] as { value: unknown } | undefined)?.value);
+    // A count from the future (the clock went back, or a bad row) is counted again too.
+    if (count === null || count.at > nowMs || nowMs - count.at >= STATS_TTL_MS) {
+      const row = await db.prepare(SQL.STATS).bind(Math.floor(nowMs / 1000)).first<{ accounts: unknown; lamports: unknown }>();
+      count = {
+        at: nowMs,
+        accounts: Number(row?.accounts ?? 0),
+        lamports: typeof row?.lamports === 'string' ? row.lamports : '0',
+      };
+      await db.prepare(SQL.STATS_CACHE_PUT).bind(JSON.stringify(count)).run();
+    }
+    return c.json({ accountsLocked: count.accounts, lamportsLocked: count.lamports, alertsSent, now: isoOf(count.at) });
   };
+}
+
+/** The stored count of a meta.stats_cache value; null when it is missing or not exactly what statsHandler writes. */
+function statsCountOf(value: unknown): StatsCount | null {
+  if (typeof value !== 'string') return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const { at, accounts, lamports } = parsed as Record<string, unknown>;
+  if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0) return null;
+  if (typeof accounts !== 'number' || !Number.isSafeInteger(accounts) || accounts < 0) return null;
+  if (typeof lamports !== 'string' || !/^(0|[1-9][0-9]{0,19})$/.test(lamports)) return null;
+  return { at, accounts, lamports };
 }

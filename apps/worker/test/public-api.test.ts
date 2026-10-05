@@ -4,6 +4,7 @@ import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { insertWatchedStatements, type WatchRow } from '../src/monitor/store.ts';
+import { STATS_TTL_MS } from '../src/public-api.ts';
 import { fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
 import { countingDb } from './monitor/harness.ts';
 import { key } from './transactions.ts';
@@ -241,6 +242,44 @@ describe('GET /api/stats', () => {
       alertsSent: 0,
       now: '2026-10-05T12:00:00.000Z',
     });
+  });
+
+  it('counts at most once per 10 minutes, whoever asks, and says when it counted', async () => {
+    const at = (ms: number, db: D1Database = env.DB) => testApp(noUpstream(), { now: () => ms, env: { DB: db } });
+    await seed([row(key(40), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '5' })]);
+    expect(await (await at(NOW).request('/api/stats')).json()).toMatchObject({
+      accountsLocked: 1,
+      lamportsLocked: '5',
+      now: '2026-10-05T12:00:00.000Z',
+    });
+
+    // A new lock 9 minutes later: the stored count answers, and nothing reads the accounts table.
+    await seed([row(key(41), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '7' })]);
+    const counting = countingDb(env.DB);
+    const stored = await at(NOW + 9 * 60_000, counting).request('/api/stats');
+    expect(await stored.json()).toMatchObject({ accountsLocked: 1, lamportsLocked: '5', now: '2026-10-05T12:00:00.000Z' });
+    expect(counting.journal.map((entry) => entry.name)).toEqual(['STATS_CACHE', 'ALERTS_SENT']);
+
+    // From 10 minutes on it counts again, and stores the new count.
+    const fresh = await at(NOW + STATS_TTL_MS).request('/api/stats');
+    expect(await fresh.json()).toMatchObject({ accountsLocked: 2, lamportsLocked: '12', now: '2026-10-05T12:10:00.000Z' });
+    const again = await at(NOW + STATS_TTL_MS + 1).request('/api/stats');
+    expect(await again.json()).toMatchObject({ accountsLocked: 2, now: '2026-10-05T12:10:00.000Z' });
+  });
+
+  it('counts again when the stored count is unreadable or from the future', async () => {
+    await seed([row(key(42), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '9' })]);
+    for (const bad of [
+      'not json',
+      '{"at":1,"accounts":-1,"lamports":"0"}',
+      '{"at":1,"accounts":3,"lamports":"01"}',
+      JSON.stringify({ at: NOW + 1, accounts: 99, lamports: '99' }),
+    ]) {
+      await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('stats_cache', ?1) ON CONFLICT (key) DO UPDATE SET value = excluded.value")
+        .bind(bad)
+        .run();
+      expect(await (await api().request('/api/stats')).json(), bad).toMatchObject({ accountsLocked: 1, lamportsLocked: '9' });
+    }
   });
 
   it('500 when D1 fails', async () => {

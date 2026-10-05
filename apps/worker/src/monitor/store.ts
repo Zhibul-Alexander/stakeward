@@ -222,6 +222,11 @@ ORDER BY id DESC LIMIT 50`,
 FROM accounts WHERE state != 'closed' AND lock_until > ?1`,
 
   ALERTS_SENT: `SELECT value FROM meta WHERE key = 'alerts_sent'`,
+
+  // /api/stats keeps its last count here: {"at": unix ms, "accounts": n, "lamports": "decimal"} (public-api.ts).
+  STATS_CACHE: `SELECT value FROM meta WHERE key = 'stats_cache'`,
+  STATS_CACHE_PUT: `INSERT INTO meta (key, value) VALUES ('stats_cache', ?1)
+ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
 } as const;
 
 /** Latest unix ms a Date can show (ECMA-262: 8.64e15). */
