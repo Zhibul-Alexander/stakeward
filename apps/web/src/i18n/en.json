@@ -1042,5 +1042,51 @@
     "blocked": "The address of your link-signing account is already taken by another account, so it cannot be created. Anyone can do this by sending a tiny amount of SOL to it.",
     "blockedHere": "Sign in this browser instead.",
     "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address."
+  },
+  "cosign": {
+    "intro": "Someone asked you to co-sign this transaction. Stakeward reads it only from the link and checks it against the network. Sign only if you expected this request.",
+    "whatIs": "What is Stakeward?",
+    "reading": "Checking the link",
+    "bad": {
+      "title": "This link is broken",
+      "body": "It does not hold a transaction Stakeward can read. Ask the sender to send the whole link again. Nothing was signed."
+    },
+    "problem": {
+      "not-linkable-kind": "Stakeward never sends this kind of transaction by link.",
+      "not-nonce": "This link would expire within a minute. Stakeward never makes such a link.",
+      "nonce-not-fee-payer": "This transaction uses someone else's link-signing account. Stakeward never makes such a link.",
+      "unexpected-fee-payer": "An unexpected wallet pays for this transaction. Stakeward never makes such a link.",
+      "fee-payer-unsigned": "The wallet that pays for this transaction has not signed it. Stakeward makes a link only after that.",
+      "foreign-recipient": "This sends SOL to a wallet that is not the stake's main key. Stakeward never does that.",
+      "nothing-to-sign": "Every wallet has already signed this transaction. There is nothing for you to sign."
+    },
+    "ask": {
+      "protect": "The owner of this stake asks your wallet to become its second key.",
+      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if the owner told you, by voice or in person, that they want to withdraw:",
+      "rescue": "This gives full control of the stake to the new wallet below. A thief who has the main key would send you exactly this request, with their own wallet. Sign only if you checked this address with the owner by voice or in person, not in the chat that sent you this link:"
+    },
+    "confirm": {
+      "withdraw": "The owner told me by voice or in person that they want this withdrawal",
+      "rescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
+    },
+    "stale": "A link works until it is used or cancelled. If you are not sure the owner still wants this, ask first.",
+    "tailHint": "This wallet changes transactions that another wallet already signed, so it cannot co-sign here. Use another wallet app for this key, or sign with every key in one browser.",
+    "openInWallet": "No wallet in this browser. Copy this page's link and open it in your wallet app's own browser.",
+    "copyPage": "Copy this page's link",
+    "done": {
+      "title": "Signed and sent",
+      "body": "The network confirmed it. The sender's page shows it too. You can close this page."
+    },
+    "already": {
+      "title": "Already done",
+      "body": "This transaction already went through. There is nothing for you to sign."
+    },
+    "newLink": "Ask the sender for a new link.",
+    "refused": {
+      "not-found": "The stake account in this link does not exist.",
+      "not-stake-account": "The link points to an address that is not a stake account.",
+      "link-used": "This link was already used or cancelled.",
+      "stale": "The stake account has changed since this link was made."
+    }
   }
 }

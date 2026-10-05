@@ -4,6 +4,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { AppPage } from '@/pages/AppPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
+import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -54,7 +55,7 @@ export function AppRoutes() {
         <ComingSoonPage title={t('common.pages.rescue')} />
       </Route>
       <Route path="/cosign">
-        <ComingSoonPage title={t('common.pages.cosign')} />
+        <CosignPage />
       </Route>
       <Route path="/recovery/:account">
         <ComingSoonPage title={t('common.pages.recovery')} />

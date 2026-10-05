@@ -1,14 +1,16 @@
-// Test-only rendering of the stake account pages (/withdraw/:account, /extend/:account) for scenario tests: the real
-// routes and pages over a LiteSvmChain and test wallets, in StrictMode as in main.tsx. Never imported from src.
+// Test-only rendering of the pages that sign (/withdraw/:account, /extend/:account, /cosign, /rescue) for scenario
+// tests: the real routes and pages over a LiteSvmChain and test wallets, in StrictMode as in main.tsx. Never imported
+// from src.
 import { getSignatureFromTransaction, getTransactionDecoder, type Signature } from '@solana/kit';
 import type { ChainPort } from '@stakeward/core';
 import type { TestWalletPort } from '@stakeward/core/test/test-wallet-port';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, type BoundFunctions, type queries } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { expect } from 'vitest';
 import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
+import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
@@ -30,9 +32,12 @@ export const FAST_SIGNING: SigningTestOptions = { pollIntervalMs: 1, rereadDelay
 
 export type StakePage = { ports: Ports; location: ReturnType<typeof memoryLocation>; user: UserEvent };
 
-/** Renders the site's stake account routes at `path` with these wallets in the browser and no key slot filled. */
-export function renderStakePage(chain: ChainPort, path: string, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): StakePage {
-  const page: Ports = {
+/** Queries over the whole document (`screen`) or over one React root (`within(container)`). */
+export type Scope = BoundFunctions<typeof queries>;
+
+/** Fresh ports for one browser: these wallets, no key slot filled, nothing remembered. */
+export function testPorts(chain: ChainPort, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): Ports {
+  return {
     chain,
     wallets: new StaticWalletRegistry(wallets),
     slots: createSlotStore(null),
@@ -41,6 +46,11 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
     api: createFakeApi(chain),
     ...ports,
   };
+}
+
+/** Renders the site's stake account routes at `path` with these wallets in the browser and no key slot filled. */
+export function renderStakePage(chain: ChainPort, path: string, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): StakePage {
+  const page = testPorts(chain, wallets, ports);
   const location = memoryLocation({ path, record: true });
   const user = userEvent.setup();
   render(
@@ -62,25 +72,52 @@ export function renderStakePage(chain: ChainPort, path: string, wallets: readonl
   return { ports: page, location, user };
 }
 
+export type RoleName = 'Main key' | 'Second key' | 'New wallet';
+
+/** One /cosign page in its own React root (the other device): its own ports, wallets and key slots. */
+export type CosignRoot = { ports: Ports; user: UserEvent; view: Scope; unmount: () => void };
+
+/** Renders /cosign for `fragment` (`#tx=...`) in a root of its own, with these wallets and no key slot filled. */
+export function renderCosignPage(
+  chain: ChainPort,
+  fragment: string,
+  wallets: readonly TestWalletPort[],
+  ports: Partial<Ports> = {},
+): CosignRoot {
+  const page = testPorts(chain, wallets, ports);
+  const location = memoryLocation({ path: '/cosign', record: true });
+  const user = userEvent.setup();
+  const { container, unmount } = render(
+    <StrictMode>
+      <Router hook={location.hook} searchHook={location.searchHook}>
+        <PortsProvider ports={page}>
+          <CosignPage fragment={fragment} signing={FAST_SIGNING} />
+        </PortsProvider>
+      </Router>
+    </StrictMode>,
+  );
+  return { ports: page, user, view: within(container), unmount };
+}
+
 /** Connects `walletName` in the key slot of `role` that the page shows now. */
-export async function connect(user: UserEvent, role: 'Main key' | 'Second key', walletName: string) {
-  const slot = await screen.findByRole('group', { name: role }, WAIT);
+export async function connect(user: UserEvent, role: RoleName, walletName: string, scope: Scope = screen) {
+  const slot = await scope.findByRole('group', { name: role }, WAIT);
   await user.click(within(slot).getByRole('button', { name: `Connect a wallet as ${role}` }));
   await user.click(within(slot).getByRole('button', { name: walletName }));
   await waitFor(() => {
-    expect(within(screen.getByRole('group', { name: role })).getByText('Connected')).toBeInTheDocument();
+    expect(within(scope.getByRole('group', { name: role })).getByText('Connected')).toBeInTheDocument();
   });
 }
 
-export async function click(user: UserEvent, name: string | RegExp) {
-  await user.click(await screen.findByRole('button', { name }, WAIT));
+export async function click(user: UserEvent, name: string | RegExp, scope: Scope = screen) {
+  await user.click(await scope.findByRole('button', { name }, WAIT));
 }
 
 /** The engine asks for a key that is not connected here: connect it, then Continue to its turn. */
-export async function connectAndContinue(user: UserEvent, role: 'Main key' | 'Second key', walletName: string) {
-  await screen.findByText(`Connect your ${role} to continue: it must sign these transactions.`, undefined, WAIT);
-  await connect(user, role, walletName);
-  await user.click(screen.getByRole('button', { name: 'Continue' }));
+export async function connectAndContinue(user: UserEvent, role: RoleName, walletName: string, scope: Scope = screen) {
+  await scope.findByText(`Connect your ${role} to continue: it must sign these transactions.`, undefined, WAIT);
+  await connect(user, role, walletName, scope);
+  await user.click(scope.getByRole('button', { name: 'Continue' }));
 }
 
 /** The transaction id of the last signed bytes a wallet returned. */

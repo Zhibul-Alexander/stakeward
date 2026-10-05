@@ -1,6 +1,6 @@
 import type { Address } from '@solana/kit';
 import { CircleAlertIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon } from 'lucide-react';
-import { useId, type Ref } from 'react';
+import { useId, type ReactNode, type Ref } from 'react';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
@@ -24,12 +24,14 @@ type JobOutcomeProps = {
   onRetry: () => void;
   /** Read the chain again (offered for an uncertain outcome). */
   onCheckAgain: () => void;
-  /** Back to the page's choice. */
-  onBack: () => void;
+  /** Back to the page's choice; without it no Back button is shown (/cosign has nowhere to go back to). */
+  onBack?: (() => void) | undefined;
+  /** What the page adds below the outcome (e.g. "Ask the sender for a new link"). */
+  children?: ReactNode;
 };
 
 /**
- * The outcome of a stake account page's run when it did not land (/withdraw, /extend): the account with its status,
+ * The outcome of a stake account page's run when it did not land (/withdraw, /extend, /cosign): the account with its status,
  * why in plain words (a refusal in the page's words, otherwise what the engine knows) with the raw error under
  * Details, and the ways forward: Try again, Check again for an uncertain outcome, and Back. No dead ends (UX rule 8).
  */
@@ -43,6 +45,7 @@ export function JobOutcome({
   onRetry,
   onCheckAgain,
   onBack,
+  children,
 }: JobOutcomeProps) {
   const headingId = useId();
   const { state } = job;
@@ -56,6 +59,7 @@ export function JobOutcome({
         {title}
       </h2>
       <JobStatusList items={[item]} label={title} />
+      {children}
       {checkFailed ? (
         <p role="status" className="flex items-start gap-2 text-sm font-medium text-danger">
           <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />
@@ -75,9 +79,11 @@ export function JobOutcome({
             {t('common.checkAgain')}
           </Button>
         ) : null}
-        <Button variant="ghost" onClick={onBack}>
-          {t('common.back')}
-        </Button>
+        {onBack === undefined ? null : (
+          <Button variant="ghost" onClick={onBack}>
+            {t('common.back')}
+          </Button>
+        )}
       </div>
     </section>
   );
