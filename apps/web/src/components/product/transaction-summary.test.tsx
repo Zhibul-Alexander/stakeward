@@ -87,6 +87,20 @@ describe('TransactionSummary', () => {
     expect(screen.getAllByText(OTHER).length).toBeGreaterThan(0);
   });
 
+  it('protect over a lock in force that ends later warns that it shortens the lock', async () => {
+    const current = { lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: SECOND }, clock: NOW };
+    render(<TransactionSummary summary={await inspected({ ...protect, lockUntil: JANUARY_2027 }, MAIN)} current={current} />);
+    expect(screen.getByText('This makes the lock end sooner: on 1 January 2027 instead of 12 April 2027.')).toBeInTheDocument();
+    // The same key keeps the lock: no "replaces" warning.
+    expect(screen.queryByText(/replaces the current second key/)).not.toBeInTheDocument();
+  });
+
+  it('protect over a lock that already ended says nothing about shortening it', async () => {
+    const current = { lockup: { unixTimestamp: NOW.unixTimestamp - 60n, epoch: 0n, custodian: SECOND }, clock: NOW };
+    render(<TransactionSummary summary={await inspected(protect, MAIN)} current={current} />);
+    expect(screen.queryByText(/makes the lock end sooner/)).not.toBeInTheDocument();
+  });
+
   it('without on-chain context it shows only what the bytes do', async () => {
     render(<TransactionSummary summary={await inspected(protect, MAIN)} />);
     expect(screen.queryByText('Now')).not.toBeInTheDocument();

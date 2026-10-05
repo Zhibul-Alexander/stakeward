@@ -1090,7 +1090,8 @@
       "not-found": "The stake account in this link does not exist.",
       "not-stake-account": "The link points to an address that is not a stake account.",
       "link-used": "This link was already used or cancelled.",
-      "stale": "The stake account has changed since this link was made."
+      "stale": "The stake account has changed since this link was made.",
+      "already-locked": "This stake account is already locked, and this link would change when its lock ends. Stakeward never asks for that by link. Do not sign it."
     }
   },
   "rescue": {

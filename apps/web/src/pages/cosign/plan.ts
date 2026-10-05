@@ -4,6 +4,7 @@ import {
   actionRoles,
   actionTarget,
   decodeStakeAccount,
+  isLockupInForce,
   readNonceAccount,
   type StakeAccount,
   type TransactionAction,
@@ -15,9 +16,9 @@ import type { SessionOptions } from '@/signing/session';
 import type { JobPlan, SigningPlan } from '@/signing/types';
 
 /** Why /cosign will not sign a link's transaction now; the page says it with `cosignRefusalText`. */
-export type CosignRefusal = 'not-found' | 'not-stake-account' | 'link-used' | 'stale';
+export type CosignRefusal = 'not-found' | 'not-stake-account' | 'link-used' | 'stale' | 'already-locked';
 
-const REFUSALS: readonly CosignRefusal[] = ['not-found', 'not-stake-account', 'link-used', 'stale'];
+const REFUSALS: readonly CosignRefusal[] = ['not-found', 'not-stake-account', 'link-used', 'stale', 'already-locked'];
 
 /**
  * The /cosign plan (DECISIONS.md D69): the link's partly signed bytes, signed here as they are (the engine inspects
@@ -28,7 +29,10 @@ const REFUSALS: readonly CosignRefusal[] = ['not-found', 'not-stake-account', 'l
  * 2. no stake account -> not-found; 3. not a stake account -> not-stake-account;
  * 4. the nonce account no longer holds the link's value (used, cancelled, closed) -> link-used;
  * 5. the stake's main key is not the one the link names (a rescue ran first, or a second-key hand-over phish) -> stale;
- * 6. otherwise sign the bytes, with the account as read (the summary shows what was and what becomes).
+ * 6. a protect over a lock in force -> already-locked. While a lock holds, the program lets its second key set any end
+ *    when it signs, and a protect link asks exactly that key to sign: a thief with only the main key could end the lock
+ *    this way. Stakeward never makes such a link (the protect wizard refuses a locked account);
+ * 7. otherwise sign the bytes, with the account as read (the summary shows what was and what becomes).
  */
 export function cosignPlan(bytes: Uint8Array, summary: TransactionSummary): SigningPlan {
   const { action, lifetime } = summary;
@@ -53,6 +57,9 @@ export function cosignPlan(bytes: Uint8Array, summary: TransactionSummary): Sign
         }
         if (!('mainKey' in action) || account.withdrawer !== action.mainKey) {
           return { kind: 'refused', reason: 'stale', before: account };
+        }
+        if (action.kind === 'protect' && isLockupInForce(account.lockup, clock)) {
+          return { kind: 'refused', reason: 'already-locked', before: account };
         }
         return { kind: 'bytes', bytes, before: account };
       };

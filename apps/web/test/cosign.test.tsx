@@ -385,6 +385,38 @@ describe('/cosign checks the chain before asking (C3)', () => {
   );
 
   it(
+    'already-locked: a protect link over a lock in force (it would move the lock\'s end) is refused; nothing is asked',
+    async () => {
+      const w = await world();
+      const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K], connected: true });
+      // A thief with only the main key: "protect" the stake again, with its own second key K and an end two minutes
+      // away. In force, the program only checks that K signs, so K's signature would end the lock almost at once.
+      const action: TransactionAction = {
+        kind: 'protect',
+        stakeAccount: w.S,
+        mainKey: w.A.address,
+        secondKey: w.K.address,
+        lockUntil: START_UNIX_TIMESTAMP + 120n,
+      };
+      const { bytes } = buildTransaction(action, { feePayer: w.A.address, lifetime: nonceOf(w.testChain, w.nonceA, w.A.address) });
+      const link = await sign(bytes, [w.A]);
+      const lockBefore = w.testChain.stakeAccount(w.S)?.lockup;
+
+      const { view } = renderCosignPage(w.chain, fragmentOf(link), [second]);
+      await view.findByText(
+        'This stake account is already locked, and this link would change when its lock ends. Stakeward never asks for that by link. Do not sign it.',
+        undefined,
+        WAIT,
+      );
+      // A new link would be refused the same way: the page does not ask for one.
+      expect(view.queryByText(en.cosign.newLink)).not.toBeInTheDocument();
+      nothingAsked(w.chain, [second]);
+      expect(w.testChain.stakeAccount(w.S)?.lockup).toEqual(lockBefore);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'already done: the link landed before this page opened it',
     async () => {
       const w = await world();

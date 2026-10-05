@@ -418,17 +418,30 @@ function stateWarnings(action: TransactionAction, current: OnChainContext | unde
       );
     }
   }
-  if (action.kind === 'extend' && current !== undefined && action.lockUntil <= current.lockup.unixTimestamp) {
+  const shortened = shortenedTo(action, current, clock);
+  if (shortened !== null && current !== undefined) {
     notes.push(
       <Warning key="shortens" tone="warning">
         {t('components.tx.warn.shortens', {
-          date: dateText(action.lockUntil),
+          date: dateText(shortened),
           current: dateText(current.lockup.unixTimestamp),
         })}
       </Warning>,
     );
   }
   return notes;
+}
+
+/**
+ * The earlier end this action gives the lock, or null: an extend to a date not after the current end, or a protect over
+ * a lock in force by date that ends later (its second key signs a protect, and in force that key may set any end).
+ */
+function shortenedTo(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView): bigint | null {
+  if (current === undefined) return null;
+  const end = current.lockup.unixTimestamp;
+  if (action.kind === 'extend') return action.lockUntil <= end ? action.lockUntil : null;
+  if (action.kind === 'protect') return end > clock.unixTimestamp && action.lockUntil < end ? action.lockUntil : null;
+  return null;
 }
 
 /** Warnings from the bytes alone: removing the lock early, SOL sent to a wallet that does not sign. */

@@ -38,6 +38,12 @@ type CosignSigningProps = {
 /** Outcomes this link cannot get past: the sender has to make a new one (nothing was sent from here, or it failed). */
 const NEEDS_NEW_LINK: readonly JobView['state']['kind'][] = ['refused', 'failed', 'sim-failed', 'expired'];
 
+/** A new link helps, unless no link could do it: a protect over a lock in force is refused whatever link carries it. */
+function asksForNewLink(job: JobView): boolean {
+  const { state } = job;
+  return NEEDS_NEW_LINK.includes(state.kind) && !(state.kind === 'refused' && state.reason === 'already-locked');
+}
+
 /** A finished run: its outcome for the link's stake account and the cluster clock it was read at. */
 type Outcome = { run: number; job: JobView; clock: ChainClock | null };
 
@@ -117,7 +123,7 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
         }}
         onCheckAgain={() => void checkAgain(outcome)}
       >
-        {NEEDS_NEW_LINK.includes(job.state.kind) ? <p className="text-sm font-medium">{t('cosign.newLink')}</p> : null}
+        {asksForNewLink(job) ? <p className="text-sm font-medium">{t('cosign.newLink')}</p> : null}
       </JobOutcome>
     );
   }

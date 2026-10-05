@@ -89,6 +89,7 @@ describe('cosignRefusalText', () => {
   it('has words for every refusal and the unknown error otherwise', () => {
     expect(cosignRefusalText('link-used')).toBe('This link was already used or cancelled.');
     expect(cosignRefusalText('stale')).toBe('The stake account has changed since this link was made.');
+    expect(cosignRefusalText('already-locked')).toMatch(/^This stake account is already locked/);
     expect(cosignRefusalText('something-else')).toBe(cosignRefusalText('another'));
   });
 });
