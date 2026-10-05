@@ -88,11 +88,12 @@ function bytesPlan(bytes: Uint8Array): SigningPlan {
 
 /**
  * The page's chain over LiteSvmChain, recording every call. It can answer a lagging node's nonce account for the next
- * reads (`lag`), replace an account (`replace`), and pass every simulation (`simulateOk`).
+ * reads (`lag`, at the node's own older `slot` when given), replace an account (`replace`), and pass every simulation
+ * (`simulateOk`).
  */
 class TestPort implements ChainPort {
   readonly calls: { method: keyof ChainPort; args: readonly unknown[] }[] = [];
-  lag: { address: Address; raw: RawAccount | null; reads: number } | null = null;
+  lag: { address: Address; raw: RawAccount | null; reads: number; slot?: bigint } | null = null;
   readonly replace = new Map<Address, RawAccount | null>();
   simulateOk = false;
   readonly inner: LiteSvmChain;
@@ -116,7 +117,7 @@ class TestPort implements ChainPort {
       if (lag !== null && address === lag.address) return lag.raw;
       return this.replace.has(address) ? (this.replace.get(address) ?? null) : raw;
     });
-    return { slot: result.slot, accounts };
+    return { slot: lag?.slot ?? result.slot, accounts };
   }
   getClock() {
     this.calls.push({ method: 'getClock', args: [] });
@@ -510,6 +511,33 @@ describe('SigningSession on a durable nonce', { timeout: 60_000 }, () => {
       s.dispose();
     });
 
+    it('a lagging node that shows the nonce as it was before this round: the link stays open, never expired', async () => {
+      const { s, state } = await openLink({ ids: [S1, S2] });
+      const beforeLink1 = testChain.account(nonceA);
+      await completeElsewhere(state.jobs[S1]?.bytes);
+      await until(s, (st) => st.roundNumber === 2 && phaseIs('ready', 0)(st));
+      s.sign();
+      const linked = await until(s, (st) => st.roundNumber === 2 && st.phase.kind === 'link');
+      // The round read its nonce value at this slot; a node behind it still shows the value link 1 used.
+      const { slot } = await lite.getAccounts([nonceA]);
+      expect(linked.jobs[S2]?.nonceSlot).toBe(slot);
+      const lag = { address: nonceA, raw: beforeLink1, reads: 1, slot: slot - 1n };
+      chain.lag = lag;
+      const reads = chain.count('getAccounts');
+      await vi.waitFor(() => {
+        expect(chain.count('getAccounts')).toBeGreaterThan(reads + 1);
+      });
+      expect(lag.reads).toBe(0);
+      expect(s.getSnapshot().phase.kind).toBe('link');
+      expect(s.getSnapshot().jobs[S2]?.state.kind).toBe('ready');
+
+      // The link still works: the other device signs it and the page finds it.
+      await completeElsewhere(linked.jobs[S2]?.bytes);
+      const end = await until(s, phaseIs('finished'));
+      expect(end.jobs[S2]?.state.kind).toBe('done');
+      expect(testChain.stakeAccount(S2)?.lockup).toEqual({ unixTimestamp: T, epoch: 0n, custodian: K });
+    });
+
     it('failed when the other device sends it and it lands with an error', async () => {
       const noPreflight = new LiteSvmChain(testChain, { preflight: false });
       const { s, state } = await openLink();
@@ -708,6 +736,18 @@ describe('SigningSession on a durable nonce', { timeout: 60_000 }, () => {
       if (raw === null) throw new Error('no nonce');
       chain.replace.set(nonceA, { ...raw, owner: STAKE_PROGRAM_ADDRESS });
       expect((await checkLanded(chain, [unusable]))[S1]).toEqual({ kind: 'expired' });
+    });
+
+    it('a nonce read older than the read that found the item\'s nonce value proves nothing: still unknown', async () => {
+      const item = await nonceItem();
+      const { slot } = await lite.getAccounts([nonceA]);
+      const seen: LandedItem = { ...item, nonceSlot: slot, why: 'link-open' };
+      // A node behind that read: no nonce account yet, or an older value.
+      chain.lag = { address: nonceA, raw: null, reads: 1, slot: slot - 1n };
+      expect((await checkLanded(chain, [seen]))[S1]).toEqual({ kind: 'unknown', why: 'link-open' });
+      // A read at that slot or later is the proof: the nonce moved on.
+      await advanceNonce(nonceA, S2);
+      expect((await checkLanded(chain, [seen]))[S1]).toEqual({ kind: 'expired' });
     });
 
     it('an unchanged nonce and no status: still unknown, with its earlier reason', async () => {

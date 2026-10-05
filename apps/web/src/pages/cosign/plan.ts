@@ -41,7 +41,7 @@ export function cosignPlan(bytes: Uint8Array, summary: TransactionSummary): Sign
     async prepare(chain, ids) {
       const nonce = lifetime.kind === 'nonce' ? lifetime : null;
       const reads: Address[] = nonce === null ? [target] : [target, nonce.nonceAccount];
-      const [{ accounts }, clock] = await Promise.all([chain.getAccounts(reads), chain.getClock()]);
+      const [{ slot, accounts }, clock] = await Promise.all([chain.getAccounts(reads), chain.getClock()]);
       const targetRaw = accounts[0] ?? null;
       const nonceRaw = accounts[1] ?? null;
       const decide = (): JobPlan => {
@@ -61,7 +61,7 @@ export function cosignPlan(bytes: Uint8Array, summary: TransactionSummary): Sign
         if (action.kind === 'protect' && isLockupInForce(account.lockup, clock)) {
           return { kind: 'refused', reason: 'already-locked', before: account };
         }
-        return { kind: 'bytes', bytes, before: account };
+        return { kind: 'bytes', bytes, before: account, nonceSlot: slot };
       };
       const plan = decide();
       return { clock, jobs: Object.fromEntries(ids.map((id) => [id, id === target ? plan : refusedOther])) };

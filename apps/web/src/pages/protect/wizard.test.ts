@@ -256,4 +256,18 @@ describe('wizardReducer', () => {
     expect(uncertainIds(checked)).toEqual([]);
     expect(checked.outcomes[OTHER]).toBeUndefined();
   });
+
+  it('nothing to retry while a link is still open: a new run would build on the nonce value that link uses', () => {
+    const state = reduce(initialWizardState(), {
+      type: 'finished',
+      jobs: [job(S1, { kind: 'unknown', why: 'link-open' }), job(S2, { kind: 'not-sent' }), job(S3, { kind: 'expired' })],
+      clock: CLOCK,
+    });
+    expect(uncertainIds(state)).toEqual([S1]);
+    expect(retryableIds(state)).toEqual([]);
+
+    // Check again finds the link used: the rest can be tried again.
+    const checked = reduce(state, { type: 'checked', states: { [S1]: { kind: 'done', after: stake(S1, lockedBy(K)) } } });
+    expect(retryableIds(checked)).toEqual([S2, S3]);
+  });
 });

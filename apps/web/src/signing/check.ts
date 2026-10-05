@@ -25,6 +25,11 @@ export type LandedItem = {
   bytes: Uint8Array | null;
   /** The target account as read before building, when known (a withdrawal needs it). */
   before: StakeAccount | null;
+  /**
+   * Durable nonce only: the context slot of the read that found the nonce value this transaction uses. A nonce account
+   * read at an older slot comes from a node that lags behind that read: it proves nothing about the nonce moving on.
+   */
+  nonceSlot?: bigint | undefined;
   /** The network confirmed it. */
   confirmed: boolean;
   /** Why it was uncertain until now; kept when this check learns nothing new. Default 'timeout'. */
@@ -44,8 +49,8 @@ export type LandedItem = {
  * 3. The rest with a signature: one `getSignatureStatuses` (and one `getBlockHeight` when a blockhash item has no
  *    status). An error -> `failed`; landed but not applied -> `unknown(not-applied)`; no status and the blockhash
  *    passed -> `expired`; no status and the nonce account no longer holds the item's nonce value (moved, closed or
- *    unusable: the link was used, cancelled or failed, and nothing changed) -> `expired`; otherwise still `unknown`
- *    with its earlier reason.
+ *    unusable: the link was used, cancelled or failed, and nothing changed) -> `expired`, unless that read is older than
+ *    the item's `nonceSlot` (a lagging node); otherwise still `unknown` with its earlier reason.
  * Rejects on a read failure, and with the signal's reason once aborted.
  */
 export async function checkLanded(
@@ -57,8 +62,8 @@ export async function checkLanded(
   const rereads = options.rereads ?? 0;
   const delay = options.rereadDelayMs ?? REREAD_DELAY_MS;
 
-  /** Nonce account of each unconfirmed durable-nonce item, as read with its target in step 1. */
-  const nonces = new Map<string, RawAccount | null>();
+  /** Nonce account of each unconfirmed durable-nonce item, as read with its target in step 1, and the read's slot. */
+  const nonces = new Map<string, NonceRead>();
 
   const read = async (pending: readonly LandedItem[]): Promise<LandedItem[]> => {
     const targets = pending.map((item) => actionTarget(item.action));
@@ -66,9 +71,9 @@ export async function checkLanded(
       const nonce = item.confirmed ? null : nonceLifetime(item);
       return nonce === null ? [] : [{ id: item.id, nonceAccount: nonce.nonceAccount }];
     });
-    const { accounts } = await chain.getAccounts([...targets, ...withNonce.map((item) => item.nonceAccount)]);
+    const { slot, accounts } = await chain.getAccounts([...targets, ...withNonce.map((item) => item.nonceAccount)]);
     options.signal?.throwIfAborted();
-    withNonce.forEach((item, index) => nonces.set(item.id, accounts[targets.length + index] ?? null));
+    withNonce.forEach((item, index) => nonces.set(item.id, { raw: accounts[targets.length + index] ?? null, slot }));
     return pending.filter((item, index) => {
       const raw = accounts[index] ?? null;
       if (!actionApplied(item.action, raw, item.before)) return true;
@@ -110,7 +115,7 @@ export async function checkLanded(
         kind: 'failed',
         error: translateError(status.error, item.bytes === null ? {} : { transaction: item.bytes }),
       };
-    } else if (status === null && nonce !== null && nonceMovedOn(nonces.get(item.id) ?? null, nonce)) {
+    } else if (status === null && nonce !== null && nonceMovedOn(nonces.get(item.id), nonce, item.nonceSlot)) {
       results[item.id] = { kind: 'expired' };
     } else if (
       status === null &&
@@ -132,10 +137,16 @@ function nonceLifetime(item: LandedItem): NonceLifetime | null {
   return item.lifetime?.kind === 'nonce' ? item.lifetime : null;
 }
 
-/** The nonce account no longer holds the transaction's nonce value: missing, unusable, or advanced. */
-function nonceMovedOn(raw: RawAccount | null, lifetime: NonceLifetime): boolean {
-  const read = readNonceAccount(raw, lifetime.nonceAuthority);
-  return read.kind !== 'ready' || read.value !== lifetime.nonceValue;
+type NonceRead = { raw: RawAccount | null; slot: bigint };
+
+/**
+ * The nonce account no longer holds the transaction's nonce value: missing, unusable, or advanced. Never from a read
+ * older than `nonceSlot` (the read that found that value): a node behind it may still show an older value, or none.
+ */
+function nonceMovedOn(read: NonceRead | undefined, lifetime: NonceLifetime, nonceSlot: bigint | undefined): boolean {
+  if (read !== undefined && nonceSlot !== undefined && read.slot < nonceSlot) return false;
+  const state = readNonceAccount(read?.raw ?? null, lifetime.nonceAuthority);
+  return state.kind !== 'ready' || state.value !== lifetime.nonceValue;
 }
 
 function stakeAccountOf(raw: RawAccount | null): StakeAccount | null {

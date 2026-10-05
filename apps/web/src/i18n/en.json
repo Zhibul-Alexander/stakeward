@@ -275,6 +275,7 @@
       },
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
       "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
+      "retryAfterLink": "A link is still open, so the rest waits for it. When the other device has sent it, or you cancelled it by closing your link-signing account, press Check again, then try the rest.",
       "transaction": "Transaction"
     },
     "qr": {
@@ -370,6 +371,10 @@
         "missing": "Your link-signing account is missing. Go back and set it up again.",
         "unusable": "Your link-signing account cannot be used. Go back and sign in this browser instead.",
         "stale": "The network has not caught up with your last transaction yet. Try again in a few seconds."
+      },
+      "nonceLater": {
+        "missing": "Your link-signing account is gone, so this run cannot sign the rest by link. See the result, then try the rest again: you can set the account up again there.",
+        "unusable": "Your link-signing account cannot be used, so this run cannot sign the rest by link. See the result, then try the rest again."
       }
     },
     "where": {

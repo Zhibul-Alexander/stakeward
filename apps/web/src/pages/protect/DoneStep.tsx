@@ -23,6 +23,7 @@ import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
 import { t } from '@/i18n';
 import type { SigningTestOptions } from '@/signing/create';
+import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
 import type { JobView } from '@/signing/machine';
 import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { defaultJobReason, jobStatus } from '@/signing/view';
@@ -101,8 +102,6 @@ export function DoneStep({
 /** A link that opens in a new tab shares neither this page (window.opener) nor its address (Referer). */
 const NEW_TAB_REL = 'noopener noreferrer';
 
-const RETRYABLE: readonly JobView['state']['kind'][] = ['sim-failed', 'failed', 'expired', 'not-sent'];
-
 /**
  * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures: what the
  * chain now shows protected, what is not protected yet and the one way forward for it, the second key and its risk,
@@ -138,7 +137,9 @@ export function ProtectDoneView({
         : done === 1
           ? t('protect.done.titleOne')
           : t('protect.done.titleOther', { count: done });
-  const retryable = others.filter((job) => RETRYABLE.includes(job.state.kind));
+  const retryable = retryableOutcomes(others);
+  // A link still open holds back Try again for the rest (retryableOutcomes): say why.
+  const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
   const uncertain = others.filter((job) => job.state.kind === 'unknown');
   const lockEndPassed = others.some((job) => job.state.kind === 'refused' && job.state.reason === 'lock-end-passed');
 
@@ -169,6 +170,7 @@ export function ProtectDoneView({
               {t('protect.done.checkFailed')}
             </p>
           ) : null}
+          {waitsForLink ? <p className="max-w-prose text-sm">{t('components.jobs.retryAfterLink')}</p> : null}
           {retryable.length === 0 && uncertain.length === 0 && !lockEndPassed ? null : (
             <div className="flex flex-wrap gap-2">
               {retryable.length === 0 ? null : (

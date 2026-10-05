@@ -528,6 +528,43 @@ describe('SigningView: signing by link', () => {
     visibility.mockRestore();
   });
 
+  it('prepare-failed nonce missing after an earlier round was reported (the link was cancelled): see the result, no "Go back"', async () => {
+    const user = userEvent.setup();
+    const signedTx: RoundTx = { ...linkTx, summary: { ...linkTx.summary, presentSignatures: [MAIN] } };
+    const failed = reduce(
+      initialSigningState([S1, S2], 1),
+      { type: 'start' },
+      {
+        type: 'prepared',
+        clock: CLOCK,
+        jobs: {
+          [S1]: { id: S1, state: { kind: 'ready' }, before: before(S1), action: linkTx.summary.action, lifetime: NONCE, signature: null, bytes: linkTx.bytes },
+        },
+        txs: [linkTx],
+        steps: [
+          { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending', local: true },
+          { address: SECOND, role: 'second', walletName: null, count: 1, status: 'pending', local: false },
+        ],
+      },
+      { type: 'asking', step: 0 },
+      { type: 'signed', step: 0, txs: [signedTx], signature: TX_ID },
+      { type: 'link-result', id: S1, state: { kind: 'expired' } },
+      { type: 'prepare-failed', problem: { kind: 'nonce', state: 'missing' } },
+    );
+    expect(failed.phase).toEqual({ kind: 'prepare-failed', problem: { kind: 'nonce', state: 'missing' } });
+    const { spy, onBack } = showLink(failed);
+    expect(
+      screen.getByText(
+        'Your link-signing account is gone, so this run cannot sign the rest by link. See the result, then try the rest again: you can set the account up again there.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Go back/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop here and see the result' }));
+    expect(spy.finish).toHaveBeenCalledTimes(1);
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['missing', 'Your link-signing account is missing. Go back and set it up again.', false],
     ['unusable', 'Your link-signing account cannot be used. Go back and sign in this browser instead.', false],

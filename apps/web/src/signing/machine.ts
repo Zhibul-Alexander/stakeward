@@ -84,6 +84,11 @@ export type JobView = {
   /** From the inspected bytes. */
   action: TransactionAction | null;
   lifetime: Lifetime | null;
+  /**
+   * Durable nonce only: the context slot of the read that found the lifetime's nonce value. A later nonce read from an
+   * older slot (a lagging node) is never taken as proof that the nonce moved on (check.ts).
+   */
+  nonceSlot?: bigint | undefined;
   /** The fee payer's signature (the transaction id), once known. */
   signature: Signature | null;
   /** The last bytes (fully signed once sent). */

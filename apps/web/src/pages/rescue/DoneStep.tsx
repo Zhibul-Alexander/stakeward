@@ -13,6 +13,7 @@ import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
 import { usePorts } from '@/ports';
 import { createPageSession, type SigningTestOptions } from '@/signing/create';
+import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
 import type { JobView, SigningState } from '@/signing/machine';
 import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { PageSigningPanel } from '@/signing/SigningPanel';
@@ -45,8 +46,6 @@ type DoneStepProps = {
 /** A link that opens in a new tab shares neither this page (window.opener) nor its address (Referer). */
 const NEW_TAB_REL = 'noopener noreferrer';
 
-const RETRYABLE: readonly JobView['state']['kind'][] = ['sim-failed', 'failed', 'expired', 'not-sent'];
-
 /** The account as the chain showed it once moved; undefined for an account that did not move. */
 function movedAccountOf(job: JobView): StakeAccount | null | undefined {
   const { state } = job;
@@ -75,7 +74,9 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
         : done === 1
           ? t('rescue.done.titleOne')
           : t('rescue.done.titleOther', { count: done });
-  const retryable = others.filter((job) => RETRYABLE.includes(job.state.kind));
+  const retryable = retryableOutcomes(others);
+  // A link still open holds back Try again for the rest (retryableOutcomes): say why.
+  const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
   const uncertain = others.filter((job) => job.state.kind === 'unknown');
   // Moved accounts that stopped staking (a thief deactivated them) can earn rewards again with the same validator.
   const idle = moved.flatMap(({ after }) => {
@@ -111,6 +112,7 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
               {t('protect.done.checkFailed')}
             </p>
           ) : null}
+          {waitsForLink ? <p className="max-w-prose text-sm">{t('components.jobs.retryAfterLink')}</p> : null}
           {retryable.length === 0 && uncertain.length === 0 ? null : (
             <div className="flex flex-wrap gap-2">
               {retryable.length === 0 ? null : (

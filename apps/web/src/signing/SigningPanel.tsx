@@ -252,7 +252,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
       return <Waiting text={t('signing.preparing')}>{backButton}</Waiting>;
 
     case 'prepare-failed':
-      return <PrepareFailed problem={phase.problem} actions={actions} backButton={backButton} />;
+      return <PrepareFailed problem={phase.problem} actions={actions} backButton={backButton} finishing={back === 'finish'} />;
 
     case 'ready': {
       if (step === undefined) return null;
@@ -487,10 +487,13 @@ function PrepareFailed({
   problem,
   actions,
   backButton,
+  finishing,
 }: {
   problem: PrepareProblem;
   actions: SigningActions;
   backButton: ReactNode;
+  /** The way out ends the run (an earlier round has a result to report), not Back: the text must say that. */
+  finishing: boolean;
 }) {
   const retry = () => {
     actions.retryPrepare();
@@ -536,11 +539,16 @@ function PrepareFailed({
         />
       );
     case 'nonce':
-      // A missing or unusable link-signing account needs the page's previous step; a lagging node only time.
+      // A missing or unusable link-signing account needs the page's previous step, or, once an earlier round has a
+      // result (a cancelled link), the run's end and a new try; a lagging node needs only time.
       return (
         <ErrorState
           title={t('signing.prepareFailed')}
-          message={t(`signing.prepare.nonce.${problem.state}`)}
+          message={
+            finishing && problem.state !== 'stale'
+              ? t(`signing.prepare.nonceLater.${problem.state}`)
+              : t(`signing.prepare.nonce.${problem.state}`)
+          }
           onRetry={problem.state === 'stale' ? retry : undefined}
           actions={backButton}
         />

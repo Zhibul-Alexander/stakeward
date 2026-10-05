@@ -77,7 +77,15 @@ export type SessionOptions = {
 /** One async job of the session: stale once another starts, Stop waiting is pressed or the session is disposed. */
 type Work = { op: number; signal: AbortSignal };
 
-type Built = { id: string; bytes: Uint8Array; summary: TransactionSummary; lifetime: Lifetime; before: StakeAccount | null };
+type Built = {
+  id: string;
+  bytes: Uint8Array;
+  summary: TransactionSummary;
+  lifetime: Lifetime;
+  before: StakeAccount | null;
+  /** Durable nonce: the context slot of the read that found the nonce value (JobView.nonceSlot). */
+  nonceSlot: bigint | null;
+};
 
 const PORT_STOPS: readonly string[] = ['WalletBusyError', 'WalletUnsupportedError', 'WalletBatchUnsupportedError'];
 
@@ -339,6 +347,7 @@ export class SigningSession {
       const built: Built[] = [];
       // One lifetime for the round's builds: the plan's durable nonce, or a recent blockhash; read only when needed.
       let lifetime: Lifetime | null = null;
+      let nonceSlot: bigint | null = null;
       for (const id of ids) {
         const decision = decided.jobs[id] ?? { kind: 'refused', reason: 'not-decided', before: null };
         if (decision.kind === 'done') {
@@ -346,7 +355,7 @@ export class SigningSession {
         } else if (decision.kind === 'refused') {
           jobs[id] = jobView(id, { kind: 'refused', reason: decision.reason }, { before: decision.before });
         } else if (decision.kind === 'bytes') {
-          const item = await inspectBytes(id, decision.bytes, decision.before);
+          const item = await inspectBytes(id, decision.bytes, decision.before, decision.nonceSlot ?? null);
           if (this.stale(work)) return;
           built.push(item);
         } else {
@@ -358,13 +367,20 @@ export class SigningSession {
             });
           }
           if (lifetime === null) {
-            lifetime = plan.nonce === undefined ? await this.blockhashLifetime() : await this.nonceLifetime(work, plan.nonce);
-            if (lifetime === null || this.stale(work)) return;
+            if (plan.nonce === undefined) {
+              lifetime = await this.blockhashLifetime();
+            } else {
+              const read = await this.nonceLifetime(work, plan.nonce);
+              if (read === null) return;
+              lifetime = read.lifetime;
+              nonceSlot = read.slot;
+            }
+            if (this.stale(work)) return;
           }
           const bytes = buildOwn(decision.action, decision.feePayer, lifetime);
           const summary = await inspectOwn(bytes, decision.action, decision.feePayer);
           if (this.stale(work)) return;
-          built.push({ id, bytes, summary, lifetime, before: decision.before });
+          built.push({ id, bytes, summary, lifetime, before: decision.before, nonceSlot });
         }
       }
       if (built.length > 1 && built.some((item) => item.lifetime.kind === 'nonce')) {
@@ -412,20 +428,21 @@ export class SigningSession {
   /**
    * The plan's nonce account, read fresh: missing or unusable stops the round. A value this session already put in a
    * link or sent means a lagging RPC node: read again (REREAD_ATTEMPTS times, rereadDelayMs apart), then `stale`.
-   * Null when the work went stale meanwhile.
+   * With the lifetime comes the slot of the read that found its value. Null when the work went stale meanwhile.
    */
   private async nonceLifetime(
     work: Work,
     nonce: { nonceAccount: Address; nonceAuthority: Address },
-  ): Promise<NonceLifetime | null> {
+  ): Promise<{ lifetime: NonceLifetime; slot: bigint } | null> {
     const delay = this.options.rereadDelayMs ?? REREAD_DELAY_MS;
     for (let attempt = 0; ; attempt += 1) {
-      const { accounts } = await this.options.chain.getAccounts([nonce.nonceAccount]);
+      const { slot, accounts } = await this.options.chain.getAccounts([nonce.nonceAccount]);
       if (this.stale(work)) return null;
       const read = readNonceAccount(accounts[0] ?? null, nonce.nonceAuthority);
       if (read.kind !== 'ready') throw new PrepareFailure({ kind: 'nonce', state: read.kind });
       if (!this.usedNonces.has(read.value)) {
-        return { kind: 'nonce', nonceAccount: nonce.nonceAccount, nonceAuthority: nonce.nonceAuthority, nonceValue: read.value };
+        const { nonceAccount, nonceAuthority } = nonce;
+        return { lifetime: { kind: 'nonce', nonceAccount, nonceAuthority, nonceValue: read.value }, slot };
       }
       if (attempt >= REREAD_ATTEMPTS) throw new PrepareFailure({ kind: 'nonce', state: 'stale' });
       await pause(delay, work.signal);
@@ -730,6 +747,7 @@ export class SigningSession {
               action: job.action,
               signature: job.signature,
               lifetime: job.lifetime,
+              nonceSlot: job.nonceSlot,
               bytes: job.bytes,
               before: job.before,
               confirmed: true,
@@ -799,6 +817,7 @@ export class SigningSession {
       action: tx.summary.action,
       signature: job.signature,
       lifetime: tx.lifetime,
+      nonceSlot: job.nonceSlot,
       bytes: tx.bytes,
       before: job.before,
       confirmed: false,
@@ -866,7 +885,7 @@ function checkLinkPlan(plan: SigningPlan): void {
 }
 
 /** Bytes to sign as they are (/cosign): the inspector must read them, on a durable nonce; they are never rebuilt. */
-async function inspectBytes(id: string, bytes: Uint8Array, before: StakeAccount | null): Promise<Built> {
+async function inspectBytes(id: string, bytes: Uint8Array, before: StakeAccount | null, nonceSlot: bigint | null): Promise<Built> {
   const inspected = await inspectTransaction(bytes);
   if (!inspected.ok) throw new PrepareFailure({ kind: 'inspector', error: inspected.error });
   const { lifetime } = inspected.summary;
@@ -876,7 +895,7 @@ async function inspectBytes(id: string, bytes: Uint8Array, before: StakeAccount 
       error: { code: 'bad-layout', message: 'Signed bytes from a link must use a durable nonce' },
     });
   }
-  return { id, bytes: Uint8Array.from(bytes), summary: inspected.summary, lifetime, before };
+  return { id, bytes: Uint8Array.from(bytes), summary: inspected.summary, lifetime, before, nonceSlot };
 }
 
 /** The bytes of our own build must read back as exactly that action and fee payer; anything else is a bug. */
@@ -895,9 +914,15 @@ async function inspectOwn(bytes: Uint8Array, action: TransactionAction, feePayer
 function jobView(
   id: string,
   state: JobState,
-  from: { before: StakeAccount | null; summary?: TransactionSummary; lifetime?: Lifetime; bytes?: Uint8Array },
+  from: {
+    before: StakeAccount | null;
+    summary?: TransactionSummary;
+    lifetime?: Lifetime;
+    bytes?: Uint8Array;
+    nonceSlot?: bigint | null;
+  },
 ): JobView {
-  return {
+  const view: JobView = {
     id,
     state,
     before: from.before,
@@ -906,6 +931,8 @@ function jobView(
     signature: null,
     bytes: from.bytes ?? null,
   };
+  if (from.nonceSlot !== undefined && from.nonceSlot !== null) view.nonceSlot = from.nonceSlot;
+  return view;
 }
 
 /** Roles the actions name (main, second, new), as hints for keys no slot holds. */

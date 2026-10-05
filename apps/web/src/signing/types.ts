@@ -9,7 +9,13 @@ export type JobPlan =
    * Sign these bytes as they are (/cosign: a link's partly signed transaction). Inspected, simulated and fee-checked like
    * a build, never rebuilt; only a durable-nonce lifetime is accepted.
    */
-  | { kind: 'bytes'; bytes: Uint8Array; before: StakeAccount | null }
+  | {
+      kind: 'bytes';
+      bytes: Uint8Array;
+      before: StakeAccount | null;
+      /** The context slot of the plan's read that found the bytes' nonce value (see JobView.nonceSlot). */
+      nonceSlot?: bigint | undefined;
+    }
   /**
    * The chain already shows the change (a retry after a late landing): nothing to sign. `after` is null when the target
    * is not a stake account (a nonce account) or no longer exists (a withdrawal closed it).

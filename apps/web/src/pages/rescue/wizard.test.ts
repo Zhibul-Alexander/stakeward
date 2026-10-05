@@ -182,4 +182,16 @@ describe('rescueReducer', () => {
     expect(again.run).toEqual(state.run);
     expect(again.order).toEqual(state.order);
   });
+
+  it('nothing to retry while a link is still open (Stop waiting during a link): Check again first', () => {
+    const [S1, S2] = [key(11), key(12)];
+    let state = rescueReducer(initialRescueState(A), { type: 'move', ids: [S1, S2], secondKey: K, newWallet: D });
+    const open: JobView = { ...job(S1, 'unknown'), state: { kind: 'unknown', why: 'link-open' } };
+    state = rescueReducer(state, { type: 'finished', jobs: [open, job(S2, 'not-sent')], clock: { ...CLOCK, slot: 5n } });
+    expect(uncertainRescueIds(state)).toEqual([S1]);
+    expect(retryableRescueIds(state)).toEqual([]);
+    state = rescueReducer(state, { type: 'checked', states: { [S1]: { kind: 'expired' } } });
+    expect(retryableRescueIds(state)).toEqual([S1, S2]);
+  });
 });
+

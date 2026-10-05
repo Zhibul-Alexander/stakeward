@@ -11,6 +11,7 @@ import {
   type SecondKeyViolation,
   type StakeAccount,
 } from '@stakeward/core';
+import { retryableOutcomes } from '@/pages/account/check';
 import { parseAddressInput } from '@/signing/AddressField';
 import type { JobState, JobView } from '@/signing/machine';
 import type { SignMode } from '@/signing/SignWhere';
@@ -234,9 +235,9 @@ export function protectedIds(state: WizardState): Address[] {
   return idsWhere(state, ['done', 'already-done']);
 }
 
-/** Known not to have landed: a new run may try them again. */
+/** Known not to have landed: a new run may try them again (none while a link is still open, retryableOutcomes). */
 export function retryableIds(state: WizardState): Address[] {
-  return idsWhere(state, ['sim-failed', 'failed', 'expired', 'not-sent']);
+  return retryableOutcomes(state.order.flatMap((id) => state.outcomes[id] ?? [])).map((job) => job.id as Address);
 }
 
 /** Sent, outcome not known yet: only a fresh read may tell (Check again). */

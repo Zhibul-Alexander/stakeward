@@ -9,6 +9,20 @@ export function isRetryable(job: JobView): boolean {
   return RETRYABLE.includes(job.state.kind);
 }
 
+/** Stop waiting left this job's link open: the other device may still sign and send it. */
+export function isLinkOpen(job: JobView): boolean {
+  return job.state.kind === 'unknown' && job.state.why === 'link-open';
+}
+
+/**
+ * The outcomes a new run may retry, none while a link of the run is still open: the new run would read the same nonce
+ * value that link uses and build on it, so at most one of the two could land (wasted approvals, and a link the user
+ * already sent dying unannounced). Check again settles the open link first.
+ */
+export function retryableOutcomes(jobs: readonly JobView[]): JobView[] {
+  return jobs.some(isLinkOpen) ? [] : jobs.filter(isRetryable);
+}
+
 /** The run's outcome for this stake account landed: the chain shows the change (now, or before the run). */
 export function isLanded(job: JobView): boolean {
   return job.state.kind === 'done' || job.state.kind === 'already-done';
@@ -29,6 +43,7 @@ export async function checkJobAgain(chain: ChainPort, job: JobView): Promise<Job
         action: job.action,
         signature: job.signature,
         lifetime: job.lifetime,
+        nonceSlot: job.nonceSlot,
         bytes: job.bytes,
         before: job.before,
         confirmed: false,
