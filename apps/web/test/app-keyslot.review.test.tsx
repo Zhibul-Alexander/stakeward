@@ -17,6 +17,7 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
 
 // Review (security lens, CLAUDE.md section 6: three slots by role; "Switch to your ... account in the wallet, then
 // press Continue"). A filled Main key slot whose wallet now offers a different account shows that slot's address and
@@ -39,6 +40,7 @@ describe('review: KeySlot Continue on a Main key slot whose account the wallet d
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
       protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
     };
     expect(ports.slots.assign('main', { walletId: wallet.id, address: a.address })).toEqual({ ok: true });
     const location = memoryLocation({ path: '/app', record: true });

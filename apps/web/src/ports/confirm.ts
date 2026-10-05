@@ -1,5 +1,5 @@
 import type { Signature } from '@solana/kit';
-import type { BlockhashLifetime, ChainPort, NonceLifetime } from '@stakeward/core';
+import type { BlockhashLifetime, ChainPort, NonceLifetime, TransactionStatus } from '@stakeward/core';
 
 /**
  * Waiting for a sent transaction (CLAUDE.md section 3: no WebSocket, poll getSignatureStatuses until it is confirmed
@@ -38,28 +38,49 @@ export type ConfirmationOptions = {
 export const DEFAULT_POLL_INTERVAL_MS = 2_000;
 export const DEFAULT_CONFIRMATION_TIMEOUT_MS = 120_000;
 
-export async function waitForConfirmation(
+/** One sent transaction to wait for. */
+export type ConfirmationEntry = { signature: Signature; lifetime: ConfirmationLifetime };
+
+/**
+ * Waits for several sent transactions at once: each poll round reads every pending status in ONE getSignatureStatuses
+ * call and, when a blockhash transaction is still unseen, the block height in ONE getBlockHeight call. The result maps
+ * each signature (once, in the order given; for a repeated signature the first lifetime counts) to its outcome. The
+ * deadline, the cancellation and `lastError` work as in {@link waitForConfirmation}, for the whole batch: at the
+ * deadline every transaction still pending gets `timeout`.
+ */
+export async function waitForConfirmations(
   chain: ChainPort,
-  signature: Signature,
-  lifetime: ConfirmationLifetime,
+  entries: readonly ConfirmationEntry[],
   options: ConfirmationOptions = {},
-): Promise<ConfirmationOutcome> {
+): Promise<ReadonlyMap<Signature, ConfirmationOutcome>> {
   const { signal } = options;
   const commitment = options.commitment ?? 'confirmed';
   const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const now = options.now ?? Date.now;
   const sleep = options.sleep ?? abortableSleep;
   const deadline = now() + (options.timeoutMs ?? DEFAULT_CONFIRMATION_TIMEOUT_MS);
+  const unique: ConfirmationEntry[] = [];
+  for (const entry of entries) {
+    if (!unique.some((known) => known.signature === entry.signature)) unique.push(entry);
+  }
+  const outcomes = new Map<Signature, ConfirmationOutcome>();
+  let pending = unique;
   let lastError: unknown;
+  const finish = (): ReadonlyMap<Signature, ConfirmationOutcome> =>
+    new Map(unique.map((entry) => [entry.signature, outcomes.get(entry.signature) ?? { status: 'timeout', lastError }]));
 
   for (;;) {
     signal?.throwIfAborted();
+    if (pending.length === 0) return finish();
     try {
       // A round of reads can take long (HttpChain retries each one; about 92 s in the worst case), so the round, not
-      // only the pause between rounds, stops at the deadline and on cancel. A read left behind changes nothing.
-      const outcome = await withinDeadline(check(chain, signature, lifetime, commitment), Math.max(0, deadline - now()), signal);
-      if (outcome === PAST_DEADLINE) return { status: 'timeout', lastError };
-      if (outcome !== null) return outcome;
+      // only the pause between rounds, stops at the deadline and on cancel. A read left behind changes nothing: the
+      // outcomes of a round count only once the whole round is done.
+      const round = await withinDeadline(checkRound(chain, pending, commitment), Math.max(0, deadline - now()), signal);
+      if (round === PAST_DEADLINE) return finish();
+      for (const [signature, outcome] of round) outcomes.set(signature, outcome);
+      pending = pending.filter((entry) => !round.has(entry.signature));
+      if (pending.length === 0) return finish();
       lastError = null;
     } catch (error) {
       if (signal?.aborted === true) throw abortReason(signal);
@@ -68,9 +89,22 @@ export async function waitForConfirmation(
     }
     signal?.throwIfAborted();
     const left = deadline - now();
-    if (left <= 0) return { status: 'timeout', lastError };
+    if (left <= 0) return finish();
     await sleep(Math.min(pollIntervalMs, left), signal);
   }
+}
+
+/** {@link waitForConfirmations} for one transaction. */
+export async function waitForConfirmation(
+  chain: ChainPort,
+  signature: Signature,
+  lifetime: ConfirmationLifetime,
+  options: ConfirmationOptions = {},
+): Promise<ConfirmationOutcome> {
+  const outcomes = await waitForConfirmations(chain, [{ signature, lifetime }], options);
+  const outcome = outcomes.get(signature);
+  if (outcome === undefined) throw new Error(`No outcome for ${signature}`);
+  return outcome;
 }
 
 const PAST_DEADLINE = Symbol('past deadline');
@@ -107,29 +141,45 @@ function withinDeadline<T>(work: Promise<T>, ms: number, signal: AbortSignal | u
   });
 }
 
-/** One round: an outcome, or null to keep waiting. */
-async function check(
+/** One round over the pending transactions: the outcomes it settled (the others keep waiting). */
+async function checkRound(
   chain: ChainPort,
-  signature: Signature,
-  lifetime: ConfirmationLifetime,
+  pending: readonly ConfirmationEntry[],
   commitment: 'confirmed' | 'finalized',
-): Promise<ConfirmationOutcome | null> {
-  const landed = await statusOutcome(chain, signature, commitment);
-  if (landed !== undefined) return landed;
-  if (lifetime.kind !== 'blockhash') return null;
-  if ((await chain.getBlockHeight()) <= lifetime.lastValidBlockHeight) return null;
-  // Past the last valid height. It may have landed in the very last valid block: look once more.
-  const last = await statusOutcome(chain, signature, commitment);
-  return last === undefined ? { status: 'expired' } : last;
+): Promise<Map<Signature, ConfirmationOutcome>> {
+  const settled = new Map<Signature, ConfirmationOutcome>();
+  const statuses = await chain.getSignatureStatuses(pending.map((entry) => entry.signature));
+  // Unseen transactions that can expire (a nonce transaction never does).
+  const unseen: { signature: Signature; lastValidBlockHeight: bigint }[] = [];
+  pending.forEach((entry, index) => {
+    const outcome = statusOutcome(statuses[index], commitment);
+    if (outcome === undefined) {
+      if (entry.lifetime.kind === 'blockhash') {
+        unseen.push({ signature: entry.signature, lastValidBlockHeight: entry.lifetime.lastValidBlockHeight });
+      }
+    } else if (outcome !== null) {
+      settled.set(entry.signature, outcome);
+    }
+  });
+  if (unseen.length === 0) return settled;
+  const height = await chain.getBlockHeight();
+  const past = unseen.filter((entry) => height > entry.lastValidBlockHeight);
+  if (past.length === 0) return settled;
+  // Past the last valid height. One may have landed in the very last valid block: look once more.
+  const last = await chain.getSignatureStatuses(past.map((entry) => entry.signature));
+  past.forEach((entry, index) => {
+    const outcome = statusOutcome(last[index], commitment);
+    if (outcome === undefined) settled.set(entry.signature, { status: 'expired' });
+    else if (outcome !== null) settled.set(entry.signature, outcome);
+  });
+  return settled;
 }
 
 /** undefined: the cluster does not know the transaction; null: it landed but is not at `commitment` yet. */
-async function statusOutcome(
-  chain: ChainPort,
-  signature: Signature,
+function statusOutcome(
+  status: TransactionStatus | null | undefined,
   commitment: 'confirmed' | 'finalized',
-): Promise<ConfirmationOutcome | null | undefined> {
-  const [status] = await chain.getSignatureStatuses([signature]);
+): ConfirmationOutcome | null | undefined {
   if (status === null || status === undefined) return undefined;
   if (status.error !== null && status.error !== undefined) return { status: 'failed', slot: status.slot, error: status.error };
   const reached = status.confirmationStatus;

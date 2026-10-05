@@ -261,4 +261,36 @@ describe('StandardWalletPort with a misbehaving wallet', () => {
       await expect(port.signTransactions(A.address, [protect(A, K).bytes])).rejects.toThrow(/Odd answers/);
     }
   });
+
+  it('a wallet that returns another number of transactions than asked: WalletBatchUnsupportedError (sign one at a time)', async () => {
+    const [A, K] = await Promise.all([generateKeyPairSigner(), generateKeyPairSigner()]);
+    const wallet = new FakeStandardWallet({ name: 'One at a time', signers: [A], authorized: true });
+    // Signs only the first transaction of a request, like a wallet that cannot sign several in one approval.
+    let answer: (count: number) => unknown = (count) => Array.from({ length: Math.min(count, 1) }, () => ({ signedTransaction: protect(A, K).bytes }));
+    Object.defineProperty(wallet, 'features', {
+      get: () => ({
+        'standard:connect': { version: '1.0.0', connect: () => Promise.resolve({ accounts: wallet.accounts }) },
+        'solana:signTransaction': {
+          version: '1.0.0',
+          supportedTransactionVersions: ['legacy'],
+          signTransaction: (...inputs: unknown[]) => Promise.resolve(answer(inputs.length)),
+        },
+      }),
+    });
+    const port = new StandardWalletPort(wallet, CHAIN);
+    const two = [protect(A, K, 7).bytes, protect(A, K, 8).bytes];
+    await expect(port.signTransactions(A.address, two)).rejects.toMatchObject({ name: 'WalletBatchUnsupportedError', message: /One at a time/ });
+    expect(await port.signTransactions(A.address, [two[0] ?? new Uint8Array()])).toHaveLength(1);
+
+    answer = () => [];
+    await expect(port.signTransactions(A.address, two)).rejects.toMatchObject({ name: 'WalletBatchUnsupportedError' });
+    answer = (count) => Array.from({ length: count + 1 }, () => ({ signedTransaction: protect(A, K).bytes }));
+    await expect(port.signTransactions(A.address, two)).rejects.toMatchObject({ name: 'WalletBatchUnsupportedError' });
+
+    // An answer that is not a list at all is a broken wallet, not a batch limit.
+    answer = () => undefined;
+    const broken: unknown = await port.signTransactions(A.address, two).catch((error: unknown) => error);
+    expect(broken).toBeInstanceOf(Error);
+    expect(broken).not.toMatchObject({ name: 'WalletBatchUnsupportedError' });
+  });
 });

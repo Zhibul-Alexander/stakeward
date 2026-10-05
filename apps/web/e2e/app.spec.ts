@@ -1,11 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Page, Route } from '@playwright/test';
+import { getAddressEncoder, type Address } from '@solana/kit';
 import { expect, test } from './fixtures.ts';
 
 /**
  * /app on the built site with the worker's API mocked (CLAUDE.md section 13, layer 4): the stake account search, the
- * Clock sysvar through the RPC proxy and /api/health answer as the worker does. Screenshots go to docs/screens only
+ * Clock sysvar and the stake accounts themselves through the RPC proxy, and /api/health answer as the worker does. Screenshots go to docs/screens only
  * with UPDATE_SCREENS=1.
  */
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
@@ -66,6 +67,33 @@ const BY_SECOND_KEY = [
   stakeJson(STAKE.secondKeyFor, { lamports: 7n * SOL, withdrawer: OTHER_OWNER, lockEnd: NOW + 90n * DAY, custodian: MAIN }),
 ];
 
+type StakeJson = ReturnType<typeof stakeJson>;
+const ALL_STAKE: readonly StakeJson[] = [...BY_MAIN_KEY, ...BY_SECOND_KEY];
+const addressEncoder = getAddressEncoder();
+
+/** A stake account as getMultipleAccounts returns it: the 200 bytes of CLAUDE.md section 4, base64. */
+function stakeData(account: StakeJson): string {
+  const data = Buffer.alloc(200);
+  const key = (address: string, offset: number) => {
+    data.set(addressEncoder.encode(address as Address), offset);
+  };
+  data.writeUInt32LE(account.delegation === null ? 1 : 2, 0);
+  data.writeBigUInt64LE(BigInt(account.rentExemptReserve), 4);
+  key(account.staker, 12);
+  key(account.withdrawer, 44);
+  data.writeBigInt64LE(BigInt(account.lockup.unixTimestamp), 76);
+  data.writeBigUInt64LE(BigInt(account.lockup.epoch), 84);
+  key(account.lockup.custodian, 92);
+  if (account.delegation !== null) {
+    key(account.delegation.voter, 124);
+    data.writeBigUInt64LE(BigInt(account.delegation.stake), 156);
+    data.writeBigUInt64LE(BigInt(account.delegation.activationEpoch), 164);
+    data.writeBigUInt64LE(BigInt(account.delegation.deactivationEpoch), 172);
+    data.writeDoubleLE(0.25, 180);
+  }
+  return data.toString('base64');
+}
+
 /** The Clock sysvar as getAccountInfo returns it: slot, epoch start, epoch, leader schedule epoch, unix time. */
 function clockData(): string {
   const data = Buffer.alloc(40);
@@ -91,6 +119,24 @@ async function mockApi(page: Page, requests: string[] = []) {
   });
   await page.route('**/api/rpc', async (route) => {
     const request = route.request().postDataJSON() as { id: number; method: string; params: unknown[] };
+    if (request.method === 'getMultipleAccounts') {
+      // The page reads the found accounts again (the search is cached at the edge, DECISIONS D51).
+      const keys = request.params[0] as string[];
+      await json(route, {
+        jsonrpc: '2.0',
+        id: request.id,
+        result: {
+          context: { slot: 367_201_000 },
+          value: keys.map((address) => {
+            const account = ALL_STAKE.find((known) => known.address === address);
+            return account === undefined
+              ? null
+              : { data: [stakeData(account), 'base64'], executable: false, lamports: Number(account.lamports), owner: 'Stake11111111111111111111111111111111111111', space: 200 };
+          }),
+        },
+      });
+      return;
+    }
     if (request.method !== 'getAccountInfo' || request.params[0] !== 'SysvarC1ock11111111111111111111111111111111') {
       await json(route, { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not mocked' } }, 400);
       return;

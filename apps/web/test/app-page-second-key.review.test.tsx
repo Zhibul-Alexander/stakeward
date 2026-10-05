@@ -23,6 +23,7 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
 
 describe('review: /app second key slot', () => {
   it('never fills the Second key slot with the main key being viewed', async () => {
@@ -41,6 +42,7 @@ describe('review: /app second key slot', () => {
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
       protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
     };
     const location = memoryLocation({ path: `/app?address=${main.address}` });
     render(

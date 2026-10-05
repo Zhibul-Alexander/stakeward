@@ -18,6 +18,7 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -48,6 +49,7 @@ describe('review: /app monitoring line on a page left open', () => {
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
       protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
     };
     const location = memoryLocation({ path: `/app?address=${address}` });
     render(

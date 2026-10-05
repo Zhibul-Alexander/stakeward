@@ -20,6 +20,7 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
 
 // The accounts page (/app) on the real stake program: accounts are created in LiteSVM, the page reads them through
 // LiteSvmChain exactly as it reads HttpChain in production, and test wallets fill the key slots.
@@ -48,6 +49,7 @@ function renderApp(setup: Setup, defaultChain: ChainPort) {
     slots: createSlotStore(null),
     secondKeys: createSecondKeyMemory(null),
     protectedAccounts: createProtectedAccountMemory(null),
+    api: createFakeApi(),
   };
   for (const [role, wallet] of [['main', setup.mainSlot], ['second', setup.secondSlot]] as const) {
     const address = wallet?.accounts[0];
@@ -188,6 +190,13 @@ describe('/app on LiteSvmChain', () => {
     expect(screen.getByText('Last checked 2 min ago')).toBeInTheDocument();
     expect(within(section('Is this lock yours?')).getByText('Connected')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
+
+    // Alerts for this address: the worker's redirect to the Telegram bot, in a new tab.
+    const telegram = screen.getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
+    expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${main.address}`);
+    expect(telegram).toHaveAttribute('target', '_blank');
+    // noreferrer implies noopener (HTML standard): the bot page gets neither this page's address nor a handle to it.
+    expect(telegram).toHaveAttribute('rel', 'noreferrer');
 
     // F6 memory: a view by address writes nothing (the main key is not connected here).
     expect(ports.protectedAccounts.getSnapshot()).toEqual([]);

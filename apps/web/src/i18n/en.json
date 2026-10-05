@@ -352,6 +352,7 @@
     "results": {
       "mainKey": "Main key",
       "refresh": "Refresh",
+      "telegram": "Get alerts in Telegram",
       "loading": "Reading stake accounts from the network",
       "errorTitle": "Could not load the stake accounts",
       "countOne": "1 stake account",

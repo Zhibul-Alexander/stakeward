@@ -2,12 +2,13 @@ import type { Address } from '@solana/kit';
 import { translateError, type ChainClock, type ChainPort, type FriendlyError, type StakeAccount } from '@stakeward/core';
 import { useEffect, useState } from 'react';
 import type { Health } from '@/api/health';
+import { refreshStakeAccounts } from '@/ports';
 
 export type StakeAccountsData = {
   address: Address;
   /** Cluster time and epoch the statuses are computed with. */
   clock: ChainClock;
-  /** Found by main key and by second key; may hold the same account twice. */
+  /** Found by main key and by second key, each once, in the state read after the search. */
   accounts: readonly StakeAccount[];
 };
 
@@ -18,7 +19,9 @@ export type StakeAccountsState =
 
 /**
  * Reads what the accounts page needs from the chain: stake accounts whose main key is `address`, those whose lock
- * `address` holds, and the Clock sysvar. One failure fails the whole read: the page never shows a partial list.
+ * `address` holds, and the Clock sysvar. The search is cached for 30 s at the edge, so it only says which accounts
+ * exist; their state is read again (refreshStakeAccounts), or a lock that just landed would look like one that ended
+ * (DECISIONS D51). One failure fails the whole read: the page never shows a partial list.
  */
 export async function loadStakeAccounts(chain: ChainPort, address: Address): Promise<StakeAccountsData> {
   const [byMainKey, bySecondKey, clock] = await Promise.all([
@@ -26,7 +29,8 @@ export async function loadStakeAccounts(chain: ChainPort, address: Address): Pro
     chain.findStakeAccounts({ custodian: address }),
     chain.getClock(),
   ]);
-  return { address, clock, accounts: [...byMainKey.accounts, ...bySecondKey.accounts] };
+  const accounts = await refreshStakeAccounts(chain, [...byMainKey.accounts, ...bySecondKey.accounts]);
+  return { address, clock, accounts };
 }
 
 /** The read for `address`, again whenever `attempt` changes (Refresh, Try again). Results of older reads are dropped. */

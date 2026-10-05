@@ -16,6 +16,8 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
+import { rawStakeAccount } from './support/raw-stake.ts';
 
 // Review (security lens; F6 in CLAUDE.md section 7, the red banner when a stake that was protected stands without a
 // lock). The device memory behind F6 is filled by viewing ANY address: every account of the viewed address whose lock
@@ -57,6 +59,14 @@ describe('review: F6 memory can be flushed by viewing an address that is not the
     const chain = {
       findStakeAccounts: (filter: StakeAccountFilter) =>
         Promise.resolve({ slot: 1n, accounts: 'withdrawer' in filter && filter.withdrawer === attacker ? decoys : [] }),
+      getAccounts: (addresses: readonly Address[]) =>
+        Promise.resolve({
+          slot: 1n,
+          accounts: addresses.map((address) => {
+            const decoy = decoys.find((account) => account.address === address);
+            return decoy === undefined ? null : rawStakeAccount(decoy);
+          }),
+        }),
       getClock: () => Promise.resolve(clock),
     } as unknown as ChainPort;
     const ports: Ports = {
@@ -65,6 +75,7 @@ describe('review: F6 memory can be flushed by viewing an address that is not the
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
       protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
     };
     // The victim protected their stake on this device earlier.
     ports.secondKeys.remember(victimSecondKey);

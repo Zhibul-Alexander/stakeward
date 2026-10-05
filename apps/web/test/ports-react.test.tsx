@@ -8,24 +8,28 @@ import {
   createSlotStore,
   PortsProvider,
   StaticWalletRegistry,
+  useApi,
   useChain,
   useKnownSecondKeys,
   useSlot,
   useWallets,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
 
 function Probe() {
   const wallets = useWallets();
   const second = useSlot('second');
   const known = useKnownSecondKeys();
   const chain = useChain();
+  const api = useApi();
   return (
     <ul>
       <li>wallets: {wallets.map((wallet) => wallet.name).join(',')}</li>
       <li>second: {second === null ? 'empty' : second.ready ? 'ready' : 'not ready'}</li>
       <li>known: {known.length}</li>
       <li>chain: {typeof chain.getClock}</li>
+      <li>api: {typeof api.watch}</li>
     </ul>
   );
 }
@@ -41,6 +45,7 @@ describe('ports in React', () => {
       slots: createSlotStore(null),
       secondKeys: createSecondKeyMemory(null),
       protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
     };
     render(
       <PortsProvider ports={ports}>
@@ -50,6 +55,7 @@ describe('ports in React', () => {
     screen.getByText('wallets: Solflare');
     screen.getByText('second: empty');
     screen.getByText('chain: function');
+    screen.getByText('api: function');
 
     act(() => {
       ports.slots.assign('second', { walletId: 'Solflare', address: second.address });

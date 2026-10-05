@@ -1,13 +1,15 @@
 import type { Address } from '@solana/kit';
 import type { ChainPort, WalletPort, WalletRole, WalletSlots } from '@stakeward/core';
 import { createContext, use, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import type { ApiPort } from '@/api/watch';
 import type { ProtectedAccountMemory } from './protected-accounts.ts';
 import { knownSecondKeys, resolveSlot, type ResolvedSlot, type SecondKeyMemory, type SlotStore } from './slots.ts';
 import type { WalletRegistry } from './wallet-registry.ts';
 
 /**
  * Everything the screens use to reach the outside world. Production: createBrowserPorts() (HttpChain, Wallet Standard
- * wallets, localStorage-backed slots). Tests: LiteSvmChain and test wallets in a StaticWalletRegistry.
+ * wallets, localStorage-backed slots, the worker's API). Tests: LiteSvmChain and test wallets in a StaticWalletRegistry,
+ * and a fake API.
  */
 export type Ports = {
   chain: ChainPort;
@@ -16,6 +18,8 @@ export type Ports = {
   secondKeys: SecondKeyMemory;
   /** Stake accounts seen protected on this device (F6 banner). */
   protectedAccounts: ProtectedAccountMemory;
+  /** The worker's own endpoints beyond the RPC proxy (POST /api/watch). */
+  api: ApiPort;
 };
 
 const PortsContext = createContext<Ports | null>(null);
@@ -32,6 +36,10 @@ export function usePorts(): Ports {
 
 export function useChain(): ChainPort {
   return usePorts().chain;
+}
+
+export function useApi(): ApiPort {
+  return usePorts().api;
 }
 
 /** Wallets the user can connect; re-renders when the list or a wallet's accounts change. */

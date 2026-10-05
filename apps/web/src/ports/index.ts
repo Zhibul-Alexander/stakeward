@@ -1,15 +1,18 @@
 // The site's side of the two ports (CLAUDE.md section 3): HttpChain for ChainPort, Wallet Standard for WalletPort,
-// the three key slots, and the React glue. Test doubles (LiteSvmChain, test wallets) live in packages/core/test and
-// are never imported from src.
+// the three key slots, the worker's API (src/api) and the React glue. Test doubles (LiteSvmChain, test wallets, the
+// fake API) live in packages/core/test and apps/web/test and are never imported from src.
 export { createBrowserPorts } from './browser.ts';
 export {
   DEFAULT_CONFIRMATION_TIMEOUT_MS,
   DEFAULT_POLL_INTERVAL_MS,
   waitForConfirmation,
+  waitForConfirmations,
+  type ConfirmationEntry,
   type ConfirmationLifetime,
   type ConfirmationOptions,
   type ConfirmationOutcome,
 } from './confirm.ts';
+export { refreshStakeAccounts } from './fresh-accounts.ts';
 export { HttpChain, type HttpChainOptions } from './http-chain.ts';
 export {
   createProtectedAccountMemory,
@@ -19,6 +22,7 @@ export {
 } from './protected-accounts.ts';
 export {
   PortsProvider,
+  useApi,
   useChain,
   useKnownSecondKeys,
   usePorts,

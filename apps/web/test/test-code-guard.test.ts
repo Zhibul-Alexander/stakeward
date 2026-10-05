@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { LITESVM_CHAIN_MARKER } from '@stakeward/core/test/litesvm-chain';
 import { TEST_WALLET_PORT_MARKER } from '@stakeward/core/test/test-wallet-port';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { FAKE_API_MARKER } from './support/fake-api.ts';
 import { FAKE_STANDARD_WALLET_MARKER } from './support/fake-standard-wallet.ts';
 
 /**
@@ -16,7 +17,7 @@ import { FAKE_STANDARD_WALLET_MARKER } from './support/fake-standard-wallet.ts';
  * its marker, so a marker cannot silently fall out of minified code and make the scan meaningless.
  */
 const TEST_ONLY_PREFIX = 'stakeward-test-only:';
-const TEST_MARKERS = [TEST_WALLET_PORT_MARKER, LITESVM_CHAIN_MARKER, FAKE_STANDARD_WALLET_MARKER];
+const TEST_MARKERS = [TEST_WALLET_PORT_MARKER, LITESVM_CHAIN_MARKER, FAKE_STANDARD_WALLET_MARKER, FAKE_API_MARKER];
 /** Never in the shipped site: test code, LiteSVM, key generation, private-key import, forbidden wallet features. */
 const FORBIDDEN_IN_PRODUCTION: readonly (string | RegExp)[] = [
   TEST_ONLY_PREFIX,
@@ -123,6 +124,11 @@ describe('test code never ships', () => {
     const code = bundle(`export { FakeStandardWallet } from '../../test/support/fake-standard-wallet.ts';\n`);
     expect(code).toContain(FAKE_STANDARD_WALLET_MARKER);
     expect(code).toContain('solana:signMessage');
+  }, 120_000);
+
+  it('positive control: a bundle of the fake API keeps its marker', () => {
+    const code = bundle(`export { createFakeApi } from '../../test/support/fake-api.ts';\n`);
+    expect(code).toContain(FAKE_API_MARKER);
   }, 120_000);
 
   it('positive control: a (Node) bundle of LiteSvmChain keeps its marker and its LiteSVM import', () => {

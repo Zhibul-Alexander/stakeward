@@ -32,6 +32,7 @@ import {
  *   A request whose signal aborts (Stop waiting) stops holding up the next ones (core createWalletRequestQueue).
  * - A user rejection (code 4001 or "rejected/declined/cancelled", as translateError reads it) is rethrown as an Error
  *   with code 4001 and the wallet's error as `cause`; -32002 becomes WalletBusyError. Other errors pass unchanged.
+ * - An answer with another number of signed transactions than asked is WalletBatchUnsupportedError: sign one at a time.
  * - Never signMessage, never signAndSendTransaction (section 2 rule 2, section 6): the site sends every transaction.
  */
 
@@ -144,8 +145,13 @@ export class StandardWalletPort implements WalletPort {
         throw mapWalletError(error, this.name);
       }
       const answer: unknown = outputs;
-      if (!Array.isArray(answer) || answer.length !== transactions.length) {
-        throw new Error(`${this.name} did not return one signed transaction for each of the ${String(transactions.length)} sent`);
+      if (!Array.isArray(answer)) throw new Error(`${this.name} returned no list of signed transactions`);
+      if (answer.length !== transactions.length) {
+        // Seen as a wallet that cannot sign several transactions in one approval: the site offers one at a time.
+        throw walletError(
+          'WalletBatchUnsupportedError',
+          `${this.name} did not return one signed transaction for each of the ${String(transactions.length)} sent`,
+        );
       }
       return outputs.map((output, index) => {
         const signed: unknown = (output as Partial<SolanaSignTransactionOutput> | undefined)?.signedTransaction;

@@ -1,7 +1,7 @@
 import type { Address } from '@solana/kit';
 import { formatSol, shortAddress } from '@stakeward/core';
-import { CalendarPlusIcon, LoaderCircleIcon, RefreshCwIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { CalendarPlusIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/product/error-state';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { Health } from '@/api/health';
+import { telegramLinkPath } from '@/api/telegram';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { useKnownSecondKeys, usePorts, useProtectedAccounts, useWalletSlots } from '@/ports';
@@ -27,7 +28,7 @@ const CLOCK_TICK_MS = 30_000;
  * (CLAUDE.md section 5: reload-safe); the device adds only the known second keys and the accounts it saw protected.
  */
 export function AccountsResults({ address, loadHealth }: { address: Address; loadHealth: () => Promise<Health> }) {
-  const { chain, protectedAccounts } = usePorts();
+  const { chain, protectedAccounts, api } = usePorts();
   const knownSecondKeys = useKnownSecondKeys();
   const rememberedProtected = useProtectedAccounts();
   const mainSlot = useWalletSlots().main;
@@ -61,6 +62,20 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
     if (confirmed !== undefined && confirmed.length > 0) protectedAccounts.remember(confirmed);
   }, [confirmed, protectedAccounts]);
 
+  // The same locks go under monitoring, each once per page (DECISIONS D50): a lock made elsewhere, or one whose
+  // POST /api/watch failed on the Done screen, is watched from here on. The worker reads the chain itself and accepts
+  // only a lock in force, so this sends nothing but public addresses; a failure is silent (the page works without it).
+  // Never for a view by address.
+  const postedRef = useRef(new Set<Address>());
+  useEffect(() => {
+    if (confirmed === undefined) return;
+    const posted = postedRef.current;
+    const newOnes = confirmed.filter((account) => !posted.has(account));
+    if (newOnes.length === 0) return;
+    for (const account of newOnes) posted.add(account);
+    void api.watch(newOnes).catch(() => undefined);
+  }, [confirmed, api]);
+
   // What a check found, for screen readers (UX rule 11): the loading line that announced the read is gone by then. The
   // region stays in the page so that the change of its text is what gets announced.
   const found = view === null ? 0 : view.owned.length + view.secondKeyFor.length;
@@ -85,6 +100,17 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <MonitoringStatus state={health} now={now} />
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={telegramLinkPath(address)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${t('app.results.telegram')} ${t('common.opensInNewTab')}`}
+            >
+              <SendIcon aria-hidden="true" />
+              {t('app.results.telegram')}
+            </a>
+          </Button>
           <Button variant="outline" size="sm" onClick={reload}>
             <RefreshCwIcon aria-hidden="true" />
             {t('app.results.refresh')}

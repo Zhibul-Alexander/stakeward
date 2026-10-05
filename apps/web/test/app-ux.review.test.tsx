@@ -20,6 +20,8 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import { createFakeApi } from './support/fake-api.ts';
+import { rawStakeAccount } from './support/raw-stake.ts';
 
 // Adversarial review of the step-3 accounts page (/app): UX rules 11 and 12, CLAUDE.md section 5 and D14.
 
@@ -48,7 +50,7 @@ function stakeAccount(address: Address, withdrawer: Address, lamports: bigint, l
   };
 }
 
-/** A chain that knows a fixed set of stake accounts; only what /app reads. */
+/** A chain that knows a fixed set of stake accounts; only what /app reads (the search, then the accounts themselves). */
 function stubChain(accounts: readonly StakeAccount[]): ChainPort {
   const chain: Partial<ChainPort> = {
     getClock: () => Promise.resolve(CLOCK),
@@ -58,6 +60,14 @@ function stubChain(accounts: readonly StakeAccount[]): ChainPort {
         accounts: accounts.filter((account) =>
           'withdrawer' in filter ? account.withdrawer === filter.withdrawer : account.lockup.custodian === filter.custodian,
         ),
+      }),
+    getAccounts: (addresses) =>
+      Promise.resolve({
+        slot: CLOCK.slot,
+        accounts: addresses.map((address) => {
+          const account = accounts.find((known) => known.address === address);
+          return account === undefined ? null : rawStakeAccount(account);
+        }),
       }),
   };
   return chain as ChainPort;
@@ -71,6 +81,7 @@ function renderApp(path: string, chain: ChainPort, loadHealth: () => Promise<Hea
     slots: createSlotStore(null),
     secondKeys: createSecondKeyMemory(null),
     protectedAccounts: createProtectedAccountMemory(null),
+    api: createFakeApi(),
   };
   render(
     <Router hook={location.hook} searchHook={location.searchHook}>
