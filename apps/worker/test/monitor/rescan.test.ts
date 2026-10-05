@@ -1,6 +1,7 @@
 // Rescans by (main key, second key) pair (step 5 spec section 4.5, DECISIONS.md D52): accounts split off a watched one
 // are watched from then on, live rows are never touched, closed rows revive, the queue survives every stop.
 import { getAddressDecoder, type Address } from '@solana/kit';
+import { SYSVAR_CLOCK_ADDRESS } from '@stakeward/core';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { StakeAccountSpec } from '../transactions.ts';
@@ -187,6 +188,67 @@ describe('what a search watches', () => {
 });
 
 describe('the queue survives every stop', () => {
+  /** S1 deactivated and split: S2 has the same keys and lock. MAIN follows in a chat, so the sends load links too. */
+  async function splitOff(): Promise<Harness> {
+    const h = await watched();
+    await h.linkChat(MAIN, '100001');
+    h.chain.putStake(S1, { ...SPEC, deactivationEpoch: 951n }, LAMPORTS - 3_000_000_000n);
+    h.chain.putStake(S2, { ...SPEC, deactivationEpoch: 951n }, 3_000_000_000n);
+    return h;
+  }
+
+  it('the urgent pair is stored with the chunk; a pass that searched it leaves the queue empty', async () => {
+    const h = await splitOff();
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, autoWatched: 1, rescanQueue: 0 });
+    const chunkCommit = h.db.journal.find((e) => e.name === 'CHUNK_EVENTS')?.call;
+    const stored = h.db.journal.find((e) => e.call === chunkCommit && e.name === 'PUT_META');
+    expect(JSON.parse(String(stored?.args[0]))).toMatchObject({ rescan_queue: JSON.stringify([[MAIN, SECOND]]) });
+    expect((await h.readMeta()).rescan_queue).toBe('[]');
+  });
+
+  for (const failing of ['PENDING', 'LINKS_FOR', 'KNOWN_LIVE'] as const) {
+    it(`a pass that fails after the chunk commit (at ${failing}): the next pass searches the urgent pair`, async () => {
+      const h = await splitOff();
+      h.db.failWhen = (entry) => entry.name === failing;
+      h.at('2026-10-05T01:02:00Z');
+      await expect(h.pass()).rejects.toThrow(/D1_ERROR/);
+      expect(JSON.parse((await h.readMeta()).rescan_queue ?? '')).toEqual([[MAIN, SECOND]]);
+
+      h.db.failWhen = null;
+      h.at('2026-10-05T01:04:00Z');
+      expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, autoWatched: 1, rescanQueue: 0 });
+      expect((await h.readAccounts()).map((r) => r.stake_account).sort()).toEqual([S1, S2].sort());
+    });
+  }
+
+  it('no live row left to read: the Clock alone is read, the queued pair searched and the closed row revived', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const h = await watched();
+    // A node answers null for S1 and the search in the same pass fails: S1 is closed, its pair waits.
+    h.chain.remove(S1);
+    h.chain.failNext('getProgramAccounts', [503, 503, 503]);
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', closed: 1, rescans: 1, rescanQueue: 1 });
+
+    h.chain.putStake(S1, SPEC);
+    h.at('2026-10-05T01:04:00Z');
+    const calls = h.chain.calls.length;
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rows: 0, chunks: 0, rescans: 1, autoWatched: 1, rescanQueue: 0 });
+    const clockRead = h.chain.calls.slice(calls).find((c) => c.method === 'getMultipleAccounts');
+    expect(clockRead?.keys).toEqual([SYSVAR_CLOCK_ADDRESS]);
+    expect((await h.readAccounts())[0]).toMatchObject({ stake_account: S1, state: 'delegated' });
+
+    h.at('2026-10-05T01:06:00Z');
+    expect(await h.pass()).toMatchObject({ rows: 1, fastPath: 1, rescans: 0 });
+  });
+
+  it('an empty queue and no live row: nothing is read', async () => {
+    const h = createHarness();
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rows: 0, rescans: 0, fetches: 0 });
+  });
+
   it('past the soft deadline: no search, the urgent pair waits in meta for the next pass', async () => {
     const h = await watched();
     h.chain.putStake(S1, { ...SPEC, deactivationEpoch: 951n });

@@ -27,6 +27,8 @@ export const COST = {
   sendCommit: 4,
   /** One rescan call and its post-processing. */
   urgentRescan: 5,
+  /** getMultipleAccounts of the Clock alone (3 attempts), for rescans in a pass that read no chunk. */
+  clockRead: 3,
   /** getProgramAccounts, 3 attempts. */
   rescanCall: 3,
   /** KNOWN_LIVE + INSERT_WATCHED after the rescan calls. */

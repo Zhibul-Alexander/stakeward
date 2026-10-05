@@ -61,12 +61,12 @@ import {
  *              not get the lease writes nothing and returns 'skipped-lease'.
  * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
  *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
- *              writes and the cursor.
+ *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front.
  * 4. daily   - on the first pass after 06:00 UTC: every (main key, second key) pair joins the rescan queue, and the
  *              reminders due (REMINDER_<d> events) are written.
  * 5. sends   - Telegram delivery (step 5 spec section 7): one message per chat, committed before the rescans.
  * 6. rescans - getProgramAccounts by (main key, second key) pair, urgent pairs first; locked accounts split off a
- *              watched one are watched from then on.
+ *              watched one are watched from then on. A pass that read no chunk reads the Clock alone for them.
  * 7. admin   - at most one admin alert.
  * 8. finish  - one statement: the lease released, the queue, the counters and, only when the pass succeeded, the
  *              marker `last_pass_at` that /api/health reads. It is always the pass's last statement.
@@ -216,6 +216,8 @@ type LoadedPass = PassContext & {
   dailyDue: boolean;
   /** The rescan queue: meta.rescan_queue, then the daily pairs; urgent pairs go in front before the rescans. */
   queue: QueuedPair[];
+  /** meta.rescan_queue as this pass last wrote it (or loaded it): the finish writes the queue only when it differs. */
+  storedQueue: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
   /** The cluster clock of the last chunk read in this pass; rescans need it. */
@@ -303,6 +305,7 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     pastDeadline: () => deps.now() - t0 > MONITOR_LIMITS.softDeadlineMs,
     dailyDue: new Date(t0).getUTCHours() >= MONITOR_LIMITS.dailyHourUtc && meta.dailyDay !== utcDay(t0),
     queue: [...meta.rescanQueue],
+    storedQueue: JSON.stringify(meta.rescanQueue),
     urgent: [],
     lastRead: null,
     readFailed: false,
@@ -373,9 +376,9 @@ async function readChunks(pass: LoadedPass): Promise<void> {
         : shortPage && lastOfPage
           ? ''
           : (chunk.at(-1)?.stake_account ?? cursor);
+    pass.urgent.push(...out.rescan);
     await commitChunk(pass, out, cursorAfter === cursor ? null : cursorAfter, deps.now());
     cursor = cursorAfter;
-    pass.urgent.push(...out.rescan);
     pass.lastRead = { clock: read.clock, clockMs: read.clockMs };
     if (out.processed < chunk.length) {
       report.deferred = true;
@@ -392,16 +395,25 @@ async function checkGenesis(pass: LoadedPass, endpoint: EndpointName): Promise<'
   return hash === GENESIS_HASH[pass.config.cluster] ? 'ok' : 'mismatch';
 }
 
-/** One batch: the events (gated on the row versions), then the row writes (compare-and-set), then the cursor. */
+/**
+ * One batch: the events (gated on the row versions), then the row writes (compare-and-set), then meta: the cursor and,
+ * when this chunk calls for a rescan, the queue with the urgent pairs in front. Once the events are in, the next pass
+ * sees no change and would not ask for that rescan again: a pass that fails or is killed later must leave it queued.
+ */
 async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string | null, nowMs: number): Promise<void> {
   const db = pass.deps.db;
   const statements: D1PreparedStatement[] = [];
   if (out.events.length > 0) statements.push(chunkEventsStatement(db, out.events, nowMs));
   if (out.updates.length > 0) statements.push(chunkUpdateStatement(db, out.updates));
-  if (cursor !== null) statements.push(putMetaStatement(db, { cursor }, pass.passId));
+  const entries: Record<string, string> = {};
+  if (cursor !== null) entries.cursor = cursor;
+  const queue = out.rescan.length > 0 ? JSON.stringify(uniquePairs([...pass.urgent, ...pass.queue])) : null;
+  if (queue !== null && queue !== pass.storedQueue) entries.rescan_queue = queue;
+  if (Object.keys(entries).length > 0) statements.push(putMetaStatement(db, entries, pass.passId));
   if (statements.length === 0) return;
   const results = await pass.budget.batch(db, statements);
   if (out.events.length > 0) pass.report.events += results[0]?.meta.changes ?? 0;
+  if (queue !== null) pass.storedQueue = queue;
 }
 
 /**
@@ -538,9 +550,9 @@ async function deliver(pass: LoadedPass): Promise<void> {
 
 /**
  * Stage 6: search the stake accounts of (main key, second key) pairs: this pass's urgent pairs first, then the queue.
- * Split copies both keys and the lock, so the pair finds every account split off a watched one (D52). Runs only after
- * a chunk read in this pass (the cluster clock judges the locks). A failed call keeps its pair at the head and stops
- * the search; an answer over the plan's size limit drops its pair (admin alert). Unknown accounts (closed rows too)
+ * Split copies both keys and the lock, so the pair finds every account split off a watched one (D52). The cluster
+ * clock judges the locks: the one of this pass's last chunk read, else of a read of the Clock alone (readClockAlone).
+ * A failed call keeps its pair at the head and stops the search; an answer over the plan's size limit drops its pair (admin alert). Unknown accounts (closed rows too)
  * are decoded within the decode cap and watched when the pair matches and the lock is in force: a first sighting,
  * no events, a live row never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order;
  * a pair whose accounts did not all fit the decode cap goes to the back of the queue with the last account this
@@ -550,9 +562,10 @@ async function rescans(pass: LoadedPass): Promise<void> {
   const { config, budget, report, deps } = pass;
   pass.queue = uniquePairs([...pass.urgent, ...pass.queue]);
   pass.urgent = [];
-  const lastRead = pass.lastRead;
-  if (lastRead === null) return;
+  if (pass.queue.length === 0) return;
   report.stage = 'rescans';
+  const lastRead = pass.lastRead ?? (await readClockAlone(pass));
+  if (lastRead === null) return;
 
   const found: { pair: QueuedPair; slot: number; items: ProgramAccountItem[] }[] = [];
   // Each call keeps room for itself (3 attempts) and the two statements after the loop.
@@ -632,6 +645,22 @@ async function rescans(pass: LoadedPass): Promise<void> {
   report.autoWatched += inserted?.meta.changes ?? 0;
 }
 
+/**
+ * The cluster clock for rescans in a pass that read no chunk: every watched row is closed (the page is empty), and
+ * a queued search is the only way such a row comes back (DAILY_PAIRS keeps closed rows for that). Not after a chunk
+ * that failed, past the soft deadline, or without the budget for the read and one search; a failed read leaves the
+ * queue as it is and does not fail the pass.
+ */
+async function readClockAlone(pass: LoadedPass): Promise<LoadedPass['lastRead']> {
+  const { config, budget } = pass;
+  if (pass.readFailed || pass.pastDeadline()) return null;
+  if (budget.left() < COST.clockRead + COST.rescanCall + COST.rescanPost) return null;
+  const result = await readChunk([SYSVAR_CLOCK_ADDRESS], { endpoints: config.rpc, options: pass.upstream });
+  if (!result.ok) return null;
+  pass.lastRead = { clock: result.read.clock, clockMs: result.read.clockMs };
+  return pass.lastRead;
+}
+
 /** Stage 7: the one admin alert of the pass, the first due kind (ADMIN_KINDS order) not sent within the hour. */
 async function admin(pass: LoadedPass): Promise<void> {
   const { meta, report } = pass;
@@ -658,7 +687,7 @@ async function finish(pass: LoadedPass): Promise<void> {
   report.stage = 'finish';
   const entries: Record<string, string> = { pass_lease: JSON.stringify({ pass: pass.passId, until: 0 }) };
   const queue = JSON.stringify(pass.queue);
-  if (queue !== JSON.stringify(meta.rescanQueue)) entries.rescan_queue = queue;
+  if (queue !== pass.storedQueue) entries.rescan_queue = queue;
   const readFailures = pass.readFailed ? meta.readFailures + 1 : 0;
   if (readFailures !== meta.readFailures) entries.read_failures = String(readFailures);
   if (pass.adminChanged) entries.admin_alerts = JSON.stringify(pass.adminSent);
