@@ -21,6 +21,7 @@ function chainWith(getSignatureStatuses: ChainPort['getSignatureStatuses'], getB
     simulate: unused,
     send: unused,
     findStakeAccounts: unused,
+    getEpochInfo: unused,
     getBlockHeight,
     getSignatureStatuses,
   };

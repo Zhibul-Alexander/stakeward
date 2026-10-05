@@ -2,7 +2,14 @@ import { getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { U64_MAX, ZERO_ADDRESS } from './constants.ts';
 import type { Delegation, StakeAccount } from './decode.ts';
-import { groupForViewer, protectBlock, scannerStatus, stakeActivationStatus } from './status.ts';
+import {
+  epochEndEstimate,
+  groupForViewer,
+  protectBlock,
+  scannerStatus,
+  SLOT_MS_ESTIMATE,
+  stakeActivationStatus,
+} from './status.ts';
 
 const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
 const DAY = 86_400n;
@@ -150,5 +157,35 @@ describe('groupForViewer', () => {
       owned: [owned, ownedSelfCustody],
       secondKeyFor: [secondKeyFor],
     });
+  });
+});
+
+describe('epochEndEstimate (400 ms per slot)', () => {
+  const now = 1_800_000_000n;
+  const info = { epoch: 1_047n, slotIndex: 431_000n, slotsInEpoch: 432_000n };
+
+  it('the current epoch ends after its remaining slots, rounded up to whole seconds', () => {
+    expect(SLOT_MS_ESTIMATE).toBe(400n);
+    // 1 000 slots x 400 ms = 400 s.
+    expect(epochEndEstimate(info, now)).toBe(now + 400n);
+    expect(epochEndEstimate(info, now, info.epoch)).toBe(now + 400n);
+    // 1 slot = 0.4 s -> 1 s.
+    expect(epochEndEstimate({ ...info, slotIndex: 431_999n }, now)).toBe(now + 1n);
+    expect(epochEndEstimate({ ...info, slotIndex: 0n }, now)).toBe(now + 172_800n);
+  });
+
+  it('a later target epoch adds whole epochs', () => {
+    // (1 000 + 2 x 432 000) slots x 0.4 s.
+    expect(epochEndEstimate(info, now, info.epoch + 2n)).toBe(now + 400n + 2n * 172_800n);
+  });
+
+  it('a target epoch already over gives now', () => {
+    expect(epochEndEstimate(info, now, info.epoch - 1n)).toBe(now);
+    expect(epochEndEstimate(info, now, 0n)).toBe(now);
+  });
+
+  it('a slot index at or past the epoch length leaves no slots of the current epoch', () => {
+    expect(epochEndEstimate({ ...info, slotIndex: info.slotsInEpoch }, now)).toBe(now);
+    expect(epochEndEstimate({ ...info, slotIndex: info.slotsInEpoch }, now, info.epoch + 1n)).toBe(now + 172_800n);
   });
 });

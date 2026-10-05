@@ -13,7 +13,7 @@ import {
   type TransactionAction,
 } from '../src/index.ts';
 import { BLOCKHASH_VALIDITY_BLOCKS, LiteSvmChain, LITESVM_CHAIN_MARKER } from './litesvm-chain.ts';
-import { LAMPORTS_PER_SOL, START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from './svm.ts';
+import { LAMPORTS_PER_SOL, SLOTS_PER_EPOCH, START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from './svm.ts';
 
 const HOUR = 3_600n;
 
@@ -186,6 +186,32 @@ describe('LiteSvmChain', () => {
     // Setup transactions of the harness also move LiteSVM's blockhash on: the emulation follows.
     await testChain.createStakeAccount({ staker: A.address, withdrawer: A.address });
     expect(await chain.getBlockHeight()).toBeGreaterThan(second.lastValidBlockHeight);
+  });
+
+  it('reports the epoch, the slot index in it and the emulated block height (getEpochInfo)', async () => {
+    expect(await chain.getEpochInfo()).toEqual({
+      epoch: START_EPOCH,
+      slotIndex: 0n,
+      slotsInEpoch: SLOTS_PER_EPOCH,
+      blockHeight: await chain.getBlockHeight(),
+    });
+
+    testChain.warpToEpoch(START_EPOCH + 3n);
+    chain.advanceBlocks(7n);
+    const info = await chain.getEpochInfo();
+    expect(info).toMatchObject({ epoch: START_EPOCH + 3n, slotIndex: 0n, slotsInEpoch: SLOTS_PER_EPOCH });
+    expect(info.blockHeight).toBe(await chain.getBlockHeight());
+    expect(info.epoch).toBe((await chain.getClock()).epoch);
+
+    // Slots past the epoch start count in the index; it never leaves the epoch.
+    testChain.svm.warpToSlot((START_EPOCH + 3n) * SLOTS_PER_EPOCH + 5n);
+    expect((await chain.getEpochInfo()).slotIndex).toBe(5n);
+    testChain.svm.warpToSlot((START_EPOCH + 9n) * SLOTS_PER_EPOCH);
+    expect((await chain.getEpochInfo()).slotIndex).toBe(SLOTS_PER_EPOCH - 1n);
+
+    const offline = new TypeError('Failed to fetch');
+    chain.failNext('getEpochInfo', offline);
+    await expect(chain.getEpochInfo()).rejects.toBe(offline);
   });
 
   it('a transaction on an expired blockhash is refused as blockhash-expired', async () => {

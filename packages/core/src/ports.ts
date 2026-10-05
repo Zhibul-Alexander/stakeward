@@ -19,6 +19,9 @@ export type ChainClock = ClockView & { slot: bigint };
 /** A blockhash lifetime for a new transaction (BlockhashLifetime without its `kind`). */
 export type LatestBlockhash = { blockhash: Blockhash; lastValidBlockHeight: bigint };
 
+/** Position in the current epoch (getEpochInfo, commitment confirmed). */
+export type EpochInfo = { epoch: bigint; slotIndex: bigint; slotsInEpoch: bigint; blockHeight: bigint };
+
 /** Result of simulating a transaction without signature verification. */
 export type SimulationResult =
   | { ok: true; logs: readonly string[]; unitsConsumed: bigint | null }
@@ -55,6 +58,9 @@ export interface ChainPort {
 
   /** Current block height; while it is not above `lastValidBlockHeight` an unconfirmed transaction may still land. */
   getBlockHeight(): Promise<bigint>;
+
+  /** Current epoch, slot index in it, slots per epoch and block height (one RPC call). */
+  getEpochInfo(): Promise<EpochInfo>;
 
   /** Lamports held by `address`; 0 for an account that does not exist. */
   getBalance(address: Address): Promise<bigint>;

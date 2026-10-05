@@ -2,6 +2,27 @@ import type { Address } from '@solana/kit';
 import { EXPIRING_THRESHOLD_SECONDS, U64_MAX } from './constants.ts';
 import type { Delegation, StakeAccount } from './decode.ts';
 import { isLockupInForce, type ClockView } from './lockup.ts';
+import type { EpochInfo } from './ports.ts';
+
+/** Milliseconds per slot for epoch-end estimates: the cluster's target (getRecentPerformanceSamples is not allowed). */
+export const SLOT_MS_ESTIMATE = 400n;
+
+/**
+ * Estimated unix seconds when `targetEpoch` ends (default: the current epoch, `info.epoch`):
+ * slotsLeft = (slotsInEpoch - slotIndex) + max(0, targetEpoch - epoch) x slotsInEpoch, then
+ * nowSeconds + ceil(slotsLeft x 400 / 1000). A target epoch already over gives `nowSeconds`.
+ * An estimate only: slots run slower or faster than 400 ms; before a Withdraw the real check is a simulation.
+ */
+export function epochEndEstimate(
+  info: Pick<EpochInfo, 'epoch' | 'slotIndex' | 'slotsInEpoch'>,
+  nowSeconds: bigint,
+  targetEpoch: bigint = info.epoch,
+): bigint {
+  if (targetEpoch < info.epoch) return nowSeconds;
+  const inThisEpoch = info.slotsInEpoch > info.slotIndex ? info.slotsInEpoch - info.slotIndex : 0n;
+  const slotsLeft = inThisEpoch + (targetEpoch - info.epoch) * info.slotsInEpoch;
+  return nowSeconds + (slotsLeft * SLOT_MS_ESTIMATE + 999n) / 1000n;
+}
 
 export type ActivationStatus = 'inactive' | 'activating' | 'active' | 'deactivating';
 

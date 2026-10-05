@@ -161,6 +161,34 @@ describe('HttpChain', () => {
     ]);
   });
 
+  it('getEpochInfo: epoch, slot index, slots per epoch and block height from one call; malformed answers throw', async () => {
+    const good = { absoluteSlot: 452_000_123n, blockHeight: 300_000_000n, epoch: 1047n, slotIndex: 123n, slotsInEpoch: 432_000n, transactionCount: null };
+    const { calls, chain } = fakeServer(() => ({ result: good }));
+    expect(await chain.getEpochInfo()).toEqual({ epoch: 1047n, slotIndex: 123n, slotsInEpoch: 432_000n, blockHeight: 300_000_000n });
+    expect(await chain.getBlockHeight()).toBe(300_000_000n);
+    expect(calls.map(({ method, params }) => [method, params])).toEqual([
+      ['getEpochInfo', [{ commitment: 'confirmed' }]],
+      ['getEpochInfo', [{ commitment: 'confirmed' }]],
+    ]);
+
+    const malformed: unknown[] = [
+      null,
+      'epoch',
+      { ...good, epoch: '1047' },
+      { ...good, slotIndex: undefined },
+      { ...good, slotsInEpoch: 0n },
+      { ...good, slotIndex: 432_000n },
+      { ...good, slotIndex: -1n },
+      { ...good, blockHeight: 1.5 },
+    ];
+    for (const result of malformed) {
+      const bad = fakeServer(() => ({ result }));
+      await expect(bad.chain.getEpochInfo(), stringify(result)).rejects.toThrow(/Malformed RPC response: getEpochInfo/);
+    }
+    const noHeight = fakeServer(() => ({ result: { ...good, blockHeight: null } }));
+    await expect(noHeight.chain.getBlockHeight()).rejects.toThrow(/Malformed RPC response: getEpochInfo/);
+  });
+
   it('simulate: base64, no signature check; a program error comes back as data translateError reads', async () => {
     let fail = false;
     const { calls, chain } = fakeServer(() => ({

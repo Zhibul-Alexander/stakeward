@@ -18,6 +18,7 @@ import {
   SYSVAR_CLOCK_ADDRESS,
   type ChainClock,
   type ChainPort,
+  type EpochInfo,
   type LatestBlockhash,
   type RawAccount,
   type SimulationResult,
@@ -63,7 +64,7 @@ export class SendOutcomeUnknownError extends Error {
  *   getMultipleAccounts      [addresses (1..100), { encoding: 'base64', commitment: 'confirmed' }]
  *   getAccountInfo           [SysvarC1ock11111111111111111111111111111111, { encoding: 'base64', commitment: 'confirmed' }]
  *   getLatestBlockhash       [{ commitment: 'confirmed' }]
- *   getEpochInfo             [{ commitment: 'confirmed' }]                      (block height; getBlockHeight is not allowed)
+ *   getEpochInfo             [{ commitment: 'confirmed' }]                      (epoch position and block height; getBlockHeight is not allowed)
  *   getBalance               [address, { commitment: 'confirmed' }]
  *   getMinimumBalanceForRentExemption [size]
  *   simulateTransaction      [base64 wire, { encoding: 'base64', sigVerify: false, commitment: 'confirmed' }]
@@ -117,9 +118,24 @@ export class HttpChain implements ChainPort {
   }
 
   async getBlockHeight(): Promise<bigint> {
+    return (await this.getEpochInfo()).blockHeight;
+  }
+
+  async getEpochInfo(): Promise<EpochInfo> {
     const result = await this.call('getEpochInfo', [{ commitment: COMMITMENT }]);
-    if (!isRecord(result) || typeof result['blockHeight'] !== 'bigint') throw malformed('getEpochInfo');
-    return result['blockHeight'];
+    if (!isRecord(result)) throw malformed('getEpochInfo');
+    const { epoch, slotIndex, slotsInEpoch, blockHeight } = result;
+    if (
+      typeof epoch !== 'bigint' ||
+      typeof slotIndex !== 'bigint' ||
+      typeof slotsInEpoch !== 'bigint' ||
+      typeof blockHeight !== 'bigint'
+    ) {
+      throw malformed('getEpochInfo');
+    }
+    // A slot index outside the epoch would make every estimate built on it nonsense.
+    if (slotsInEpoch <= 0n || slotIndex < 0n || slotIndex >= slotsInEpoch) throw malformed('getEpochInfo: slot index');
+    return { epoch, slotIndex, slotsInEpoch, blockHeight };
   }
 
   async getBalance(address: Address): Promise<bigint> {

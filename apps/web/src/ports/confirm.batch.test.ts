@@ -32,6 +32,7 @@ function scriptedChain(script: Partial<Record<Signature, (TransactionStatus | nu
     simulate: unused,
     send: unused,
     findStakeAccounts: unused,
+    getEpochInfo: unused,
     getBlockHeight: () => Promise.resolve(heights[Math.min(heightCalls++, heights.length - 1)] ?? 0n),
     getSignatureStatuses: (signatures) => {
       statusCalls.push([...signatures]);

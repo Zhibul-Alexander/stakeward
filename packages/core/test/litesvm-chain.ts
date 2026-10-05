@@ -28,6 +28,7 @@ import {
   STAKE_PROGRAM_ADDRESS,
   type ChainClock,
   type ChainPort,
+  type EpochInfo,
   type LatestBlockhash,
   type RawAccount,
   type SimulationResult,
@@ -35,7 +36,7 @@ import {
   type StakeAccountFilter,
   type TransactionStatus,
 } from '../src/index.ts';
-import type { TestChain } from './svm.ts';
+import { SLOTS_PER_EPOCH, type TestChain } from './svm.ts';
 
 /** Present in every LiteSvmChain; a build that contains this string shipped test code (CLAUDE.md section 11). */
 export const LITESVM_CHAIN_MARKER = 'stakeward-test-only:litesvm-chain';
@@ -121,6 +122,21 @@ export class LiteSvmChain implements ChainPort {
     return this.answer('getBlockHeight', () => {
       this.sync();
       return this.height;
+    });
+  }
+
+  /**
+   * TestChain's epochs are SLOTS_PER_EPOCH slots long and start at slot epoch x SLOTS_PER_EPOCH (warpToEpoch); the slot
+   * index is clamped into the epoch, since setTime and LiteSVM's own slot moves can leave the clock off that grid.
+   * Block height is the emulated one (getBlockHeight).
+   */
+  getEpochInfo(): Promise<EpochInfo> {
+    return this.answer('getEpochInfo', () => {
+      this.sync();
+      const { epoch, slot } = this.testChain.svm.getClock();
+      const offset = slot - epoch * SLOTS_PER_EPOCH;
+      const slotIndex = offset < 0n ? 0n : offset > SLOTS_PER_EPOCH - 1n ? SLOTS_PER_EPOCH - 1n : offset;
+      return { epoch, slotIndex, slotsInEpoch: SLOTS_PER_EPOCH, blockHeight: this.height };
     });
   }
 
