@@ -113,6 +113,13 @@ describe('an exception in each stage', () => {
       },
     },
     {
+      stage: 'sends',
+      error: 'Error',
+      arrange: (h) => {
+        h.db.failWhen = (e) => e.name === 'PENDING';
+      },
+    },
+    {
       stage: 'rescans',
       error: 'Error',
       at: '2026-10-05T12:00:00Z',

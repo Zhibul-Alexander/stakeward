@@ -30,7 +30,8 @@ async function reminders(h: Harness) {
 }
 
 describe('reminders', () => {
-  it('passes at 06:30 UTC from T-31 to T-1: each of 30, 14, 7, 3 and 1 exactly once, none twice a day', async () => {
+  // 18 passes: past the default 5 s when the whole suite runs in parallel.
+  it('passes at 06:30 UTC from T-31 to T-1: each of 30, 14, 7, 3 and 1 exactly once, none twice a day', { timeout: 30_000 }, async () => {
     const h = await watchedAt(before(31, '05:00:00'));
     const expected: [number, number | null][] = [
       [31, null],

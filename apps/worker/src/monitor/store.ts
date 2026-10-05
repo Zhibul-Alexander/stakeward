@@ -41,6 +41,21 @@ export type AccountRow = {
   fingerprint: string | null;
 };
 
+/** A PENDING row: an undelivered event with its account's keys and lock end as stored now. */
+export type PendingRow = {
+  id: number;
+  stake_account: Address;
+  type: string;
+  details_json: string;
+  detected_at: number;
+  withdrawer: Address;
+  custodian: Address;
+  lock_until: string;
+};
+
+/** A LINKS_FOR row. */
+export type LinkRow = { wallet: Address; chat_id: string; last_event_id: number };
+
 /** The chain columns of an `accounts` row, as the JSON payload of a write: u64 and i64 as decimal strings. */
 export type RowColumns = {
   stakeAccount: Address;

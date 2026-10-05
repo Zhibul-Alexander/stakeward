@@ -11,6 +11,7 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { encodeBase64 } from '../src/base64.ts';
 import { classifyChunk } from '../src/monitor/classify.ts';
+import { planDeliveries, settleDeliveries, type Link, type PendingEvent } from '../src/monitor/deliver.ts';
 import { parseMultipleAccounts, type ChunkRead, type RawItem } from '../src/monitor/read.ts';
 import type { AccountRow } from '../src/monitor/store.ts';
 import { multipleAccountsText, type AccountJson } from './fakes.ts';
@@ -92,6 +93,28 @@ describe('CPU of the monitor pass (measurement)', () => {
     const text = multipleAccountsText(1, 5300, [clock, ...Array.from({ length: 99 }, () => stake)]);
     expect(parseMultipleAccounts(text, 100)?.items).toHaveLength(99);
     report('parseMultipleAccounts, 100 keys', await measure(() => Promise.resolve(parseMultipleAccounts(text, 100))));
+  });
+
+  it('planDeliveries and settleDeliveries, 25 chats with 5 events each (125 alerts formatted)', { timeout: 120_000 }, async () => {
+    const pending: PendingEvent[] = Array.from({ length: 125 }, (_, i) => ({
+      id: i + 1,
+      stakeAccount: address(i),
+      type: 'DEACTIVATED',
+      details: { deactivationEpoch: '951' },
+      detectedAt: ROW_MS,
+      withdrawer: address(200 + (i % 25)),
+      custodian: SECOND,
+      lockUntil: LOCK_UNTIL,
+    }));
+    const links: Link[] = Array.from({ length: 25 }, (_, c) => ({ wallet: address(200 + c), chatId: String(1_000_000 + c), lastEventId: 0 }));
+    const opts = { maxMessages: 25, nowMs: ROW_MS + 120_000, siteOrigin: 'https://stakeward.test', cluster: 'devnet' } as const;
+    const run = () => {
+      const plan = planDeliveries(pending, links, opts);
+      return settleDeliveries(pending, links, plan.messages, plan.messages.map(() => 'sent'), plan.doneWithoutSend);
+    };
+    expect(planDeliveries(pending, links, opts).messages.map((m) => m.eventIds.length)).toEqual(Array<number>(25).fill(5));
+    expect(run().doneIds).toHaveLength(125);
+    report('planDeliveries + settleDeliveries, 25 chats x 5 events', await measure(() => Promise.resolve(run())));
   });
 
   it('a whole quiet pass of 98 rows (wall time, includes the local D1 and the fake RPC)', { timeout: 300_000 }, async () => {

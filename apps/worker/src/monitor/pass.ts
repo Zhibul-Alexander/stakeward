@@ -26,6 +26,14 @@ import {
 import { COST, PassBudget } from './budget.ts';
 import { classifyChunk, type ChunkOutcome, type Pair, type StoredEvent } from './classify.ts';
 import { adminChannelOf, clusterOf, MONITOR_LIMITS, MONITOR_PLANS, monitorConfig, type MonitorConfig } from './config.ts';
+import {
+  linkOf,
+  pendingEventOf,
+  planDeliveries,
+  recipientsOf,
+  settleDeliveries,
+  type SendResult,
+} from './deliver.ts';
 import { GENESIS_REQUEST, massNull, parseGenesisHash, readChunk } from './read.ts';
 import {
   chunkEventsStatement,
@@ -39,6 +47,8 @@ import {
   watchRowOf,
   type AccountRow,
   type Lease,
+  type LinkRow,
+  type PendingRow,
   type WatchRow,
 } from './store.ts';
 
@@ -53,7 +63,7 @@ import {
  *              accounts read as gone, classifyChunk, and one batch with the events, the row writes and the cursor.
  * 4. daily   - on the first pass after 06:00 UTC: every (main key, second key) pair joins the rescan queue, and the
  *              reminders due (REMINDER_<d> events) are written.
- * 5. sends   - Telegram delivery (step 5 spec section 7).
+ * 5. sends   - Telegram delivery (step 5 spec section 7): one message per chat, committed before the rescans.
  * 6. rescans - getProgramAccounts by (main key, second key) pair, urgent pairs first; locked accounts split off a
  *              watched one are watched from then on.
  * 7. admin   - at most one admin alert.
@@ -127,6 +137,12 @@ export type PassReport = {
   statements: number;
   wallMs: number;
 };
+
+/**
+ * Logged when Telegram refuses the bot token (401/404, or none is set) or SITE_ORIGIN is not an origin. No admin alert
+ * for it: the bot itself is broken. The marker stays old, so health turns red.
+ */
+const TELEGRAM_CONFIG_ERROR = { level: 'error', msg: 'telegram rejected the bot token or the site origin is invalid' };
 
 /** Admin alerts sent by this isolate, shared by its passes (see MonitorDeps.adminMemory). */
 const ISOLATE_ADMIN_ALERTS = new Map<string, number>();
@@ -234,8 +250,7 @@ export async function runMonitorPass(deps: MonitorDeps): Promise<PassReport> {
     }
     await readChunks(pass);
     await daily(pass);
-    pass.report.stage = 'sends';
-    deliverPending(pass);
+    await deliver(pass);
     await rescans(pass);
     await admin(pass);
     await finish(pass);
@@ -429,12 +444,86 @@ async function daily(pass: LoadedPass): Promise<void> {
 }
 
 /**
- * Stage 5: Telegram delivery (step 5 spec section 7), the seam the delivery commit fills in. It will load PENDING
- * and LINKS_FOR, send at most MONITOR_LIMITS.maxSends messages, and commit progress, unlinked chats, notified ids and
- * alerts_sent in one batch BEFORE the rescans. Until then nothing is loaded, sent or written: events stay pending.
+ * Stage 5: Telegram delivery (step 5 spec section 7, deliver.ts). Loads the oldest pending events (PENDING) and the
+ * links of their recipients (LINKS_FOR), two statements; sends one message per chat, one after another, at most
+ * MONITOR_LIMITS.maxSends and only while the budget keeps the commit (and an urgent rescan) possible and the soft
+ * deadline has not passed. Stops on a token Telegram refuses (401/404, the pass fails), on 429 and on two failures in
+ * a row (Telegram looks down); a single failure skips that chat. Then one batch: progress, unlinked chats, closed
+ * events, alerts_sent. It is committed BEFORE the rescans: a pass killed later does not send these messages again.
  */
-function deliverPending(_pass: LoadedPass): void {
-  // Delivery lands with src/monitor/deliver.ts.
+async function deliver(pass: LoadedPass): Promise<void> {
+  const { config, budget, report, deps, meta } = pass;
+  report.stage = 'sends';
+  if (budget.left() < COST.sendLoad + COST.sendCommit + 1) return;
+  const db = deps.db;
+  const [pendingResult] = await budget.batch(db, [db.prepare(SQL.PENDING).bind(MONITOR_LIMITS.pendingLimit)]);
+  const pending = rowsOf<PendingRow>(pendingResult).map(pendingEventOf);
+  report.pending = pending.length;
+  if (pending.length === 0) return;
+  const wallets = [...new Set(pending.flatMap(recipientsOf))];
+  const [linksResult] = await budget.batch(db, [db.prepare(SQL.LINKS_FOR).bind(JSON.stringify(wallets))]);
+  const links = rowsOf<LinkRow>(linksResult).map(linkOf);
+
+  const rescanReserve = pass.urgent.length > 0 && pass.lastRead !== null ? COST.urgentRescan : 0;
+  const plan = planDeliveries(pending, links, {
+    maxMessages: Math.min(MONITOR_LIMITS.maxSends, budget.left() - COST.sendCommit - rescanReserve),
+    nowMs: deps.now(),
+    siteOrigin: config.siteOrigin,
+    cluster: config.cluster,
+  });
+  report.expiredUndelivered = plan.expired;
+  report.superseded = plan.superseded;
+  if (config.siteOrigin === null && plan.chats > 0) {
+    // No alert can carry its button: a broken deployment, like a refused token (the marker stays old).
+    pass.telegramConfigFailed = true;
+    deps.log(TELEGRAM_CONFIG_ERROR);
+  }
+
+  const results: SendResult[] = plan.messages.map(() => 'not-attempted');
+  let retriesInRow = 0;
+  for (const [index, message] of plan.messages.entries()) {
+    if (pass.pastDeadline() || budget.left() < 1 + COST.sendCommit) break;
+    const outcome = await sendTelegramMessage({
+      token: config.telegramToken,
+      chatId: message.chatId,
+      text: message.text,
+      button: message.button,
+      fetch: budget.fetch,
+      timeoutMs: deps.telegramTimeoutMs,
+    });
+    results[index] = outcome;
+    if (outcome === 'config') {
+      pass.telegramConfigFailed = true;
+      deps.log(TELEGRAM_CONFIG_ERROR);
+      break;
+    }
+    if (outcome === 'rate-limited') break;
+    retriesInRow = outcome === 'retry' ? retriesInRow + 1 : 0;
+    if (retriesInRow === 2) break;
+  }
+
+  const settled = settleDeliveries(pending, links, plan.messages, results, plan.doneWithoutSend);
+  report.messages = results.filter((result) => result === 'sent').length;
+  report.rejected = results.filter((result) => result === 'rejected').length;
+  report.retrySends = results.filter((result) => result === 'retry').length;
+  report.blockedChats = settled.unlinkChats.length;
+  report.alertsDelivered = settled.alertsDelivered;
+
+  const statements: D1PreparedStatement[] = [];
+  if (settled.progress.length > 0) {
+    statements.push(db.prepare(SQL.LINK_PROGRESS).bind(JSON.stringify(settled.progress)));
+  }
+  if (settled.unlinkChats.length > 0) {
+    statements.push(db.prepare(SQL.UNLINK_CHATS).bind(JSON.stringify(settled.unlinkChats)));
+  }
+  if (settled.doneIds.length > 0) {
+    statements.push(db.prepare(SQL.MARK_NOTIFIED).bind(JSON.stringify(settled.doneIds), deps.now()));
+  }
+  if (settled.alertsDelivered > 0) {
+    const alertsSent = String(meta.alertsSent + settled.alertsDelivered);
+    statements.push(putMetaStatement(db, { alerts_sent: alertsSent }, pass.passId));
+  }
+  if (statements.length > 0) await budget.batch(db, statements);
 }
 
 /**
@@ -542,8 +631,9 @@ async function admin(pass: LoadedPass): Promise<void> {
 
 /**
  * Stage 8: one fenced statement, the last of the pass. The marker is written only when the pass succeeded: every
- * chunk it started was read and Telegram took the bot token. Deferring work (decode cap, budget, deadline), Telegram
- * 5xx and 429, and failed rescans (their pairs stay queued) do not make a pass fail.
+ * chunk it started was read, Telegram took the bot token and, when there were alerts to send, SITE_ORIGIN was valid.
+ * Deferring work (decode cap, budget, deadline), Telegram 5xx and 429, and failed rescans (their pairs stay queued)
+ * do not make a pass fail.
  */
 async function finish(pass: LoadedPass): Promise<void> {
   const { meta, report, budget, deps } = pass;
@@ -620,7 +710,7 @@ async function sendAdmin(
   });
   deps.log({ msg: 'admin alert', kind, outcome });
   if (outcome === 'config') {
-    deps.log({ level: 'error', msg: 'telegram rejected the bot token or the site origin is invalid' });
+    deps.log(TELEGRAM_CONFIG_ERROR);
   }
   if (outcome === 'sent') {
     const now = deps.now();
