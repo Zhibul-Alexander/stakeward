@@ -220,7 +220,7 @@ type LoadedPass = PassContext & {
   storedQueue: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
-  /** The cluster clock of the last chunk read in this pass; rescans need it. */
+  /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
   lastRead: { clock: ChainClock; clockMs: number } | null;
   readFailed: boolean;
   telegramConfigFailed: boolean;
@@ -557,9 +557,9 @@ async function deliver(pass: LoadedPass): Promise<void> {
  * on and drops its pair (admin alert). The answers parsed in a pass stay within plan.rescanParseChars (CPU): once the
  * next answer might not fit, the rest of the queue waits. Unknown accounts (closed rows too) are decoded within the
  * decode cap and watched when the pair matches and the lock is in force: a first sighting, no events, a live row
- * never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order;
- * a pair whose accounts did not all fit the decode cap goes to the back of the queue with the last account this
- * search got through, and its next search goes on after it (QueuedPair). An urgent search of the pair starts over.
+ * never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order; a pair whose accounts
+ * did not all fit the decode cap goes to the back of the queue with the last account this search got through, and
+ * its next search goes on after it (QueuedPair). An urgent search of the pair starts over.
  */
 async function rescans(pass: LoadedPass): Promise<void> {
   const { config, budget, report, deps } = pass;
