@@ -246,6 +246,37 @@ describe('the queue survives every stop', () => {
     expect(await h.readAccounts()).toHaveLength(26);
     expect(await h.readEvents()).toEqual([]);
   });
+
+  it('accounts a search rejects do not hold the pair at the cap: the next search goes on after them', async () => {
+    const h = await watched();
+    // 25 accounts of the pair whose lock ended (a Split after the lock ran out, or planted by anyone: Initialize needs
+    // no signature of the keys), then one locked split that comes last in address order.
+    const ended = BigInt(Date.parse('2026-10-04T01:00:00Z') / 1000);
+    const addresses = Array.from({ length: 26 }, (_, i) => addr(i)).sort();
+    const late = addresses.at(-1) ?? S1;
+    for (const at of addresses.slice(0, -1)) h.chain.putStake(at, { ...SPEC, unixTimestamp: ended }, 1_000_000_000n);
+    h.chain.putStake(late, SPEC, 1_000_000_000n);
+    // A pair queued behind it, with one locked split of its own.
+    const otherMain = key(6);
+    h.chain.putStake(addr(0, 0x78), { ...SPEC, staker: otherMain, withdrawer: otherMain }, 1_000_000_000n);
+    await h.setMeta({ rescan_queue: JSON.stringify([[MAIN, SECOND], [otherMain, SECOND]]) });
+
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: 20, autoWatched: 0, rescanQueue: 2 });
+    // The pair waits with the last account that search got through: the one before the 21st unknown, by address.
+    const answer = [S1, ...addresses].sort();
+    const stop = answer.filter((at) => at !== S1)[20];
+    const reached = stop === undefined ? undefined : answer[answer.indexOf(stop) - 1];
+    expect(JSON.parse((await h.readMeta()).rescan_queue ?? '')).toEqual([
+      [MAIN, SECOND, reached],
+      [otherMain, SECOND],
+    ]);
+    h.at('2026-10-05T01:04:00Z');
+    expect(await h.pass()).toMatchObject({ rescans: 2, decoded: 7, autoWatched: 2, rescanQueue: 0 });
+    expect((await h.readAccounts()).map((r) => r.stake_account).sort()).toEqual([S1, late, addr(0, 0x78)].sort());
+    expect((await h.readMeta()).rescan_queue).toBe('[]');
+    expect(searchedPairs(h)).toHaveLength(4);
+  });
 });
 
 describe('the daily pass', () => {

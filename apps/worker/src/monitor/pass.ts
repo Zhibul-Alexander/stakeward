@@ -165,12 +165,19 @@ export function monitorDepsFromEnv(env: Env): MonitorDeps {
   };
 }
 
+/**
+ * A queued search: a (main key, second key) pair and, when an earlier search of it stopped at the decode cap, the
+ * last account (in address order) that search got through. The next search goes on after it: the accounts it
+ * rejected (a lock not in force) are never stored, so starting over would decode the same ones again and again.
+ */
+type QueuedPair = readonly [withdrawer: Address, custodian: Address, after?: Address];
+
 /** The meta values a pass reads (step 5 spec section 2.3), parsed; anything malformed reads as its default. */
 type LoadedMeta = {
   lease: Lease | null;
   cursor: string;
   dailyDay: string | null;
-  rescanQueue: Pair[];
+  rescanQueue: QueuedPair[];
   readFailures: number;
   adminAlerts: Record<string, number>;
   alertsSent: number;
@@ -207,7 +214,7 @@ type LoadedPass = PassContext & {
   pastDeadline: () => boolean;
   dailyDue: boolean;
   /** The rescan queue: meta.rescan_queue, then the daily pairs; urgent pairs go in front before the rescans. */
-  queue: Pair[];
+  queue: QueuedPair[];
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
   /** The cluster clock of the last chunk read in this pass; rescans need it. */
@@ -532,8 +539,9 @@ async function deliver(pass: LoadedPass): Promise<void> {
  * a chunk read in this pass (the cluster clock judges the locks). A failed call keeps its pair at the head and stops
  * the search; an answer over the plan's size limit drops its pair (admin alert). Unknown accounts (closed rows too)
  * are decoded within the decode cap and watched when the pair matches and the lock is in force: a first sighting,
- * no events, a live row never touched, a closed one revived (INSERT_WATCHED). A pair whose accounts did not all fit
- * the decode cap goes to the back of the queue: the next search skips the ones now known.
+ * no events, a live row never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order;
+ * a pair whose accounts did not all fit the decode cap goes to the back of the queue with the last account this
+ * search got through, and its next search goes on after it (QueuedPair). An urgent search of the pair starts over.
  */
 async function rescans(pass: LoadedPass): Promise<void> {
   const { config, budget, report, deps } = pass;
@@ -543,7 +551,7 @@ async function rescans(pass: LoadedPass): Promise<void> {
   if (lastRead === null) return;
   report.stage = 'rescans';
 
-  const found: { pair: Pair; slot: number; items: ProgramAccountItem[] }[] = [];
+  const found: { pair: QueuedPair; slot: number; items: ProgramAccountItem[] }[] = [];
   // Each call keeps room for itself (3 attempts) and the two statements after the loop.
   while (
     pass.queue.length > 0 &&
@@ -584,13 +592,20 @@ async function rescans(pass: LoadedPass): Promise<void> {
   let decodeLeft = Math.min(config.plan.decodeCap - report.decoded, INSERT_WATCHED_ROWS);
   const rows: WatchRow[] = [];
   for (const { pair, slot, items } of found) {
-    const [mainKey, secondKey] = pair;
-    for (const item of items) {
-      if (seen.has(item.pubkey)) continue;
-      if (decodeLeft <= 0) {
-        pass.queue = uniquePairs([...pass.queue, pair]);
+    const [mainKey, secondKey, after] = pair;
+    const ordered = items
+      .filter((item) => after === undefined || item.pubkey > after)
+      .sort((a, b) => (a.pubkey < b.pubkey ? -1 : a.pubkey > b.pubkey ? 1 : 0));
+    // The last account of `ordered` this search got through.
+    let reached = after;
+    for (const item of ordered) {
+      if (!seen.has(item.pubkey) && decodeLeft <= 0) {
+        const next: QueuedPair = reached === undefined ? [mainKey, secondKey] : [mainKey, secondKey, reached];
+        pass.queue = uniquePairs([...pass.queue, next]);
         break;
       }
+      reached = item.pubkey;
+      if (seen.has(item.pubkey)) continue;
       seen.add(item.pubkey);
       const data = decodeBase64(item.dataBase64);
       if (data === null) continue;
@@ -797,17 +812,21 @@ function parseLease(text: string | undefined): Lease | null {
   return typeof pass === 'string' && typeof until === 'number' && Number.isSafeInteger(until) ? { pass, until } : null;
 }
 
-/** meta.rescan_queue: pairs of addresses, deduplicated, at most 1000; anything else is dropped. */
-function parseQueue(text: string | undefined): Pair[] {
+/**
+ * meta.rescan_queue: [main key, second key] or [main key, second key, after] of addresses (QueuedPair), deduplicated,
+ * at most 1000; anything else is dropped.
+ */
+function parseQueue(text: string | undefined): QueuedPair[] {
   const json = parseJson(text);
   if (!Array.isArray(json)) return [];
-  const pairs: Pair[] = [];
+  const pairs: QueuedPair[] = [];
   for (const entry of json as unknown[]) {
-    if (!Array.isArray(entry) || entry.length !== 2) continue;
-    const [mainKey, secondKey] = entry as unknown[];
-    if (typeof mainKey === 'string' && typeof secondKey === 'string' && isAddressText(mainKey) && isAddressText(secondKey)) {
-      pairs.push([mainKey, secondKey]);
-    }
+    if (!Array.isArray(entry) || entry.length < 2 || entry.length > 3) continue;
+    const addresses = entry as unknown[];
+    if (!addresses.every((value) => typeof value === 'string' && isAddressText(value))) continue;
+    const [mainKey, secondKey, after] = addresses;
+    if (mainKey === undefined || secondKey === undefined) continue;
+    pairs.push(after === undefined ? [mainKey, secondKey] : [mainKey, secondKey, after]);
   }
   return uniquePairs(pairs);
 }
@@ -826,10 +845,10 @@ function parseJson(text: string | undefined): unknown {
   }
 }
 
-/** First occurrence of each pair, in order, at most MONITOR_LIMITS.rescanQueueMax. */
-function uniquePairs(pairs: readonly Pair[]): Pair[] {
+/** First occurrence of each (main key, second key) pair, in order, at most MONITOR_LIMITS.rescanQueueMax. */
+function uniquePairs(pairs: readonly QueuedPair[]): QueuedPair[] {
   const seen = new Set<string>();
-  const unique: Pair[] = [];
+  const unique: QueuedPair[] = [];
   for (const pair of pairs) {
     const id = `${pair[0]}/${pair[1]}`;
     if (seen.has(id)) continue;
