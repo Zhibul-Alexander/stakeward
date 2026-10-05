@@ -198,6 +198,12 @@
         "bad-lighthouse-tail": "A wallet changed this transaction in a way Stakeward does not accept.",
         "invalid-signature": "A signature on this transaction is not valid.",
         "verification-unavailable": "This browser cannot check the signatures on this transaction. Open it in a current browser."
+      },
+      "batch": {
+        "intro": "{count} transactions, one for each stake account below. They do the same thing; only the stake account differs.",
+        "accounts": "Stake accounts ({count})",
+        "now": "Now: {lock}",
+        "fee": "Up to {amount} each, {total} in total"
       }
     },
     "steps": {
@@ -229,7 +235,46 @@
       "nativeStake": "Stakeward protects native stake: SOL you delegated to a validator from your own wallet, held in a stake account that your keys control.",
       "notStake": "Liquid staking tokens (LSTs), stake on an exchange and SOL in your wallet balance are not stake accounts, so there is nothing here to lock.",
       "checkMainKey": "If you do stake from a wallet, enter the address of its main key: the wallet that can withdraw the stake."
+    },
+    "signerList": {
+      "title": "{n}. {role} in {wallet}",
+      "notConnected": "{n}. {role}: not connected",
+      "approvesOne": "Approves 1 transaction",
+      "approvesOther": "Approves {count} transactions in one request",
+      "status": {
+        "waiting": "Not asked yet",
+        "current": "Your turn",
+        "signed": "Signed",
+        "switch": "Switch account",
+        "stopped": "Stopped",
+        "missing": "Not connected"
+      }
+    },
+    "jobs": {
+      "status": {
+        "waiting": "Waiting",
+        "sending": "Sending",
+        "confirming": "Confirming",
+        "checking": "Checking",
+        "done": "Done",
+        "failed": "Did not go through",
+        "expired": "Expired, nothing changed",
+        "unknown": "Not confirmed yet",
+        "notSent": "Not sent",
+        "leftOut": "Left out"
+      },
+      "unknown": {
+        "timeout": "No confirmation within 2 minutes. It may still go through: check again.",
+        "stopped": "You stopped waiting. It may still go through: check again.",
+        "not-applied": "The network confirmed it, but the stake account does not show the change yet. Check again.",
+        "unverified": "Sent, but the result could not be read. Check again."
+      },
+      "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
+      "transaction": "Transaction"
     }
+  },
+  "signing": {
+    "signers": "Signatures"
   },
   "devUi": {
     "title": "Design system",
@@ -300,7 +345,9 @@
       "middle": "Middle step",
       "last": "Last step",
       "pickerOpen": "Empty, wallet list open",
-      "managedByService": "Managed by a service"
+      "managedByService": "Managed by a service",
+      "everyStatus": "Every status",
+      "batch": "One summary for {count} stake accounts"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -314,7 +361,8 @@
       "withdraw": "Withdraw",
       "rescue": "Rescue",
       "checkAnother": "Check another address",
-      "connectionLost": "The wallet did not answer. Check that it is unlocked, then try again."
+      "connectionLost": "The wallet did not answer. Check that it is unlocked, then try again.",
+      "jobs": "Stake accounts"
     },
     "names": {
       "statusBadge": "StatusBadge",
@@ -327,7 +375,9 @@
       "stepProgress": "StepProgress",
       "countdown": "Countdown",
       "riskNote": "RiskNote",
-      "errorState": "ErrorState"
+      "errorState": "ErrorState",
+      "signerList": "SignerList",
+      "jobStatusList": "JobStatusList"
     }
   },
   "app": {

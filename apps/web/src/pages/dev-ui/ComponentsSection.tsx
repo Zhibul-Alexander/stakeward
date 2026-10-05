@@ -5,7 +5,9 @@ import { AddressText, AddressTextSkeleton } from '@/components/product/address-t
 import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
+import { JobStatusList } from '@/components/product/job-status-list';
 import { RiskNote } from '@/components/product/risk-note';
+import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
 import { StatusBadge, StatusBadgeSkeleton, statusLabel, type StatusBadgeStatus } from '@/components/product/status-badge';
 import { StepProgress } from '@/components/product/step-progress';
@@ -27,7 +29,10 @@ import {
   SAMPLE_WALLETS,
   sampleClock,
   sampleExpiringEnd,
+  sampleJobs,
   sampleRows,
+  sampleSigners,
+  sampleSignersEveryStatus,
   sampleSummaries,
   type SampleRow,
   type SampleSummary,
@@ -77,14 +82,16 @@ function rowLabel(row: SampleRow): string {
 }
 
 function SummaryDemo({ sample }: { sample: SampleSummary }) {
-  const label =
-    sample.ok
-      ? `${t(`components.tx.kind.${sample.summary.action.kind}`)} · ${t(sample.current === undefined ? 'devUi.states.withoutContext' : 'devUi.states.withContext')}`
-      : t('devUi.states.rejected');
+  const context = !sample.ok
+    ? null
+    : sample.batch !== undefined
+      ? t('devUi.states.batch', { count: sample.batch.accounts.length })
+      : t(sample.current === undefined ? 'devUi.states.withoutContext' : 'devUi.states.withContext');
+  const label = sample.ok ? `${t(`components.tx.kind.${sample.summary.action.kind}`)} · ${context ?? ''}` : t('devUi.states.rejected');
   return (
     <Demo label={label}>
       {sample.ok ? (
-        <TransactionSummary summary={sample.summary} current={sample.current} headingLevel={3} />
+        <TransactionSummary summary={sample.summary} current={sample.current} batch={sample.batch} headingLevel={3} />
       ) : (
         <TransactionSummaryError
           error={sample.error}
@@ -104,6 +111,9 @@ export function ComponentsSection() {
   // One clock for the whole page so every status is computed against the same "now".
   const [clock] = useState(sampleClock);
   const [rows] = useState(() => sampleRows(clock));
+  const [signers] = useState(sampleSigners);
+  const [signersEveryStatus] = useState(sampleSignersEveryStatus);
+  const [jobs] = useState(sampleJobs);
   const [summaries, setSummaries] = useState<SampleSummary[] | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
@@ -275,6 +285,26 @@ export function ComponentsSection() {
             <TransactionSummarySkeleton />
           </Demo>
         </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.signerList')}>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <Demo label={t('devUi.states.normal')}>
+            <SignerList items={signers} />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <SignerListSkeleton />
+          </Demo>
+          <Demo label={t('devUi.states.everyStatus')} className="lg:col-span-2">
+            <SignerList items={signersEveryStatus} />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.jobStatusList')}>
+        <Demo label={t('devUi.states.everyStatus')}>
+          <JobStatusList items={jobs} label={t('devUi.sample.jobs')} />
+        </Demo>
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.stepProgress')}>

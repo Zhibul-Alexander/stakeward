@@ -43,12 +43,28 @@ export type OnChainContext = {
   clock?: ClockView | undefined;
 };
 
+/** One stake account of a batch: its address, its balance when known and what the chain says about it now. */
+export type SummaryBatchAccount = { address: Address; lamports: bigint | null; current?: OnChainContext | undefined };
+
+/**
+ * N transactions that differ only in their stake account (core `summariesMatchExceptStakeAccount`), shown as one
+ * summary with the list of accounts. The page passes it only when that check holds.
+ */
+export type SummaryBatch = { accounts: readonly SummaryBatchAccount[]; totalFeeLamports: bigint };
+
 type TransactionSummaryProps = {
   /** From core `inspectTransaction(bytes)` on the exact bytes about to be signed (CLAUDE.md section 3). */
   summary: InspectedSummary;
+  /** Ignored with `batch`: each account there carries its own. */
   current?: OnChainContext | undefined;
   /** Addresses the page knows by role (its wallet slots), to name signers the action itself does not name. */
   knownRoles?: Partial<Record<WalletRole, Address>> | undefined;
+  /**
+   * Several transactions summarised at once: the stake account block becomes the list of accounts (each with its
+   * balance, its lock now and its own warnings), "What changes" shows only the After values, and the fee line gives
+   * the fee per transaction and the total.
+   */
+  batch?: SummaryBatch | undefined;
   headingLevel?: 2 | 3 | undefined;
   className?: string | undefined;
 };
@@ -107,15 +123,20 @@ export function lockText(lockup: Lockup, clock: ClockView): string {
  * Warnings come from comparing the bytes with the chain (DECISIONS.md D23): a new second key replacing another,
  * a lock made shorter, a withdrawal to a wallet that does not sign.
  */
-export function TransactionSummary({ summary, current, knownRoles = {}, headingLevel = 2, className }: TransactionSummaryProps) {
+export function TransactionSummary({ summary, current: single, knownRoles = {}, batch, headingLevel = 2, className }: TransactionSummaryProps) {
   const titleId = useId();
   const { action } = summary;
   const roles = rolesOf(action, knownRoles);
+  // A batch has no single "now": its rows show the After values, its accounts their own state.
+  const current = batch === undefined ? single : undefined;
   const clock = current?.clock ?? localClock();
   const TitleTag: Heading = headingLevel === 2 ? 'h2' : 'h3';
   const SectionTag: Heading = headingLevel === 2 ? 'h3' : 'h4';
   const changes = changeRows(action, current, clock);
-  const warnings = warningsFor(summary, current, clock);
+  // With a batch, the warnings that depend on an account's state move to that account; the others stay here, once.
+  const warnings = warningList(
+    batch === undefined ? [...stateWarnings(action, current, clock), ...actionWarnings(summary)] : actionWarnings(summary),
+  );
 
   return (
     <article
@@ -129,9 +150,14 @@ export function TransactionSummary({ summary, current, knownRoles = {}, headingL
           {t(`components.tx.kind.${action.kind}`)}
         </TitleTag>
         <p className="text-sm text-muted">{t('components.tx.intro')}</p>
+        {batch === undefined ? null : (
+          <p className="text-sm text-muted">{t('components.tx.batch.intro', { count: batch.accounts.length })}</p>
+        )}
       </header>
 
-      {'stakeAccount' in action ? (
+      {batch !== undefined ? (
+        <BatchAccounts action={action} accounts={batch.accounts} />
+      ) : 'stakeAccount' in action ? (
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium">{t('components.tx.stakeAccount')}</span>
           <AddressText address={action.stakeAccount} variant="full" />
@@ -184,7 +210,12 @@ export function TransactionSummary({ summary, current, knownRoles = {}, headingL
 
       <Section title={t('common.networkFee')} tag={SectionTag}>
         <p className="text-sm">
-          {t('components.tx.feeValue', { amount: formatSol(summary.networkFeeLamports) })}
+          {batch === undefined
+            ? t('components.tx.feeValue', { amount: formatSol(summary.networkFeeLamports) })
+            : t('components.tx.batch.fee', {
+                amount: formatSol(summary.networkFeeLamports),
+                total: formatSol(batch.totalFeeLamports),
+              })}
         </p>
       </Section>
 
@@ -219,6 +250,39 @@ export function TransactionSummary({ summary, current, knownRoles = {}, headingL
         )}
       </Section>
     </article>
+  );
+}
+
+/** The stake accounts of a batch, each with its full address, balance, lock now and its own warnings. */
+function BatchAccounts({ action, accounts }: { action: TransactionAction; accounts: readonly SummaryBatchAccount[] }) {
+  const labelId = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <span id={labelId} className="text-sm font-medium">
+        {t('components.tx.batch.accounts', { count: accounts.length })}
+      </span>
+      <ul aria-labelledby={labelId} className="flex flex-col gap-2">
+        {accounts.map((account) => {
+          const clock = account.current?.clock ?? localClock();
+          return (
+            <li key={account.address} data-account={account.address} className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <AddressText address={account.address} variant="full" />
+              {account.lamports === null && account.current === undefined ? null : (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {account.lamports === null ? null : <SolAmount lamports={account.lamports} className="font-medium" />}
+                  {account.current === undefined ? null : (
+                    <span className="text-muted">
+                      {t('components.tx.batch.now', { lock: lockText(account.current.lockup, clock) })}
+                    </span>
+                  )}
+                </div>
+              )}
+              {warningList(stateWarnings(action, account.current, clock))}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -337,8 +401,12 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
   }
 }
 
-function warningsFor(summary: InspectedSummary, current: OnChainContext | undefined, clock: ClockView): ReactNode {
-  const { action } = summary;
+function warningList(notes: readonly ReactNode[]): ReactNode {
+  return notes.length === 0 ? null : <div className="flex flex-col gap-2">{notes}</div>;
+}
+
+/** Warnings from comparing the action with the account's state now: a second key replaced, a lock made shorter. */
+function stateWarnings(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView): ReactNode[] {
   const notes: ReactNode[] = [];
   if (action.kind === 'protect' && current !== undefined) {
     const custodian = custodianInForce(current, clock);
@@ -360,6 +428,13 @@ function warningsFor(summary: InspectedSummary, current: OnChainContext | undefi
       </Warning>,
     );
   }
+  return notes;
+}
+
+/** Warnings from the bytes alone: removing the lock early, SOL sent to a wallet that does not sign. */
+function actionWarnings(summary: InspectedSummary): ReactNode[] {
+  const { action } = summary;
+  const notes: ReactNode[] = [];
   if (action.kind === 'unlock') {
     notes.push(<RiskNote key="unlock" risk="unlock-opens-window" tone="danger" />);
   }
@@ -370,7 +445,7 @@ function warningsFor(summary: InspectedSummary, current: OnChainContext | undefi
       </Warning>,
     );
   }
-  return notes.length === 0 ? null : <div className="flex flex-col gap-2">{notes}</div>;
+  return notes;
 }
 
 function Warning({ tone, address, children }: { tone: 'warning' | 'danger'; address?: Address; children: ReactNode }) {

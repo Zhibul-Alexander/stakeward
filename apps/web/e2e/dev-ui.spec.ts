@@ -9,8 +9,11 @@ import { expect, test } from './fixtures.ts';
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
 const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 
-/** Real inspector output rendered on the page: protect, extend, withdraw, rescue, unlock and one rejected link. */
-const SUMMARIES = 6;
+/**
+ * Real inspector output rendered on the page: protect, a batch of two protects, extend, withdraw, rescue, unlock and
+ * one rejected link.
+ */
+const SUMMARIES = 7;
 
 test('/dev/ui shows every token and component without console errors, axe violations or horizontal scroll', async ({
   page,
@@ -24,7 +27,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
 
   // The transaction summaries are built with core and inspected in the browser (Web Crypto), then rendered.
   await expect(page.locator('[data-slot="transaction-summary"]')).toHaveCount(SUMMARIES);
-  await expect(page.locator('[data-slot="transaction-summary"][data-kind="protect"]')).toContainText(
+  await expect(page.locator('[data-slot="transaction-summary"][data-kind="protect"]').first()).toContainText(
     'This transaction cannot move your SOL.',
   );
 

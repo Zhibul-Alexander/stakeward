@@ -1,8 +1,10 @@
 import {
   address,
   blockhash,
+  signature,
   type Address,
   type Nonce,
+  type Signature,
 } from '@solana/kit';
 import {
   buildTransaction,
@@ -10,6 +12,7 @@ import {
   inspectTransaction,
   scannerStatus,
   stakeActivationStatus,
+  summariesMatchExceptStakeAccount,
   U64_MAX,
   ZERO_ADDRESS,
   type ActivationStatus,
@@ -22,7 +25,12 @@ import {
   type TransactionAction,
   type TransactionSummary,
 } from '@stakeward/core';
+import type { JobStatusItem } from '@/components/product/job-status-list';
+import type { SignerListItem } from '@/components/product/signer-list';
 import type { StatusBadgeStatus } from '@/components/product/status-badge';
+import type { SummaryBatch } from '@/components/product/transaction-summary';
+import { t } from '@/i18n';
+import { errorMessage } from '@/i18n/errors';
 import walletSampleA from './wallet-sample-a.svg';
 import walletSampleB from './wallet-sample-b.svg';
 
@@ -38,6 +46,9 @@ export const SAMPLE = {
   stakeE: address('ERPac8FPHDCFd6Nr8z9FFYJVzj1XptzQ6uxN1praU9wz'),
   stakeF: address('CQDtFDsjfViMT8Sgfe3TbeiAFaDgZfzGsiLsQCqa4tpE'),
   stakeG: address('9g4dYJmEszBwLq4itZhnatz9BPWCkcFT4ni5CkNMDHAy'),
+  stakeH: address('GY6YBjCbJnAmNUzG99w9kfGms6PiSEdzHdr8NqfTX6Bh'),
+  stakeI: address('7pHLy34Aw8xKKbhpaexKaT4Ruc3wLiYGgj1smirdFLxk'),
+  stakeJ: address('HchUMm8CfoKw5Gz1PD8TUexMfXPXK8ALkb2tKH7Q75Kx'),
   mainKey: address('B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8'),
   secondKey: address('9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi'),
   otherKey: address('57M4tyxx6Rk1gz3uYVvfoB3KdQGQkyveqqmZzJUdw3Sz'),
@@ -51,12 +62,14 @@ export const SAMPLE = {
 
 /** A transaction signature for AddressText kind="tx" (random bytes, base58). */
 export const SAMPLE_SIGNATURE = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW';
+const SAMPLE_TX: Signature = signature(SAMPLE_SIGNATURE);
 
 /** Raw error texts as they would appear under "Details" (sample data, not UI strings). */
 export const SAMPLE_ERROR_DETAIL = {
   rpc: 'HTTP 503 Service Unavailable',
   wallet: 'WalletConnectionError: timed out after 60000 ms',
   fetch: 'TypeError: Failed to fetch',
+  rateLimited: 'HTTP error (429): Too Many Requests',
 } as const;
 
 /** 12 April 2027 00:00 UTC, the date in CLAUDE.md's examples. */
@@ -182,7 +195,7 @@ export function sampleRows(clock: ClockView): SampleRow[] {
 }
 
 export type SampleSummary =
-  | { key: string; ok: true; summary: TransactionSummary; current?: { lockup: Lockup; clock: ClockView } }
+  | { key: string; ok: true; summary: TransactionSummary; current?: { lockup: Lockup; clock: ClockView }; batch?: SummaryBatch }
   | { key: string; ok: false; error: InspectError };
 
 /**
@@ -206,6 +219,47 @@ export async function sampleSummaries(clock: ClockView): Promise<SampleSummary[]
     return current === undefined ? { key, ok: true, summary: result.summary } : { key, ok: true, summary: result.summary, current };
   };
   const balance = 42n * LAMPORTS_PER_SOL + 750_000_000n;
+  // A protect round over two accounts, as the signing panel shows it: one summary when the transactions differ only
+  // in the stake account (core summariesMatchExceptStakeAccount), each account with its balance and lock now.
+  const protectBatch = async (): Promise<SampleSummary> => {
+    const protectOf = (stakeAccount: Address): TransactionAction => ({
+      kind: 'protect',
+      stakeAccount,
+      mainKey: SAMPLE.mainKey,
+      secondKey: SAMPLE.secondKey,
+      lockUntil: SAMPLE_LOCK_END,
+    });
+    const read = await Promise.all(
+      [SAMPLE.stakeC, SAMPLE.stakeF].map((stake) =>
+        inspectTransaction(buildTransaction(protectOf(stake), { feePayer: SAMPLE.mainKey, lifetime: live }).bytes),
+      ),
+    );
+    const summaries: TransactionSummary[] = [];
+    for (const result of read) {
+      if (!result.ok) return { key: 'protect-batch', ok: false, error: result.error };
+      summaries.push(result.summary);
+    }
+    const [first] = summaries;
+    if (first === undefined || !summariesMatchExceptStakeAccount(summaries)) {
+      throw new Error('the batch sample transactions differ in more than the stake account');
+    }
+    return {
+      key: 'protect-batch',
+      ok: true,
+      summary: first,
+      batch: {
+        accounts: [
+          { address: SAMPLE.stakeC, lamports: 3n * LAMPORTS_PER_SOL + 200_000_000n, current: { lockup: NO_LOCK, clock } },
+          {
+            address: SAMPLE.stakeF,
+            lamports: 120n * LAMPORTS_PER_SOL,
+            current: { lockup: { unixTimestamp: clock.unixTimestamp - 2n * DAY, epoch: 0n, custodian: SAMPLE.secondKey }, clock },
+          },
+        ],
+        totalFeeLamports: summaries.reduce((total, summary) => total + summary.networkFeeLamports, 0n),
+      },
+    };
+  };
   const results = await Promise.all([
     inspect(
       'protect',
@@ -213,6 +267,7 @@ export async function sampleSummaries(clock: ClockView): Promise<SampleSummary[]
       SAMPLE.mainKey,
       { lockup: NO_LOCK, clock },
     ),
+    protectBatch(),
     inspect(
       'extend',
       { kind: 'extend', stakeAccount: SAMPLE.stakeA, secondKey: SAMPLE.secondKey, lockUntil: SAMPLE_EARLIER_END },
@@ -242,4 +297,53 @@ export async function sampleSummaries(clock: ClockView): Promise<SampleSummary[]
   const garbage = await inspectTransaction(new Uint8Array([1, 2, 3]));
   if (!garbage.ok) results.push({ key: 'rejected', ok: false, error: garbage.error });
   return results;
+}
+
+/** SignerList as a protect round shows it after the main key signed: the second key's turn. */
+export function sampleSigners(): SignerListItem[] {
+  const [walletA, walletB] = SAMPLE_WALLETS;
+  return [
+    { role: 'main', walletName: walletA.name, address: SAMPLE.mainKey, count: 2, status: 'signed' },
+    { role: 'second', walletName: walletB.name, address: SAMPLE.secondKey, count: 2, status: 'current' },
+  ];
+}
+
+/** One signer in each status; the last has no wallet connected in this browser. */
+export function sampleSignersEveryStatus(): SignerListItem[] {
+  const [walletA, walletB] = SAMPLE_WALLETS;
+  return [
+    { role: 'main', walletName: walletA.name, address: SAMPLE.mainKey, count: 1, status: 'signed' },
+    { role: 'second', walletName: walletB.name, address: SAMPLE.secondKey, count: 1, status: 'current' },
+    { role: 'new', walletName: walletA.name, address: SAMPLE.newWallet, count: 1, status: 'waiting' },
+    { role: 'second', walletName: walletA.name, address: SAMPLE.otherKey, count: 3, status: 'switch' },
+    { role: 'main', walletName: walletB.name, address: SAMPLE.stranger, count: 3, status: 'stopped' },
+    { role: 'new', walletName: null, address: SAMPLE.serviceStaker, count: 1, status: 'missing' },
+  ];
+}
+
+/** One stake account in each status of a signing run, with the reason texts the pages give them. */
+export function sampleJobs(): JobStatusItem[] {
+  return [
+    { address: SAMPLE.stakeA, status: 'waiting' },
+    { address: SAMPLE.stakeB, status: 'sending', signature: SAMPLE_TX },
+    { address: SAMPLE.stakeC, status: 'confirming', signature: SAMPLE_TX },
+    { address: SAMPLE.stakeD, status: 'checking', signature: SAMPLE_TX },
+    { address: SAMPLE.stakeE, status: 'done', signature: SAMPLE_TX },
+    {
+      address: SAMPLE.stakeF,
+      status: 'failed',
+      reason: errorMessage({ code: 'rate-limited' }),
+      detail: SAMPLE_ERROR_DETAIL.rateLimited,
+      signature: SAMPLE_TX,
+    },
+    { address: SAMPLE.stakeG, status: 'expired', reason: t('components.jobs.expired'), signature: SAMPLE_TX },
+    {
+      address: SAMPLE.stakeH,
+      status: 'unknown',
+      reason: t('components.jobs.unknown.timeout'),
+      signature: SAMPLE_TX,
+    },
+    { address: SAMPLE.stakeI, status: 'not-sent' },
+    { address: SAMPLE.stakeJ, status: 'left-out' },
+  ];
 }
