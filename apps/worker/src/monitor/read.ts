@@ -95,7 +95,8 @@ export async function readChunk(
   deps: { endpoints: UpstreamEndpoints; options: UpstreamOptions },
 ): Promise<ChunkReadResult> {
   const result = await callUpstream(deps.endpoints, multipleAccountsRequest(keys), 'read', deps.options);
-  if (!result.ok) return result;
+  // `too-large` needs maxBodyBytes, which a chunk read does not set.
+  if (!result.ok) return { ok: false, reason: result.reason === 'timeout' ? 'timeout' : 'unavailable' };
   const read = parseMultipleAccounts(result.body, keys.length);
   return read === null ? { ok: false, reason: 'malformed' } : { ok: true, read, endpoint: result.endpoint };
 }

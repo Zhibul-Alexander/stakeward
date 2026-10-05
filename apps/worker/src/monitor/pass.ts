@@ -553,9 +553,11 @@ async function deliver(pass: LoadedPass): Promise<void> {
  * Stage 6: search the stake accounts of (main key, second key) pairs: this pass's urgent pairs first, then the queue.
  * Split copies both keys and the lock, so the pair finds every account split off a watched one (D52). The cluster
  * clock judges the locks: the one of this pass's last chunk read, else of a read of the Clock alone (readClockAlone).
- * A failed call keeps its pair at the head and stops the search; an answer over the plan's size limit drops its pair (admin alert). Unknown accounts (closed rows too)
- * are decoded within the decode cap and watched when the pair matches and the lock is in force: a first sighting,
- * no events, a live row never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order;
+ * A failed call keeps its pair at the head and stops the search; an answer over the plan's size limit is not read
+ * on and drops its pair (admin alert). The answers parsed in a pass stay within plan.rescanParseChars (CPU): once the
+ * next answer might not fit, the rest of the queue waits. Unknown accounts (closed rows too) are decoded within the
+ * decode cap and watched when the pair matches and the lock is in force: a first sighting, no events, a live row
+ * never touched, a closed one revived (INSERT_WATCHED). The answer is taken in address order;
  * a pair whose accounts did not all fit the decode cap goes to the back of the queue with the last account this
  * search got through, and its next search goes on after it (QueuedPair). An urgent search of the pair starts over.
  */
@@ -569,30 +571,29 @@ async function rescans(pass: LoadedPass): Promise<void> {
   if (lastRead === null) return;
 
   const found: { pair: QueuedPair; slot: number; items: ProgramAccountItem[] }[] = [];
+  const options = { ...pass.upstream, maxBodyBytes: config.plan.rescanMaxBodyChars };
+  let parsedChars = 0;
   // Each call keeps room for itself (3 attempts) and the two statements after the loop.
   while (
     pass.queue.length > 0 &&
     report.rescans < config.plan.maxRescans &&
+    parsedChars + config.plan.rescanMaxBodyChars <= config.plan.rescanParseChars &&
     !pass.pastDeadline() &&
     budget.left() >= COST.rescanCall + COST.rescanPost
   ) {
     const pair = pass.queue[0];
     if (pair === undefined) break;
     report.rescans += 1;
-    const result = await callUpstream(
-      config.rpc,
-      JSON.stringify(pairAccountsRequest(pair[0], pair[1])),
-      'read',
-      pass.upstream,
-    );
-    if (!result.ok) break;
-    if (result.body.length > config.plan.rescanMaxBodyChars) {
+    const result = await callUpstream(config.rpc, JSON.stringify(pairAccountsRequest(pair[0], pair[1])), 'read', options);
+    if (!result.ok && result.reason === 'too-large') {
       pass.queue.shift();
       report.rescansDropped += 1;
       pass.adminDue.add('rescan-dropped');
       pass.adminCounts.kb = Math.round(config.plan.rescanMaxBodyChars / 1000);
       continue;
     }
+    if (!result.ok) break;
+    parsedChars += result.body.length;
     const parsed = parseProgramAccountItems(result.body);
     if (parsed === null) break;
     pass.queue.shift();

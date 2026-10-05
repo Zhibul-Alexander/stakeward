@@ -9,6 +9,8 @@
  * - sendTransaction: one attempt on the primary. Resending the same signed bytes is safe, but the site owns retries.
  * - An attempt fails on a network error, a timeout or any non-2xx status. A 2xx body is returned as it is, JSON-RPC
  *   errors included; parsing it is the caller's business.
+ * - With `maxBodyBytes`, a body longer than that is not read on (`too-large`, not retried: another node would send
+ *   the same answer). The monitor's rescans set it: anyone can make a pair's answer as large as they like.
  */
 
 export type UpstreamOptions = {
@@ -17,6 +19,8 @@ export type UpstreamOptions = {
   retryDelayMs: number;
   /** Injected in tests; defaults to the global fetch, looked up at call time. */
   fetch?: typeof fetch;
+  /** A 2xx body longer than this many bytes is refused part way (`too-large`). */
+  maxBodyBytes?: number;
 };
 
 export const DEFAULT_UPSTREAM_OPTIONS: UpstreamOptions = { timeoutMs: 8_000, retryDelayMs: 250 };
@@ -28,13 +32,14 @@ export type EndpointName = 'primary' | 'fallback';
 /** `endpoint`: the one that answered (the primary's URL when no fallback is set). */
 export type UpstreamResult =
   | { ok: true; body: string; endpoint: EndpointName }
-  | { ok: false; reason: 'timeout' | 'unavailable' };
+  | { ok: false; reason: 'timeout' | 'unavailable' | 'too-large' };
 
 /**
  * One POST attempt: the HTTP status and, for a 2xx status only, the body text (any other body is cancelled unread);
- * or why no status came back. The timeout covers reading the body as well.
+ * or why no status came back, or `too-large` for a 2xx body over `maxBodyBytes`. The timeout covers reading the body
+ * as well.
  */
-export type AttemptResult = { status: number; body: string | null } | 'timeout' | 'network';
+export type AttemptResult = { status: number; body: string | null } | 'timeout' | 'network' | 'too-large';
 
 type AttemptFailure = 'timeout' | 'network' | `http-${string}`;
 
@@ -60,6 +65,10 @@ export async function callUpstream(
   for (const [index, endpoint] of plan.entries()) {
     if (index > 0 && options.retryDelayMs > 0) await sleep(index * options.retryDelayMs);
     const result = await attemptPost(endpoint.url, payload, options);
+    if (result === 'too-large') {
+      console.warn(JSON.stringify({ msg: 'upstream rpc answer too large', endpoint: endpoint.name, attempt: index + 1 }));
+      return { ok: false, reason: 'too-large' };
+    }
     if (typeof result === 'string' || result.body === null) {
       last = typeof result === 'string' ? result : `http-${String(result.status)}`;
       const log = { msg: 'upstream rpc attempt failed', endpoint: endpoint.name, attempt: index + 1, reason: last };
@@ -78,7 +87,7 @@ export async function callUpstream(
 export async function attemptPost(
   url: string,
   payload: string,
-  options: { timeoutMs: number; fetch?: typeof fetch },
+  options: { timeoutMs: number; fetch?: typeof fetch; maxBodyBytes?: number },
 ): Promise<AttemptResult> {
   const fetchFn = options.fetch ?? fetch;
   const controller = new AbortController();
@@ -102,7 +111,9 @@ export async function attemptPost(
         await response.body?.cancel();
         return { status: response.status, body: null };
       }
-      return { status: response.status, body: await response.text() };
+      if (options.maxBodyBytes === undefined) return { status: response.status, body: await response.text() };
+      const body = await readCapped(response, options.maxBodyBytes);
+      return body === null ? 'too-large' : { status: response.status, body };
     } catch {
       return controller.signal.aborted ? 'timeout' : 'network';
     }
@@ -112,6 +123,36 @@ export async function attemptPost(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The body as text, or null (the rest cancelled unread) once it is longer than `maxBytes`. */
+async function readCapped(response: Response, maxBytes: number): Promise<string | null> {
+  const declared = Number(response.headers.get('Content-Length') ?? NaN);
+  if (declared > maxBytes || response.body === null) {
+    await response.body?.cancel();
+    return response.body === null ? '' : null;
+  }
+  // A fetch body is bytes; the workers types leave its chunks untyped.
+  const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 function sleep(ms: number): Promise<void> {

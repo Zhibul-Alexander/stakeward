@@ -11,9 +11,11 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { encodeBase64 } from '../src/base64.ts';
 import { classifyChunk } from '../src/monitor/classify.ts';
+import { MONITOR_PLANS } from '../src/monitor/config.ts';
 import { planDeliveries, settleDeliveries, type Link, type PendingEvent } from '../src/monitor/deliver.ts';
 import { parseMultipleAccounts, type ChunkRead, type RawItem } from '../src/monitor/read.ts';
 import type { AccountRow } from '../src/monitor/store.ts';
+import { parseProgramAccountItems } from '../src/stake-accounts.ts';
 import { multipleAccountsText, type AccountJson } from './fakes.ts';
 import { measure, report } from './measure.ts';
 import { createHarness } from './monitor/harness.ts';
@@ -62,6 +64,24 @@ function readOf(items: RawItem[]): ChunkRead {
 
 const rows = (n: number) => Array.from({ length: n }, (_, i) => rowOf(address(i)));
 
+/** A getProgramAccounts answer (withContext) of `count` stake accounts, written the way an RPC node writes it. */
+function programAccountsText(count: number): string {
+  const data = encodeBase64(stakeAccountData(SPEC));
+  const value = Array.from({ length: count }, (_, i) => ({
+    pubkey: address(i),
+    account: {
+      data: [data, 'base64'],
+      executable: false,
+      lamports: '10000000000',
+      owner: STAKE_PROGRAM_ADDRESS,
+      rentEpoch: '18446744073709551615',
+      space: 200,
+    },
+  }));
+  const text = JSON.stringify({ jsonrpc: '2.0', id: 1, result: { context: { apiVersion: '3.0.6', slot: 5300 }, value } });
+  return text.replace(/"(lamports|rentEpoch)":"([0-9]+)"/g, '"$1":$2');
+}
+
 describe('CPU of the monitor pass (measurement)', () => {
   it('classifyChunk, 20 accounts that changed (20 decodes; first = the first decode of this isolate)', { timeout: 120_000 }, async () => {
     const changed = readOf(Array.from({ length: 20 }, () => itemOf({ ...SPEC, deactivationEpoch: 951n })));
@@ -93,6 +113,17 @@ describe('CPU of the monitor pass (measurement)', () => {
     const text = multipleAccountsText(1, 5300, [clock, ...Array.from({ length: 99 }, () => stake)]);
     expect(parseMultipleAccounts(text, 100)?.items).toHaveLength(99);
     report('parseMultipleAccounts, 100 keys', await measure(() => Promise.resolve(parseMultipleAccounts(text, 100))));
+  });
+
+  it('parseProgramAccountItems, the most rescan answers a Free pass parses (rescanParseChars)', { timeout: 120_000 }, async () => {
+    const limit = MONITOR_PLANS.free.rescanParseChars;
+    let count = 1;
+    while (count < 256 && programAccountsText(count + 1).length <= limit) count += 1;
+    const text = programAccountsText(count);
+    expect(text.length).toBeLessThanOrEqual(limit);
+    expect(parseProgramAccountItems(text)?.items).toHaveLength(count);
+    const label = `parseProgramAccountItems, ${String(count)} accounts in ${String(text.length)} characters`;
+    report(label, await measure(() => Promise.resolve(parseProgramAccountItems(text))));
   });
 
   it('planDeliveries and settleDeliveries, 25 chats with 5 events each (125 alerts formatted)', { timeout: 120_000 }, async () => {

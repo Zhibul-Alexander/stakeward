@@ -94,6 +94,44 @@ describe('upstream RPC: the endpoint that answered, and pinned reads', () => {
   });
 });
 
+describe('upstream RPC: a cap on the answer', () => {
+  it('a read with maxBodyBytes stops reading past it: too-large, no retry, the stream cancelled', async () => {
+    // 1 MB in 4 KB chunks.
+    let pulls = 0;
+    let cancelled = false;
+    const huge = () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull: (controller) => {
+            pulls += 1;
+            controller.enqueue(new Uint8Array(4_096).fill(0x20));
+            if (pulls === 256) controller.close();
+          },
+          cancel: () => {
+            cancelled = true;
+          },
+        }),
+      );
+    const upstream = fakeUpstream(huge);
+    const options = { timeoutMs: 1_000, retryDelayMs: 0, fetch: upstream.fetch, maxBodyBytes: 10_000 };
+    const result = await callUpstream({ primary: PRIMARY_URL, fallback: FALLBACK_URL }, '{}', 'read', options);
+    // Not the result itself: a diff of a megabyte of body text would hang the reporter.
+    expect(result.ok ? `read ${String(result.body.length)} characters` : result.reason).toBe('too-large');
+    expect(upstream.calls).toHaveLength(1);
+    expect(pulls).toBeLessThanOrEqual(5);
+    expect(cancelled).toBe(true);
+  });
+
+  it('an answer within maxBodyBytes is read as usual; a Content-Length over it is refused unread', async () => {
+    const options = (upstream: { fetch: typeof fetch }) => ({ timeoutMs: 1_000, retryDelayMs: 0, fetch: upstream.fetch, maxBodyBytes: 100 });
+    const small = fakeUpstream((c) => rpcResponse(c.json.id, 1));
+    expect(await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(small))).toMatchObject({ ok: true });
+    const declared = fakeUpstream(() => new Response('x'.repeat(101), { headers: { 'Content-Length': '101' } }));
+    const refused = await callUpstream({ primary: PRIMARY_URL }, '{}', 'read', options(declared));
+    expect(refused.ok ? `read ${String(refused.body.length)} characters` : refused.reason).toBe('too-large');
+  });
+});
+
 describe('upstream RPC: sendTransaction', () => {
   it('makes one attempt on the primary only, even with a fallback configured', async () => {
     const { bytes } = await signedProtect();

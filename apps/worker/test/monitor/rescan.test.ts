@@ -187,6 +187,50 @@ describe('what a search watches', () => {
   });
 });
 
+describe('the CPU of the answers (Free: 10 ms a pass)', () => {
+  it('a pass parses at most rescanParseChars of answers: after a large one the next pair waits for the next pass', async () => {
+    const h = await watched();
+    // 150 accounts of one pair, already watched (nothing to decode): an answer of about 70 000 characters.
+    const big = key(30);
+    const addresses = Array.from({ length: 150 }, (_, i) => addr(i));
+    for (const at of addresses) h.chain.putStake(at, { ...SPEC, staker: big, withdrawer: big });
+    await h.seedWatched(addresses);
+    await h.setMeta({ rescan_queue: JSON.stringify([[big, SECOND], [MAIN, SECOND]]) });
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, rescansDropped: 0, rescanQueue: 1 });
+    expect(JSON.parse((await h.readMeta()).rescan_queue ?? '')).toEqual([[MAIN, SECOND]]);
+    h.at('2026-10-05T01:04:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, rescanQueue: 0 });
+    expect(searchedPairs(h)).toEqual([
+      [big, SECOND],
+      [MAIN, SECOND],
+    ]);
+  });
+
+  it('an answer over the limit is not read whole: the search stops reading it and drops the pair', async () => {
+    const h = await watched();
+    await h.setMeta({ rescan_queue: JSON.stringify([[MAIN, SECOND]]) });
+    // 4 MB in 16 KB chunks.
+    let pulls = 0;
+    const huge = new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        pulls += 1;
+        controller.enqueue(new Uint8Array(16_384).fill(0x20));
+        if (pulls === 256) controller.close();
+      },
+    });
+    const route = h.deps.fetch;
+    h.deps.fetch = (input, init) =>
+      typeof init?.body === 'string' && init.body.includes('getProgramAccounts')
+        ? Promise.resolve(new Response(huge, { headers: { 'Content-Type': 'application/json' } }))
+        : route(input, init);
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, rescansDropped: 1, rescanQueue: 0 });
+    expect(pulls).toBeLessThan(10);
+    expect(h.adminMessages()).toEqual(['Stakeward devnet monitor: a rescan answer over 100 KB was skipped.']);
+  });
+});
+
 describe('the queue survives every stop', () => {
   /** S1 deactivated and split: S2 has the same keys and lock. MAIN follows in a chat, so the sends load links too. */
   async function splitOff(): Promise<Harness> {

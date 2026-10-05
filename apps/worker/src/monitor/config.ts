@@ -15,13 +15,35 @@ export type MonitorPlan = {
   /** kit decodes per pass (monitor chunks + rescans together). */
   decodeCap: number;
   maxRescans: number;
-  /** A rescan answer longer than this (characters) is skipped. */
+  /** A rescan answer longer than this (characters) is skipped, not read on. */
   rescanMaxBodyChars: number;
+  /**
+   * Rescan answers parsed per pass, in characters: a search starts only while what the pass parsed plus the largest
+   * answer allowed fits. The parse is the costly part (the exact-lamports reviver: about 2 ms per 100 000 characters,
+   * test/monitor-cpu.test.ts); on Free 120 000 still allows three small answers, or one large one.
+   */
+  rescanParseChars: number;
 };
 
 export const MONITOR_PLANS = {
-  free: { name: 'free', subrequestCap: 48, maxChunks: 1, decodeCap: 20, maxRescans: 3, rescanMaxBodyChars: 100_000 },
-  paid: { name: 'paid', subrequestCap: 400, maxChunks: 5, decodeCap: 500, maxRescans: 10, rescanMaxBodyChars: 2_000_000 },
+  free: {
+    name: 'free',
+    subrequestCap: 48,
+    maxChunks: 1,
+    decodeCap: 20,
+    maxRescans: 3,
+    rescanMaxBodyChars: 100_000,
+    rescanParseChars: 120_000,
+  },
+  paid: {
+    name: 'paid',
+    subrequestCap: 400,
+    maxChunks: 5,
+    decodeCap: 500,
+    maxRescans: 10,
+    rescanMaxBodyChars: 2_000_000,
+    rescanParseChars: 20_000_000,
+  },
 } as const satisfies Record<string, MonitorPlan>;
 
 export const MONITOR_LIMITS = {
