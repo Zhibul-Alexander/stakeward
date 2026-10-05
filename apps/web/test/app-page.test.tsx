@@ -155,6 +155,12 @@ describe('/app on LiteSvmChain', () => {
       'href',
       `/withdraw/${stake.locked}`,
     );
+    // The recovery card of the keys that lock it (D74): on protected and expiring rows, never on someone else's lock.
+    const recoveryLink = (account: Address) => within(row(account)).queryByRole('link', { name: `Recovery card stake account ${shortAddress(account)}` });
+    expect(recoveryLink(stake.locked)).toHaveAttribute('href', `/recovery/${stake.locked}`);
+    expect(recoveryLink(stake.expiring)).toHaveAttribute('href', `/recovery/${stake.expiring}`);
+    expect(recoveryLink(stake.foreign)).toBeNull();
+    expect(recoveryLink(stake.open)).toBeNull();
 
     // Less than 30 days left.
     expect(within(row(stake.expiring)).getByText('Expiring soon')).toBeInTheDocument();
@@ -177,6 +183,7 @@ describe('/app on LiteSvmChain', () => {
     const secondKeyRow = within(secondList).getByRole('article', { name: `Stake account ${shortAddress(stake.secondKeyFor)}` });
     expect(within(secondKeyRow).getByText('Protected')).toBeInTheDocument();
     expect(within(secondKeyRow).getByRole('link', { name: /^Extend/ })).toHaveAttribute('href', `/extend/${stake.secondKeyFor}`);
+    expect(within(secondKeyRow).getByRole('link', { name: /^Recovery card/ })).toHaveAttribute('href', `/recovery/${stake.secondKeyFor}`);
 
     // Totals of the main list: count, all SOL, SOL under a lock.
     const all = [stake.open, stake.locked, stake.expiring, stake.foreign, stake.service].map(lamportsOf);

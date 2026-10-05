@@ -599,7 +599,8 @@
       "protectAgain": "Protect again",
       "extend": "Extend",
       "withdraw": "Withdraw",
-      "label": "{action} stake account {address}"
+      "label": "{action} stake account {address}",
+      "recovery": "Recovery card"
     },
     "noLongerProtected": {
       "titleOne": "1 stake account is no longer protected",
@@ -730,8 +731,8 @@
       },
       "recovery": {
         "title": "Keep a recovery card",
-        "body": "What to do if you lose a key or your main key is stolen, with commands that work without Stakeward. It holds no secrets.",
-        "link": "Recovery card for {address}"
+        "body": "One card covers every stake account of this main key that this second key locks: what to do if a key is lost or stolen, with Solana command-line steps that work without Stakeward. Print it and keep it with your second key. It holds no secrets.",
+        "open": "Open your recovery card"
       }
     }
   },

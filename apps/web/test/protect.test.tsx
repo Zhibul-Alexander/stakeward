@@ -216,11 +216,11 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       expect(telegram).toHaveAttribute('rel', 'noopener noreferrer');
       expect(telegram).toHaveAccessibleName('Open the Stakeward bot in Telegram (opens in a new tab)');
 
-      for (const account of [S1, S2]) {
-        const links = screen.getAllByRole('link', { name: `Recovery card for ${shortAddress(account)}` });
-        expect(links.length).toBeGreaterThan(0);
-        for (const link of links) expect(link).toHaveAttribute('href', `/recovery/${account}`);
-      }
+      // One recovery card covers both accounts of this pair of keys (D74): one link, to the first protected account.
+      const recovery = screen.getAllByRole('link', { name: 'Open your recovery card' });
+      expect(recovery).toHaveLength(1);
+      expect(recovery[0]).toHaveAttribute('href', `/recovery/${S1}`);
+      expect(screen.queryAllByRole('link', { name: /Recovery card for/ })).toEqual([]);
       expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
     },
     TIMEOUT,
