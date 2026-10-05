@@ -9,6 +9,7 @@ import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
+import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
@@ -59,7 +60,7 @@ export function AppRoutes() {
         <CosignPage />
       </Route>
       <Route path="/recovery/:account">
-        <ComingSoonPage title={t('common.pages.recovery')} />
+        <RecoveryPage />
       </Route>
       <Route path="/stats">
         <ComingSoonPage title={t('common.pages.stats')} />

@@ -1,6 +1,6 @@
-// Test-only rendering of the pages that sign (/withdraw/:account, /extend/:account, /cosign, /rescue) for scenario
-// tests: the real routes and pages over a LiteSvmChain and test wallets, in StrictMode as in main.tsx. Never imported
-// from src.
+// Test-only rendering of the stake account pages (/withdraw/:account, /extend/:account, /cosign, /rescue and the
+// recovery card) for scenario tests: the real routes and pages over a LiteSvmChain and test wallets, in StrictMode as
+// in main.tsx. Never imported from src.
 import { getSignatureFromTransaction, getTransactionDecoder, type Signature } from '@solana/kit';
 import type { ChainPort } from '@stakeward/core';
 import type { TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -12,6 +12,7 @@ import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
+import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
@@ -76,6 +77,9 @@ export function renderStakePage(
             </Route>
             <Route path="/rescue">
               <RescuePage signing={signing} />
+            </Route>
+            <Route path="/recovery/:account">
+              <RecoveryPage />
             </Route>
           </Switch>
         </PortsProvider>

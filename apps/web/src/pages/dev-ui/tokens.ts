@@ -33,7 +33,7 @@ function declarations(text: string, prefix: string): [string, string][] {
  */
 export function parseTokens(css: string): Tokens {
   const themeStart = css.indexOf('@theme');
-  const darkStart = css.indexOf('@media (prefers-color-scheme: dark)');
+  const darkStart = css.indexOf('@media screen and (prefers-color-scheme: dark)');
   const darkEnd = css.indexOf('@media', darkStart + 1);
   if (themeStart < 0 || darkStart < 0) return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '' };
   const light = block(css, themeStart, darkStart);

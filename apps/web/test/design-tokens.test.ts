@@ -157,9 +157,9 @@ describe('raw design values outside tokens.css', () => {
 
 type Theme = Map<string, string>;
 
-/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (prefers-color-scheme: dark). */
+/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (screen and prefers-color-scheme: dark). */
 function readThemes(css: string): { light: Theme; dark: Theme } {
-  const darkStart = css.indexOf('@media (prefers-color-scheme: dark)');
+  const darkStart = css.indexOf('@media screen and (prefers-color-scheme: dark)');
   const darkEnd = css.indexOf('@media', darkStart + 1);
   if (darkStart < 0 || darkEnd < 0) throw new Error('tokens.css: dark theme block not found');
   const read = (part: string): Theme =>

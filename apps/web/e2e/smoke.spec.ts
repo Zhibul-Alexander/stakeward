@@ -46,6 +46,34 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'rescue-start',
   },
   {
+    // The printable card of a protected account: both keys in full, the lock end, the commands with this account.
+    path: `/recovery/${SMOKE_STAKE}`,
+    heading: 'Recovery card',
+    ready: null,
+    shows: async (page) => {
+      const facts = page.getByRole('region', { name: 'This stake account' });
+      await expect(facts.getByText(SECOND, { exact: true })).toBeVisible();
+      await expect(facts.getByText(MAIN, { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible();
+      await expect(page.locator('[data-slot="command-block"]')).toHaveCount(12);
+      await expect(page.locator('[data-slot="command-block"]').first()).toContainText(MAIN);
+      // On paper: no site frame and no buttons, and the light theme even when the screen is dark.
+      await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+      await expect(page.getByRole('banner')).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeHidden();
+      await expect(page.getByRole('button', { name: /^Copy the command/ }).first()).toBeHidden();
+      await expect(facts.getByText(SECOND, { exact: true })).toBeVisible();
+      const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      await page.emulateMedia({ media: 'screen', colorScheme: 'dark' });
+      const screenDark = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      await page.emulateMedia({ colorScheme: 'light' });
+      const screenLight = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+      expect(paper).toBe(screenLight);
+      expect(screenDark).not.toBe(screenLight);
+    },
+    screen: 'recovery',
+  },
+  {
     // A broken link: said before anything is read or asked (step 7 spec 8.3).
     path: '/cosign#tx=@@',
     heading: 'Co-sign a transaction',
@@ -62,8 +90,8 @@ test('every entry route renders under the production headers, without console er
   page,
   expectNoA11yViolations,
 }) => {
-  // Seven pages, each checked by axe in two themes.
-  test.setTimeout(180_000);
+  // Every route, each checked by axe in two themes.
+  test.setTimeout(240_000);
   const width = page.viewportSize()?.width ?? 0;
   const apiRequests: string[] = [];
   page.on('request', (request) => {

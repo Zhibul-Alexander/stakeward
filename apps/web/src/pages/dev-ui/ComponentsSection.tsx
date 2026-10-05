@@ -1,7 +1,8 @@
-import { U64_MAX } from '@stakeward/core';
+import { LEDGER_PUBKEY_COMMAND, recoveryCommands, U64_MAX } from '@stakeward/core';
 import { useEffect, useState } from 'react';
 import { AccountRow, AccountRowError, AccountRowSkeleton } from '@/components/product/account-row';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
+import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
 import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
@@ -182,6 +183,25 @@ export function ComponentsSection() {
           </Demo>
           <Demo label={t('devUi.states.loading')}>
             <AddressTextSkeleton />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.commandBlock')}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Demo label={t('devUi.states.normal')}>
+            <CommandBlock
+              argv={recoveryCommands({ mainKeyAddress: SAMPLE.mainKey, url: 'mainnet-beta' }).withdraw.map((token) =>
+                token === '<STAKE_ACCOUNT>' ? SAMPLE.stakeA : token,
+              )}
+              label={t('devUi.commandSampleLabel')}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.oneLine')}>
+            <CommandBlock argv={LEDGER_PUBKEY_COMMAND} label={t('recovery.commands.ledger')} />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <CommandBlockSkeleton />
           </Demo>
         </div>
       </DemoGroup>
