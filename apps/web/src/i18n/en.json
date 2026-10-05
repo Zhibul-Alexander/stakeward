@@ -50,6 +50,7 @@
   "footer": {
     "sourceCode": "Source code",
     "cannotDo": "What Stakeward cannot do",
+    "stats": "Stakeward in numbers",
     "license": "No warranty. MIT license."
   },
   "landing": {

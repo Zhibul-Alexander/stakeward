@@ -1,7 +1,11 @@
+import { Link } from 'wouter';
 import { CANNOT_DO_PATH, SOURCE_CODE_URL } from '@/config';
 import { t } from '@/i18n';
 
-/** On every page (UX rule 12): source code, what Stakeward cannot do, no warranty (CLAUDE.md section 11). */
+/**
+ * On every page (UX rule 12): source code, what Stakeward cannot do, the public numbers, no warranty (CLAUDE.md
+ * section 11).
+ */
 export function SiteFooter() {
   return (
     <footer className="border-t border-border print:hidden">
@@ -12,6 +16,9 @@ export function SiteFooter() {
         <a className="rounded-sm underline underline-offset-4 hover:text-foreground" href={CANNOT_DO_PATH}>
           {t('footer.cannotDo')}
         </a>
+        <Link className="rounded-sm underline underline-offset-4 hover:text-foreground" href="/stats">
+          {t('footer.stats')}
+        </Link>
         <span>{t('footer.license')}</span>
       </div>
     </footer>

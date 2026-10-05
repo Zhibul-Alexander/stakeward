@@ -42,6 +42,7 @@ describe('app shell', () => {
       'https://github.com/Zhibul-Alexander/stakeward',
     );
     expect(screen.getByRole('link', { name: 'What Stakeward cannot do' })).toHaveAttribute('href', '/#cannot-do');
+    expect(screen.getByRole('link', { name: 'Stakeward in numbers' })).toHaveAttribute('href', '/stats');
     expect(screen.getByText('No warranty. MIT license.')).toBeInTheDocument();
   });
 
