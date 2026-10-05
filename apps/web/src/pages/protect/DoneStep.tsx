@@ -22,7 +22,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
 import { t } from '@/i18n';
+import type { SigningTestOptions } from '@/signing/create';
+import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
 import type { JobView } from '@/signing/machine';
+import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { defaultJobReason, jobStatus } from '@/signing/view';
 import { refusalText } from './plan.ts';
 import type { WizardState } from './wizard.ts';
@@ -55,6 +58,8 @@ export type ProtectDoneViewProps = {
   checking?: boolean | undefined;
   /** The last Check again could not read the chain. */
   checkFailed?: boolean | undefined;
+  /** After signing by link: the card that closes the main key's link-signing account (shown while it is there). */
+  nonceClose?: ReactNode;
   actions: ProtectDoneActions;
 };
 
@@ -66,12 +71,17 @@ export function DoneStep({
   state,
   mainKey,
   secondKeySlot,
+  byLink,
+  signing,
   ...rest
 }: Pick<ProtectDoneViewProps, 'headingRef' | 'watch' | 'checking' | 'checkFailed' | 'actions'> & {
   state: WizardState;
   mainKey: Address;
-  /** The second key slot's address, used when no protected account names the second key. */
+  /** The run's second key (its slot's, or the typed one by link), used when no protected account names it. */
   secondKeySlot: Address | null;
+  /** The run went by link: its link-signing account can be closed here (step 7 spec 10.1). */
+  byLink: boolean;
+  signing?: SigningTestOptions | undefined;
 }) {
   const outcomes = state.order.flatMap((id) => state.outcomes[id] ?? []);
   const secondKey = outcomes.map((job) => protectedAccountOf(job)?.lockup.custodian).find((key) => key !== undefined) ?? secondKeySlot;
@@ -84,14 +94,13 @@ export function DoneStep({
       secondKey={secondKey}
       lockUntil={state.lockUntil}
       telegramUrl={telegramLinkPath(mainKey)}
+      nonceClose={byLink ? <NonceCloseCard authority={mainKey} role="main" signing={signing} /> : undefined}
     />
   );
 }
 
 /** A link that opens in a new tab shares neither this page (window.opener) nor its address (Referer). */
 const NEW_TAB_REL = 'noopener noreferrer';
-
-const RETRYABLE: readonly JobView['state']['kind'][] = ['sim-failed', 'failed', 'expired', 'not-sent'];
 
 /**
  * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures: what the
@@ -109,6 +118,7 @@ export function ProtectDoneView({
   telegramUrl,
   checking = false,
   checkFailed = false,
+  nonceClose,
   actions,
 }: ProtectDoneViewProps) {
   const headingId = useId();
@@ -127,7 +137,9 @@ export function ProtectDoneView({
         : done === 1
           ? t('protect.done.titleOne')
           : t('protect.done.titleOther', { count: done });
-  const retryable = others.filter((job) => RETRYABLE.includes(job.state.kind));
+  const retryable = retryableOutcomes(others);
+  // A link still open holds back Try again for the rest (retryableOutcomes): say why.
+  const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
   const uncertain = others.filter((job) => job.state.kind === 'unknown');
   const lockEndPassed = others.some((job) => job.state.kind === 'refused' && job.state.reason === 'lock-end-passed');
 
@@ -158,6 +170,7 @@ export function ProtectDoneView({
               {t('protect.done.checkFailed')}
             </p>
           ) : null}
+          {waitsForLink ? <p className="max-w-prose text-sm">{t('components.jobs.retryAfterLink')}</p> : null}
           {retryable.length === 0 && uncertain.length === 0 && !lockEndPassed ? null : (
             <div className="flex flex-wrap gap-2">
               {retryable.length === 0 ? null : (
@@ -194,6 +207,7 @@ export function ProtectDoneView({
           </DoneCard>
         )}
         {watch.kind === 'idle' ? null : <MonitoringCard watch={watch} onRetry={actions.retryMonitoring} />}
+        {nonceClose}
         <DoneCard title={t('protect.done.telegram.title')} description={t('protect.done.telegram.body')}>
           <div>
             <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">

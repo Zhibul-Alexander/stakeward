@@ -32,10 +32,18 @@ const REFUSALS: readonly ProtectRefusal[] = [
  * 4. the lock (K, T) is already in force -> done; 5. a lock held by another key -> already-protected (K, another T)
  * or locked-by-other; 6. K breaks a second-key rule -> second-key-rule; 7. T within LOCK_END_MARGIN_SECONDS of the
  * cluster clock -> lock-end-passed; 8. otherwise build.
+ * With `link` (step 7 spec 10.1) every transaction is built on the main key's durable nonce (the main key pays and owns
+ * it) and the second key signs on another device through a /cosign link.
  */
-export function protectPlan(input: { mainKey: Address; secondKey: Address; lockUntil: bigint }): SigningPlan {
-  const { mainKey, secondKey, lockUntil } = input;
+export function protectPlan(input: {
+  mainKey: Address;
+  secondKey: Address;
+  lockUntil: bigint;
+  link?: { nonceAccount: Address } | undefined;
+}): SigningPlan {
+  const { mainKey, secondKey, lockUntil, link } = input;
   return {
+    ...(link === undefined ? {} : { nonce: { nonceAccount: link.nonceAccount, nonceAuthority: mainKey }, remote: [secondKey] }),
     async prepare(chain, ids) {
       const addresses = ids.map((id) => address(id));
       const [{ accounts }, clock] = await Promise.all([chain.getAccounts(addresses), chain.getClock()]);

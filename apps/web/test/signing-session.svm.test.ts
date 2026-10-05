@@ -666,6 +666,7 @@ class LaggingChain implements ChainPort {
   getClock: ChainPort['getClock'] = () => this.inner.getClock();
   getLatestBlockhash: ChainPort['getLatestBlockhash'] = () => this.inner.getLatestBlockhash();
   getBlockHeight: ChainPort['getBlockHeight'] = () => this.inner.getBlockHeight();
+  getEpochInfo: ChainPort['getEpochInfo'] = () => this.inner.getEpochInfo();
   getBalance: ChainPort['getBalance'] = (address) => this.inner.getBalance(address);
   getMinimumBalanceForRentExemption: ChainPort['getMinimumBalanceForRentExemption'] = (size) =>
     this.inner.getMinimumBalanceForRentExemption(size);

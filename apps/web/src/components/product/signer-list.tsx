@@ -6,6 +6,7 @@ import {
   CircleCheckIcon,
   CircleDashedIcon,
   CircleXIcon,
+  LinkIcon,
   RepeatIcon,
   UnplugIcon,
   type LucideIcon,
@@ -16,7 +17,8 @@ import { t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { roleLabel } from './wallet-slot.tsx';
 
-export type SignerStatus = 'waiting' | 'current' | 'signed' | 'switch' | 'stopped' | 'missing';
+/** `link`: this key signs on another device through the signing link, never in this browser. */
+export type SignerStatus = 'waiting' | 'current' | 'signed' | 'switch' | 'stopped' | 'missing' | 'link';
 
 /** One signature the round still needs or already has, in signing order (core `signingOrder`). */
 export type SignerListItem = {
@@ -39,6 +41,7 @@ const LOOKS: Record<SignerStatus, Look> = {
   switch: { tone: 'warning', icon: RepeatIcon, label: 'components.signerList.status.switch' },
   stopped: { tone: 'danger', icon: CircleXIcon, label: 'components.signerList.status.stopped' },
   missing: { tone: 'neutral', icon: UnplugIcon, label: 'components.signerList.status.missing' },
+  link: { tone: 'info', icon: LinkIcon, label: 'components.signerList.status.link' },
 };
 
 /**

@@ -9,7 +9,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
-import { StepButtons } from './StepButtons.tsx';
+import { AddressField, addressInputError, parseAddressInput } from '@/signing/AddressField';
+import { SignWhere, type SignMode } from '@/signing/SignWhere';
+import { blockerText, ContinueButtons } from './StepButtons.tsx';
 import type { Blocker, SecondKeyProblem } from './wizard.ts';
 
 type SecondKeyStepProps = {
@@ -19,22 +21,35 @@ type SecondKeyStepProps = {
   sameWallet: string | null;
   problems: readonly SecondKeyProblem[];
   seedConfirmed: boolean;
+  /** Where the second key signs: connected here, or on another device by link (its address typed in `linkKey`). */
+  mode: SignMode;
+  linkKey: string;
   blockers: readonly Blocker[];
   onSeed: (value: boolean) => void;
+  onMode: (mode: SignMode) => void;
+  onLinkKey: (text: string) => void;
   onLeaveOut: (account: Address) => void;
   onBack: () => void;
   onContinue: () => void;
 };
 
 /**
- * Step 2 (F1 step 2): connect the second key in this browser. The risks come before the signature (UX rule 6): the
- * second key can freeze the stake, and both keys from one seed phrase protect nothing, which the user confirms.
+ * Step 2 (F1 step 2): where the second key signs, then connect it in this browser or paste its address for signing by
+ * link (step 7 spec 10.1). The risks come before the signature (UX rule 6): the second key can freeze the stake, and
+ * both keys from one seed phrase protect nothing, which the user confirms. By link a wrong address simply cannot sign:
+ * the joint signature on the chain stays the only proof (F1.4).
  */
 export function SecondKeyStep(props: SecondKeyStepProps) {
-  const { headingRef, mainKey, sameWallet, problems } = props;
+  const { headingRef, mainKey, sameWallet, problems, mode, linkKey } = props;
   const headingId = useId();
   const seedId = useId();
   const hintId = useId();
+  const parsed = parseAddressInput(linkKey);
+  // By link the field says what is wrong with a typed address; an empty one is said only when Continue is pressed.
+  const fieldError = parsed.ok || parsed.reason === 'empty' ? null : addressInputError(parsed.reason);
+  const problemTexts = props.blockers.map((blocker) =>
+    blocker === 'need-second' && mode === 'link' && !parsed.ok ? addressInputError(parsed.reason) : blockerText(blocker),
+  );
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -43,9 +58,22 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
         </h2>
         <p className="max-w-prose text-muted">{t('protect.second.body')}</p>
       </div>
-      <KeySlot role="second" mainKey={mainKey} description={t('protect.second.slotDescription')} />
-      <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>
-      {sameWallet === null ? null : (
+      <SignWhere role="second" value={mode} onChange={props.onMode} />
+      {mode === 'link' ? (
+        <AddressField
+          label={t('protect.second.linkAddress')}
+          hint={t('protect.second.linkHint')}
+          value={linkKey}
+          onChange={props.onLinkKey}
+          error={fieldError}
+        />
+      ) : (
+        <>
+          <KeySlot role="second" mainKey={mainKey} description={t('protect.second.slotDescription')} />
+          <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>
+        </>
+      )}
+      {mode === 'link' || sameWallet === null ? null : (
         <Alert tone="info" role="note">
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="text-foreground">{t('protect.second.sameWallet', { wallet: sameWallet })}</AlertDescription>
@@ -95,7 +123,7 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           </p>
         </div>
       </div>
-      <StepButtons blockers={props.blockers} onContinue={props.onContinue} onBack={props.onBack} />
+      <ContinueButtons problems={problemTexts} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

@@ -2,19 +2,18 @@ import type { Address } from '@solana/kit';
 import type { WalletRole } from '@stakeward/core';
 import { useId, type Ref } from 'react';
 import { RiskNote } from '@/components/product/risk-note';
+import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
 import { usePorts } from '@/ports';
-import { initialSigningState, type SigningState } from '@/signing/machine';
-import { slotSignerResolver } from '@/signing/resolve';
-import { appendsTail } from '@/signing/rules';
-import { SigningSession } from '@/signing/session';
-import { SigningPanel, SigningView, type SigningActions } from '@/signing/SigningPanel';
+import { createPageSession, type SigningTestOptions } from '@/signing/create';
+import type { SigningState } from '@/signing/machine';
+import { NonceCloseCard } from '@/signing/NonceCloseCard';
+import { NonceGate } from '@/signing/NonceGate';
+import { PageSigningPanel } from '@/signing/SigningPanel';
+import type { SignMode } from '@/signing/SignWhere';
 import { useSigningSession } from '@/signing/use-signing-session';
 import { protectPlan } from './plan.ts';
-
-/** Faster polling and rereads for tests; the defaults are the product's. */
-export type SigningTimings = { pollIntervalMs?: number | undefined; rereadDelayMs?: number | undefined };
 
 type SignStepProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -22,69 +21,106 @@ type SignStepProps = {
   mainKey: Address;
   secondKey: Address;
   lockUntil: bigint;
-  signing?: SigningTimings | undefined;
+  /** Where the second key signs: here, or on another device by link (on the main key's link-signing account). */
+  mode: SignMode;
+  signing?: SigningTestOptions | undefined;
   onFinished: (state: SigningState) => void;
   onBack: () => void;
-};
-
-const noop = () => undefined;
-const NO_ACTIONS: SigningActions = {
-  sign: noop,
-  continueWithWallet: noop,
-  continueAfterSwitch: noop,
-  stopWaiting: noop,
-  restartRound: noop,
-  oneAtATime: noop,
-  retryPrepare: noop,
-  finish: noop,
 };
 
 /**
  * Step 4 (F1 steps 4-5): one SetLockupChecked per stake account, signed by the main key and the second key. The
  * signing engine reads the chain again, shows the inspector's summary of the exact bytes, asks each wallet once for
- * the whole round, sends, and checks the result on the chain. A new run key is a new session.
+ * the whole round, sends, and checks the result on the chain. A new run key is a new session. By link (step 7 spec
+ * 10.1) the main key's link-signing account comes first; then one transaction per stake account, one after another:
+ * the main key signs here and the page shows a link for the second key and waits for it.
  */
-export function SignStep({ headingRef, run, mainKey, secondKey, lockUntil, signing, onFinished, onBack }: SignStepProps) {
-  const ports = usePorts();
+export function SignStep(props: SignStepProps) {
+  const { headingRef, run, mainKey, mode, signing, onBack } = props;
   const headingId = useId();
-  const create = () =>
-    new SigningSession({
-      chain: ports.chain,
-      plan: protectPlan({ mainKey, secondKey, lockUntil }),
-      ids: run.ids,
-      resolveSigner: slotSignerResolver(ports),
-      appendsTail,
-      confirm: { pollIntervalMs: signing?.pollIntervalMs },
-      rereadDelayMs: signing?.rereadDelayMs,
-      onFinished,
-    });
-  const { session, snapshot } = useSigningSession(create, `protect#${String(run.key)}`);
-  const knownRoles = { main: mainKey, second: secondKey };
-  const renderKeySlot = (role: WalletRole) => <KeySlot role={role} mainKey={mainKey} />;
   const count = run.ids.length;
+  const byLink = mode === 'link';
+  const countText = byLink
+    ? count === 1
+      ? t('protect.sign.linkOne')
+      : t('protect.sign.linkOther', { count })
+    : count === 1
+      ? t('protect.sign.countOne')
+      : t('protect.sign.countOther', { count });
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
           {t('protect.sign.heading')}
         </h2>
-        <p className="max-w-prose text-muted">
-          {count === 1 ? t('protect.sign.countOne') : t('protect.sign.countOther', { count })}
-        </p>
+        <p className="max-w-prose text-muted">{countText}</p>
       </div>
-      <RiskNote risk="lose-second-key" date={lockUntil} />
-      {session === null || snapshot === null ? (
-        // The first frame, before the session starts: the same "building" view the session shows next.
-        <SigningView
-          state={initialSigningState(run.ids, count)}
-          actions={NO_ACTIONS}
-          knownRoles={knownRoles}
-          renderKeySlot={renderKeySlot}
-          onBack={onBack}
-        />
+      <RiskNote risk="lose-second-key" date={props.lockUntil} />
+      {byLink ? (
+        <NonceGate
+          authority={mainKey}
+          role="main"
+          blockedHint={t('nonce.blockedHere')}
+          signing={signing}
+          actions={
+            <Button variant="ghost" onClick={onBack}>
+              {t('common.back')}
+            </Button>
+          }
+        >
+          {(nonceAccount) => <ProtectRun {...props} nonceAccount={nonceAccount} />}
+        </NonceGate>
       ) : (
-        <SigningPanel session={session} state={snapshot} knownRoles={knownRoles} renderKeySlot={renderKeySlot} onBack={onBack} />
+        <ProtectRun {...props} nonceAccount={null} />
       )}
     </section>
+  );
+}
+
+/** The run itself: one session per run key, live or (with a nonce account) by link. */
+function ProtectRun({
+  run,
+  mainKey,
+  secondKey,
+  lockUntil,
+  signing,
+  onFinished,
+  onBack,
+  nonceAccount,
+}: SignStepProps & { nonceAccount: Address | null }) {
+  const ports = usePorts();
+  const link = nonceAccount === null ? undefined : { nonceAccount };
+  const create = () =>
+    createPageSession(ports, { plan: protectPlan({ mainKey, secondKey, lockUntil, link }), ids: run.ids, signing, onFinished });
+  const { session, snapshot } = useSigningSession(create, `protect#${String(run.key)}`);
+  const knownRoles = { main: mainKey, second: secondKey };
+  // The step names the exact account: a wallet that offers another one is told which account this step needs.
+  const renderKeySlot = (role: WalletRole, address: Address) => <KeySlot role={role} mainKey={mainKey} expected={address} />;
+  return (
+    <PageSigningPanel
+      session={session}
+      state={snapshot}
+      ids={run.ids}
+      // On a nonce every transaction is a round of its own (the engine forces it); live, one round for all.
+      roundSize={link === undefined ? run.ids.length : 1}
+      knownRoles={knownRoles}
+      renderKeySlot={renderKeySlot}
+      renderLinkCancel={
+        link === undefined
+          ? undefined
+          : () => (
+              <NonceCloseCard
+                authority={mainKey}
+                role="main"
+                variant="cancel-link"
+                signing={signing}
+                onClosed={() => {
+                  session?.checkLinkNow();
+                }}
+              />
+            )
+      }
+      onBack={onBack}
+    />
   );
 }

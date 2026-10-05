@@ -61,7 +61,7 @@ export const START_EPOCH = 1_000n;
  */
 export const MAINNET_RENT_LAMPORTS_PER_BYTE = 5_080n;
 /** Short linear epochs; only `clock.epoch` matters to the stake program. */
-const SLOTS_PER_EPOCH = 32n;
+export const SLOTS_PER_EPOCH = 32n;
 
 const VOTE_PROGRAM_ADDRESS = 'Vote111111111111111111111111111111111111111' as Address;
 const SYSVAR_RENT_ADDRESS = 'SysvarRent111111111111111111111111111111111' as Address;

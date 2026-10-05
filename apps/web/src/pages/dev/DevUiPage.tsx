@@ -22,6 +22,7 @@ const SECTIONS = [
   ['primitives', 'devUi.primitives'],
   ['components', 'devUi.productComponents'],
   ['signing', 'devUi.signing'],
+  ['link', 'devUi.link'],
   ['protect-result', 'devUi.protectResult'],
 ] as const;
 

@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Load } from '@/hooks/use-load';
 import { t, type MessageKey } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import type { Load } from './load.ts';
+import type { NonceInfo } from '@/signing/nonce';
 import type { LifetimeChoice, SigningOrder } from './report.ts';
 import type { ConfirmOptions, Signer } from './SigningRun.tsx';
 import type { DevSlot } from './SlotsSection.tsx';
-import { buildNonceClose, buildNonceSetup, type NonceInfo } from './tasks.ts';
+import { buildNonceClose, buildNonceSetup } from './tasks.ts';
 import { TaskRunner } from './TaskRunner.tsx';
 
 type OptionsSectionProps = {

@@ -33,6 +33,7 @@ describe('review: /app monitoring line on a page left open', () => {
       getAccounts: unused,
       getLatestBlockhash: unused,
       getBlockHeight: unused,
+      getEpochInfo: unused,
       getBalance: unused,
       getMinimumBalanceForRentExemption: unused,
       simulate: unused,

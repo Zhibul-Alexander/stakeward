@@ -17,6 +17,7 @@
     "opensInNewTab": "(opens in a new tab)",
     "details": "Details",
     "tryAgain": "Try again",
+    "checkAgain": "Check again",
     "continue": "Continue",
     "back": "Back",
     "cancel": "Cancel",
@@ -115,6 +116,8 @@
       "errorTitle": "Could not connect {wallet}",
       "chooseAnother": "Choose another wallet",
       "conflict": "This account is already your {role}.",
+      "expected": "This step needs this account. Switch to it in the wallet:",
+      "expectedReconnect": "This step needs this account. Disconnect, then connect again with this account:",
       "switch": {
         "main": "Switch to your main account in the wallet, then press Continue.",
         "second": "Switch to your second account in the wallet, then press Continue.",
@@ -247,7 +250,8 @@
         "signed": "Signed",
         "switch": "Switch account",
         "stopped": "Stopped",
-        "missing": "Not connected"
+        "missing": "Not connected",
+        "link": "Signs by link"
       }
     },
     "jobs": {
@@ -267,10 +271,21 @@
         "timeout": "No confirmation within 2 minutes. It may still go through: check again.",
         "stopped": "You stopped waiting. It may still go through: check again.",
         "not-applied": "The network confirmed it, but the stake account does not show the change yet. Check again.",
-        "unverified": "Sent, but the result could not be read. Check again."
+        "unverified": "Sent, but the result could not be read. Check again.",
+        "link-open": "Signed here; the other device has not sent it yet. The link still works: check again, or cancel it."
       },
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
+      "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
+      "retryAfterLink": "A link is still open, so the rest waits for it. When the other device has sent it, or you cancelled it by closing your link-signing account, press Check again, then try the rest.",
       "transaction": "Transaction"
+    },
+    "qr": {
+      "tooLong": "This link is too long for a QR code. Copy it instead."
+    },
+    "addressField": {
+      "empty": "Paste an address first.",
+      "invalid": "This is not a Solana address.",
+      "zero": "This is the empty address, not a wallet."
     }
   },
   "signing": {
@@ -287,6 +302,7 @@
     "signWith": "Sign in {wallet} as {role}",
     "signManyWith": "Sign {count} transactions in {wallet} as {role}",
     "firstHint": "Check the summary above, then approve the request in {wallet}.",
+    "confirmRequired": "Tick the box above to continue.",
     "sameWalletHint": "{wallet} holds more than one of your keys. Switch {wallet} to the account of your {role}, then sign.",
     "waitingWallet": "Waiting for {wallet}: approve or reject the request there.",
     "checkingTime": "Checking the network before asking {wallet}",
@@ -329,7 +345,46 @@
     "oneAtATimeHint": "With a hardware wallet, approving several transactions can take longer than a minute. One at a time avoids that.",
     "sending": "Sending to the network: {current} of {total}",
     "confirming": "Waiting for the network to confirm. This usually takes a few seconds, at most 2 minutes.",
-    "checking": "Checking the stake accounts on the network"
+    "checking": "Checking the stake accounts on the network",
+    "link": {
+      "title": "Send this link to your {role}",
+      "titleMany": "Send this link to the device with your {roles}",
+      "body": "The link holds this transaction and the signatures made here, never a key. Whoever opens it sees exactly what it does and can only complete it. It works until it is used or you cancel it.",
+      "scan": "Scan the code with the other device's camera, then open the page in the wallet app's own browser. Or copy the link and send it.",
+      "qrLabel": "QR code of the signing link",
+      "url": "Signing link",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy. Select the link and copy it by hand.",
+      "txId": "Transaction",
+      "waiting": "Waiting for the other device to sign and send. This page checks the network every few seconds.",
+      "checkFailed": "Could not reach the network. Still trying.",
+      "paused": "Stopped checking after 30 minutes. The link still works.",
+      "checkAgain": "Check again",
+      "stopWaiting": "Stop waiting here",
+      "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed.",
+      "cancelTitle": "Cancel the link",
+      "cancelBody": "Cancelling closes your link-signing account, so this link stops working. Its deposit of {amount} comes back to your {role}. If the other device already sent the transaction, that change stays.",
+      "cancelAction": "Cancel the link"
+    },
+    "prepare": {
+      "nonce": {
+        "missing": "Your link-signing account is missing. Go back and set it up again.",
+        "unusable": "Your link-signing account cannot be used. Go back and sign in this browser instead.",
+        "stale": "The network has not caught up with your last transaction yet. Try again in a few seconds."
+      },
+      "nonceLater": {
+        "missing": "Your link-signing account is gone, so this run cannot sign the rest by link. See the result, then try the rest again: you can set the account up again there.",
+        "unusable": "Your link-signing account cannot be used, so this run cannot sign the rest by link. See the result, then try the rest again."
+      }
+    },
+    "where": {
+      "legend": "Where does your {role} sign?",
+      "here": "In this browser",
+      "hereHint": "Connect it here and approve here.",
+      "link": "On another device, by link",
+      "linkHint": "You get a link and a QR code. The other device opens it, checks the transaction and signs. Needs a small deposit that comes back."
+    }
   },
   "devUi": {
     "title": "Design system",
@@ -387,6 +442,8 @@
       "connecting": "Connecting",
       "connected": "Connected",
       "wrongAccount": "Wrong account",
+      "wrongAccountExpected": "Wrong account: this step needs another one",
+      "wrongAccountHeld": "Holds another account than this step needs",
       "noWallets": "No wallets found",
       "running": "Running",
       "ended": "Ended",
@@ -402,7 +459,11 @@
       "pickerOpen": "Empty, wallet list open",
       "managedByService": "Managed by a service",
       "everyStatus": "Every status",
-      "batch": "One summary for {count} stake accounts"
+      "batch": "One summary for {count} stake accounts",
+      "tooLong": "Too long for a QR code",
+      "watching": "Waiting for the other device",
+      "checkFailed": "Last check could not reach the network",
+      "paused": "Stopped checking after 30 minutes"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -417,7 +478,8 @@
       "rescue": "Rescue",
       "checkAnother": "Check another address",
       "connectionLost": "The wallet did not answer. Check that it is unlocked, then try again.",
-      "jobs": "Stake accounts"
+      "jobs": "Stake accounts",
+      "confirmRescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
     },
     "names": {
       "statusBadge": "StatusBadge",
@@ -432,9 +494,12 @@
       "riskNote": "RiskNote",
       "errorState": "ErrorState",
       "signerList": "SignerList",
-      "jobStatusList": "JobStatusList"
+      "jobStatusList": "JobStatusList",
+      "qrCode": "QrCode",
+      "linkCard": "LinkCard"
     },
     "signing": "Signing",
+    "link": "Signing by link",
     "protectResult": "Protect result",
     "flows": {
       "signingNote": "The signing panel of every flow, in each phase. Real transactions built and read by core; the buttons do nothing here.",
@@ -455,7 +520,16 @@
       "feeBalance": "Not enough SOL for the fee",
       "all": "All protected",
       "partial": "Some protected",
-      "none": "None protected"
+      "none": "None protected",
+      "linkNote": "Signing by link: a rescue on the new wallet's link-signing account. The first device after its own signatures, the device that opened the link (it must tick a box first), then the link-signing account's own cards. Real transactions built and read by core; the buttons do nothing here.",
+      "linkWatching": "Link open: waiting for the other device",
+      "linkPaused": "Link open: stopped checking after 30 minutes",
+      "cosignConfirm": "The device that opened the link: confirm, then sign",
+      "nonceSetup": "Link-signing account: set up",
+      "nonceClose": "Link-signing account: close",
+      "nonceCancel": "Cancel a link",
+      "nonceBlocked": "Set up refused: the address is taken",
+      "nonceGateBlocked": "Address taken before set up: the page's way around it"
     }
   },
   "app": {
@@ -557,6 +631,8 @@
       "heading": "Connect your second key",
       "body": "Use a wallet made from a different seed phrase. It signs once now to show it works. Later it is needed to withdraw this stake or to move it to a new wallet.",
       "slotDescription": "Your second key. Connecting signs nothing.",
+      "linkAddress": "Second key address",
+      "linkHint": "Paste the address of the wallet that will be your second key. It signs on the other device; a wrong address simply cannot sign, and nothing changes.",
       "oneBrowser": "Both keys must be connected in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
       "sameWallet": "Both keys are in {wallet}. While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
       "problem": {
@@ -592,7 +668,9 @@
     "sign": {
       "heading": "Review and sign",
       "countOne": "1 transaction for 1 stake account. Your main key and your second key each approve it.",
-      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request."
+      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request.",
+      "linkOne": "1 transaction. Your main key signs here; your second key signs it from the link.",
+      "linkOther": "{count} transactions, one link each, one after another. Your main key signs here; your second key signs each link."
     },
     "refused": {
       "not-found": "This stake account no longer exists.",
@@ -635,6 +713,89 @@
         "body": "What to do if you lose a key or your main key is stolen, with commands that work without Stakeward. It holds no secrets.",
         "link": "Recovery card for {address}"
       }
+    }
+  },
+  "stakePage": {
+    "invalid": "This page address does not contain a valid stake account address.",
+    "loading": "Reading this stake account from the network",
+    "loadError": "Could not load this stake account",
+    "notFound": "This stake account does not exist. If you just withdrew from it, the SOL is with its main key.",
+    "notStake": "This address is not a stake account."
+  },
+  "withdraw": {
+    "intro": "Take the SOL out of this stake account. It always goes to the stake's main key.",
+    "rescueLink": "Rescue your stake instead",
+    "deactivate": {
+      "title": "First, stop staking",
+      "body": "This stake is earning rewards. Stop staking first: it stops at the end of the current epoch, in about {time}. Then come back to withdraw. Only your main key signs.",
+      "bodyActivating": "This stake starts earning rewards at the end of this epoch. Stop it now and you can withdraw right away. Only your main key signs.",
+      "action": "Review and sign"
+    },
+    "serviceStaker": "Another key manages staking for this stake account. Stop staking with that key, or in the service you staked through, then come back. If you did not set this up, someone may have your main key: rescue your stake.",
+    "deactivating": {
+      "title": "Waiting for the epoch to end",
+      "label": "Withdraw opens in about",
+      "body": "The network releases stake at the end of the epoch. The time is an estimate. You can close this page and come back."
+    },
+    "ready": {
+      "title": "Withdraw {amount} to your main key",
+      "mainKey": "Your main key receives it and pays the network fee:",
+      "secondSigns": "{lock}. Your second key co-signs:",
+      "mainAlone": "The lock has ended, so your main key signs alone.",
+      "action": "Review and sign"
+    },
+    "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, sign by link, or remove the lock first.",
+    "fallback": {
+      "title": "Second key not at hand?",
+      "body": "Your second key can remove the lock on its own, from any device. After that your main key withdraws alone, in any wallet.",
+      "action": "Remove the lock first"
+    },
+    "unsupportedLock": "Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key. If the main key holds it, the Solana command line can withdraw when the main key also signs as the lock's key: solana withdraw-stake --help names that option. Otherwise wait until the lock ends.",
+    "result": "Withdrawal",
+    "done": {
+      "title": "{amount} went to your main key",
+      "deactivated": "Staking stops at the end of this epoch. Come back then to withdraw.",
+      "deactivatedNow": "Staking stopped. You can withdraw now."
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-main-key": "The main key of this stake account changed. Reload to see it.",
+      "not-inactive": "This stake is still staked or stopping. Wait until it is inactive.",
+      "unsupported-lock": "This lock is held by the main key itself or by no key. Stakeward cannot withdraw this stake.",
+      "not-active": "This stake is not staking, so there is nothing to stop.",
+      "not-staker": "Another key manages staking for this stake account."
+    }
+  },
+  "extend": {
+    "intro": "Your second key moves the end of the lock, or removes the lock early. It cannot move your SOL.",
+    "current": "{lock}. Held by this second key:",
+    "notLocked": "This stake account has no lock that a second key holds.",
+    "protect": "Protect it",
+    "epochLocked": "This lock is held until epoch {epoch}. Stakeward can only move a lock's date, so it cannot change this one.",
+    "legend": "New end of the lock",
+    "option": "{period}: until {date}",
+    "remove": "Remove the lock now",
+    "removeHint": "Anyone with your main key can then withdraw this stake.",
+    "noLater": "No period ends later than the current lock. You can still remove the lock.",
+    "continue": "Review and sign",
+    "phone": "In a phone wallet's own browser this works when your second key holds a little SOL for the fee.",
+    "removeConfirm": "I understand that after this, anyone with my main key can withdraw this stake right away",
+    "mainPays": "Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least {amount}, then press Check again.",
+    "result": "Lock change",
+    "done": {
+      "extended": "The lock now ends on {date}",
+      "removed": "The lock is removed",
+      "withdraw": "Withdraw now"
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "epoch-locked": "An epoch holds this lock, so Stakeward cannot change it.",
+      "not-locked": "This stake account has no lock in force any more.",
+      "other-second-key": "Another key holds this lock now. Only that key can change it.",
+      "not-later": "The lock already ends later than this. Choose again.",
+      "lock-end-passed": "The chosen end is too close or has passed. Choose again."
     }
   },
   "devCosign": {
@@ -875,5 +1036,166 @@
     "rate-limited": "Too many requests. Wait a minute and try again.",
     "network": "The Solana network did not respond. Check your connection and try again.",
     "unknown": "Something went wrong. Refresh to see the current state, then try again."
+  },
+  "nonce": {
+    "loading": "Checking your link-signing account",
+    "loadError": "Could not read your link-signing account",
+    "setup": {
+      "title": "Set up signing by link",
+      "body": "Signing on another device needs a small account that keeps the transaction valid until it is signed, even hours later. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "action": "Create the link-signing account"
+    },
+    "close": {
+      "title": "Close the link-signing account",
+      "body": "Closing returns {amount} to your {role}. Any link still open stops working.",
+      "action": "Close it",
+      "done": "Closed. The deposit went back to your {role}."
+    },
+    "blocked": "The address of your link-signing account is already taken by another account, so it cannot be created. Anyone can do this by sending a tiny amount of SOL to it.",
+    "blockedHere": "Sign in this browser instead.",
+    "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address."
+  },
+  "cosign": {
+    "intro": "Someone asked you to co-sign this transaction. Stakeward reads it only from the link and checks it against the network. Sign only if you expected this request.",
+    "whatIs": "What is Stakeward?",
+    "reading": "Checking the link",
+    "bad": {
+      "title": "This link is broken",
+      "body": "It does not hold a transaction Stakeward can read. Ask the sender to send the whole link again. Nothing was signed."
+    },
+    "problem": {
+      "not-linkable-kind": "Stakeward never sends this kind of transaction by link.",
+      "not-nonce": "This link would expire within a minute. Stakeward never makes such a link.",
+      "nonce-not-fee-payer": "This transaction uses someone else's link-signing account. Stakeward never makes such a link.",
+      "unexpected-fee-payer": "An unexpected wallet pays for this transaction. Stakeward never makes such a link.",
+      "fee-payer-unsigned": "The wallet that pays for this transaction has not signed it. Stakeward makes a link only after that.",
+      "foreign-recipient": "This sends SOL to a wallet that is not the stake's main key. Stakeward never does that.",
+      "nothing-to-sign": "Every wallet has already signed this transaction. There is nothing for you to sign."
+    },
+    "ask": {
+      "protect": "The owner of this stake asks your wallet to become its second key.",
+      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if the owner told you, by voice or in person, that they want to withdraw:",
+      "rescue": "This gives full control of the stake to the new wallet below. A thief who has the main key would send you exactly this request, with their own wallet. Sign only if you checked this address with the owner by voice or in person, not in the chat that sent you this link:"
+    },
+    "confirm": {
+      "withdraw": "The owner told me by voice or in person that they want this withdrawal",
+      "rescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
+    },
+    "stale": "A link works until it is used or cancelled. If you are not sure the owner still wants this, ask first.",
+    "tailHint": "This wallet changes transactions that another wallet already signed, so it cannot co-sign here. Use another wallet app for this key, or sign with every key in one browser.",
+    "openInWallet": "No wallet in this browser. Copy this page's link and open it in your wallet app's own browser.",
+    "copyPage": "Copy this page's link",
+    "done": {
+      "title": "Signed and sent",
+      "body": "The network confirmed it. The sender's page shows it too. You can close this page."
+    },
+    "already": {
+      "title": "Already done",
+      "body": "This transaction already went through. There is nothing for you to sign."
+    },
+    "newLink": "Ask the sender for a new link.",
+    "refused": {
+      "not-found": "The stake account in this link does not exist.",
+      "not-stake-account": "The link points to an address that is not a stake account.",
+      "link-used": "This link was already used or cancelled.",
+      "stale": "The stake account has changed since this link was made.",
+      "already-locked": "This stake account is already locked, and this link would change when its lock ends. Stakeward never asks for that by link. Do not sign it."
+    }
+  },
+  "rescue": {
+    "intro": "If someone may have your main key, move your stake to a new wallet. While the lock holds, nobody can withdraw it or take it over without your second key.",
+    "desktop": "Rescue works best in a desktop browser where your new wallet is connected. Your main key and your second key can sign here or on another device by link.",
+    "steps": {
+      "stake": "Your stake",
+      "newWallet": "New wallet",
+      "keys": "Keys",
+      "move": "Move",
+      "done": "Done"
+    },
+    "stake": {
+      "heading": "Which main key may be stolen?",
+      "address": "Main key address",
+      "addressHint": "Paste its address, or connect it. Connecting signs nothing.",
+      "check": "Find its stake",
+      "loading": "Reading the stake accounts of this main key",
+      "loadError": "Could not load the stake accounts",
+      "none": "No stake account has this main key now. If it was moved already, Stakeward cannot bring it back.",
+      "safeUntil": "Your stake is locked until {date}. Until then, someone with only your main key cannot withdraw it.",
+      "endsSoon": "The lock on {address} ends on {date}. Finish the move before then.",
+      "unlocked": "Not locked: anyone with your main key can withdraw it right now. It moves first.",
+      "otherKey": "Locked by another second key. Move it in another run with that key:",
+      "unsupported": "Locked by the main key itself or by no key: Stakeward cannot move it. If the main key holds the lock, the Solana command line can, when the main key also signs as the lock's key: solana stake-authorize --help names that option.",
+      "tooMany": "{count} stake accounts: the {max} most urgent move in this run, the rest in the next.",
+      "splitsNote": "This includes stake accounts split off by anyone; a split keeps your lock. One made in the last minute may not show yet: look again at the end.",
+      "needMain": "Paste the main key's address or connect it first.",
+      "needMovable": "None of these stake accounts can be moved here."
+    },
+    "newWallet": {
+      "heading": "Connect a new wallet",
+      "body": "Create a new wallet with a NEW seed phrase in your wallet app, on a device you trust. A new account under your current seed phrase is not safe: whoever has that phrase has the account too. Your stake moves to this wallet.",
+      "slot": "Your new wallet. It signs, pays the network fees and owns the link-signing account. Connecting signs nothing.",
+      "seedCheck": "My new wallet comes from a new seed phrase that no one else has seen",
+      "needSeedCheck": "Confirm that your new wallet has a new seed phrase.",
+      "needNew": "Connect your new wallet to continue.",
+      "problem": {
+        "zero-key": "This is the empty address, not a wallet.",
+        "main-key": "This is your main key. Use a new wallet.",
+        "second-key": "This is a second key of your stake. Use a new wallet.",
+        "stake-account": "This is a stake account, not a wallet."
+      },
+      "fixProblem": "Connect another wallet as your new wallet.",
+      "balance": "Your new wallet has {balance}. It needs at least {needed} for network fees and a deposit that comes back; we suggest {suggested}.",
+      "balanceLoading": "Reading the balance of your new wallet",
+      "balanceError": "Could not read the balance of your new wallet",
+      "fund": "Send SOL to this address from an exchange or another wallet. Not from your main key: a thief's bot may take it first.",
+      "qr": "QR code of your new wallet's address",
+      "checkBalance": "Check the balance again",
+      "lowBalance": "Add SOL to your new wallet to continue."
+    },
+    "keys": {
+      "heading": "Who approves the move",
+      "secondKey": "Your second key that co-signs:",
+      "chooseSecond": "Your stake is locked by more than one second key. Which one moves stake in this run?",
+      "noLock": "None of these stake accounts is locked. The move still needs one more wallet of yours to approve: connect any wallet you control, other than your main key and your new wallet, as the second key.",
+      "noLockLink": "Without a lock, connect that wallet in this browser.",
+      "needSecond": "Connect your second key, or choose to sign by link.",
+      "secondProblem": "Your second key must be another wallet than your main key and your new wallet.",
+      "linkSame": "If both keys sign by link, open the link on one device where both are connected."
+    },
+    "move": {
+      "heading": "Move your stake",
+      "newOwner": "New owner of your stake. Check it is the wallet you just made:",
+      "countOne": "1 transaction. Your new wallet, your main key and your second key each approve it.",
+      "countOther": "{count} transactions, one per stake account, one after another. Your new wallet, your main key and your second key approve each one.",
+      "ledger": "On a Ledger, check that the new authority it shows is your new wallet's address before you approve."
+    },
+    "done": {
+      "titleOne": "Your stake account is safe",
+      "titleOther": "{count} stake accounts are safe",
+      "titlePartial": "{done} of {total} stake accounts moved",
+      "titleNone": "No stake account was moved",
+      "movedList": "Moved to your new wallet",
+      "notMovedList": "Not moved yet",
+      "owner": "Now controlled by your new wallet:",
+      "useNew": "From now on your new wallet is the main key of these stake accounts. Your second key still holds the lock. Stop using the old main key: anything sent to it may be taken.",
+      "delegate": {
+        "title": "Earn rewards again",
+        "body": "These stake accounts are no longer staking. Your new wallet can delegate them to the same validator again. Check that this is your validator:",
+        "action": "Review and sign"
+      },
+      "more": "Look for more stake accounts",
+      "view": "View your stake with your new wallet",
+      "telegram": "Get alerts for your new wallet"
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists. It may have been merged into another one: look again.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-main-key": "The main key no longer controls this stake account.",
+      "other-second-key": "Another second key holds this lock now.",
+      "unsupported-lock": "Locked by the main key itself or by no key: Stakeward cannot move it.",
+      "key-rule": "The new wallet, the main key and the second key must all be different wallets.",
+      "not-new-wallet": "Your new wallet does not manage staking for this stake account.",
+      "no-validator": "This stake was never delegated, so there is no validator to return to."
+    }
   }
 }

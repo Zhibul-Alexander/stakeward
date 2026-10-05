@@ -10,7 +10,7 @@ import {
   type Address,
   type KeyPairSigner,
 } from '@solana/kit';
-import { formatUtcDate, lockupEnd, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
+import { deriveNonceAccountAddress, formatUtcDate, lockupEnd, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -30,7 +30,9 @@ import {
   StaticWalletRegistry,
   type Ports,
 } from '@/ports';
+import en from '@/i18n/en.json';
 import { createFakeApi, type FakeApi } from './support/fake-api.ts';
+import { connectAndContinue, renderCosignPage } from './support/stake-pages.tsx';
 
 // The protect wizard (F1) end to end on the real stake program: LiteSvmChain answers like HttpChain, test wallets sign
 // like Wallet Standard wallets (and misbehave on request), the fake API answers POST /api/watch from the same chain.
@@ -88,7 +90,7 @@ function renderProtect(w: World, accounts: readonly Address[], wallets: readonly
     <StrictMode>
       <Router hook={location.hook} searchHook={location.searchHook}>
         <PortsProvider ports={ports}>
-          <ProtectPage signing={{ pollIntervalMs: 1, rereadDelayMs: 1 }} />
+          <ProtectPage signing={{ pollIntervalMs: 1, rereadDelayMs: 1, link: { firstPollMs: 1, maxPollMs: 1 } }} />
         </PortsProvider>
       </Router>
     </StrictMode>,
@@ -452,6 +454,104 @@ describe('/protect: one stake account at a time', () => {
   );
 });
 
+describe('/protect by link (step 7 spec 10.1)', () => {
+  it(
+    'P-L1: the second key\'s address is pasted, it signs from the link on another device; this page reaches Protected',
+    async () => {
+      const w = await world();
+      const S = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
+      const main = await createTestWalletPort({ name: 'Main Wallet', signers: [w.A] });
+      // This browser never holds the second key.
+      const page = renderProtect(w, [S], [main]);
+      const { user, api } = page;
+      const nonceA = await deriveNonceAccountAddress(w.A.address);
+
+      await connect(user, 'Main key', 'Main Wallet');
+      await waitFor(() => {
+        expect(selectBox(S)).toBeChecked();
+      }, WAIT);
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      await user.click(
+        within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', {
+          name: 'On another device, by link',
+        }),
+      );
+      // By link there is no slot to connect: the address is pasted, and the one-browser notes do not apply.
+      expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
+      expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
+      const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
+      await user.click(continueButton());
+      expect(await screen.findByText(en.components.addressField.empty)).toBeInTheDocument();
+      await user.type(field, 'not-an-address');
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getAllByText(en.components.addressField.invalid).length).toBeGreaterThan(0);
+      await user.clear(field);
+      // The second-key rules still apply to the typed address: the main key itself is refused.
+      await user.click(field);
+      await user.paste(w.A.address);
+      expect(await screen.findByText(/This is your main key\./)).toBeInTheDocument();
+      await user.clear(field);
+      await user.click(field);
+      await user.paste(` ${w.K.address} `);
+      expect(field).not.toHaveAttribute('aria-invalid');
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'How long should the lock hold?' });
+      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      await user.click(continueButton());
+
+      // Review and sign: the main key's link-signing account first, then the lock on that nonce.
+      await screen.findByRole('heading', { name: 'Review and sign' });
+      expect(screen.getByText(en.protect.sign.linkOne)).toBeInTheDocument();
+      await click(user, en.nonce.setup.action);
+      await click(user, 'Sign in Main Wallet as Main key');
+      await waitFor(() => {
+        expect(document.querySelector('[data-slot="transaction-summary"][data-kind="protect"]')).not.toBeNull();
+      }, WAIT);
+      expect(w.testChain.account(nonceA)).not.toBeNull();
+      await click(user, 'Sign in Main Wallet as Main key');
+      const card = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>('[data-slot="link-card"]');
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      }, WAIT);
+      const url = within(card).getByLabelText<HTMLInputElement>(en.signing.link.url).value;
+      expect(lockOf(w, S)).toEqual(NO_LOCK);
+
+      // The other device: /cosign with only the second key's wallet.
+      const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K] });
+      const other = renderCosignPage(w.chain, new URL(url).hash, [second]);
+      await other.view.findByText(en.cosign.ask.protect, undefined, WAIT);
+      await connectAndContinue(other.user, 'Second key', 'Second Wallet', other.view);
+      await other.user.click(await other.view.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT));
+      await other.view.findByRole('heading', { name: en.cosign.done.title }, WAIT);
+      other.unmount();
+
+      // This page moves on by itself and records what the chain shows (step 4 spec 4.6).
+      await finished('Your stake account is protected');
+      expect(lockOf(w, S)).toEqual({ unixTimestamp: T, epoch: 0n, custodian: w.K.address });
+      expect(main.requests).toHaveLength(2);
+      expect(second.requests).toHaveLength(1);
+      expect(page.ports.secondKeys.getSnapshot()).toEqual([w.K.address]);
+      await waitFor(() => {
+        expect(api.calls).toEqual([[S]]);
+      });
+
+      // Close the link-signing account: the deposit goes back to the main key.
+      w.chain.expireBlockhash();
+      const deposit = w.testChain.balance(nonceA);
+      const balanceBefore = w.testChain.balance(w.A.address);
+      await click(user, en.nonce.close.action);
+      await click(user, 'Sign in Main Wallet as Main key');
+      await screen.findByText('Closed. The deposit went back to your Main key.', undefined, WAIT);
+      expect(w.testChain.account(nonceA)).toBeNull();
+      expect(w.testChain.balance(w.A.address)).toBe(balanceBefore + deposit - 5_600n);
+    },
+    TIMEOUT,
+  );
+});
+
 describe('/protect Done: uncertain outcomes', () => {
   it(
     'Stop waiting leaves the transactions uncertain; Check again reads the chain, then remembers and watches what landed',
@@ -753,6 +853,16 @@ describe('protectPlan reads every account fresh and decides it', () => {
       // A lock end within a minute of the cluster clock is refused.
       const soon = await protectPlan({ mainKey: A, secondKey: K, lockUntil: START_UNIX_TIMESTAMP + 60n }).prepare(w.chain, [open]);
       expect(soon.jobs[open]).toMatchObject({ kind: 'refused', reason: 'lock-end-passed' });
+
+      // By link (step 7 spec 10.1): the same decisions, on the main key's nonce, the second key signing remotely.
+      const live = protectPlan({ mainKey: A, secondKey: K, lockUntil: T });
+      expect(live.nonce).toBeUndefined();
+      expect(live.remote).toBeUndefined();
+      const nonceAccount = (await generateKeyPairSigner()).address;
+      const linked = protectPlan({ mainKey: A, secondKey: K, lockUntil: T, link: { nonceAccount } });
+      expect(linked.nonce).toEqual({ nonceAccount, nonceAuthority: A });
+      expect(linked.remote).toEqual([K]);
+      expect((await linked.prepare(w.chain, ids)).jobs).toEqual(jobs);
     },
     TIMEOUT,
   );

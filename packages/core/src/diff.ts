@@ -253,13 +253,17 @@ export function needsWithdrawerRescan(events: readonly { type: MonitorEventType 
 }
 
 /**
- * A Telegram alert: plain text without markup, and one link button. `path` is a site path such as `/rescue` or
- * `/app?address=...`; the worker prefixes the Stakeward domain (alerts link only there, CLAUDE.md section 11).
+ * A Telegram alert: plain text without markup, and one link button. `path` is a site path such as
+ * `/rescue?address=...` or `/app?address=...`; the worker prefixes the Stakeward domain (alerts link only there,
+ * CLAUDE.md section 11).
  */
 export type Alert = { text: string; buttonLabel: string; path: string };
 
 export type AlertContext = {
-  /** Withdrawer of the account as stored after this pass; the accounts page link opens for this address. */
+  /**
+   * Withdrawer of the account as stored after this pass; the accounts page link and the rescue wizard open for this
+   * address.
+   */
   withdrawer: Address;
   /**
    * Lockup end of the account as stored after this pass (unix seconds, 0 = none). The texts call the lock in force
@@ -287,7 +291,8 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
   const rescue = (what: string): Alert => ({
     text: `${what} ${mainKeyStolen} ${lockLine}`,
     buttonLabel: 'Open Rescue',
-    path: '/rescue',
+    // The rescue wizard opens with the main key filled in (DECISIONS.md D73).
+    path: `/rescue?address=${context.withdrawer}`,
   });
 
   switch (event.type) {

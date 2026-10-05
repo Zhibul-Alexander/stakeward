@@ -28,6 +28,7 @@ import {
   STAKE_PROGRAM_ADDRESS,
   type ChainClock,
   type ChainPort,
+  type EpochInfo,
   type LatestBlockhash,
   type RawAccount,
   type SimulationResult,
@@ -35,7 +36,7 @@ import {
   type StakeAccountFilter,
   type TransactionStatus,
 } from '../src/index.ts';
-import type { TestChain } from './svm.ts';
+import { SLOTS_PER_EPOCH, type TestChain } from './svm.ts';
 
 /** Present in every LiteSvmChain; a build that contains this string shipped test code (CLAUDE.md section 11). */
 export const LITESVM_CHAIN_MARKER = 'stakeward-test-only:litesvm-chain';
@@ -69,7 +70,7 @@ type HeldTransaction = { signature: Signature; transaction: Transaction };
  * transaction expire it). The chain emulates heights: a blockhash gets lastValidBlockHeight = height + 150 when first
  * handed out; once LiteSVM's latest blockhash changes, the height jumps past every earlier blockhash, so expiry looks
  * the same as on a cluster. Test controls: {@link expireBlockhash}, {@link advanceBlocks}, {@link holdTransactions},
- * {@link failNext}.
+ * {@link failNext}, {@link forgetSignatureStatuses}.
  *
  * Not emulated: a Lighthouse tail cannot execute (LiteSVM has no Lighthouse program), and simulating or sending a
  * durable-nonce transaction whose nonce equals the latest blockhash first expires that blockhash (LiteSVM rejects
@@ -85,6 +86,8 @@ export class LiteSvmChain implements ChainPort {
   private currentLastValid = START_BLOCK_HEIGHT;
   /** Slot at which each transaction sent through this chain landed. */
   private readonly landedAtSlot = new Map<Signature, bigint>();
+  /** Landed transactions whose status getSignatureStatuses no longer reports (forgetSignatureStatuses). */
+  private readonly forgotten = new Set<Signature>();
   private holding = false;
   private readonly held: HeldTransaction[] = [];
   private readonly failures = new Map<Method, Error[]>();
@@ -121,6 +124,21 @@ export class LiteSvmChain implements ChainPort {
     return this.answer('getBlockHeight', () => {
       this.sync();
       return this.height;
+    });
+  }
+
+  /**
+   * TestChain's epochs are SLOTS_PER_EPOCH slots long and start at slot epoch x SLOTS_PER_EPOCH (warpToEpoch); the slot
+   * index is clamped into the epoch, since setTime and LiteSVM's own slot moves can leave the clock off that grid.
+   * Block height is the emulated one (getBlockHeight).
+   */
+  getEpochInfo(): Promise<EpochInfo> {
+    return this.answer('getEpochInfo', () => {
+      this.sync();
+      const { epoch, slot } = this.testChain.svm.getClock();
+      const offset = slot - epoch * SLOTS_PER_EPOCH;
+      const slotIndex = offset < 0n ? 0n : offset > SLOTS_PER_EPOCH - 1n ? SLOTS_PER_EPOCH - 1n : offset;
+      return { epoch, slotIndex, slotsInEpoch: SLOTS_PER_EPOCH, blockHeight: this.height };
     });
   }
 
@@ -163,6 +181,7 @@ export class LiteSvmChain implements ChainPort {
   getSignatureStatuses(signatures: readonly Signature[]): Promise<readonly (TransactionStatus | null)[]> {
     return this.answer('getSignatureStatuses', () =>
       signatures.map((signature): TransactionStatus | null => {
+        if (this.forgotten.has(signature)) return null;
         const result = this.testChain.svm.getTransaction(signature);
         if (result === null) return null;
         const error = result instanceof FailedTransactionMetadata ? getSolanaErrorFromLiteSvmFailure(result) : null;
@@ -229,6 +248,15 @@ export class LiteSvmChain implements ChainPort {
   dropHeld(): void {
     this.holding = false;
     this.held.splice(0);
+  }
+
+  /**
+   * From now on getSignatureStatuses answers null for every transaction that landed through this chain so far, as an
+   * RPC node does once its status cache dropped them (no searchTransactionHistory). The accounts keep the change, so
+   * only a check that reads the chain itself still finds the landing.
+   */
+  forgetSignatureStatuses(): void {
+    for (const signature of this.landedAtSlot.keys()) this.forgotten.add(signature);
   }
 
   /** The next `times` calls of `method` reject with `error` (e.g. a fetch TypeError for network failures). */

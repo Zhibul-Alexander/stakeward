@@ -28,6 +28,8 @@
  *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
  *   info      Locked by another key
  *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
+ * modules on a light ground, so the code must not invert with the theme.
  */
 
 @theme {
@@ -74,6 +76,10 @@
   --color-danger-solid: #b91c1c;
   --color-danger-solid-hover: #991b1b;
   --color-on-danger: #ffffff;
+
+  /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
+  --color-qr-dark: #10131a;
+  --color-qr-light: #ffffff;
 
   /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
@@ -170,6 +176,10 @@
     --color-danger-solid: #b91c1c;
     --color-danger-solid-hover: #dc2626;
     --color-on-danger: #ffffff;
+
+    /* QR code: the light theme's values on purpose (see the colour roles above). */
+    --color-qr-dark: #10131a;
+    --color-qr-light: #ffffff;
 
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);

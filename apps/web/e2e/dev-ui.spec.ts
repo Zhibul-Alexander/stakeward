@@ -38,6 +38,30 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
   await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
 
+  // Signing by link: the link card's QR code is one SVG path, drawn under the production CSP (no style attribute, no
+  // <style> element, no data: URI; a refused inline style would also fail the fixture's console check). The components
+  // section has one more (the QR code on its own) and the too-long state, which shows text instead.
+  // Three signing panels, then the link-signing account's five cards.
+  await expect(page.locator('#link figure')).toHaveCount(8);
+  await expect(page.locator('#link svg[data-slot="qr-code"] path')).toHaveCount(2);
+  await expect(page.locator('#components svg[data-slot="qr-code"] path')).toHaveCount(4);
+  await expect(page.getByText('This link is too long for a QR code. Copy it instead.')).toBeVisible();
+  for (const d of await page.locator('svg[data-slot="qr-code"] path').evaluateAll((paths) => paths.map((p) => p.getAttribute('d')))) {
+    expect(d).toMatch(/^M\d/);
+  }
+  await expect(page.locator('svg[data-slot="qr-code"][style], svg[data-slot="qr-code"] [style], svg[data-slot="qr-code"] style')).toHaveCount(0);
+  const qrColours = () =>
+    page
+      .locator('#link svg[data-slot="qr-code"]')
+      .first()
+      .evaluate((svg) => ({
+        modules: getComputedStyle(svg.querySelector('path') ?? svg).fill,
+        ground: getComputedStyle(svg.querySelector('rect') ?? svg).fill,
+      }));
+  // The qr-dark and qr-light tokens, the same in both themes (cameras need dark modules on a light ground).
+  const QR_COLOURS = { modules: 'rgb(16, 19, 26)', ground: 'rgb(255, 255, 255)' };
+  expect(await qrColours()).toEqual(QR_COLOURS);
+
   // Token tables come from tokens.css: every colour has a swatch class (a missing one would stay transparent),
   // and the dark panel really shows other values than the light one.
   const swatches = await page.evaluate(() =>
@@ -68,6 +92,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expectNoA11yViolations();
   await page.emulateMedia({ colorScheme: 'dark' });
   await expectNoA11yViolations();
+  expect(await qrColours()).toEqual(QR_COLOURS);
 
   await page.emulateMedia({ colorScheme: 'light' });
 
@@ -84,8 +109,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
     });
     mkdirSync(SCREENS_DIR, { recursive: true });
     await page.screenshot({ path: `${SCREENS_DIR}dev-ui-${String(width)}.png`, fullPage: true, animations: 'disabled' });
-    // The flows on their own, for review against the mockups: the signing panel phases and the protect Done screen.
-    for (const section of ['signing', 'protect-result']) {
+    // The flows on their own, for review against the mockups: the signing panel phases, signing by link and the
+    // protect Done screen.
+    for (const section of ['signing', 'link', 'protect-result']) {
       await page
         .locator(`#${section}`)
         .screenshot({ path: `${SCREENS_DIR}dev-ui-${section}-${String(width)}.png`, animations: 'disabled' });

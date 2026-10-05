@@ -26,6 +26,7 @@ function scriptedChain(script: Script): { chain: ChainPort; statusCalls: () => n
     simulate: unused,
     send: unused,
     findStakeAccounts: unused,
+    getEpochInfo: unused,
     getBlockHeight: () => Promise.resolve(pick(script.heights ?? [0n], heightCalls++)),
     getSignatureStatuses: () => {
       const next = pick(script.statuses, statusCalls++);

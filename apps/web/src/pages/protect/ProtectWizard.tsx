@@ -7,17 +7,19 @@ import { watchWithRetry, type WatchState } from '@/api/watch';
 import { t, type MessageKey } from '@/i18n';
 import { usePorts, useKnownSecondKeys, useSlot, useWalletSlots } from '@/ports';
 import { checkLanded, type LandedItem } from '@/signing/check';
+import type { SigningTestOptions } from '@/signing/create';
 import type { SigningState } from '@/signing/machine';
 import { AccountsStep } from './AccountsStep.tsx';
 import { DoneStep } from './DoneStep.tsx';
 import { useMainKeyAccounts } from './load.ts';
 import { PeriodStep } from './PeriodStep.tsx';
 import { SecondKeyStep } from './SecondKeyStep.tsx';
-import { SignStep, type SigningTimings } from './SignStep.tsx';
+import { SignStep } from './SignStep.tsx';
 import {
   accountParams,
   blockers,
   candidates,
+  chosenSecondKey,
   effectiveSelection,
   initialWizardState,
   parseAccountParams,
@@ -43,7 +45,7 @@ const STEP_LABEL: Record<WizardStep, MessageKey> = {
 type ProtectWizardProps = {
   /** The main key slot's address; the page remounts the wizard when it changes. */
   mainKey: Address | null;
-  signing?: SigningTimings | undefined;
+  signing?: SigningTestOptions | undefined;
 };
 
 /**
@@ -60,9 +62,11 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
   const slots = useWalletSlots();
   const mainReady = useSlot('main')?.ready === true;
   const secondSlot = useSlot('second');
-  const secondKey = slots.second?.address ?? null;
   const knownSecondKeys = useKnownSecondKeys();
   const [state, dispatchState] = useReducer(wizardReducer, undefined, initialWizardState);
+  // The second key slot's address, or the typed one when the second key signs by link (step 7 spec 10.1).
+  const secondKey = chosenSecondKey(state, slots.second?.address ?? null);
+  const byLink = state.secondMode === 'link';
   const [attempt, setAttempt] = useState(0);
   const [watch, setWatch] = useState<WatchState>({ kind: 'idle' });
   const [checking, setChecking] = useState(false);
@@ -94,12 +98,12 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
   const blockerInput = {
     mainReady,
     selection: chosen.length,
-    secondReady: secondSlot?.ready === true,
+    secondReady: byLink ? secondKey !== null : secondSlot?.ready === true,
     problems: problems.length,
     seedConfirmed: state.seedConfirmed,
   };
   const sameWallet =
-    slots.main !== null && slots.second !== null && slots.main.walletId === slots.second.walletId
+    !byLink && slots.main !== null && slots.second !== null && slots.main.walletId === slots.second.walletId
       ? (secondSlot?.wallet?.name ?? null)
       : null;
 
@@ -220,9 +224,17 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           sameWallet={sameWallet}
           problems={problems}
           seedConfirmed={state.seedConfirmed}
+          mode={state.secondMode}
+          linkKey={state.linkKey}
           blockers={blockers('second-key', { ...blockerInput, clockReady: false })}
           onSeed={(value) => {
             dispatch({ type: 'confirm-seed', value });
+          }}
+          onMode={(value) => {
+            dispatch({ type: 'second-mode', value });
+          }}
+          onLinkKey={(text) => {
+            dispatch({ type: 'link-key', text });
           }}
           onLeaveOut={(account) => {
             setSelected(selected.filter((id) => id !== account));
@@ -256,6 +268,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           mainKey={mainKey}
           secondKey={secondKey}
           lockUntil={state.lockUntil}
+          mode={state.secondMode}
           signing={signing}
           onFinished={onFinished}
           onBack={() => {
@@ -268,6 +281,8 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           state={state}
           mainKey={mainKey}
           secondKeySlot={secondKey}
+          byLink={byLink}
+          signing={signing}
           watch={watch}
           checking={checking}
           checkFailed={checkFailed}

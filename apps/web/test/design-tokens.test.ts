@@ -202,6 +202,8 @@ const TEXT_PAIRS: [string, string][] = [
     [tone, `${tone}-soft`],
     ['foreground', `${tone}-soft`],
   ]),
+  // QR modules on their ground (the same in both themes): scanners need strong contrast.
+  ['qr-dark', 'qr-light'],
 ];
 
 /** Control outlines, focus indicator and the checked fill need 3:1 against what surrounds them (WCAG 1.4.11). */
@@ -240,6 +242,14 @@ describe('tokens.css colours', () => {
       expect(failures).toEqual([]);
     });
   }
+
+  it('the QR pair does not change with the theme: phone cameras need dark modules on a light ground', () => {
+    for (const name of ['qr-dark', 'qr-light']) {
+      expect(themes.dark.get(name), name).toBeDefined();
+      expect(themes.dark.get(name), name).toBe(themes.light.get(name));
+    }
+    expect(relativeLuminance(themes.light.get('qr-dark') ?? '')).toBeLessThan(relativeLuminance(themes.light.get('qr-light') ?? ''));
+  });
 
   it('contrast maths matches known WCAG values', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 5);

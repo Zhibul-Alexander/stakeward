@@ -6,6 +6,8 @@ import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { JobStatusList } from '@/components/product/job-status-list';
+import { LinkCard } from '@/components/product/link-card';
+import { QrCode } from '@/components/product/qr-code';
 import { RiskNote } from '@/components/product/risk-note';
 import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
@@ -19,6 +21,7 @@ import {
 import { WalletSlot } from '@/components/product/wallet-slot';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { t } from '@/i18n';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
 import {
@@ -26,10 +29,12 @@ import {
   SAMPLE_ERROR_DETAIL,
   SAMPLE_LOCK_END,
   SAMPLE_SIGNATURE,
+  SAMPLE_TX,
   SAMPLE_WALLETS,
   sampleClock,
   sampleExpiringEnd,
   sampleJobs,
+  sampleLinkUrl,
   sampleRows,
   sampleSigners,
   sampleSignersEveryStatus,
@@ -39,6 +44,9 @@ import {
 } from './samples.ts';
 
 const noop = () => undefined;
+
+/** More than a version 40 QR code holds (2953 bytes at level L). */
+const TOO_LONG_FOR_QR = 'x'.repeat(3000);
 
 const STATUSES: readonly StatusBadgeStatus[] = [
   'protected',
@@ -116,12 +124,22 @@ export function ComponentsSection() {
   const [jobs] = useState(sampleJobs);
   const [summaries, setSummaries] = useState<SampleSummary[] | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     sampleSummaries(clock).then(
       (result) => {
         if (!cancelled) setSummaries(result);
+      },
+      (error: unknown) => {
+        if (!cancelled) setSummaryError(String(error));
+      },
+    );
+    // The signing link of a rescue on a durable nonce on this site: the longest link, the densest QR code.
+    sampleLinkUrl(window.location.origin).then(
+      (url) => {
+        if (!cancelled) setLinkUrl(url);
       },
       (error: unknown) => {
         if (!cancelled) setSummaryError(String(error));
@@ -267,6 +285,27 @@ export function ComponentsSection() {
               onDisconnect={noop}
             />
           </Demo>
+          <Demo label={t('devUi.states.wrongAccountExpected')}>
+            <WalletSlot
+              role="second"
+              status="wrong-account"
+              wallet={WALLET_B}
+              address={SAMPLE.mainKey}
+              expected={SAMPLE.secondKey}
+              onContinue={noop}
+              onDisconnect={noop}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.wrongAccountHeld')}>
+            <WalletSlot
+              role="main"
+              status="wrong-account"
+              wallet={WALLET_A}
+              address={SAMPLE.secondKey}
+              expected={SAMPLE.mainKey}
+              onDisconnect={noop}
+            />
+          </Demo>
         </div>
       </DemoGroup>
 
@@ -305,6 +344,48 @@ export function ComponentsSection() {
         <Demo label={t('devUi.states.everyStatus')}>
           <JobStatusList items={jobs} label={t('devUi.sample.jobs')} />
         </Demo>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.qrCode')}>
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+          <Demo label={t('devUi.states.normal')}>
+            {linkUrl === null ? (
+              <Skeleton className="aspect-square w-full max-w-80" />
+            ) : (
+              <QrCode value={linkUrl} label={t('signing.link.qrLabel')} />
+            )}
+          </Demo>
+          <Demo label={t('devUi.states.tooLong')}>
+            <QrCode value={TOO_LONG_FOR_QR} label={t('signing.link.qrLabel')} />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.linkCard')}>
+        {linkUrl === null ? (
+          <Skeleton className="h-96 w-full" />
+        ) : (
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+            <Demo label={t('devUi.states.watching')}>
+              <LinkCard url={linkUrl} signature={SAMPLE_TX} signers={[{ role: 'second', address: SAMPLE.secondKey }]} watching lastCheckFailed={false} />
+            </Demo>
+            <Demo label={t('devUi.states.checkFailed')}>
+              <LinkCard
+                url={linkUrl}
+                signature={SAMPLE_TX}
+                signers={[
+                  { role: 'main', address: SAMPLE.mainKey },
+                  { role: 'second', address: SAMPLE.secondKey },
+                ]}
+                watching
+                lastCheckFailed
+              />
+            </Demo>
+            <Demo label={t('devUi.states.paused')}>
+              <LinkCard url={linkUrl} signature={SAMPLE_TX} signers={[{ role: 'second', address: SAMPLE.secondKey }]} watching={false} lastCheckFailed={false} />
+            </Demo>
+          </div>
+        )}
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.stepProgress')}>

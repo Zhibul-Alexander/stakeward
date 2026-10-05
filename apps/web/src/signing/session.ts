@@ -1,18 +1,22 @@
-import { getSignatureFromTransaction, getTransactionDecoder, type Address, type Signature } from '@solana/kit';
+import type { Address, Nonce, Signature } from '@solana/kit';
 import {
   actionRoles,
   actionsEqual,
   buildTransaction,
   canPayFee,
   checkSigningStep,
+  cosignLinkProblem,
   inspectTransaction,
+  payerOutflow,
+  readNonceAccount,
   signingOrder,
   translateError,
   verifyAllSignatures,
-  type BlockhashLifetime,
   type ChainPort,
   type FriendlyError,
   type LatestBlockhash,
+  type Lifetime,
+  type NonceLifetime,
   type StakeAccount,
   type TransactionAction,
   type TransactionSummary,
@@ -22,6 +26,7 @@ import {
 } from '@stakeward/core';
 import { waitForConfirmations, type ConfirmationOptions, type ConfirmationOutcome } from '@/ports/confirm';
 import { checkLanded, type LandedItem } from './check.ts';
+import { transactionIdOf } from './link.ts';
 import {
   initialSigningState,
   roundSigned,
@@ -29,6 +34,7 @@ import {
   type JobState,
   type JobView,
   type PrepareProblem,
+  type Round,
   type RoundTx,
   type SignStep,
   type SigningEvent,
@@ -36,7 +42,16 @@ import {
   type StopReason,
   type WalletStopCode,
 } from './machine.ts';
-import { MAX_ROUND_SIZE, MIN_BLOCKS_LEFT_TO_SIGN, REREAD_ATTEMPTS, REREAD_DELAY_MS } from './rules.ts';
+import {
+  LINK_FIRST_POLL_MS,
+  LINK_MAX_POLL_MS,
+  LINK_POLL_FACTOR,
+  LINK_WATCH_MS,
+  MAX_ROUND_SIZE,
+  MIN_BLOCKS_LEFT_TO_SIGN,
+  REREAD_ATTEMPTS,
+  REREAD_DELAY_MS,
+} from './rules.ts';
 import type { SignerResolver, SigningPlan } from './types.ts';
 
 export type SessionOptions = {
@@ -50,6 +65,11 @@ export type SessionOptions = {
   confirm?: { pollIntervalMs?: number | undefined; timeoutMs?: number | undefined } | undefined;
   /** Default REREAD_DELAY_MS. */
   rereadDelayMs?: number | undefined;
+  /**
+   * The watch of an open link (phase `link`): the first check after `firstPollMs` (default LINK_FIRST_POLL_MS), each
+   * pause LINK_POLL_FACTOR longer up to `maxPollMs` (LINK_MAX_POLL_MS), paused after `watchMs` (LINK_WATCH_MS).
+   */
+  link?: { firstPollMs?: number | undefined; maxPollMs?: number | undefined; watchMs?: number | undefined } | undefined;
   /** Called on EVERY entry into `finished`, never after dispose. */
   onFinished?: ((state: SigningState) => void) | undefined;
 };
@@ -57,7 +77,15 @@ export type SessionOptions = {
 /** One async job of the session: stale once another starts, Stop waiting is pressed or the session is disposed. */
 type Work = { op: number; signal: AbortSignal };
 
-type Built = { id: string; bytes: Uint8Array; summary: TransactionSummary; lifetime: BlockhashLifetime; before: StakeAccount | null };
+type Built = {
+  id: string;
+  bytes: Uint8Array;
+  summary: TransactionSummary;
+  lifetime: Lifetime;
+  before: StakeAccount | null;
+  /** Durable nonce: the context slot of the read that found the nonce value (JobView.nonceSlot). */
+  nonceSlot: bigint | null;
+};
 
 const PORT_STOPS: readonly string[] = ['WalletBusyError', 'WalletUnsupportedError', 'WalletBatchUnsupportedError'];
 
@@ -83,6 +111,10 @@ class PrepareFailure extends Error {
  * - Sending starts by itself after the last signature. Nothing is rebuilt while a sent transaction might still land.
  * - Each async step runs under a token (`op`) and an AbortController: a late answer after Stop waiting, a newer step or
  *   `dispose` changes nothing.
+ * - Signing by link (DECISIONS.md D67): with `plan.nonce` every round is one transaction on that durable nonce. Local
+ *   signers sign first (the fee payer, who owns the nonce, among them); after the last local signature the bytes must
+ *   pass core `cosignLinkProblem` (Stakeward never shows a link /cosign would refuse), then phase `link` watches the
+ *   chain for the outcome. `usedNonces` keeps a lagging RPC node from building on a nonce value already used.
  */
 export class SigningSession {
   private state: SigningState;
@@ -93,10 +125,18 @@ export class SigningSession {
   private disposed = false;
   /** The wallet asked in the current signing step (for "You stopped waiting for <wallet>"). */
   private askedWallet = '';
+  /** Nonce values this session put in a link or sent: a round is never built on one again. */
+  private readonly usedNonces = new Set<Nonce>();
+  /** Ends the link watch's current pause early (checkLinkNow); null outside a pause. */
+  private linkWake: (() => void) | null = null;
+  /** checkLinkNow during a link check: skip the next pause. */
+  private linkWakePending = false;
 
   constructor(options: SessionOptions) {
     this.options = options;
-    this.state = initialSigningState(options.ids, options.roundSize ?? Math.min(options.ids.length, MAX_ROUND_SIZE));
+    // Each transaction consumes the nonce: one stake account per round (CLAUDE.md section 4).
+    const roundSize = options.plan.nonce ? 1 : (options.roundSize ?? Math.min(options.ids.length, MAX_ROUND_SIZE));
+    this.state = initialSigningState(options.ids, roundSize);
   }
 
   readonly subscribe = (listener: () => void): (() => void) => {
@@ -138,10 +178,16 @@ export class SigningSession {
 
   /**
    * Starting: back to the screen of the click (nothing was asked). Signing: stop waiting for the wallet (nothing was
-   * sent). Sending, confirming, checking: stop and finish.
+   * sent). Sending, confirming, checking: stop and finish. Link: stop watching and finish; the link stays usable
+   * (unknown(link-open), Check again on the Done screen).
    */
   stopWaiting(): void {
     const { phase } = this.state;
+    if (phase.kind === 'link') {
+      this.cancel();
+      this.dispatch({ type: 'stop-waiting' });
+      return;
+    }
     if (phase.kind === 'starting') {
       this.cancel();
       this.dispatch({ type: 'stop-waiting' });
@@ -176,6 +222,22 @@ export class SigningSession {
 
   retryPrepare(): void {
     this.dispatch({ type: 'retry-prepare' });
+  }
+
+  /** "Check again" after the link watch paused: a new watch of LINK_WATCH_MS. */
+  resumeLink(): void {
+    this.dispatch({ type: 'link-resume' });
+  }
+
+  /**
+   * While a link is watched: check the chain now instead of after the current pause, and start the pauses over (the
+   * tab became visible again, or the link was just cancelled).
+   */
+  checkLinkNow(): void {
+    const { phase } = this.state;
+    if (phase.kind !== 'link' || !phase.watching) return;
+    if (this.linkWake === null) this.linkWakePending = true;
+    else this.linkWake();
   }
 
   /**
@@ -218,6 +280,12 @@ export class SigningSession {
         return;
       case 'checking':
         void this.check(this.begin());
+        return;
+      case 'link':
+        // On entry and on link-resume; a finished check (link-checked) keeps the same watch.
+        if (next.phase.watching && !(previous.phase.kind === 'link' && previous.phase.watching)) {
+          void this.watchLink(this.begin());
+        }
         return;
       case 'ready':
         this.needsWallet(next.phase.step);
@@ -272,26 +340,55 @@ export class SigningSession {
     if (round === null) return;
     const ids = round.ids.filter((id) => this.state.jobs[id]?.state.kind === 'preparing');
     try {
+      checkLinkPlan(plan);
       const decided = await plan.prepare(chain, ids);
       if (this.stale(work)) return;
       const jobs: Record<string, JobView> = {};
       const built: Built[] = [];
-      let latest: LatestBlockhash | null = null;
+      // One lifetime for the round's builds: the plan's durable nonce, or a recent blockhash; read only when needed.
+      let lifetime: Lifetime | null = null;
+      let nonceSlot: bigint | null = null;
       for (const id of ids) {
         const decision = decided.jobs[id] ?? { kind: 'refused', reason: 'not-decided', before: null };
         if (decision.kind === 'done') {
           jobs[id] = jobView(id, { kind: 'already-done', after: decision.after }, { before: null });
         } else if (decision.kind === 'refused') {
           jobs[id] = jobView(id, { kind: 'refused', reason: decision.reason }, { before: decision.before });
-        } else {
-          latest ??= await chain.getLatestBlockhash();
+        } else if (decision.kind === 'bytes') {
+          const item = await inspectBytes(id, decision.bytes, decision.before, decision.nonceSlot ?? null);
           if (this.stale(work)) return;
-          const lifetime: BlockhashLifetime = { kind: 'blockhash', ...latest };
+          built.push(item);
+        } else {
+          if (plan.nonce !== undefined && decision.feePayer !== plan.nonce.nonceAuthority) {
+            // The fee payer owns the nonce (CLAUDE.md section 5): a plan that says otherwise is a bug.
+            throw new PrepareFailure({
+              kind: 'inspector',
+              error: { code: 'bad-layout', message: 'The fee payer of a durable-nonce round must be the nonce authority' },
+            });
+          }
+          if (lifetime === null) {
+            if (plan.nonce === undefined) {
+              lifetime = await this.blockhashLifetime();
+            } else {
+              const read = await this.nonceLifetime(work, plan.nonce);
+              if (read === null) return;
+              lifetime = read.lifetime;
+              nonceSlot = read.slot;
+            }
+            if (this.stale(work)) return;
+          }
           const bytes = buildOwn(decision.action, decision.feePayer, lifetime);
           const summary = await inspectOwn(bytes, decision.action, decision.feePayer);
           if (this.stale(work)) return;
-          built.push({ id, bytes, summary, lifetime, before: decision.before });
+          built.push({ id, bytes, summary, lifetime, before: decision.before, nonceSlot });
         }
+      }
+      if (built.length > 1 && built.some((item) => item.lifetime.kind === 'nonce')) {
+        // Each transaction consumes the nonce: a nonce round holds one (the constructor forces round size 1).
+        throw new PrepareFailure({
+          kind: 'inspector',
+          error: { code: 'bad-layout', message: 'A durable-nonce round must hold exactly one transaction' },
+        });
       }
 
       // One simulation at a time; a refused one leaves the round, the others go on.
@@ -323,7 +420,40 @@ export class SigningSession {
     }
   }
 
-  /** Per distinct fee payer: the round's fees must leave it at 0 or at least rent-exempt (core canPayFee). */
+  private async blockhashLifetime(): Promise<Lifetime> {
+    const latest: LatestBlockhash = await this.options.chain.getLatestBlockhash();
+    return { kind: 'blockhash', ...latest };
+  }
+
+  /**
+   * The plan's nonce account, read fresh: missing or unusable stops the round. A value this session already put in a
+   * link or sent means a lagging RPC node: read again (REREAD_ATTEMPTS times, rereadDelayMs apart), then `stale`.
+   * With the lifetime comes the slot of the read that found its value. Null when the work went stale meanwhile.
+   */
+  private async nonceLifetime(
+    work: Work,
+    nonce: { nonceAccount: Address; nonceAuthority: Address },
+  ): Promise<{ lifetime: NonceLifetime; slot: bigint } | null> {
+    const delay = this.options.rereadDelayMs ?? REREAD_DELAY_MS;
+    for (let attempt = 0; ; attempt += 1) {
+      const { slot, accounts } = await this.options.chain.getAccounts([nonce.nonceAccount]);
+      if (this.stale(work)) return null;
+      const read = readNonceAccount(accounts[0] ?? null, nonce.nonceAuthority);
+      if (read.kind !== 'ready') throw new PrepareFailure({ kind: 'nonce', state: read.kind });
+      if (!this.usedNonces.has(read.value)) {
+        const { nonceAccount, nonceAuthority } = nonce;
+        return { lifetime: { kind: 'nonce', nonceAccount, nonceAuthority, nonceValue: read.value }, slot };
+      }
+      if (attempt >= REREAD_ATTEMPTS) throw new PrepareFailure({ kind: 'nonce', state: 'stale' });
+      await pause(delay, work.signal);
+      if (this.stale(work)) return null;
+    }
+  }
+
+  /**
+   * Per distinct fee payer: the round's fees, plus what the payer moves out besides (a nonce setup's deposit, core
+   * payerOutflow), must leave it at 0 or at least rent-exempt (core canPayFee).
+   */
   private async checkFees(work: Work, remaining: readonly Built[], hints: ReadonlyMap<Address, WalletRole>): Promise<void> {
     if (remaining.length === 0) return;
     const { chain } = this.options;
@@ -334,7 +464,7 @@ export class SigningSession {
       if (this.stale(work)) return;
       const fees = remaining
         .filter((item) => item.summary.feePayer === payer)
-        .reduce((sum, item) => sum + item.summary.networkFeeLamports, 0n);
+        .reduce((sum, item) => sum + item.summary.networkFeeLamports + payerOutflow(item.summary.action), 0n);
       if (!canPayFee(balance, fees, rent)) {
         const { role } = this.options.resolveSigner(payer, hints.get(payer) ?? null);
         throw new PrepareFailure({ kind: 'fee-balance', payer, role, balance, needed: fees + rent });
@@ -342,10 +472,15 @@ export class SigningSession {
     }
   }
 
-  /** The round's wallet requests in core `signingOrder`, each with the transactions that still lack that signer. */
+  /**
+   * The round's wallet requests in core `signingOrder`, each with the transactions that still lack that signer. Signers
+   * by link (plan `remote`) never count as appending a tail here, and come last: the link is shown after the last local
+   * signature.
+   */
   private steps(remaining: readonly Built[], hints: ReadonlyMap<Address, WalletRole>): SignStep[] {
     const [head] = remaining;
     if (head === undefined) return [];
+    const remote = new Set(this.options.plan.remote ?? []);
     const required = unique(remaining.flatMap((item) => item.summary.requiredSigners));
     const present = required.filter((signer) => remaining.every((item) => item.summary.presentSignatures.includes(signer)));
     const order = signingOrder({
@@ -353,18 +488,22 @@ export class SigningSession {
       present,
       feePayer: head.summary.feePayer,
       appendsTail: (signer) => {
+        if (remote.has(signer)) return false;
         const resolution = this.options.resolveSigner(signer, hints.get(signer) ?? null);
         return resolution.kind === 'ready' && this.options.appendsTail(resolution.wallet);
       },
       first: this.state.first,
     });
-    return order.map((address) =>
+    const local = order.filter((address) => !remote.has(address));
+    const byLink = order.filter((address) => remote.has(address));
+    return [...local, ...byLink].map((address) =>
       this.resolveStep({
         address,
         role: hints.get(address) ?? 'main',
         walletName: null,
         count: remaining.filter((item) => lacks(item.summary, address)).length,
         status: 'pending',
+        local: !remote.has(address),
       }),
     );
   }
@@ -413,19 +552,22 @@ export class SigningSession {
       return;
     }
 
-    // Enough time left? A read error is ignored: the wallet is asked and the send reports an expiry.
-    this.dispatch({ type: 'starting', step: index, waitFor: 'network' });
-    const height = await blockHeight(this.options.chain);
-    if (this.stale(work)) return;
+    // Enough time left? A read error is ignored: the wallet is asked and the send reports an expiry. A durable nonce
+    // does not expire.
     const lastValid = lastValidOf(round.txs);
-    if (height !== null && lastValid !== null) {
-      if (!roundSigned(round) && lastValid - height < MIN_BLOCKS_LEFT_TO_SIGN) {
-        this.dispatch({ type: 'refresh' });
-        return;
-      }
-      if (roundSigned(round) && height > lastValid) {
-        this.dispatch({ type: 'expired' });
-        return;
+    if (lastValid !== null) {
+      this.dispatch({ type: 'starting', step: index, waitFor: 'network' });
+      const height = await blockHeight(this.options.chain);
+      if (this.stale(work)) return;
+      if (height !== null) {
+        if (!roundSigned(round) && lastValid - height < MIN_BLOCKS_LEFT_TO_SIGN) {
+          this.dispatch({ type: 'refresh' });
+          return;
+        }
+        if (roundSigned(round) && height > lastValid) {
+          this.dispatch({ type: 'expired' });
+          return;
+        }
       }
     }
 
@@ -486,7 +628,8 @@ export class SigningSession {
           walletName: wallet.name,
           code,
           detail: message,
-          startWith: index > 0 && firstMayHelp && !tried ? step.address : null,
+          // Bytes that arrived signed (/cosign) keep their first signature whoever signs here first.
+          startWith: index > 0 && firstMayHelp && !tried && !arrivedSigned(round) ? step.address : null,
           bothWays: code === 'tail-not-first-signer' && tried,
         });
         return;
@@ -504,7 +647,8 @@ export class SigningSession {
       signed.set(tx.id, { ...tx, bytes, summary: inspected.summary });
     }
     const txs = round.txs.map((tx) => signed.get(tx.id) ?? tx);
-    if (index >= round.steps.length - 1) {
+    const next = round.steps[index + 1];
+    if (next === undefined) {
       for (const tx of txs) {
         const verified = await verifyAllSignatures(tx.bytes);
         if (this.stale(work)) return;
@@ -513,6 +657,19 @@ export class SigningSession {
           return;
         }
       }
+    } else if (!next.local) {
+      // The last signature here; the rest sign by link. Never show a link /cosign would refuse (D69).
+      for (const tx of txs) {
+        const problem = cosignLinkProblem(tx.summary);
+        if (problem !== null) {
+          this.stop(work, index, { kind: 'inspect', walletName: wallet.name, error: { code: 'bad-layout', message: problem } });
+          return;
+        }
+      }
+      for (const tx of txs) if (tx.lifetime.kind === 'nonce') this.usedNonces.add(tx.lifetime.nonceValue);
+      const [head] = txs;
+      this.dispatch({ type: 'signed', step: index, txs, signature: head === undefined ? null : transactionIdOf(head.bytes) });
+      return;
     }
     this.dispatch({ type: 'signed', step: index, txs });
   }
@@ -522,16 +679,20 @@ export class SigningSession {
     const { chain } = this.options;
     const round = this.state.round;
     if (round === null) return;
-    const height = await blockHeight(chain);
-    if (this.stale(work)) return;
+    // Sent (or about to be): never build on this nonce value again, even if a lagging node still shows it.
+    for (const tx of round.txs) if (tx.lifetime.kind === 'nonce') this.usedNonces.add(tx.lifetime.nonceValue);
     const lastValid = lastValidOf(round.txs);
-    if (height !== null && lastValid !== null && height > lastValid) {
-      this.dispatch({ type: 'expired' });
-      return;
+    if (lastValid !== null) {
+      const height = await blockHeight(chain);
+      if (this.stale(work)) return;
+      if (height !== null && height > lastValid) {
+        this.dispatch({ type: 'expired' });
+        return;
+      }
     }
     for (const tx of round.txs) {
       if (this.state.jobs[tx.id]?.state.kind !== 'ready') continue;
-      this.dispatch({ type: 'job', id: tx.id, state: { kind: 'sending' }, signature: signatureOf(tx.bytes), bytes: tx.bytes });
+      this.dispatch({ type: 'job', id: tx.id, state: { kind: 'sending' }, signature: transactionIdOf(tx.bytes), bytes: tx.bytes });
       try {
         await chain.send(tx.bytes);
         if (this.stale(work)) return;
@@ -586,6 +747,7 @@ export class SigningSession {
               action: job.action,
               signature: job.signature,
               lifetime: job.lifetime,
+              nonceSlot: job.nonceSlot,
               bytes: job.bytes,
               before: job.before,
               confirmed: true,
@@ -605,6 +767,95 @@ export class SigningSession {
     this.dispatch({ type: 'check-done' });
   }
 
+  /**
+   * Phase link: checks the chain for the link's outcome (core actionApplied on the target and the nonce account read
+   * together, then the signature status; no searchTransactionHistory), first after `firstPollMs`, then each pause
+   * LINK_POLL_FACTOR longer up to `maxPollMs`. A landing, a failure or a moved nonce ends the round (`link-result`);
+   * after `watchMs` the watch pauses. checkLinkNow ends a pause early and starts the pauses over.
+   */
+  private async watchLink(work: Work): Promise<void> {
+    const item = this.linkItem();
+    if (item === null) return;
+    const link = this.options.link;
+    const firstPollMs = link?.firstPollMs ?? LINK_FIRST_POLL_MS;
+    const maxPollMs = link?.maxPollMs ?? LINK_MAX_POLL_MS;
+    const watchMs = link?.watchMs ?? LINK_WATCH_MS;
+    this.linkWakePending = false;
+    const start = Date.now();
+    let delay = firstPollMs;
+    for (;;) {
+      const woken = await this.linkPause(delay, work.signal);
+      if (this.stale(work)) return;
+      let ok = true;
+      try {
+        const state = (await checkLanded(this.options.chain, [item], { signal: work.signal, rereads: 0 }))[item.id];
+        if (this.stale(work)) return;
+        if (state?.kind === 'done' || state?.kind === 'failed' || state?.kind === 'expired') {
+          this.dispatch({ type: 'link-result', id: item.id, state });
+          return;
+        }
+      } catch {
+        if (this.stale(work)) return;
+        ok = false;
+      }
+      this.dispatch({ type: 'link-checked', ok });
+      if (Date.now() - start >= watchMs) {
+        this.dispatch({ type: 'link-paused' });
+        return;
+      }
+      delay = woken ? firstPollMs : Math.min(delay * LINK_POLL_FACTOR, maxPollMs);
+    }
+  }
+
+  /** What the link watch checks: the round's one transaction as signed here. */
+  private linkItem(): LandedItem | null {
+    const tx = this.state.round?.txs[0];
+    const job = tx === undefined ? undefined : this.state.jobs[tx.id];
+    if (tx === undefined || job === undefined) return null;
+    return {
+      id: tx.id,
+      action: tx.summary.action,
+      signature: job.signature,
+      lifetime: tx.lifetime,
+      nonceSlot: job.nonceSlot,
+      bytes: tx.bytes,
+      before: job.before,
+      confirmed: false,
+      why: 'link-open',
+    };
+  }
+
+  /** A pause of the link watch: true when checkLinkNow ended it early, false after `ms` or on abort. */
+  private linkPause(ms: number, signal: AbortSignal): Promise<boolean> {
+    if (this.linkWakePending) {
+      this.linkWakePending = false;
+      return Promise.resolve(true);
+    }
+    if (signal.aborted) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (woken: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        signal.removeEventListener('abort', onAbort);
+        if (this.linkWake === wake) this.linkWake = null;
+        resolve(woken);
+      };
+      const wake = () => {
+        done(true);
+      };
+      const onAbort = () => {
+        done(false);
+      };
+      const timer = setTimeout(() => {
+        done(false);
+      }, ms);
+      this.linkWake = wake;
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
   private confirmOptions(signal: AbortSignal): ConfirmationOptions {
     const options: ConfirmationOptions = { signal };
     const { confirm } = this.options;
@@ -615,13 +866,36 @@ export class SigningSession {
 }
 
 /** Builds the plan's action; the builder refusing the plan's own input is a bug, shown like an inspector refusal. */
-function buildOwn(action: TransactionAction, feePayer: Address, lifetime: BlockhashLifetime): Uint8Array {
+function buildOwn(action: TransactionAction, feePayer: Address, lifetime: Lifetime): Uint8Array {
   try {
     return buildTransaction(action, { feePayer, lifetime }).bytes;
   } catch (error) {
     const message = `Stakeward could not build its own transaction: ${translateError(error).detail}`;
     throw new PrepareFailure({ kind: 'inspector', error: { code: 'bad-layout', message } });
   }
+}
+
+/** A link plan names its remote signers only with a nonce, and never its nonce authority (the fee payer): a bug. */
+function checkLinkPlan(plan: SigningPlan): void {
+  const remote = plan.remote ?? [];
+  if (remote.length === 0) return;
+  if (plan.nonce === undefined || remote.includes(plan.nonce.nonceAuthority)) {
+    throw new PrepareFailure({ kind: 'inspector', error: { code: 'bad-layout', message: 'link plan misconfigured' } });
+  }
+}
+
+/** Bytes to sign as they are (/cosign): the inspector must read them, on a durable nonce; they are never rebuilt. */
+async function inspectBytes(id: string, bytes: Uint8Array, before: StakeAccount | null, nonceSlot: bigint | null): Promise<Built> {
+  const inspected = await inspectTransaction(bytes);
+  if (!inspected.ok) throw new PrepareFailure({ kind: 'inspector', error: inspected.error });
+  const { lifetime } = inspected.summary;
+  if (lifetime.kind !== 'nonce') {
+    throw new PrepareFailure({
+      kind: 'inspector',
+      error: { code: 'bad-layout', message: 'Signed bytes from a link must use a durable nonce' },
+    });
+  }
+  return { id, bytes: Uint8Array.from(bytes), summary: inspected.summary, lifetime, before, nonceSlot };
 }
 
 /** The bytes of our own build must read back as exactly that action and fee payer; anything else is a bug. */
@@ -640,9 +914,15 @@ async function inspectOwn(bytes: Uint8Array, action: TransactionAction, feePayer
 function jobView(
   id: string,
   state: JobState,
-  from: { before: StakeAccount | null; summary?: TransactionSummary; lifetime?: BlockhashLifetime; bytes?: Uint8Array },
+  from: {
+    before: StakeAccount | null;
+    summary?: TransactionSummary;
+    lifetime?: Lifetime;
+    bytes?: Uint8Array;
+    nonceSlot?: bigint | null;
+  },
 ): JobView {
-  return {
+  const view: JobView = {
     id,
     state,
     before: from.before,
@@ -651,6 +931,8 @@ function jobView(
     signature: null,
     bytes: from.bytes ?? null,
   };
+  if (from.nonceSlot !== undefined && from.nonceSlot !== null) view.nonceSlot = from.nonceSlot;
+  return view;
 }
 
 /** Roles the actions name (main, second, new), as hints for keys no slot holds. */
@@ -668,13 +950,20 @@ function lacks(summary: TransactionSummary, signer: Address): boolean {
   return summary.requiredSigners.includes(signer) && !summary.presentSignatures.includes(signer);
 }
 
+/** The lowest last valid block height of the round's blockhash transactions; null for a durable-nonce round. */
 function lastValidOf(txs: readonly RoundTx[]): bigint | null {
   let lowest: bigint | null = null;
   for (const tx of txs) {
+    if (tx.lifetime.kind !== 'blockhash') continue;
     const value = tx.lifetime.lastValidBlockHeight;
     if (lowest === null || value < lowest) lowest = value;
   }
   return lowest;
+}
+
+/** True when the round's bytes came with signatures already (a /cosign bytes round): fewer steps than signers. */
+function arrivedSigned(round: Round): boolean {
+  return round.steps.length < unique(round.txs.flatMap((tx) => tx.summary.requiredSigners)).length;
 }
 
 function unique<T>(values: readonly T[]): T[] {
@@ -690,15 +979,6 @@ async function blockHeight(chain: ChainPort): Promise<bigint | null> {
   }
 }
 
-/** The fee payer's signature (the transaction id), present once every wallet signed. */
-function signatureOf(bytes: Uint8Array): Signature | null {
-  try {
-    return getSignatureFromTransaction(getTransactionDecoder().decode(bytes));
-  } catch {
-    return null;
-  }
-}
-
 /**
  * A send that failed: definite errors fail; a lost answer may still have reached the network, so it is polled until
  * its blockhash expires. A 429 is definite: the worker's rate limit runs before the proxy forwards anything. A resend
@@ -707,6 +987,8 @@ function signatureOf(bytes: Uint8Array): Signature | null {
 function sendFailure(error: FriendlyError): JobState {
   switch (error.code) {
     case 'blockhash-expired':
+    case 'nonce-advanced':
+      // Never lands: the blockhash ran out, or the nonce moved on (the link was used or cancelled).
       return { kind: 'expired' };
     case 'network':
     case 'unknown':
@@ -733,6 +1015,23 @@ function confirmationState(outcome: ConfirmationOutcome | undefined, bytes: Uint
 
 function errorName(error: unknown): string | null {
   return typeof error === 'object' && error !== null && 'name' in error && typeof error.name === 'string' ? error.name : null;
+}
+
+/** Waits `ms`; resolves early on abort (the caller's stale check then ends its work). */
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
+  });
 }
 
 function abortError(message: string): Error {

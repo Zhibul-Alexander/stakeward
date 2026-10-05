@@ -55,4 +55,19 @@ describe('Countdown', () => {
     });
     expect(onEnd).toHaveBeenCalledOnce();
   });
+
+  it('already over when shown: shows Ended, announces nothing and calls onEnd once (the wait it shows is over)', () => {
+    vi.useFakeTimers();
+    let now = 1_791_000_000_000;
+    const clock = () => now;
+    const onEnd = vi.fn();
+    render(<Countdown to={BigInt(now / 1000 - 1)} label="Current epoch ends in" clock={clock} onEnd={onEnd} />);
+    expect(screen.getByRole('timer', { name: 'Current epoch ends in' })).toHaveTextContent('Ended');
+    act(() => {
+      now += 5_000;
+      vi.advanceTimersByTime(5_000);
+    });
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('');
+  });
 });

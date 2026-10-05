@@ -26,11 +26,7 @@ export function blockerText(blocker: Blocker): string {
   }
 }
 
-/**
- * Continue and Back of a wizard step (UX rule 2: one main step per screen, Back keeps what was entered). Continue is
- * never disabled: pressed while something is missing, it says what (inline, tied to the button with
- * aria-describedby) and moves focus to that text. The text goes away once the step is complete.
- */
+/** Continue and Back of a protect wizard step, with the texts of its blockers (ContinueButtons). */
 export function StepButtons({
   blockers,
   onContinue,
@@ -40,10 +36,27 @@ export function StepButtons({
   onContinue: () => void;
   onBack?: (() => void) | undefined;
 }) {
+  return <ContinueButtons problems={blockers.map(blockerText)} onContinue={onContinue} onBack={onBack} />;
+}
+
+/**
+ * Continue and Back of a wizard step (UX rule 2: one main step per screen, Back keeps what was entered). Continue is
+ * never disabled: pressed while something is missing (`problems`, the texts to show), it says what (inline, tied to
+ * the button with aria-describedby) and moves focus to that text. The text goes away once the step is complete.
+ */
+export function ContinueButtons({
+  problems,
+  onContinue,
+  onBack,
+}: {
+  problems: readonly string[];
+  onContinue: () => void;
+  onBack?: (() => void) | undefined;
+}) {
   const [focusRequest, setFocusRequest] = useState(0);
   const errorId = useId();
   const errorRef = useRef<HTMLDivElement>(null);
-  const shown = focusRequest > 0 && blockers.length > 0;
+  const shown = focusRequest > 0 && problems.length > 0;
 
   useEffect(() => {
     if (focusRequest > 0) errorRef.current?.focus();
@@ -61,8 +74,8 @@ export function StepButtons({
         >
           <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           <div className="flex flex-col gap-1">
-            {blockers.map((blocker) => (
-              <p key={blocker}>{blockerText(blocker)}</p>
+            {problems.map((problem) => (
+              <p key={problem}>{problem}</p>
             ))}
           </div>
         </div>
@@ -71,7 +84,7 @@ export function StepButtons({
         <Button
           aria-describedby={shown ? errorId : undefined}
           onClick={() => {
-            if (blockers.length > 0) setFocusRequest((value) => value + 1);
+            if (problems.length > 0) setFocusRequest((value) => value + 1);
             else onContinue();
           }}
         >

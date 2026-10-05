@@ -7,13 +7,12 @@ import {
   lockupEnd,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
-  readNonceAccount,
   type BuiltTransaction,
   type ChainPort,
   type Cluster,
   type Lifetime,
-  type NonceAccountState,
 } from '@stakeward/core';
+import { readNonceInfo } from '@/signing/nonce';
 import type { LifetimeChoice } from './report.ts';
 
 /**
@@ -23,17 +22,6 @@ import type { LifetimeChoice } from './report.ts';
 
 /** Dev lock period: short enough to retry the same stake account soon (devnet only, D13). */
 export const DEV_LOCK_PERIOD = '10-minutes';
-
-export type NonceInfo = { address: Address; state: NonceAccountState; deposit: bigint };
-
-export async function readNonceInfo(chain: ChainPort, mainKey: Address): Promise<NonceInfo> {
-  const address = await deriveNonceAccountAddress(mainKey);
-  const [{ accounts }, deposit] = await Promise.all([
-    chain.getAccounts([address]),
-    chain.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_SIZE),
-  ]);
-  return { address, state: readNonceAccount(accounts[0] ?? null, mainKey), deposit };
-}
 
 export class NonceNotReadyError extends Error {
   constructor() {

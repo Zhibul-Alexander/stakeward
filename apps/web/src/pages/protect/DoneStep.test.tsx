@@ -28,6 +28,26 @@ function iconOf(text: string): SVGElement | null {
   return screen.getByText(text).closest('p')?.querySelector('svg') ?? null;
 }
 
+describe('ProtectDoneView with a link still open', () => {
+  it('offers Check again, not Try again, and says why the rest waits', () => {
+    const S2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6' as Address;
+    const empty = { before: null, action: null, lifetime: null, signature: null, bytes: null };
+    show({
+      outcomes: [
+        { id: S1, state: { kind: 'unknown', why: 'link-open' }, ...empty },
+        { id: S2, state: { kind: 'not-sent' }, ...empty },
+      ],
+    });
+    expect(screen.queryByRole('button', { name: /^Try again/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'A link is still open, so the rest waits for it. When the other device has sent it, or you cancelled it by closing your link-signing account, press Check again, then try the rest.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
 // UX rule 5: a status is shown by word, colour and icon at once, never by text alone.
 describe('ProtectDoneView statuses', () => {
   it.each<[string, WatchState, string, string]>([

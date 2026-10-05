@@ -4,9 +4,13 @@ import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { AppPage } from '@/pages/AppPage';
 import { ComingSoonPage } from '@/pages/ComingSoonPage';
+import { CosignPage } from '@/pages/CosignPage';
+import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
+import { RescuePage } from '@/pages/RescuePage';
+import { WithdrawPage } from '@/pages/WithdrawPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
 // bundler drop these imports from a mainnet build: Vite turns it into "mainnet" === "devnet", the branch is dead and
@@ -43,16 +47,16 @@ export function AppRoutes() {
         <ProtectPage />
       </Route>
       <Route path="/withdraw/:account">
-        <ComingSoonPage title={t('common.pages.withdraw')} />
+        <WithdrawPage />
       </Route>
       <Route path="/extend/:account">
-        <ComingSoonPage title={t('common.pages.extend')} />
+        <ExtendPage />
       </Route>
       <Route path="/rescue">
-        <ComingSoonPage title={t('common.pages.rescue')} />
+        <RescuePage />
       </Route>
       <Route path="/cosign">
-        <ComingSoonPage title={t('common.pages.cosign')} />
+        <CosignPage />
       </Route>
       <Route path="/recovery/:account">
         <ComingSoonPage title={t('common.pages.recovery')} />

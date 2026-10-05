@@ -13,6 +13,7 @@ const chain = {
   getLatestBlockhash: () =>
     Promise.resolve({ blockhash: blockhash('EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N'), lastValidBlockHeight: 150n }),
   getBlockHeight: () => Promise.resolve(1n),
+  getEpochInfo: () => Promise.resolve({ epoch: 1000n, slotIndex: 1n, slotsInEpoch: 432_000n, blockHeight: 1n }),
   getBalance: () => Promise.resolve(0n),
   getMinimumBalanceForRentExemption: (size) => Promise.resolve(BigInt(size) * 5_080n),
   simulate: () => Promise.resolve({ ok: true, logs: [], unitsConsumed: 450n }),
