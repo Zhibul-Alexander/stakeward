@@ -2,7 +2,56 @@
 
 Stakeward protects natively staked SOL with the lockup that is built into the Solana stake program. You set a lockup on your existing stake accounts and make a second wallet that you control its custodian; after that, a thief who gets your main key cannot withdraw the stake or reassign it, and you can move it to a new wallet with both keys. Stakeward is non-custodial: it never holds funds or keys, every transaction is built in your browser and signed by your own wallets, and it deploys no on-chain program of its own.
 
-Work in progress. Not ready for use yet.
+Built during the Colosseum Crypto World's Fair hackathon, October 2026. Not audited. Try it on devnet first, a test network with no real SOL: https://stakeward-dev.zhibul-alexander.workers.dev. The mainnet address will be listed here once it has been checked with real stake. Stakeward lives only at the addresses in this README; a site anywhere else that calls itself Stakeward is not ours.
+
+## What it protects
+
+Native stake accounts whose withdraw authority is your wallet, your **main key**. Not liquid staking tokens (mSOL, jitoSOL and the like), not stake held by an exchange, not validator vote accounts and not the SOL balance of a wallet.
+
+## How it works
+
+1. **Check your stake.** Paste your wallet address, or connect the wallet. Looking needs no signature.
+2. **Choose a second key.** A wallet you control, made from a different seed phrase than the main key: a second Ledger is best. Choose the stake accounts and a lock period of 1, 3, 6 or 12 months.
+3. **Both keys sign.** One transaction per stake account (`SetLockupChecked`) sets the end date of the lock and makes the second key its custodian. The second key's signature is the proof that it is real and that its address is right.
+4. **Get alerts.** Link Telegram, and print the recovery card for each stake account.
+
+While the lock holds, the Solana stake program itself enforces this:
+
+| What someone tries | Main key alone (a thief) | Second key alone | Main key and second key |
+| --- | --- | --- | --- |
+| Withdraw the SOL | refused | refused | yes |
+| Hand the stake to another wallet | refused | refused | yes, this is Rescue |
+| Move the end date, remove the lock, hand it to another second key | refused | yes | yes |
+| Stop staking, stake with another validator, split the account | yes | no | yes |
+
+When the lock ends, the main key alone can withdraw again. Stakeward reminds you in Telegram 30, 14, 7, 3 and 1 days before, and the second key alone can extend the lock.
+
+**If your main key is stolen,** the thief cannot take the stake, and you get an alert when they touch it. Rescue moves every stake account to a new wallet: the main key, the second key and the new wallet sign one transaction per account, and the new wallet pays. It works even if the thief already changed who manages the staking. The lock and its end date stay.
+
+## What it costs
+
+- Stakeward is free: no token, no subscription, no fee of its own.
+- The Solana network fee is about 0.000005 SOL per signature. Every signing screen shows it before you sign.
+- Signing on two devices, by link, and Rescue use a durable nonce account. It holds a deposit of about 0.00106 SOL, which comes back when the account is closed.
+
+## How it stays safe
+
+- **Non-custodial.** Stakeward never holds funds or keys and never asks for a seed phrase. Every transaction is built in your browser and signed by your own wallets.
+- **No program of its own.** Transactions hold only stake program instructions, nonce instructions and compute budget instructions, in the format a Ledger shows in clear, with no blind signing. Phantom may add its own Lighthouse checks at the end; nothing else is accepted.
+- **What you sign is what you see.** Before each signature, the summary on screen is read back from the exact bytes about to be signed: what changes, who signs, what it costs and what the transaction cannot do. After each wallet signs, the site checks that the wallet changed nothing else.
+- **The server never signs.** The Cloudflare Worker serves the site, forwards reads to the Solana RPC, forwards only transactions it can read back the same way, and runs the monitoring and the Telegram bot. If it is down or hacked, you lose alerts, not stake. It stores public chain data and Telegram chat ids, nothing else.
+- **Open.** The code is public under the MIT license. The mechanism was checked on LiteSVM, devnet and mainnet: [docs/gate.md](docs/gate.md).
+
+## Honest limits
+
+- Whoever holds the second key can freeze the stake: they can set any end date and hand the lock to any key. Guard the second key as carefully as the main key.
+- If you lose the second key, you wait until the lock ends. The second key is not a backup of the main key.
+- A thief with the main key can still stop the staking, stake with another validator and split the stake account. The lock keeps the SOL where it is, and Stakeward alerts you.
+- More in [What no one can undo](#what-no-one-can-undo).
+
+## Wallets
+
+Any browser wallet with Wallet Standard and transaction signing. Each key signs in its own wallet, or in its own account of a wallet that holds several. The wallet tests that decide which wallets and pairs are supported, and what a Ledger shows, are still running; the results will be listed here and in the FAQ on the site. In a phone wallet's own browser, only one wallet is available, so it can view stake, extend or remove a lock (one signature) and co-sign a link; protecting and rescuing need a computer.
 
 ## Recover without Stakeward
 
@@ -193,6 +242,27 @@ If the thief got there first, only their key can change the lock now, and the st
 - If you lose both keys, nobody can recover this stake. If someone has both keys, they can take it.
 - The Solana command line cannot lock the stake again with the main key after a lock has ended: CLI 4.3.0 refuses because the old lock names another key. Protect the stake again in Stakeward.
 - Two keys from one seed phrase protect nothing: whoever has the seed phrase has both keys. The second key must come from a different seed phrase.
+
+## Development
+
+A pnpm monorepo: Node 24.15 or later, pnpm 12.8.1. Dependencies are pinned to exact versions; install only from the lockfile.
+
+| Folder | What it is |
+| --- | --- |
+| `packages/core` | Pure TypeScript, no I/O: stake account decoding, lock rules, transaction builders, the transaction inspector, signature checks, the snapshot diff behind alerts, error texts, the recovery card's commands |
+| `apps/web` | The site: Vite, React, Tailwind CSS 4 and shadcn/ui |
+| `apps/worker` | One Cloudflare Worker: the site's static files, `/api/*`, the monitoring cron, the Telegram webhook, D1 |
+| `scripts` | The mechanism gate (`docs/gate.md`), devnet helpers, the recovery card's command run (`docs/recovery-cli.md`) |
+| `docs` | Decisions, progress, the manual test plan, screenshots |
+
+```
+pnpm install --frozen-lockfile
+pnpm typecheck && pnpm lint && pnpm test   # unit, LiteSVM and workerd tests
+pnpm e2e                                   # Playwright on the built site, 1280 and 360 px, under the production CSP
+pnpm gate:litesvm                          # the lock rules on the real stake program, locally
+```
+
+The specification is [CLAUDE.md](CLAUDE.md) (in Russian); [docs/DECISIONS.md](docs/DECISIONS.md) records every decision and every place where reality differed from it.
 
 ---
 
