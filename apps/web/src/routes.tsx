@@ -1,9 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
-import { t } from '@/i18n';
 import { AppPage } from '@/pages/AppPage';
-import { ComingSoonPage } from '@/pages/ComingSoonPage';
 import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
@@ -11,6 +9,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { StatsPage } from '@/pages/StatsPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
@@ -63,7 +62,7 @@ export function AppRoutes() {
         <RecoveryPage />
       </Route>
       <Route path="/stats">
-        <ComingSoonPage title={t('common.pages.stats')} />
+        <StatsPage />
       </Route>
       {DevUiPage === null ? null : (
         <Route path="/dev/ui">

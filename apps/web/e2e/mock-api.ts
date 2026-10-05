@@ -4,7 +4,8 @@ import { getAddressEncoder, type Address } from '@solana/kit';
 /**
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
- * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption) and /api/health.
+ * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption), /api/health
+ * and /api/stats.
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
 
@@ -63,6 +64,9 @@ export function stakeJson(address: string, mock: StakeMock) {
 
 export type StakeJson = ReturnType<typeof stakeJson>;
 
+/** GET /api/stats: watched accounts whose lock is in force, the lamports in them, alerts delivered. */
+export type StatsMock = { accountsLocked: number; lamportsLocked: bigint; alertsSent: number };
+
 /** What the mocked cluster and worker hold. */
 export type ApiFixture = {
   /** Every stake account on the cluster; the search filters them by main key or second key, as the worker does. */
@@ -71,6 +75,8 @@ export type ApiFixture = {
   balances?: Readonly<Record<string, bigint>>;
   /** Minutes since the last monitoring pass that /api/health reports; 2 when left out. */
   healthAgeMin?: number;
+  /** What /api/stats counts (the worker's D1, not the accounts above); zeros when left out. */
+  stats?: StatsMock;
   /** Receives the query string of every stake account search. */
   searches?: string[];
 };
@@ -83,6 +89,7 @@ export const SMOKE_FIXTURE: ApiFixture = {
     stakeJson(SMOKE_STAKE, { lamports: 1_250n * SOL + 500_000_000n, lockEnd: NOW + 190n * DAY, custodian: SECOND, delegated: false }),
   ],
   balances: { [MAIN]: SOL, [SECOND]: SOL / 100n },
+  stats: { accountsLocked: 3, lamportsLocked: 2_750n * SOL + 500_000_000n, alertsSent: 5 },
 };
 
 const addressEncoder = getAddressEncoder();
@@ -167,7 +174,7 @@ function rpcResult(fixture: ApiFixture, request: RpcRequest): unknown {
   }
 }
 
-/** Answers /api/stake-accounts, /api/rpc and /api/health on `page` from `fixture`. Call it before the first goto. */
+/** Answers /api/stake-accounts, /api/rpc, /api/health and /api/stats on `page` from `fixture`. Call it before the first goto. */
 export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   await page.route('**/api/stake-accounts?*', async (route) => {
     const url = new URL(route.request().url());
@@ -191,6 +198,16 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   await page.route('**/api/health', async (route) => {
     const ageMin = fixture.healthAgeMin ?? 2;
     await json(route, { ok: ageMin <= 10, lastMonitorRunAt: new Date(Date.now() - ageMin * 60_000).toISOString() });
+  });
+  await page.route('**/api/stats', async (route) => {
+    const stats = fixture.stats ?? { accountsLocked: 0, lamportsLocked: 0n, alertsSent: 0 };
+    await json(route, {
+      accountsLocked: stats.accountsLocked,
+      lamportsLocked: stats.lamportsLocked.toString(),
+      alertsSent: stats.alertsSent,
+      // Counted at the mocked cluster time: the page, and its screenshot, show a fixed date.
+      now: new Date(Number(NOW) * 1000).toISOString(),
+    });
   });
 }
 
