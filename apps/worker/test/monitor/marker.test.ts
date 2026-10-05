@@ -25,6 +25,31 @@ async function watched(iso = '2026-10-05T01:00:00Z', env?: Record<string, string
 
 const lease = async (h: Harness) => JSON.parse((await h.readMeta()).pass_lease ?? 'null') as unknown;
 
+/** Pauses the first outbound call to a host `matches` once its answer is in (a pass stuck right after that call). */
+function pausedAfter(h: Harness, matches: (host: string) => boolean) {
+  let release!: () => void;
+  let reached!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const reachedPromise = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  const route = h.deps.fetch;
+  let first = true;
+  h.deps.fetch = async (input, init) => {
+    const response = await route(input, init);
+    const host = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).hostname;
+    if (first && matches(host)) {
+      first = false;
+      reached();
+      await released;
+    }
+    return response;
+  };
+  return { reached: reachedPromise, release };
+}
+
 describe('the marker', () => {
   it('a successful pass writes last_pass_at = its start and releases the lease, in its last statement', async () => {
     const h = await watched();
@@ -216,6 +241,39 @@ describe('the lease', () => {
     expect(h.db.journal.map((e) => e.name)).toEqual(['LOAD_META', 'LEASE_ACQUIRE', 'PAGE']);
     expect(await h.readMeta()).toEqual(before);
     expect(await h.readEvents()).toEqual([]);
+  });
+
+  it('a pass inside its lease (paused after its read, 10 s on): the second pass is skipped without a fetch', async () => {
+    const h = await watched();
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    const pause = pausedAfter(h, (host) => host === 'primary.rpc.test');
+    h.at('2026-10-05T01:02:00Z');
+    const running = h.pass();
+    await pause.reached;
+    h.advance(10_000);
+    const fetches = h.net.calls.length;
+    expect(await h.pass()).toMatchObject({ outcome: 'skipped-lease', fetches: 0 });
+    expect(h.net.calls).toHaveLength(fetches);
+    pause.release();
+    expect(await running).toMatchObject({ outcome: 'ok', events: 1 });
+    expect(await lease(h)).toEqual({ pass: 'pass-1', until: 0 });
+  });
+
+  it('a pass inside its lease (paused after its first send): the alert goes out once', async () => {
+    const h = await watched();
+    await h.linkChat(MAIN, '100001');
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    const pause = pausedAfter(h, (host) => host === 'api.telegram.org');
+    h.at('2026-10-05T01:02:00Z');
+    const running = h.pass();
+    await pause.reached;
+    h.advance(10_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'skipped-lease' });
+    pause.release();
+    expect(await running).toMatchObject({ outcome: 'ok', messages: 1 });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', pending: 0, messages: 0 });
+    expect(h.telegram.delivered('100001')).toHaveLength(1);
   });
 
   it('Telegram 5xx on the admin alert: the pass still succeeds, the alert is not counted as sent', async () => {

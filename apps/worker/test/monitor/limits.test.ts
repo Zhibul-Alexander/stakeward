@@ -257,6 +257,24 @@ describe('limits of a pass', () => {
     expect(JSON.parse(meta.pass_lease ?? '')).toMatchObject({ until: 0 });
   });
 
+  it('free: the decode cap stops the chunk with the cursor on the last row handled; the next pass reads on from there', async () => {
+    const h = createHarness();
+    h.at('2026-10-05T01:00:00Z');
+    const addresses = Array.from({ length: 30 }, (_, n) => stakeAddress(0, n)).sort();
+    for (const address of addresses) h.chain.putStake(address, spec(key(1)));
+    await h.seedWatched(addresses);
+    for (const address of addresses) h.chain.putStake(address, { ...spec(key(1)), deactivationEpoch: 951n });
+
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ rows: 30, decoded: 20, deferred: true, events: 20 });
+    expect((await h.readMeta()).cursor).toBe(addresses[19]);
+    h.at('2026-10-05T01:04:00Z');
+    expect(await h.pass()).toMatchObject({ rows: 10, decoded: 10, deferred: false, events: 10 });
+    expect(h.chain.callsOf('getMultipleAccounts').at(-1)?.keys.slice(1)).toEqual(addresses.slice(20));
+    expect((await h.readMeta()).cursor).toBe('');
+    expect(new Set((await h.readEvents()).map((e) => e.stake_account)).size).toBe(30);
+  });
+
   it('a quiet pass: one getMultipleAccounts, the load batch, the pending read and the finish', async () => {
     const h = createHarness();
     h.at('2026-10-05T01:00:00Z');

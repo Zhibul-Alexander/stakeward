@@ -353,6 +353,22 @@ describe('the queue survives every stop', () => {
     expect(await h.readEvents()).toEqual([]);
   });
 
+  it('the chunk and the rescans share the decode cap: 10 decoded in the chunk leave 10 for the splits', async () => {
+    const h = createHarness();
+    h.at('2026-10-05T01:00:00Z');
+    const rows = Array.from({ length: 10 }, (_, i) => addr(i, 0x78));
+    for (const at of rows) h.chain.putStake(at, SPEC);
+    await h.seedWatched(rows);
+    // Each watched row loses SOL (an urgent rescan of the pair); 25 locked splits wait to be found.
+    for (const at of rows) h.chain.putStake(at, SPEC, LAMPORTS - 1n);
+    for (let i = 0; i < 25; i++) h.chain.putStake(addr(i), SPEC, 1_000_000_000n);
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ events: 10, rescans: 1, decoded: 20, autoWatched: 10, rescanQueue: 1 });
+    h.at('2026-10-05T01:04:00Z');
+    expect(await h.pass()).toMatchObject({ events: 0, rescans: 1, decoded: 15, autoWatched: 15, rescanQueue: 0 });
+    expect(await h.readAccounts()).toHaveLength(35);
+  });
+
   it('accounts a search rejects do not hold the pair at the cap: the next search goes on after them', async () => {
     const h = await watched();
     // 25 accounts of the pair whose lock ended (a Split after the lock ran out, or planted by anyone: Initialize needs
