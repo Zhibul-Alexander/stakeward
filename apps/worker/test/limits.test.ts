@@ -1,5 +1,6 @@
-import { exports } from 'cloudflare:workers';
+import { env, exports } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { allowRequest } from '../src/rate-limit.ts';
 import { MAX_RPC_BODY_BYTES } from '../src/rpc.ts';
 import {
   fakeUpstream,
@@ -58,6 +59,32 @@ describe('rate limits per client IP', () => {
     for (let i = 0; i < LOOKUP_LIMIT; i++) await testApp(upstream, { ip }).request('/api/stake-accounts');
     expect((await testApp(upstream, { ip }).request('/api/stake-accounts')).status).toBe(429);
     expect((await testApp(upstream, { ip }).rpc(EPOCH_INFO)).status).toBe(200);
+  });
+});
+
+describe('allowRequest: a limit on any key (the webhook limits per chat, not per IP)', () => {
+  it('TELEGRAM_RATE_LIMIT: 20 per key in 60 s, keys counted apart', async () => {
+    const chat = `chat:${freshIp()}`;
+    for (let i = 0; i < 20; i++) expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', chat)).toBe(true);
+    expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', chat)).toBe(false);
+    expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', `chat:${freshIp()}`)).toBe(true);
+    // Another binding is another counter.
+    expect(await allowRequest(env, 'LOOKUP_RATE_LIMIT', chat)).toBe(true);
+  });
+
+  it('WATCH_RATE_LIMIT: 10 per key in 60 s', async () => {
+    const ip = freshIp();
+    for (let i = 0; i < 10; i++) expect(await allowRequest(env, 'WATCH_RATE_LIMIT', ip)).toBe(true);
+    expect(await allowRequest(env, 'WATCH_RATE_LIMIT', ip)).toBe(false);
+  });
+
+  it('fails open when the limiter throws, and logs the binding but never the key', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const broken = { ...env, TELEGRAM_RATE_LIMIT: { limit: () => Promise.reject(new TypeError('limiter down')) } };
+    expect(await allowRequest(broken, 'TELEGRAM_RATE_LIMIT', 'chat:-100777')).toBe(true);
+    const logged = warn.mock.calls.map((args) => args.map(String).join(' ')).join('\n');
+    expect(logged).toContain('TELEGRAM_RATE_LIMIT');
+    expect(logged).not.toContain('-100777');
   });
 });
 

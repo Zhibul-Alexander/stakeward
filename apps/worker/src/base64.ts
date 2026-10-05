@@ -19,6 +19,22 @@ export function decodeBase64(text: string): Uint8Array | null {
   return encodeBase64(bytes) === text ? bytes : null;
 }
 
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * True exactly when `decodeBase64(text)` is not null, without decoding: the monitor checks every account of a
+ * getMultipleAccounts answer and decodes only the few that changed (CPU, DECISIONS.md D49). Canonical means the
+ * standard alphabet, padded to a multiple of 4, and zero bits under the padding.
+ */
+export function isCanonicalBase64(text: string): boolean {
+  if (text.length % 4 !== 0 || !BASE64.test(text)) return false;
+  const padding = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0;
+  if (padding === 0) return true;
+  // The last data character carries 4 (one '=') or 2 (two '=') bits of the final byte and 2 or 4 unused bits.
+  const last = ALPHABET.indexOf(text.charAt(text.length - padding - 1));
+  return (last & (padding === 2 ? 0x0f : 0x03)) === 0;
+}
+
 export function encodeBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);

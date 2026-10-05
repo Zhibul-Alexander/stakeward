@@ -24,11 +24,16 @@ export default defineConfig({
       return {
         wrangler: { configPath: './wrangler.jsonc', environment: 'dev' },
         miniflare: {
-          // RPC_URL is a placeholder: tests intercept fetch, nothing leaves the test runtime.
+          // RPC_URL and the Telegram values are placeholders: tests intercept fetch, nothing leaves the test runtime.
           bindings: {
             TEST_MIGRATIONS: migrations,
             TEST_STATIC_HEADERS_FILE: staticHeaders,
             RPC_URL: 'https://primary.rpc.test/?api-key=test-primary-key',
+            TELEGRAM_BOT_TOKEN: '123456789:test-token',
+            TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret',
+            ADMIN_CHAT_ID: '700000001',
+            TELEGRAM_BOT_USERNAME: 'stakeward_test_bot',
+            SITE_ORIGIN: 'https://stakeward.test',
           },
         },
       };

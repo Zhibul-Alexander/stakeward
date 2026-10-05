@@ -118,8 +118,16 @@ export type StakeAccountSpec = {
   staker: Address;
   withdrawer: Address;
   unixTimestamp?: bigint;
+  lockupEpoch?: bigint;
   custodian?: Address;
   voter?: Address;
+  /** Delegated lamports (default 5 SOL); epoch rewards raise it. */
+  stake?: bigint;
+  activationEpoch?: bigint;
+  /** Default u64::MAX: not deactivating. */
+  deactivationEpoch?: bigint;
+  /** credits_observed; epoch rewards change it. */
+  credits?: bigint;
 };
 
 /**
@@ -136,13 +144,28 @@ export function stakeAccountData(spec: StakeAccountSpec): Uint8Array {
   put(12, getAddressEncoder().encode(spec.staker));
   put(44, getAddressEncoder().encode(spec.withdrawer));
   put(76, getI64Encoder().encode(spec.unixTimestamp ?? 0n));
-  put(84, getU64Encoder().encode(0n));
+  put(84, getU64Encoder().encode(spec.lockupEpoch ?? 0n));
   put(92, getAddressEncoder().encode(spec.custodian ?? key(0)));
   if (spec.state === 'delegated') {
     put(124, getAddressEncoder().encode(spec.voter ?? key(42)));
-    put(156, getU64Encoder().encode(5_000_000_000n));
-    put(164, getU64Encoder().encode(800n));
-    put(172, getU64Encoder().encode(U64_MAX));
+    put(156, getU64Encoder().encode(spec.stake ?? 5_000_000_000n));
+    put(164, getU64Encoder().encode(spec.activationEpoch ?? 800n));
+    put(172, getU64Encoder().encode(spec.deactivationEpoch ?? U64_MAX));
+    put(188, getU64Encoder().encode(spec.credits ?? 0n));
   }
+  return data;
+}
+
+/**
+ * Clock sysvar data (40 bytes): slot @0, epoch_start_timestamp @8, epoch @16, leader_schedule_epoch @24,
+ * unix_timestamp @32.
+ */
+export function clockData(slot: bigint, epoch: bigint, unixTimestamp: bigint): Uint8Array {
+  const data = new Uint8Array(40);
+  data.set(getU64Encoder().encode(slot), 0);
+  data.set(getI64Encoder().encode(unixTimestamp - 3_600n), 8);
+  data.set(getU64Encoder().encode(epoch), 16);
+  data.set(getU64Encoder().encode(epoch + 1n), 24);
+  data.set(getI64Encoder().encode(unixTimestamp), 32);
   return data;
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { callUpstream } from '../src/upstream.ts';
+import { attemptPost, callUpstream } from '../src/upstream.ts';
 import { errorOf, FALLBACK_URL, fakeUpstream, PRIMARY_URL, rpcResponse, testApp } from './fakes.ts';
 import { b64, signedProtect } from './transactions.ts';
 
@@ -139,5 +139,31 @@ describe('upstream RPC: secrets stay out of logs and responses', () => {
       expect(logged).not.toContain(secret);
       expect(text).not.toContain(secret);
     }
+  });
+});
+
+describe('attemptPost: one attempt, its status', () => {
+  it('a 2xx status comes back with the body; any other status with the body unread', async () => {
+    const ok = fakeUpstream(() => new Response('{"ok":true}', { status: 200 }));
+    expect(await attemptPost(PRIMARY_URL, '{"a":1}', { timeoutMs: 200, fetch: ok.fetch })).toEqual({ status: 200, body: '{"ok":true}' });
+    expect(ok.calls[0]?.raw).toBe('{"a":1}');
+    for (const status of [400, 403, 429, 500]) {
+      const failing = fakeUpstream(() => new Response('{"description":"secret detail"}', { status }));
+      expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: failing.fetch })).toEqual({ status, body: null });
+    }
+  });
+
+  it('a timeout and a network error have no status', async () => {
+    expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 30, fetch: fakeUpstream(() => 'hang').fetch })).toBe('timeout');
+    expect(await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => 'network-error').fetch })).toBe('network');
+  });
+
+  it('logs nothing (the URL may carry an API key or a bot token)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => failing(500)).fetch });
+    await attemptPost(PRIMARY_URL, '{}', { timeoutMs: 200, fetch: fakeUpstream(() => 'network-error').fetch });
+    expect(warn).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
   });
 });

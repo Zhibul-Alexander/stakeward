@@ -18,25 +18,45 @@
   //   RPC_URL                  required. Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
   //   RPC_FALLBACK_URL         optional. Second RPC URL, used for reads only when RPC_URL fails. Not listed in
   //                            secrets.required, so wrangler dev ignores it in .dev.vars (set it with `wrangler secret put`).
-  //   TELEGRAM_BOT_TOKEN       token of this environment's bot (step 5)
-  //   TELEGRAM_WEBHOOK_SECRET  value Telegram sends in X-Telegram-Bot-Api-Secret-Token (step 5)
-  //   ADMIN_CHAT_ID            Telegram chat id for worker error reports (step 5)
-  // secrets.required lists what the code reads today; the Telegram secrets join it in step 5. With secrets.required the
-  // FIRST deploy of a new Worker must pass them: `wrangler deploy --env dev --secrets-file .dev.vars.dev`.
-  // Rate limits per client IP (CF-Connecting-IP), Workers rate limiting binding, period 10 or 60 s:
-  //   RPC_RATE_LIMIT     POST /api/rpc               30 requests / 10 s
-  //   LOOKUP_RATE_LIMIT  GET /api/stake-accounts     20 requests / 60 s
+  //   TELEGRAM_BOT_TOKEN       required. Token of this environment's bot.
+  //   TELEGRAM_WEBHOOK_SECRET  required. Value Telegram sends in X-Telegram-Bot-Api-Secret-Token.
+  //   ADMIN_CHAT_ID            required. Telegram chat id for monitor and worker error reports.
+  //   TELEGRAM_BOT_USERNAME    required. The bot's username without `@`.
+  //   SITE_ORIGIN              required. This environment's site origin, `https://...` without a trailing slash.
+  // TELEGRAM_BOT_USERNAME and SITE_ORIGIN are not secret, but they live with the secrets (in .dev.vars.<env> too):
+  // `wrangler types` gives `vars` literal types and CI checks that the types are fresh, while secrets are typed `string`
+  // and can change without a commit. With secrets.required the FIRST deploy of a new Worker must pass them all:
+  // `wrangler deploy --env dev --secrets-file .dev.vars.dev`.
+  // MONITOR_PLAN (vars): `free` or `paid`, the monitor pass preset in src/monitor/config.ts. Switch it together with the
+  // Cloudflare Workers plan, then run `pnpm --filter @stakeward/worker types`.
+  // Cron trigger: one monitor pass every 2 minutes per environment; dev and prod take 2 of the account's 5 free triggers.
+  // Rate limits, Workers rate limiting binding, period 10 or 60 s:
+  //   RPC_RATE_LIMIT       POST /api/rpc                 30 requests / 10 s per client IP (CF-Connecting-IP)
+  //   LOOKUP_RATE_LIMIT    GET /api/stake-accounts       20 requests / 60 s per client IP
+  //   WATCH_RATE_LIMIT     POST /api/watch               10 requests / 60 s per client IP
+  //   TELEGRAM_RATE_LIMIT  POST /api/telegram/webhook    20 updates / 60 s per chat (updates come from Telegram's IPs)
   // namespace_id is any positive integer unique in the Cloudflare account; dev and prod use separate counters.
-  // Cron trigger (*/2 * * * *) is added in step 5.
 
   // Top level = local-only defaults (plain `wrangler dev`, `wrangler types`). Named environments do NOT inherit
-  // vars, secrets, ratelimits or d1_databases, so each env repeats them. The all-zero id below is never created:
-  // a deploy without --env fails.
-  "vars": { "CLUSTER": "devnet" },
-  "secrets": { "required": ["RPC_URL"] },
+  // vars, secrets, ratelimits or d1_databases, so each env repeats them; triggers are repeated too, to be explicit.
+  // The all-zero id below is never created: a deploy without --env fails.
+  "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
+  "secrets": {
+    "required": [
+      "RPC_URL",
+      "TELEGRAM_BOT_TOKEN",
+      "TELEGRAM_WEBHOOK_SECRET",
+      "ADMIN_CHAT_ID",
+      "TELEGRAM_BOT_USERNAME",
+      "SITE_ORIGIN"
+    ]
+  },
+  "triggers": { "crons": ["*/2 * * * *"] },
   "ratelimits": [
     { "name": "RPC_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 10 } },
-    { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } }
+    { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1002", "simple": { "limit": 20, "period": 60 } },
+    { "name": "WATCH_RATE_LIMIT", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } },
+    { "name": "TELEGRAM_RATE_LIMIT", "namespace_id": "1004", "simple": { "limit": 20, "period": 60 } }
   ],
   "d1_databases": [
     {
@@ -49,11 +69,23 @@
   "env": {
     "dev": {
       "name": "stakeward-dev",
-      "vars": { "CLUSTER": "devnet" },
-      "secrets": { "required": ["RPC_URL"] },
+      "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
+      "secrets": {
+        "required": [
+          "RPC_URL",
+          "TELEGRAM_BOT_TOKEN",
+          "TELEGRAM_WEBHOOK_SECRET",
+          "ADMIN_CHAT_ID",
+          "TELEGRAM_BOT_USERNAME",
+          "SITE_ORIGIN"
+        ]
+      },
+      "triggers": { "crons": ["*/2 * * * *"] },
       "ratelimits": [
         { "name": "RPC_RATE_LIMIT", "namespace_id": "1101", "simple": { "limit": 30, "period": 10 } },
-        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1102", "simple": { "limit": 20, "period": 60 } }
+        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1102", "simple": { "limit": 20, "period": 60 } },
+        { "name": "WATCH_RATE_LIMIT", "namespace_id": "1103", "simple": { "limit": 10, "period": 60 } },
+        { "name": "TELEGRAM_RATE_LIMIT", "namespace_id": "1104", "simple": { "limit": 20, "period": 60 } }
       ],
       "d1_databases": [
         {
@@ -67,11 +99,23 @@
     },
     "prod": {
       "name": "stakeward-prod",
-      "vars": { "CLUSTER": "mainnet" },
-      "secrets": { "required": ["RPC_URL"] },
+      "vars": { "CLUSTER": "mainnet", "MONITOR_PLAN": "free" },
+      "secrets": {
+        "required": [
+          "RPC_URL",
+          "TELEGRAM_BOT_TOKEN",
+          "TELEGRAM_WEBHOOK_SECRET",
+          "ADMIN_CHAT_ID",
+          "TELEGRAM_BOT_USERNAME",
+          "SITE_ORIGIN"
+        ]
+      },
+      "triggers": { "crons": ["*/2 * * * *"] },
       "ratelimits": [
         { "name": "RPC_RATE_LIMIT", "namespace_id": "1201", "simple": { "limit": 30, "period": 10 } },
-        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1202", "simple": { "limit": 20, "period": 60 } }
+        { "name": "LOOKUP_RATE_LIMIT", "namespace_id": "1202", "simple": { "limit": 20, "period": 60 } },
+        { "name": "WATCH_RATE_LIMIT", "namespace_id": "1203", "simple": { "limit": 10, "period": 60 } },
+        { "name": "TELEGRAM_RATE_LIMIT", "namespace_id": "1204", "simple": { "limit": 20, "period": 60 } }
       ],
       "d1_databases": [
         {

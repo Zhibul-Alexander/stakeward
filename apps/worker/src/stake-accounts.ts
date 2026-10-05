@@ -103,6 +103,21 @@ function respond(c: Context<AppEnv>, body: string): Response {
 
 /** getProgramAccounts on the stake program: 200-byte accounts with the address at the role's offset (section 4). */
 export function programAccountsRequest(role: Role, target: Address) {
+  return stakeProgramAccountsRequest([{ offset: STAKE_ACCOUNT_OFFSETS[role], bytes: target }]);
+}
+
+/**
+ * getProgramAccounts for the stake accounts of one (main key, second key) pair: withdrawer at 44 and lockup custodian
+ * at 92. The monitor's search for accounts split off a watched one: Split copies both authorities and the lockup.
+ */
+export function pairAccountsRequest(withdrawer: Address, custodian: Address) {
+  return stakeProgramAccountsRequest([
+    { offset: STAKE_ACCOUNT_OFFSETS.withdrawer, bytes: withdrawer },
+    { offset: STAKE_ACCOUNT_OFFSETS.custodian, bytes: custodian },
+  ]);
+}
+
+function stakeProgramAccountsRequest(memcmps: readonly { offset: number; bytes: Address }[]) {
   return {
     jsonrpc: '2.0',
     id: 1,
@@ -115,11 +130,49 @@ export function programAccountsRequest(role: Role, target: Address) {
         withContext: true,
         filters: [
           { dataSize: STAKE_ACCOUNT_SIZE },
-          { memcmp: { offset: STAKE_ACCOUNT_OFFSETS[role], bytes: target, encoding: 'base58' } },
+          ...memcmps.map(({ offset, bytes }) => ({ memcmp: { offset, bytes, encoding: 'base58' } })),
         ],
       },
     ],
   };
+}
+
+/**
+ * JSON.parse that reads every `lamports` value from the JSON source text, as a bigint: JSON numbers lose precision
+ * above 2^53. Any other value is parsed as usual. Throws a SyntaxError on text that is not JSON.
+ */
+export function parseJsonExactLamports(text: string): unknown {
+  return JSON.parse(text, (key, value: unknown, context?: { source?: string }) => {
+    const source = context?.source;
+    return key === 'lamports' && typeof value === 'number' && source !== undefined && /^[0-9]+$/.test(source)
+      ? BigInt(source)
+      : value;
+  });
+}
+
+/** One stake-program-owned item of a getProgramAccounts answer, not decoded. */
+export type ProgramAccountItem = { pubkey: Address; dataBase64: string; lamports: bigint };
+
+/**
+ * The context slot and the well-formed stake-program-owned items of a getProgramAccounts answer (withContext), in
+ * answer order and not decoded; malformed items are left out. Null when the answer is not JSON, a JSON-RPC error or
+ * not the expected shape.
+ */
+export function parseProgramAccountItems(text: string): { slot: number; items: ProgramAccountItem[] } | null {
+  let json: unknown;
+  try {
+    json = parseJsonExactLamports(text);
+  } catch {
+    return null;
+  }
+  const response = gpaResponse.safeParse(json);
+  if (!response.success) return null;
+  const items: ProgramAccountItem[] = [];
+  for (const value of response.data.result.value) {
+    const item = gpaItem(value);
+    if (item !== null) items.push(item);
+  }
+  return { slot: response.data.result.context.slot, items };
 }
 
 /**
@@ -132,26 +185,13 @@ export function parseProgramAccounts(
   role: Role,
   target: Address,
 ): { slot: bigint; accounts: StakeAccount[] } | null {
-  let json: unknown;
-  try {
-    json = JSON.parse(text, (key, value: unknown, context?: { source?: string }) => {
-      const source = context?.source;
-      return key === 'lamports' && typeof value === 'number' && source !== undefined && /^[0-9]+$/.test(source)
-        ? BigInt(source)
-        : value;
-    });
-  } catch {
-    return null;
-  }
-  const response = gpaResponse.safeParse(json);
-  if (!response.success) return null;
+  const parsed = parseProgramAccountItems(text);
+  if (parsed === null) return null;
 
   const accounts: StakeAccount[] = [];
   const seen = new Set<string>();
-  for (const value of response.data.result.value) {
-    const item = gpaItem(value);
-    if (item === null) continue;
-    const data = decodeBase64(item.data);
+  for (const item of parsed.items) {
+    const data = decodeBase64(item.dataBase64);
     if (data === null) continue;
     const raw = { address: item.pubkey, data, lamports: item.lamports, owner: STAKE_PROGRAM_ADDRESS };
     const decoded = decodeStakeAccount(raw);
@@ -164,7 +204,7 @@ export function parseProgramAccounts(
     }
   }
   accounts.sort((a, b) => (a.address < b.address ? -1 : a.address > b.address ? 1 : 0));
-  return { slot: BigInt(response.data.result.context.slot), accounts };
+  return { slot: BigInt(parsed.slot), accounts };
 }
 
 /**
@@ -172,16 +212,16 @@ export function parseProgramAccounts(
  * allows 10 ms of CPU per request (test/cpu.test.ts). The owner is compared as a string, which also proves it valid;
  * the address is checked with `isAddressText` (kit's `isAddress`, cheaper).
  */
-function gpaItem(raw: unknown): { pubkey: Address; data: string; lamports: bigint } | null {
+function gpaItem(raw: unknown): ProgramAccountItem | null {
   if (!isRecord(raw) || typeof raw.pubkey !== 'string' || !isRecord(raw.account)) return null;
   const { data, owner, lamports } = raw.account;
   if (owner !== STAKE_PROGRAM_ADDRESS || typeof lamports !== 'bigint' || lamports < 0n) return null;
   if (!Array.isArray(data) || data.length !== 2 || data[1] !== 'base64' || typeof data[0] !== 'string') return null;
   if (!isAddressText(raw.pubkey)) return null;
-  return { pubkey: raw.pubkey, data: data[0], lamports };
+  return { pubkey: raw.pubkey, dataBase64: data[0], lamports };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

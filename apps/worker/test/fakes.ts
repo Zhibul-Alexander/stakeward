@@ -2,6 +2,7 @@
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { createApp } from '../src/app.ts';
+import { encodeBase64 } from '../src/base64.ts';
 
 export const PRIMARY_URL = 'https://primary.rpc.test/?api-key=test-primary-key';
 export const FALLBACK_URL = 'https://fallback.rpc.test/?api-key=test-fallback-key';
@@ -40,6 +41,36 @@ export function fakeUpstream(script: (call: UpstreamCall, index: number) => Outc
     return outcome;
   };
   return { fetch: fetchFn, calls };
+}
+
+/** One account of a getMultipleAccounts answer; null = the account does not exist. */
+export type AccountJson = { data: Uint8Array; lamports: bigint; owner: string } | null;
+
+/**
+ * A getMultipleAccounts answer as raw JSON text, the way an RPC node writes it: lamports and rentEpoch are bare JSON
+ * numbers, exact above 2^53.
+ */
+export function multipleAccountsText(id: unknown, slot: number, items: readonly AccountJson[]): string {
+  const value = items.map((item) =>
+    item === null
+      ? null
+      : {
+          data: [encodeBase64(item.data), 'base64'],
+          executable: false,
+          lamports: item.lamports.toString(),
+          owner: item.owner,
+          rentEpoch: '18446744073709551615',
+          space: item.data.length,
+        },
+  );
+  return JSON.stringify({ jsonrpc: '2.0', id, result: { context: { apiVersion: '3.0.6', slot }, value } }).replace(
+    /"(lamports|rentEpoch)":"([0-9]+)"/g,
+    '"$1":$2',
+  );
+}
+
+export function multipleAccountsAnswer(id: unknown, slot: number, items: readonly AccountJson[]): Response {
+  return new Response(multipleAccountsText(id, slot, items), { headers: { 'Content-Type': 'application/json' } });
 }
 
 export function rpcResponse(id: unknown, result: unknown): Response {

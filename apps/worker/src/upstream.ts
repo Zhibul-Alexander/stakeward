@@ -24,6 +24,12 @@ export type UpstreamEndpoints = { primary: string; fallback?: string | undefined
 
 export type UpstreamResult = { ok: true; body: string } | { ok: false; reason: 'timeout' | 'unavailable' };
 
+/**
+ * One POST attempt: the HTTP status and, for a 2xx status only, the body text (any other body is cancelled unread);
+ * or why no status came back. The timeout covers reading the body as well.
+ */
+export type AttemptResult = { status: number; body: string | null } | 'timeout' | 'network';
+
 type AttemptFailure = 'timeout' | 'network' | `http-${string}`;
 
 /** POSTs a JSON-RPC payload upstream. Never throws. */
@@ -46,10 +52,10 @@ export async function callUpstream(
   let last: AttemptFailure = 'network';
   for (const [index, endpoint] of plan.entries()) {
     if (index > 0 && options.retryDelayMs > 0) await sleep(index * options.retryDelayMs);
-    const result = await attempt(endpoint.url, payload, options);
-    if (typeof result === 'string') {
-      last = result;
-      const log = { msg: 'upstream rpc attempt failed', endpoint: endpoint.name, attempt: index + 1, reason: result };
+    const result = await attemptPost(endpoint.url, payload, options);
+    if (typeof result === 'string' || result.body === null) {
+      last = typeof result === 'string' ? result : `http-${String(result.status)}`;
+      const log = { msg: 'upstream rpc attempt failed', endpoint: endpoint.name, attempt: index + 1, reason: last };
       console.warn(JSON.stringify(log));
       continue;
     }
@@ -58,11 +64,15 @@ export async function callUpstream(
   return { ok: false, reason: last === 'timeout' ? 'timeout' : 'unavailable' };
 }
 
-async function attempt(
+/**
+ * One POST of a JSON `payload` to `url` within `timeoutMs`, reading the body too. Never throws and never logs (the URL
+ * may carry a key or a bot token). Shared by the RPC client above and the Telegram client.
+ */
+export async function attemptPost(
   url: string,
   payload: string,
-  options: UpstreamOptions,
-): Promise<{ body: string } | AttemptFailure> {
+  options: { timeoutMs: number; fetch?: typeof fetch },
+): Promise<AttemptResult> {
   const fetchFn = options.fetch ?? fetch;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -73,7 +83,7 @@ async function attempt(
       resolve('timeout');
     }, options.timeoutMs);
   });
-  const work = (async (): Promise<{ body: string } | AttemptFailure> => {
+  const work = (async (): Promise<AttemptResult> => {
     try {
       const response = await fetchFn(url, {
         method: 'POST',
@@ -83,9 +93,9 @@ async function attempt(
       });
       if (!response.ok) {
         await response.body?.cancel();
-        return `http-${String(response.status)}`;
+        return { status: response.status, body: null };
       }
-      return { body: await response.text() };
+      return { status: response.status, body: await response.text() };
     } catch {
       return controller.signal.aborted ? 'timeout' : 'network';
     }

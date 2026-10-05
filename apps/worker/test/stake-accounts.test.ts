@@ -1,6 +1,11 @@
 import { stakeAccountsFromJson, STAKE_PROGRAM_ADDRESS, U64_MAX, type StakeAccountsJson } from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
-import { programAccountsRequest } from '../src/stake-accounts.ts';
+import {
+  pairAccountsRequest,
+  parseJsonExactLamports,
+  parseProgramAccountItems,
+  programAccountsRequest,
+} from '../src/stake-accounts.ts';
 import { fakeUpstream, freshIp, testApp, type UpstreamCall } from './fakes.ts';
 import { b64, key, stakeAccountData, type StakeAccountSpec } from './transactions.ts';
 
@@ -264,5 +269,62 @@ describe('core stakeAccountsFromJson (shared JSON shape)', () => {
     ['an unknown kind', { ...good, accounts: [{ ...good.accounts[0], kind: 'rewards-pool' }] }],
   ])('rejects %s', (_case, json) => {
     expect(() => stakeAccountsFromJson(json)).toThrow(expect.objectContaining({ name: 'InvalidStakeAccountsJsonError' }));
+  });
+});
+
+describe('getProgramAccounts helpers for the monitor', () => {
+  it('pairAccountsRequest: dataSize 200, withdrawer at 44 and custodian at 92', () => {
+    expect(pairAccountsRequest(key(1), key(2))).toEqual({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getProgramAccounts',
+      params: [
+        'Stake11111111111111111111111111111111111111',
+        {
+          encoding: 'base64',
+          commitment: 'confirmed',
+          withContext: true,
+          filters: [
+            { dataSize: 200 },
+            { memcmp: { offset: 44, bytes: key(1), encoding: 'base58' } },
+            { memcmp: { offset: 92, bytes: key(2), encoding: 'base58' } },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('parseJsonExactLamports: lamports as exact bigints, everything else as JSON.parse; throws on non-JSON', () => {
+    expect(parseJsonExactLamports('{"lamports":9007199254740993,"slot":5,"a":{"lamports":1}}')).toEqual({
+      lamports: 9_007_199_254_740_993n,
+      slot: 5,
+      a: { lamports: 1n },
+    });
+    expect(parseJsonExactLamports('{"lamports":1.5}')).toEqual({ lamports: 1.5 });
+    expect(() => parseJsonExactLamports('{')).toThrow(SyntaxError);
+  });
+
+  it('parseProgramAccountItems: the slot and the well-formed stake items in answer order, undecoded', async () => {
+    const spec = { staker: key(1), withdrawer: key(1) };
+    const answer = gpaAnswer(1, 77, [
+      item(key(72), spec, { lamports: '9007199254740993' }),
+      item(key(71), spec, { owner: key(1) }),
+      { pubkey: 'nope', account: {} },
+      item(key(71), spec, { data: new Uint8Array(199) }),
+    ] as Item[]);
+    expect(parseProgramAccountItems(await answer.text())).toEqual({
+      slot: 77,
+      items: [
+        { pubkey: key(72), dataBase64: b64(stakeAccountData(spec)), lamports: 9_007_199_254_740_993n },
+        // Size and contents are the decoder's business.
+        { pubkey: key(71), dataBase64: b64(new Uint8Array(199)), lamports: 10_000_000_000n },
+      ],
+    });
+  });
+
+  it('parseProgramAccountItems: null for a JSON-RPC error or another shape', () => {
+    expect(parseProgramAccountItems('not json')).toBeNull();
+    expect(parseProgramAccountItems(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32010, message: 'x' } }))).toBeNull();
+    expect(parseProgramAccountItems(JSON.stringify({ jsonrpc: '2.0', id: 1, result: [] }))).toBeNull();
   });
 });
