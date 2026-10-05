@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { parseTokens } from '@/pages/dev-ui/tokens';
 
 /**
  * CLAUDE.md section 9: colours, sizes and other raw design values live only in src/styles/tokens.css. Components and
@@ -157,14 +158,22 @@ describe('raw design values outside tokens.css', () => {
 
 type Theme = Map<string, string>;
 
-/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (prefers-color-scheme: dark). */
-function readThemes(css: string): { light: Theme; dark: Theme } {
-  const darkStart = css.indexOf('@media (prefers-color-scheme: dark)');
+/**
+ * The dark theme's media query. `screen` keeps it off paper: a printed recovery card is dark text on white whatever
+ * the reader's system theme (DECISIONS.md D77).
+ */
+const DARK_QUERY = '@media screen and (prefers-color-scheme: dark)';
+
+const COLOUR_DECLARATION = /--color-([\w-]+):\s*(#[0-9a-f]{6});/gi;
+
+/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (DARK_QUERY); `rest` is what follows. */
+function readThemes(css: string): { light: Theme; dark: Theme; rest: string } {
+  const darkStart = css.indexOf(DARK_QUERY);
   const darkEnd = css.indexOf('@media', darkStart + 1);
   if (darkStart < 0 || darkEnd < 0) throw new Error('tokens.css: dark theme block not found');
   const read = (part: string): Theme =>
-    new Map([...part.matchAll(/--color-([\w-]+):\s*(#[0-9a-f]{6});/gi)].map((m) => [m[1] ?? '', (m[2] ?? '').toLowerCase()]));
-  return { light: read(css.slice(0, darkStart)), dark: read(css.slice(darkStart, darkEnd)) };
+    new Map([...part.matchAll(COLOUR_DECLARATION)].map((m) => [m[1] ?? '', (m[2] ?? '').toLowerCase()]));
+  return { light: read(css.slice(0, darkStart)), dark: read(css.slice(darkStart, darkEnd)), rest: css.slice(darkEnd) };
 }
 
 function relativeLuminance(hex: string): number {
@@ -222,7 +231,7 @@ describe('tokens.css colours', () => {
     expect([...themes.dark.keys()].sort()).toEqual([...themes.light.keys()].sort());
   });
 
-  for (const [name, theme] of Object.entries(themes)) {
+  for (const [name, theme] of Object.entries({ light: themes.light, dark: themes.dark })) {
     it(`${name} theme: text 4.5:1, controls and focus 3:1`, () => {
       const failures: string[] = [];
       const check = (pairs: [string, string][], minimum: number) => {
@@ -242,6 +251,23 @@ describe('tokens.css colours', () => {
       expect(failures).toEqual([]);
     });
   }
+
+  it('print is always light: the dark theme applies to screens only, and no other block overrides a colour', () => {
+    expect(css).toContain(DARK_QUERY);
+    // Exactly one dark block, and the only colour overrides are the light theme and that block.
+    expect([...css.matchAll(/@media[^{]*prefers-color-scheme[^{]*/g)].map((m) => m[0].trim())).toEqual([DARK_QUERY]);
+    expect([...themes.rest.matchAll(/--color-[\w-]+\s*:/g)].map((m) => m[0])).toEqual([]);
+    const all = [...css.matchAll(/--color-[\w-]+\s*:\s*#/g)].length;
+    expect(all).toBe(themes.light.size + themes.dark.size);
+    // Paper: browser-drawn parts (form controls, scrollbars) are light too.
+    expect(css.replace(/\s+/g, ' ')).toContain('@media print { :root { color-scheme: light; } }');
+  });
+
+  it('the /dev/ui token tables read both themes from tokens.css', () => {
+    const { colours } = parseTokens(css);
+    expect(colours.map((colour) => colour.name).sort()).toEqual([...themes.light.keys()].sort());
+    expect(colours.filter((colour) => colour.dark !== themes.dark.get(colour.name)).map((colour) => colour.name)).toEqual([]);
+  });
 
   it('the QR pair does not change with the theme: phone cameras need dark modules on a light ground', () => {
     for (const name of ['qr-dark', 'qr-light']) {

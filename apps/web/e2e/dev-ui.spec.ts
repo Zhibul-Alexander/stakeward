@@ -77,6 +77,20 @@ test('/dev/ui shows every token and component without console errors, axe violat
   expect(swatches.filter((s) => s.colour === 'rgba(0, 0, 0, 0)' || s.colour === 'transparent')).toEqual([]);
   expect(light.map((s) => s.colour)).not.toEqual(dark.map((s) => s.colour));
 
+  // The recovery card's pieces: three command blocks (idle, copied, copy failed), every support verdict, and a
+  // FAQ item that the browser opens and closes from the keyboard (a native <details>, DECISIONS.md D3; jsdom cannot
+  // check this).
+  await expect(page.locator('#components [data-slot="command-block"]')).toHaveCount(3);
+  await expect(page.locator('#components [data-verdict]')).toHaveCount(5);
+  await expect(page.locator('#components details[data-slot="faq-item"]')).toHaveCount(2);
+  const faq = page.locator('#dev-ui-faq-lock-ends');
+  await expect(faq).not.toHaveAttribute('open');
+  await faq.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(faq).toHaveAttribute('open', '');
+  await page.keyboard.press('Space');
+  await expect(faq).not.toHaveAttribute('open');
+
   // Keyboard: the wallet list opens from its button.
   const connect = page.getByRole('button', { name: 'Connect a wallet as Main key' });
   await connect.focus();

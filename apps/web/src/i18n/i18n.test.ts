@@ -53,6 +53,32 @@ describe('en.json', () => {
   it('never calls the product a 2FA wallet', () => {
     expect(entries.filter(([, text]) => /2fa|two-factor/i.test(text)).map(([key]) => key)).toEqual([]);
   });
+
+  // G2 (DECISIONS.md D81): the keys have one name each everywhere, FAQ and recovery card included. A synonym would
+  // make a reader wonder whether "the backup key" is a third key.
+  const ROLE_SYNONYMS = /\b(second wallet|main wallet|backup key|primary key|recovery key|co-?signer|guardian)\b/i;
+
+  it('uses no synonym for the role names Main key, Second key and New wallet, anywhere', () => {
+    expect(entries.filter(([, text]) => ROLE_SYNONYMS.test(text)).map(([key]) => key)).toEqual([]);
+  });
+
+  it('the role-synonym guard catches each synonym (positive control)', () => {
+    const probes = [
+      'Connect your second wallet',
+      'The Main Wallet signs',
+      'It is not a backup key',
+      'your primary key',
+      'Keep the recovery key apart',
+      'Ask your co-signer',
+      'The cosigner pays',
+      'A guardian holds it',
+    ];
+    expect(probes.filter((text) => !ROLE_SYNONYMS.test(text))).toEqual([]);
+    // Ordinary words that contain or sit next to them stay allowed.
+    expect(['Second key', 'Main key', 'New wallet', 'co-sign by link', 'a second key from a new wallet'].filter((text) => ROLE_SYNONYMS.test(text))).toEqual(
+      [],
+    );
+  });
 });
 
 describe('errorMessage()', () => {

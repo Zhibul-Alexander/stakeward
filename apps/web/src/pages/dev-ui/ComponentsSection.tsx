@@ -1,10 +1,12 @@
-import { U64_MAX } from '@stakeward/core';
+import { cliUrl, LEDGER_PUBKEY_COMMAND, recoveryCommands, REMINDER_DAYS, U64_MAX } from '@stakeward/core';
 import { useEffect, useState } from 'react';
 import { AccountRow, AccountRowError, AccountRowSkeleton } from '@/components/product/account-row';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
+import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
 import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
+import { FaqItem } from '@/components/product/faq-item';
 import { JobStatusList } from '@/components/product/job-status-list';
 import { LinkCard } from '@/components/product/link-card';
 import { QrCode } from '@/components/product/qr-code';
@@ -13,6 +15,7 @@ import { SignerList, SignerListSkeleton } from '@/components/product/signer-list
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
 import { StatusBadge, StatusBadgeSkeleton, statusLabel, type StatusBadgeStatus } from '@/components/product/status-badge';
 import { StepProgress } from '@/components/product/step-progress';
+import { SupportBadge, type SupportVerdict } from '@/components/product/support-badge';
 import {
   TransactionSummary,
   TransactionSummaryError,
@@ -58,6 +61,25 @@ const STATUSES: readonly StatusBadgeStatus[] = [
 ];
 
 const [WALLET_A, WALLET_B] = SAMPLE_WALLETS;
+
+const VERDICTS: readonly SupportVerdict[] = ['not-verified', 'works', 'works-with-warning', 'blind-signing', 'does-not-work'];
+
+/** The recovery card's commands for the sample main key, on devnet as the card of a devnet build shows them. */
+const COMMANDS = recoveryCommands({ mainKeyAddress: SAMPLE.mainKey, url: cliUrl('devnet') });
+
+/** The FAQ's parameter in these answers, as the landing fills it: "30, 14, 7, 3, and 1". */
+const FAQ_PARAMS = { days: new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(REMINDER_DAYS.map(String)) };
+
+/** An FAQ answer: one paragraph per blank-line-separated block of its en.json text. */
+function FaqAnswer({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('\n\n').map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+    </>
+  );
+}
 
 /** The action buttons a row would have on /app for its status. */
 function rowActions(row: SampleRow) {
@@ -429,6 +451,51 @@ export function ComponentsSection() {
           <RiskNote risk="withdraw-compromised" />
           <RiskNote risk="lock-ends" date={sampleExpiringEnd(clock)} />
           <RiskNote risk="unlock-opens-window" tone="danger" />
+          <Demo label={t('devUi.states.dateTime')}>
+            <RiskNote risk="lock-ends" date={sampleExpiringEnd(clock)} dateStyle="date-time" />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.commandBlock')}>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <Demo label={t('devUi.states.normal')}>
+            <CommandBlock argv={COMMANDS.rescue} label={t('recovery.commands.rescue')} />
+          </Demo>
+          <Demo label={t('devUi.states.copied')}>
+            <CommandBlock argv={COMMANDS.withdraw} label={t('recovery.commands.withdraw')} feedback="copied" />
+          </Demo>
+          <Demo label={t('devUi.states.error')}>
+            <CommandBlock argv={LEDGER_PUBKEY_COMMAND} label={t('recovery.commands.ledger')} feedback="failed" />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <CommandBlockSkeleton />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.supportBadge')}>
+        <Demo label={t('devUi.states.everyVerdict')}>
+          <div className="flex flex-wrap items-center gap-2">
+            {VERDICTS.map((verdict) => (
+              <SupportBadge key={verdict} verdict={verdict} />
+            ))}
+          </div>
+        </Demo>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.faqItem')}>
+        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+          <Demo label={t('devUi.states.closed')}>
+            <FaqItem id="dev-ui-faq-lock-ends" question={t('faq.items.lock-ends.q')}>
+              <FaqAnswer text={t('faq.items.lock-ends.a', FAQ_PARAMS)} />
+            </FaqItem>
+          </Demo>
+          <Demo label={t('devUi.states.open')}>
+            <FaqItem id="dev-ui-faq-second-lost" question={t('faq.items.second-lost.q')} defaultOpen>
+              <FaqAnswer text={t('faq.items.second-lost.a')} />
+            </FaqItem>
+          </Demo>
         </div>
       </DemoGroup>
 

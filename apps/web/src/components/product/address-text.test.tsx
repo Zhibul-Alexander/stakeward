@@ -50,6 +50,14 @@ describe('AddressText', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', `https://explorer.solana.com/address/${ADDRESS}?cluster=devnet`);
   });
 
+  // The recovery card is printed: paper cannot copy or open a link (DECISIONS.md D77).
+  it('hides the copy and explorer buttons in print', () => {
+    render(<AddressText address={ADDRESS} variant="full" explorer />);
+    expect(screen.getByRole('button', { name: `Copy address ${SHORT}` })).toHaveClass('print:hidden');
+    expect(screen.getByRole('link')).toHaveClass('print:hidden');
+    expect(screen.getByText(ADDRESS)).not.toHaveClass('print:hidden');
+  });
+
   it('kind="tx" links a transaction signature; mainnet links carry no cluster parameter', () => {
     const signature = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW';
     render(<AddressText address={signature} kind="tx" cluster="mainnet" copy={false} />);

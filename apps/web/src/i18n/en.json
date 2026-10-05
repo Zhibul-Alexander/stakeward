@@ -286,6 +286,18 @@
       "empty": "Paste an address first.",
       "invalid": "This is not a Solana address.",
       "zero": "This is the empty address, not a wallet."
+    },
+    "command": {
+      "copy": "Copy the command: {label}",
+      "copied": "Command copied",
+      "copyFailed": "Could not copy. Select the command and copy it by hand."
+    },
+    "support": {
+      "not-verified": "Not verified yet",
+      "works": "Works",
+      "works-with-warning": "Works, with a wallet warning",
+      "blind-signing": "Ledger needs blind signing",
+      "does-not-work": "Does not work"
     }
   },
   "signing": {
@@ -463,7 +475,12 @@
       "tooLong": "Too long for a QR code",
       "watching": "Waiting for the other device",
       "checkFailed": "Last check could not reach the network",
-      "paused": "Stopped checking after 30 minutes"
+      "paused": "Stopped checking after 30 minutes",
+      "closed": "Closed",
+      "open": "Open",
+      "everyVerdict": "Every verdict",
+      "dateTime": "With time",
+      "copied": "Copied"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -496,7 +513,10 @@
       "signerList": "SignerList",
       "jobStatusList": "JobStatusList",
       "qrCode": "QrCode",
-      "linkCard": "LinkCard"
+      "linkCard": "LinkCard",
+      "commandBlock": "CommandBlock",
+      "supportBadge": "SupportBadge",
+      "faqItem": "FaqItem"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -1196,6 +1216,34 @@
       "key-rule": "The new wallet, the main key and the second key must all be different wallets.",
       "not-new-wallet": "Your new wallet does not manage staking for this stake account.",
       "no-validator": "This stake was never delegated, so there is no validator to return to."
+    }
+  },
+  "recovery": {
+    "commands": {
+      "find": "List the stake accounts of the main key",
+      "show": "Show the keys and the lock of a stake account",
+      "epoch": "Show the time left in this epoch",
+      "rescue": "Move a stake account to the new wallet",
+      "deactivate": "Stop staking",
+      "withdraw": "Withdraw with both keys",
+      "withdraw-alone": "Withdraw with the main key alone",
+      "extend": "Extend the lock",
+      "remove-lock": "Remove the lock",
+      "change-second-key": "Hand the lock to a new second key",
+      "ledger": "Show the address of a Ledger key",
+      "install": "Install the Solana CLI"
+    }
+  },
+  "faq": {
+    "items": {
+      "lock-ends": {
+        "q": "What happens when the lock ends?",
+        "a": "It ends at 00:00 UTC on its end date. From then on your main key alone controls the stake again, as before.\n\nThe lock does not renew itself. If you turned on alerts, Stakeward reminds you {days} days before. Your second key can extend the lock any time before it ends. After it ends, protect the stake again in Stakeward."
+      },
+      "second-lost": {
+        "q": "I lost my second key. What now?",
+        "a": "Your SOL is safe, but it stays locked until the lock's end date. Then your main key alone can withdraw it, or protect it again with a new second key. Nobody can shorten the wait, not even Stakeward."
+      }
     }
   }
 }
