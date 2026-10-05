@@ -36,11 +36,29 @@ export const test = base.extend<Fixtures>({
 });
 
 export async function expectNoA11yViolations(page: Page, options: { include?: string } = {}): Promise<void> {
+  await settleMotion(page);
   let builder = new AxeBuilder({ page }).withTags(AXE_TAGS);
   if (options.include !== undefined) builder = builder.include(options.include);
   const { violations } = await builder.analyze();
   const summary = violations.map((v) => `${v.id} (${v.impact ?? 'n/a'}): ${v.help} -> ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
   expect(summary, 'axe violations').toEqual([]);
+}
+
+/**
+ * Waits for every finite CSS transition and animation to end. Buttons fade their colours over 150 ms
+ * (`transition-colors`), so right after emulateMedia switches the theme axe could measure a half-way colour pair
+ * (2.24:1 seen) and fail at random on a slow machine: 10 of 15 runs at 360 px without this wait, 0 of 15 with it.
+ * Infinite animations (spinners) are left alone. getAnimations() flushes styles first, so it sees transitions the
+ * theme switch has just started.
+ */
+async function settleMotion(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const finite = document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity);
+    // A cancelled or replaced transition rejects `finished`; the colour it was heading to is settled either way.
+    await Promise.all(finite.map((animation) => animation.finished.catch(() => undefined)));
+  });
 }
 
 export { expect };
