@@ -1,5 +1,6 @@
+import { shortAddress } from '@stakeward/core';
 import { PrinterIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { CLUSTER } from '@/config';
@@ -23,6 +24,16 @@ export function RecoveryPage() {
   const load = useAccountState(chain, account, attempt);
   const loaded = loadedAccount(load);
   const result = loaded === null ? null : recoveryCard(loaded.account, loaded.clock, CLUSTER);
+
+  // The tab title, and the file name a browser suggests for "Save as PDF": one per stake account.
+  useEffect(() => {
+    if (account === null) return undefined;
+    const previous = document.title;
+    document.title = t('recovery.documentTitle', { account: shortAddress(account) });
+    return () => {
+      document.title = previous;
+    };
+  }, [account]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -57,7 +68,7 @@ export function RecoveryPage() {
           }}
         />
       ) : result.kind === 'none' ? (
-        <NoRecoveryCard reason={result.reason} endedAt={result.endedAt} mainKey={loaded.account.withdrawer} />
+        <NoRecoveryCard reason={result.reason} date={result.date} mainKey={loaded.account.withdrawer} />
       ) : (
         <RecoveryCardView card={result.card} cluster={CLUSTER} readAt={loaded.clock.unixTimestamp} siteOrigin={window.location.origin} />
       )}

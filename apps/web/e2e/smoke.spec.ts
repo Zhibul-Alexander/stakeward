@@ -70,7 +70,11 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(facts.getByText(SECOND, { exact: true })).toBeVisible();
       await expect(facts.getByText(MAIN, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Print or save as PDF' })).toBeVisible();
-      await expect(page.locator('[data-slot="command-block"]')).toHaveCount(12);
+      await expect(page.locator('[data-slot="command-block"]')).toHaveCount(13);
+      // The stolen-key steps keep their numbers (a flex list item would lose its marker).
+      const steps = page.getByRole('region', { name: 'If your main key is stolen' }).locator('ol > li');
+      await expect(steps).toHaveCount(5);
+      for (const step of await steps.all()) await expect(step).toHaveCSS('display', 'list-item');
       await expect(page.locator('[data-slot="command-block"]').first()).toContainText(MAIN);
       // On paper: no site frame and no buttons, and the light theme even when the screen is dark.
       await page.emulateMedia({ media: 'print', colorScheme: 'dark' });

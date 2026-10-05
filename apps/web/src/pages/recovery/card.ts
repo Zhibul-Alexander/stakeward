@@ -11,6 +11,7 @@ import {
   type Cluster,
   type RecoveryCommandId,
   type StakeAccount,
+  ZERO_ADDRESS,
 } from '@stakeward/core';
 
 /** What the recovery card of a locked stake account shows (CLAUDE.md section 9), read from the chain alone. */
@@ -30,18 +31,25 @@ export type RecoveryCard = {
   commands: Readonly<Record<RecoveryCommandId, readonly string[]>>;
 };
 
-/** Why a stake account gets no card: there is no second key whose help the card could describe. */
-export type NoCardReason = 'no-lock' | 'lock-ended' | 'main-key-holds';
+/**
+ * Why a stake account gets no card: no second key could help it now. `nobody-holds`: a lock in force whose custodian
+ * is the zero key (`solana create-stake-account --lockup-date` without `--custodian` writes it), which nobody can sign
+ * for, so nothing moves the stake before the lock ends.
+ */
+export type NoCardReason = 'no-lock' | 'lock-ended' | 'main-key-holds' | 'nobody-holds';
 
 export type RecoveryCardResult =
   | { kind: 'card'; card: RecoveryCard }
-  /** `endedAt`: when an ended lock ended (unix seconds); null when the lockup holds no time. */
-  | { kind: 'none'; reason: NoCardReason; endedAt: bigint | null };
+  /**
+   * `date` (unix seconds): when an ended lock ended (`lock-ended`) or when a lock nobody holds ends (`nobody-holds`);
+   * null when the lockup holds no such time, and for the other reasons.
+   */
+  | { kind: 'none'; reason: NoCardReason; date: bigint | null };
 
 /**
  * The card for `account` as the chain shows it at `clock`. A lock not in force has no card (`no-lock` when the lockup
- * is empty, `lock-ended` otherwise), and neither has a lock whose custodian is the main key itself: whoever holds the
- * main key opens it (scannerStatus reads it as Not protected too).
+ * is empty, `lock-ended` otherwise), and neither has a lock whose custodian is the main key itself (whoever holds the
+ * main key opens it; scannerStatus reads it as Not protected too) or the zero key (nobody can sign for it).
  */
 export function recoveryCard(account: StakeAccount, clock: ClockView, cluster: Cluster): RecoveryCardResult {
   const { lockup } = account;
@@ -50,10 +58,15 @@ export function recoveryCard(account: StakeAccount, clock: ClockView, cluster: C
     return {
       kind: 'none',
       reason: empty ? 'no-lock' : 'lock-ended',
-      endedAt: lockup.unixTimestamp > 0n ? lockup.unixTimestamp : null,
+      date: lockup.unixTimestamp > 0n ? lockup.unixTimestamp : null,
     };
   }
-  if (lockup.custodian === account.withdrawer) return { kind: 'none', reason: 'main-key-holds', endedAt: null };
+  if (lockup.custodian === account.withdrawer) return { kind: 'none', reason: 'main-key-holds', date: null };
+  if (lockup.custodian === ZERO_ADDRESS) {
+    // A lock its epoch holds ends at no date the page can say.
+    const byDate = lockup.epoch <= clock.epoch && lockup.unixTimestamp > clock.unixTimestamp;
+    return { kind: 'none', reason: 'nobody-holds', date: byDate ? lockup.unixTimestamp : null };
+  }
 
   const lockUntil = lockup.unixTimestamp > clock.unixTimestamp ? lockup.unixTimestamp : null;
   const lockEpoch = lockup.epoch > clock.epoch ? lockup.epoch : null;

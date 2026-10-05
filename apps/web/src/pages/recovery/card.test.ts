@@ -114,7 +114,7 @@ describe('recoveryCard', () => {
     expect(recoveryCard(account({ unixTimestamp: 0n, epoch: 0n, custodian: ZERO_ADDRESS }), CLOCK, 'mainnet')).toEqual({
       kind: 'none',
       reason: 'no-lock',
-      endedAt: null,
+      date: null,
     });
     // Removed early by the second key (SetLockup to 0): the custodian is still written, the lock is empty.
     expect(recoveryCard(account({ unixTimestamp: 0n, epoch: 0n, custodian: K }), CLOCK, 'mainnet')).toMatchObject({
@@ -123,7 +123,7 @@ describe('recoveryCard', () => {
     expect(recoveryCard(account({ unixTimestamp: NOW - DAY, epoch: 0n, custodian: K }), CLOCK, 'mainnet')).toEqual({
       kind: 'none',
       reason: 'lock-ended',
-      endedAt: NOW - DAY,
+      date: NOW - DAY,
     });
     // The lock holds until the clock passes T: at T exactly it has ended (isLockupInForce).
     expect(recoveryCard(account({ unixTimestamp: NOW, epoch: 0n, custodian: K }), CLOCK, 'mainnet')).toMatchObject({
@@ -132,12 +132,26 @@ describe('recoveryCard', () => {
     expect(recoveryCard(account({ unixTimestamp: 0n, epoch: 900n, custodian: K }), CLOCK, 'mainnet')).toEqual({
       kind: 'none',
       reason: 'lock-ended',
-      endedAt: null,
+      date: null,
     });
     expect(recoveryCard(account({ unixTimestamp: T, epoch: 0n, custodian: A }), CLOCK, 'mainnet')).toEqual({
       kind: 'none',
       reason: 'main-key-holds',
-      endedAt: null,
+      date: null,
+    });
+  });
+
+  it('a lock in force that the zero key holds (create-stake-account without --custodian): nobody can help, no card', () => {
+    expect(recoveryCard(account({ unixTimestamp: T, epoch: 0n, custodian: ZERO_ADDRESS }), CLOCK, 'mainnet')).toEqual({
+      kind: 'none',
+      reason: 'nobody-holds',
+      date: T,
+    });
+    // Held by its epoch: no date to say.
+    expect(recoveryCard(account({ unixTimestamp: T, epoch: 950n, custodian: ZERO_ADDRESS }), CLOCK, 'mainnet')).toEqual({
+      kind: 'none',
+      reason: 'nobody-holds',
+      date: null,
     });
   });
 });

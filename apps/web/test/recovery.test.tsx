@@ -11,7 +11,7 @@ import {
   type Lockup,
 } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
-import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
+import { START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderStakePage, SCENARIO_TIMEOUT, WAIT } from './support/stake-pages.tsx';
@@ -123,8 +123,77 @@ describe('/recovery/:account: the recovery card', () => {
       const row = facts.getByText('Staking managed by', { selector: 'dt' }).parentElement as HTMLElement;
       expect(within(row).getByText(service)).toBeInTheDocument();
       expect(
-        screen.getByText('Staking is managed by another key: that key or its service stops the staking, not your main key.'),
+        screen.getByText(
+          'Staking is managed by another key: that key or its service stops the staking. If that key is gone or is not yours, first move the stake to a new wallet as under "If your main key is stolen": the new wallet then manages the staking too.',
+        ),
       ).toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'a stolen main key: extend first if there is no time, then the new wallet, the list and the rescue, numbered',
+    async () => {
+      const w = await world();
+      const S = await stake(w, { unixTimestamp: T, epoch: 0n, custodian: w.K });
+      renderStakePage(w.chain, `/recovery/${S}`, []);
+
+      const section = await screen.findByRole('region', { name: 'If your main key is stolen' }, WAIT);
+      const steps = within(within(section).getByRole('list')).getAllByRole('listitem');
+      expect(steps.map((step) => step.textContent.slice(0, 40))).toEqual([
+        'Use a computer you trust, not the one wh',
+        'If you cannot finish soon, first extend ',
+        'Make a new wallet from a new seed phrase',
+        'List every stake account of the main key',
+        'Move each of them to the new wallet. The',
+      ]);
+      // The page's tab title, which is also the name a browser suggests for the saved PDF.
+      expect(document.title).toBe(`Stakeward recovery card ${S.slice(0, 3)}...${S.slice(-3)}`);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'a lock its epoch holds (set outside Stakeward): no date, no extend or remove commands, and it says why',
+    async () => {
+      const w = await world();
+      const epoch = START_EPOCH + 30n;
+      const S = await stake(w, { unixTimestamp: 0n, epoch, custodian: w.K });
+      renderStakePage(w.chain, `/recovery/${S}`, []);
+
+      const facts = within(await screen.findByRole('region', { name: 'This stake account' }, WAIT));
+      expect(facts.getByText(`When epoch ${String(epoch)} begins`)).toBeInTheDocument();
+      expect(facts.getByText('If you lose the second key, you wait until the lock ends to withdraw or rescue this stake.')).toBeInTheDocument();
+      const extend = screen.getByRole('region', { name: 'To extend or remove the lock' });
+      expect(extend).toHaveTextContent(
+        `This lock also holds until epoch ${String(epoch)} begins, which was set outside Stakeward. Stakeward and the commands on this card change only the date of a lock, so they cannot shorten or remove this one.`,
+      );
+      expect(within(extend).queryByRole('link')).not.toBeInTheDocument();
+      expect(extend.querySelectorAll('[data-slot="command-block"]')).toHaveLength(0);
+      expect(screen.queryByText(/^If you cannot finish soon, first extend/)).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/^Nobody can withdraw this stake or move it to a new wallet until the lock ends, not even you\./),
+      ).toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'a lock no key holds (the zero key as custodian): no card, and no promise anyone can help before it ends',
+    async () => {
+      const w = await world();
+      const S = await stake(w, { unixTimestamp: T, epoch: 0n, custodian: ZERO_ADDRESS });
+      renderStakePage(w.chain, `/recovery/${S}`, []);
+      expect(
+        await screen.findByText(
+          `This stake account is locked until ${formatUtcDate(T) ?? ''} by a lock that no key holds. Nobody can withdraw it, move it or change the lock before then, not even with Stakeward. After that, the main key alone can withdraw it: protect it again then.`,
+          undefined,
+          WAIT,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Protect your stake' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
+      expect(document.querySelectorAll('[data-slot="command-block"]')).toHaveLength(0);
     },
     SCENARIO_TIMEOUT,
   );
