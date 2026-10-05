@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const CI = Boolean(process.env['CI']);
+/** Port of `vite preview`. Another checkout's preview on the same port would be reused locally: give each its own. */
+const PORT = Number(process.env['E2E_PORT'] ?? '4173');
 
 /**
  * Browser tests on the built site (CLAUDE.md section 13, layer 4). `pnpm e2e` builds for devnet first; `vite preview`
@@ -13,7 +15,7 @@ export default defineConfig({
   retries: CI ? 1 : 0,
   reporter: CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: `http://localhost:${String(PORT)}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -22,8 +24,8 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 740 } } },
   ],
   webServer: {
-    command: 'pnpm exec vite preview',
-    url: 'http://localhost:4173',
+    command: `pnpm exec vite preview --port ${String(PORT)} --strictPort`,
+    url: `http://localhost:${String(PORT)}`,
     reuseExistingServer: !CI,
     timeout: 30_000,
   },
