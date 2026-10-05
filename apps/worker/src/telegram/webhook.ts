@@ -8,6 +8,7 @@ import { allowRequest } from '../rate-limit.ts';
 import type { AppEnv } from '../app.ts';
 import {
   helpText,
+  linkBudgetText,
   linkedText,
   linkLimitText,
   MAX_LINKS_PER_CHAT,
@@ -25,12 +26,21 @@ import {
  * 4. At most TELEGRAM_RATE_LIMIT updates per chat (the IP is always Telegram's); over it, 200 {} without a reply.
  * 5. `my_chat_member` kicked or left (the user blocked the bot or removed it from a group) forgets the chat at once.
  * 6. /start <address>, /status, /stop, /help. The reply goes in the response body (a sendMessage the Bot API runs
- *    for us): no outgoing request and no token needed.
+ *    for us): no outgoing request and no token needed. Every /start counts against MAX_LINK_WRITES_PER_DAY.
  * A D1 failure is thrown to app.onError -> 500, and Telegram retries; every command is idempotent.
  * Logged: the kind of update only. Never the body, the chat id, the wallet or the headers.
  */
 
 export const MAX_TELEGRAM_UPDATE_BYTES = 64 * 1024;
+
+/**
+ * /start link writes per UTC day, for every chat together. The per-chat rate limit does not bound writes: any user can
+ * open more chats (a group is free), and a /start and /stop churn of distinct wallets writes about 4 rows per update.
+ * The free D1 write quota (100 000 rows a day) is shared by dev and prod, and the monitor's lease is a write: once it
+ * is used up no pass runs anywhere until 00:00 UTC. A /start counts whether or not it adds a link (one meta row);
+ * a /stop deletes only links some /start added. Past the budget /start writes nothing; /status and /stop still work.
+ */
+export const MAX_LINK_WRITES_PER_DAY = 1_000;
 
 const SECRET_HEADER = 'X-Telegram-Bot-Api-Secret-Token';
 
@@ -162,7 +172,11 @@ export function telegramWebhookHandler(now: () => number) {
         const wallet = command.arg;
         if (wallet === null) return reply(c, chatId, helpText(origin));
         if (!isAddressText(wallet) || wallet === ZERO_ADDRESS) return reply(c, chatId, notAnAddressText(origin));
-        const [, state] = await db.batch([
+        const today = new Date(now()).toISOString().slice(0, 10);
+        const used = await db.prepare(SQL.LINK_WRITES).bind(today).first<{ n: unknown }>();
+        if (Number(used?.n ?? 0) >= MAX_LINK_WRITES_PER_DAY) return reply(c, chatId, linkBudgetText());
+        const [, , state] = await db.batch([
+          db.prepare(SQL.LINK_WRITES_UP).bind(today),
           db.prepare(SQL.LINK_WALLET).bind(wallet, chatId, now(), MAX_LINKS_PER_CHAT),
           db.prepare(SQL.LINK_STATE).bind(wallet, chatId),
         ]);

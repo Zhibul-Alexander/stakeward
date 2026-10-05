@@ -62,6 +62,14 @@ export function linkLimitText(): string {
   );
 }
 
+/** /start <address> refused: the webhook made MAX_LINK_WRITES_PER_DAY link writes today (telegram/webhook.ts). */
+export function linkBudgetText(): string {
+  return (
+    'Stakeward has added as many alert links today as it allows. Try again after 00:00 UTC; the alerts you already ' +
+    'have keep coming.'
+  );
+}
+
 /**
  * /status: the wallets this chat follows, each with the number of its watched stake accounts, and the age of the last
  * successful monitor pass (`lastPassAt`, null = none yet) at `nowMs`.

@@ -178,6 +178,15 @@ ON CONFLICT (stake_account) DO UPDATE SET
   fingerprint = excluded.fingerprint
 WHERE accounts.state = 'closed' AND excluded.slot > accounts.slot`,
 
+  // ?1 = today (YYYY-MM-DD, UTC). /start link writes the webhook made today: meta.link_writes {"day","n"}, 0 on a new
+  // day (telegram/webhook.ts MAX_LINK_WRITES_PER_DAY).
+  LINK_WRITES: `SELECT CASE WHEN value ->> '$.day' = ?1 THEN value ->> '$.n' ELSE 0 END AS n FROM meta WHERE key = 'link_writes'`,
+
+  // ?1 = today. One more /start link write today (a new day starts at 1); in the batch before LINK_WALLET.
+  LINK_WRITES_UP: `INSERT INTO meta (key, value) VALUES ('link_writes', json_object('day', ?1, 'n', 1))
+ON CONFLICT (key) DO UPDATE SET value = json_object('day', ?1, 'n',
+  CASE WHEN meta.value ->> '$.day' = ?1 THEN (meta.value ->> '$.n') + 1 ELSE 1 END)`,
+
   // ?1 wallet, ?2 chat, ?3 now ms, ?4 = links per chat (20). The limit and the insert are one atomic statement.
   LINK_WALLET: `INSERT INTO alert_links (wallet, chat_id, created_at, last_event_id)
 SELECT ?1, ?2, ?3, (SELECT COALESCE(MAX(id), 0) FROM events)
