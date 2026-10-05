@@ -7,6 +7,7 @@ export * from './constants.ts';
 export * from './decode.ts';
 export * from './diff.ts';
 export * from './errors.ts';
+export * from './fingerprint.ts';
 export * from './fees.ts';
 export * from './format.ts';
 export * from './inspect.ts';

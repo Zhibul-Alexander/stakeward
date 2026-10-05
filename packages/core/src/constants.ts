@@ -12,6 +12,15 @@ export { COMPUTE_BUDGET_PROGRAM_ADDRESS, STAKE_PROGRAM_ADDRESS, SYSTEM_PROGRAM_A
 export type Cluster = 'mainnet' | 'devnet';
 
 /**
+ * Genesis hash of each cluster (RPC getGenesisHash). Tells which cluster an RPC endpoint really serves: the scripts
+ * check it before they send, the monitor before it believes a batch of missing accounts.
+ */
+export const GENESIS_HASH = {
+  devnet: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',
+  mainnet: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d',
+} as const satisfies Record<Cluster, string>;
+
+/**
  * Phantom may append Lighthouse assertion instructions to the end of a transaction (CLAUDE.md section 6).
  * It is the only program besides stake, system (nonce) and compute budget that may appear in our transactions.
  */
