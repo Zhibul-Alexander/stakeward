@@ -149,7 +149,7 @@ describe('messages', () => {
     );
     expect(messages.flatMap((m) => alertsIn(m.text))).toEqual([balance, ...rest.map(deactivatedText)]);
     for (const message of messages) {
-      expect(message.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue` });
+      expect(message.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` });
       expect(new URL(message.button?.url ?? '').origin).toBe(SITE);
       expect(message.linkPreviewDisabled).toBe(true);
     }
@@ -449,7 +449,7 @@ describe('a busy chat does not hold back the others', () => {
       ...busyTexts.slice(0, 5),
       'And 95 more alerts for the wallets this chat follows. The Stakeward accounts page lists every change.',
     ]);
-    expect(first?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue` });
+    expect(first?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${busyWallet}` });
 
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', pending: 51, messages: 2 });

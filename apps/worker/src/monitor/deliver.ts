@@ -202,7 +202,7 @@ export function planDeliveries(
     if (first === undefined) continue;
     const covered = opts.fullWindow ? list : items;
     if (covered.length > items.length) text = `${text}\n\n${moreAlertsText(covered.length - items.length)}`;
-    const buttonAlert = covered.find((item) => item.alert.path === '/rescue')?.alert ?? first.alert;
+    const buttonAlert = covered.find((item) => isRescuePath(item.alert.path))?.alert ?? first.alert;
     const eventIds = covered.map((item) => item.event.id);
     plan.messages.push({
       chatId,
@@ -288,4 +288,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** The rescue wizard, with or without the main key filled in (`/rescue?address=...`, core formatAlert). */
+function isRescuePath(path: string): boolean {
+  return path === '/rescue' || path.startsWith('/rescue?');
 }
