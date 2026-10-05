@@ -4,7 +4,7 @@ import { build, key } from '../test/craft.ts';
 import { expectedFeePayer, type BlockhashLifetime, type Lifetime, type TransactionAction, type TransactionKind } from './actions.ts';
 import { deriveNonceAccountAddress } from './builders.ts';
 import { NONCE_ACCOUNT_SEED } from './constants.ts';
-import { canPayFee, networkFeeFor } from './fees.ts';
+import { canPayFee, networkFeeFor, payerOutflow } from './fees.ts';
 import { inspectTransaction } from './inspect.ts';
 
 const SETUP_NONCE = await deriveNonceAccountAddress(key(3));
@@ -68,5 +68,26 @@ describe('networkFeeFor: the fee a plan expects before anything is built', () =>
       const { requiredSigners, networkFeeLamports } = inspected.summary;
       expect(networkFeeFor(requiredSigners.length), `${action.kind} on ${lifetime.kind}`).toBe(networkFeeLamports);
     }
+  });
+});
+
+describe('payerOutflow: what the fee payer pays besides the fee', () => {
+  const A = key(1);
+  const S = key(4);
+
+  it('a nonce setup: the deposit', async () => {
+    const nonceAccount = await deriveNonceAccountAddress(A);
+    expect(
+      payerOutflow({ kind: 'nonce-setup', nonceAccount, nonceAuthority: A, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n }),
+    ).toBe(1_056_640n);
+  });
+
+  it.each<TransactionAction>([
+    { kind: 'protect', stakeAccount: S, mainKey: A, secondKey: key(2), lockUntil: 1_825_545_600n },
+    { kind: 'withdraw', stakeAccount: S, mainKey: A, secondKey: null, recipient: A, lamports: 5_000_000_000n },
+    { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: key(2), newWallet: key(3) },
+    { kind: 'nonce-close', nonceAccount: key(6), nonceAuthority: A, recipient: A, lamports: 1_056_640n },
+  ])('$kind: nothing', (action) => {
+    expect(payerOutflow(action)).toBe(0n);
   });
 });

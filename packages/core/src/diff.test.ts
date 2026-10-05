@@ -352,8 +352,14 @@ describe('formatAlert', () => {
         'Stake 7xK...9fQ was deactivated. If this was not you, your main key may be stolen. ' +
         'Your SOL cannot be withdrawn without the second key.',
       buttonLabel: 'Open Rescue',
-      path: '/rescue',
+      path: `/rescue?address=${A}`,
     });
+  });
+
+  it('Open Rescue opens the rescue wizard with the stored main key filled in', () => {
+    const event = alertFor(change({ staker: X }));
+    expect(formatAlert(event, lockedNow)).toMatchObject({ buttonLabel: 'Open Rescue', path: `/rescue?address=${A}` });
+    expect(formatAlert(event, { ...lockedNow, withdrawer: D }).path).toBe(`/rescue?address=${D}`);
   });
 
   it('says when the lock no longer protects the SOL', () => {
@@ -423,7 +429,7 @@ describe('formatAlert', () => {
       expect(alert.text.length).toBeGreaterThan(20);
       expect(alert.text).not.toMatch(/custodian|withdrawer|staker|<|>/i);
       expect(alert.buttonLabel).not.toBe('');
-      expect(alert.path).toMatch(/^\/(rescue|app\?address=[1-9A-HJ-NP-Za-km-z]+)$/);
+      expect(alert.path).toMatch(/^\/(rescue|app)\?address=[1-9A-HJ-NP-Za-km-z]+$/);
     }
   });
 });

@@ -245,6 +245,22 @@ describe('LiteSvmChain', () => {
     expect(testChain.stakeAccount(s2)?.lockup.custodian).toBe(ZERO_ADDRESS);
   });
 
+  it('forgets the statuses of what landed so far (a node whose status cache dropped them); the accounts keep the change', async () => {
+    const s1 = await testChain.createStakeAccount({ staker: A.address, withdrawer: A.address });
+    const s2 = await testChain.createStakeAccount({ staker: A.address, withdrawer: A.address });
+    const lockUntil = START_UNIX_TIMESTAMP + HOUR;
+    const sig1 = await chain.send(await sign((await protect(s1, lockUntil)).bytes, A, K));
+    chain.forgetSignatureStatuses();
+    expect(await chain.getSignatureStatuses([sig1])).toEqual([null]);
+    expect(testChain.stakeAccount(s1)?.lockup.custodian).toBe(K.address);
+
+    // Only what landed before the call is forgotten.
+    const sig2 = await chain.send(await sign((await protect(s2, lockUntil)).bytes, A, K));
+    const [first, second] = await chain.getSignatureStatuses([sig1, sig2]);
+    expect(first).toBeNull();
+    expect(second).toMatchObject({ confirmationStatus: 'confirmed', error: null });
+  });
+
   it('fails the next calls on request, e.g. a network error', async () => {
     const offline = new TypeError('Failed to fetch');
     chain.failNext('getClock', offline, 2);

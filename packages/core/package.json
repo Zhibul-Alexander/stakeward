@@ -10,6 +10,7 @@
     "./test/litesvm-chain": "./test/litesvm-chain.ts",
     "./test/svm": "./test/svm.ts",
     "./test/test-wallet-port": "./test/test-wallet-port.ts",
+    "./test/thief": "./test/thief.ts",
     "./test/wallet": "./test/wallet.ts"
   },
   "scripts": {

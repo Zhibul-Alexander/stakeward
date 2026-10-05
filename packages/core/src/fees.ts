@@ -1,3 +1,4 @@
+import type { TransactionAction } from './actions.ts';
 import { COMPUTE_UNIT_LIMIT, COMPUTE_UNIT_PRICE_MICRO_LAMPORTS } from './constants.ts';
 import { LAMPORTS_PER_SIGNATURE } from './inspect.ts';
 
@@ -21,4 +22,13 @@ export function canPayFee(balance: bigint, fee: bigint, rentExemptMinimum: bigin
 export function networkFeeFor(signers: number): bigint {
   const priority = (BigInt(COMPUTE_UNIT_LIMIT) * COMPUTE_UNIT_PRICE_MICRO_LAMPORTS + 999_999n) / 1_000_000n;
   return LAMPORTS_PER_SIGNATURE * BigInt(signers) + priority;
+}
+
+/**
+ * Lamports the fee payer pays on top of the network fee: a nonce setup moves the account's deposit (`lamports`, which
+ * comes back on close) out of the payer; every other kind costs the payer only the fee. The signing engine adds this
+ * to its fee check, so a payer who cannot cover the deposit is told before any wallet is asked.
+ */
+export function payerOutflow(action: TransactionAction): bigint {
+  return action.kind === 'nonce-setup' ? action.lamports : 0n;
 }
