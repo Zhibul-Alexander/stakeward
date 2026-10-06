@@ -17,7 +17,8 @@
   // Workers Logs stay on (the monitor's pass reports, errors). Query strings are redacted: Workers Logs store each
   // request URL next to the client IP and country, and /api/stake-accounts?withdrawer=, /api/accounts?wallet= and
   // /api/telegram/link?wallet= name a wallet (CLAUDE.md section 2.7). Inherited by dev and prod. Never turn traces on:
-  // the URLs of outbound requests carry the Helius API key (RPC_URL) and the bot token (test/observability.review.test.ts).
+  // the URLs of outbound requests carry the Helius API keys (RPC_URL, MONITOR_RPC_URL) and the bot token
+  // (test/observability.review.test.ts).
   "observability": {
     "enabled": true,
     "redact_query_string": true,
@@ -28,6 +29,10 @@
   //   RPC_URL                  required. Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
   //   RPC_FALLBACK_URL         optional. Second RPC URL, used for reads only when RPC_URL fails. Not listed in
   //                            secrets.required, so wrangler dev ignores it in .dev.vars (set it with `wrangler secret put`).
+  //   MONITOR_RPC_URL          optional. RPC URL for the monitor alone, with its own API key, so that searches on the site
+  //                            cannot use up the quota the alerts need (SECURITY-CHECK П22). The monitor falls back to
+  //                            RPC_FALLBACK_URL, else RPC_URL. Unset: the monitor reads like the site. Not in
+  //                            secrets.required either (`wrangler secret put`, like RPC_FALLBACK_URL).
   //   TELEGRAM_BOT_TOKEN       required. Token of this environment's bot.
   //   TELEGRAM_WEBHOOK_SECRET  required. Value Telegram sends in X-Telegram-Bot-Api-Secret-Token.
   //   ADMIN_CHAT_ID            required. Telegram chat id for monitor and worker error reports.

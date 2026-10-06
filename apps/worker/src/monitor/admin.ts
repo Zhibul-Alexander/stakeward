@@ -1,5 +1,5 @@
 import type { Cluster } from '@stakeward/core';
-import { MONITOR_LIMITS } from './config.ts';
+import { MONITOR_LIMITS, type RpcSecret } from './config.ts';
 import type { Stage } from './pass.ts';
 
 /**
@@ -26,7 +26,15 @@ export const ADMIN_KINDS: readonly AdminKind[] = [
  */
 export type BotMismatch = 'webhook' | 'refused' | 'username';
 
-export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number; bot?: readonly BotMismatch[] };
+export type AdminCounts = {
+  stage?: Stage;
+  errorName?: string;
+  passes?: number;
+  kb?: number;
+  bot?: readonly BotMismatch[];
+  /** wrong-cluster: the secret of the node that answered for another cluster. */
+  rpc?: RpcSecret;
+};
 
 /** The wrangler environment that deploys each cluster (wrangler.jsonc: env.dev is devnet, env.prod is mainnet). */
 const WRANGLER_ENV: Record<Cluster, string> = { devnet: 'dev', mainnet: 'prod' };
@@ -48,7 +56,10 @@ export function adminText(kind: AdminKind, cluster: Cluster | null, counts: Admi
         'Health turns red after 10 minutes. See Workers Logs.'
       );
     case 'wrong-cluster':
-      return `${monitor}: RPC_URL answers for another cluster. Account closures were not recorded.`;
+      return (
+        `${monitor}: ${counts.rpc ?? 'an RPC it reads'} answers for another cluster. ` +
+        'Account closures were not recorded.'
+      );
     case 'pass-died':
       return (
         `${monitor}: the previous pass did not finish, most likely the 10 ms CPU limit of the Workers Free plan. ` +

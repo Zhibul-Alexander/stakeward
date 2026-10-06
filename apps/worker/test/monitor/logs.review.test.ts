@@ -1,11 +1,11 @@
-// Review: the monitor never writes a chat id, the bot token, RPC_URL or a Telegram API URL to the console (step 5 spec
-// section 12.3; CLAUDE.md section 8: chat ids are never logged). Passes with sends, a 403, a fetch error that quotes
-// the URL and the chat, a refused token, an RPC retry and an exception whose message quotes all of them, through
-// the production logger.
+// Review: the monitor never writes a chat id, the bot token, RPC_URL, MONITOR_RPC_URL or a Telegram API URL to the
+// console (step 5 spec section 12.3; CLAUDE.md section 8: chat ids are never logged). Passes with sends, a 403, a
+// fetch error that quotes the URL and the chat, a refused token, an RPC retry and an exception whose message quotes
+// all of them, through the production logger.
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { monitorDepsFromEnv } from '../../src/monitor/pass.ts';
-import { PRIMARY_URL } from '../fakes.ts';
+import { MONITOR_URL, PRIMARY_URL } from '../fakes.ts';
 import type { StakeAccountSpec } from '../transactions.ts';
 import { key, LOCK_UNTIL } from '../transactions.ts';
 import { ADMIN_CHAT, createHarness, testEnv } from './harness.ts';
@@ -89,6 +89,39 @@ describe('monitor logs', () => {
       'api-key',
       'api.telegram.org/bot',
     ]) {
+      expect(logged).not.toContain(secret);
+    }
+  });
+
+  it('no MONITOR_RPC_URL either: its fetch fails quoting the URL, the site RPC_URL answers', async () => {
+    const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+    const spies = methods.map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
+    const output = () => spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(String).join(' '))).join('\n');
+
+    const h = createHarness({ env: { MONITOR_RPC_URL: MONITOR_URL } });
+    h.deps.log = monitorDepsFromEnv(testEnv({ MONITOR_RPC_URL: MONITOR_URL })).log;
+    const routed = h.deps.fetch;
+    let failed = false;
+    h.deps.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === MONITOR_URL && !failed) {
+        failed = true;
+        throw new TypeError(`fetch ${url} failed`);
+      }
+      return routed(input, init);
+    };
+
+    h.at('2026-10-05T01:00:00Z');
+    h.chain.putStake(STAKE, SPEC);
+    await h.seedWatched([STAKE]);
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    h.at('2026-10-05T01:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1 });
+    expect(failed).toBe(true);
+
+    const logged = output();
+    expect(logged).toContain('upstream rpc attempt failed');
+    for (const secret of [MONITOR_URL, new URL(MONITOR_URL).host, 'test-monitor-key', PRIMARY_URL, 'api-key']) {
       expect(logged).not.toContain(secret);
     }
   });

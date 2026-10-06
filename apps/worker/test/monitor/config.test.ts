@@ -7,7 +7,7 @@ import {
   MonitorConfigError,
   siteOriginOf,
 } from '../../src/monitor/config.ts';
-import { FALLBACK_URL, PRIMARY_URL } from '../fakes.ts';
+import { FALLBACK_URL, MONITOR_URL, PRIMARY_URL } from '../fakes.ts';
 
 /** The test environment with some values replaced (or removed with undefined), whatever their generated types say. */
 function envWith(overrides: Record<string, string | undefined>): Env {
@@ -25,8 +25,31 @@ describe('monitorConfig', () => {
       telegramToken: '123456789:test-token',
       adminChatId: '700000001',
       rpc: { primary: PRIMARY_URL, fallback: undefined },
+      rpcSecrets: { primary: 'RPC_URL', fallback: 'RPC_FALLBACK_URL' },
     });
     expect(monitorConfig(envWith({ RPC_FALLBACK_URL: FALLBACK_URL })).rpc).toEqual({ primary: PRIMARY_URL, fallback: FALLBACK_URL });
+  });
+
+  it('MONITOR_RPC_URL: the monitor reads through it, then RPC_FALLBACK_URL, else the site RPC_URL', () => {
+    expect(monitorConfig(envWith({ MONITOR_RPC_URL: MONITOR_URL }))).toMatchObject({
+      rpc: { primary: MONITOR_URL, fallback: PRIMARY_URL },
+      rpcSecrets: { primary: 'MONITOR_RPC_URL', fallback: 'RPC_URL' },
+    });
+    expect(monitorConfig(envWith({ MONITOR_RPC_URL: MONITOR_URL, RPC_FALLBACK_URL: FALLBACK_URL }))).toMatchObject({
+      rpc: { primary: MONITOR_URL, fallback: FALLBACK_URL },
+      rpcSecrets: { primary: 'MONITOR_RPC_URL', fallback: 'RPC_FALLBACK_URL' },
+    });
+    // Empty (a cleared secret) is the same as not set.
+    for (const empty of ['', undefined]) {
+      expect(monitorConfig(envWith({ MONITOR_RPC_URL: empty, RPC_FALLBACK_URL: '' }))).toMatchObject({
+        rpc: { primary: PRIMARY_URL, fallback: '' },
+        rpcSecrets: { primary: 'RPC_URL', fallback: 'RPC_FALLBACK_URL' },
+      });
+      expect(monitorConfig(envWith({ MONITOR_RPC_URL: MONITOR_URL, RPC_FALLBACK_URL: empty })).rpc).toEqual({
+        primary: MONITOR_URL,
+        fallback: PRIMARY_URL,
+      });
+    }
   });
 
   it('picks the preset of MONITOR_PLAN; an unknown plan or cluster is a deploy bug', () => {
