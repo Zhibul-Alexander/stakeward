@@ -167,6 +167,26 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const blocksWithA = [...document.querySelectorAll('[data-slot="command-block"]')].filter((group) => group.textContent.includes(w.A.address));
       expect(blocksWithA).toEqual([findBlock]);
 
+      // What to do, read on paper with no one to ask (CLAUDE.md section 9).
+      const caseOf = (title: string) => screen.getByRole('heading', { level: 3, name: title }).closest('section') as HTMLElement;
+      const stolen = caseOf('Your main key is stolen, or someone saw its seed phrase');
+      // The thief can split while the stake accounts move one at a time: list them again after the moves. The card
+      // printed again names the new wallet, so this copy is the only one that lists the stolen key's accounts.
+      const listAgain = within(stolen).getByText(/run the command that lists them again/);
+      expect(follows(block('Move a stake account to the new wallet'), listAgain)).toBe(true);
+      expect(listAgain.textContent).toMatch(/lists them again.*until it lists none.*open this card again.*Keep this copy/s);
+      // Every new key comes from a new seed phrase, never from a Ledger that holds a key of this card.
+      for (const part of [stolen, caseOf('Your second key is stolen, or someone saw its seed phrase')]) {
+        expect(part).toHaveTextContent('a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with solana-keygen new');
+        expect(part).toHaveTextContent('Never use the Ledger that holds your main key or your second key, not even another account on it');
+      }
+      expect(caseOf('You lost the second key')).toHaveTextContent('a new second key made from a new seed phrase');
+      const limits = screen.getByRole('heading', { level: 2, name: 'What no one can undo' }).closest('section') as HTMLElement;
+      expect(within(limits).getByText(/^Two keys from one seed phrase protect nothing/)).toBeInTheDocument();
+      // The command line steps say what was run (keypair files) and what was not (a real Ledger), as the README does.
+      expect(screen.getByText(/^Tested with Solana CLI 4\.3\.0 on a local Solana test validator, with keypair files\.$/)).toBeInTheDocument();
+      expect(screen.getByText(/^To find which Ledger key is yours.* These commands have not been tried with a real Ledger yet\.$/)).toBeInTheDocument();
+
       // Risk before action: the unlock warning comes before the remove-lock command.
       const unlockRisk = document.querySelector('[data-risk="unlock-opens-window"]') as HTMLElement;
       expect(follows(unlockRisk, block('Remove the lock'))).toBe(true);

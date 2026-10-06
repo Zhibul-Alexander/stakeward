@@ -297,6 +297,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
           <li>{t('recovery.limits.lostAndStolen')}</li>
           <li>{t('recovery.limits.bothLost')}</li>
           <li>{t('recovery.limits.bothStolen')}</li>
+          <li>{t('recovery.limits.sameSeed')}</li>
         </ul>
       </CardSection>
 
