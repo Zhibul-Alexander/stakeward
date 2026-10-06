@@ -65,6 +65,7 @@ Ledger отказывается разбирать транзакцию, есл�
 - `allowBuilds: { esbuild, workerd }` в pnpm-workspace.yaml: pnpm 12 по умолчанию запрещает install-скрипты, а этим двум пакетам нужен postinstall.
 - `minimumReleaseAge` оставили по умолчанию (1 день). Пакеты моложе суток pnpm сам дописывает в `minimumReleaseAgeExclude`; этот список коммитим. Поправка 06.10.2026: порог задан явно и строгий, исключений нет, добавлен `trustPolicy: no-downgrade` (D97).
 - `pnpm audit` на чистой установке нашёл 11 уязвимостей (3 high) в undici 7.29.0 и sharp 0.35.2. Оба пришли через `@cloudflare/vitest-pool-workers` (он закрепил старые miniflare и wrangler 4.124.0), то есть только в тестовой цепочке. Закрыли патч-версиями через `overrides`: `undici@<7.29.1 → 7.29.1`, `sharp@<0.35.4 → 0.35.4`. После этого `No known vulnerabilities found`, тесты воркера проходят. Убрать overrides, когда выйдет новый pool-workers.
+- Поправка 06.10.2026: `check` в CI упал на `pnpm audit` — новое предупреждение GHSA-wq5f-xc86-pv6w (high, librsvg) на sharp ниже 0.35.5, путь в том числе через wrangler 4.146.0 → miniflare. Override поднят до `sharp@<0.35.5 → 0.35.5` (опубликован 27.09.2026 через GitHub Actions с provenance, проходит `minimumReleaseAge` и `trustPolicy`). Lockfile изменился только в пакетах sharp. В выгружаемом воркере sharp нет: он нужен miniflare для локального запуска и тестов.
 
 ## D12. GitHub Actions (02.10.2026)
 
