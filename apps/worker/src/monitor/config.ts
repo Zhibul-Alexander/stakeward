@@ -28,6 +28,12 @@ export type MonitorPlan = {
    * stage open: the next pass goes on after the last row of the page (DECISIONS.md D58).
    */
   reminderPageRows: number;
+  /**
+   * (main key, second key) pairs of the daily search round per page (DAILY_PAIRS). A page joins the back of the rescan
+   * queue only while the queue holds fewer pairs than this, so pairs of others never fill it (SECURITY-CHECK П25):
+   * every pair is reached in its turn, a round that does not end within a day goes on the next.
+   */
+  pairsPageRows: number;
 };
 
 export const MONITOR_PLANS = {
@@ -45,6 +51,8 @@ export const MONITOR_PLANS = {
     // CPU: a page is read, checked and written in one pass. 250 keeps it a small part of the 10 ms; a crowd of 1000 due
     // reminders takes four passes, eight minutes.
     reminderPageRows: 250,
+    // About 33 passes of 3 searches: one DAILY_PAIRS statement an hour while a round lasts.
+    pairsPageRows: 100,
   },
   paid: {
     name: 'paid',
@@ -55,6 +63,8 @@ export const MONITOR_PLANS = {
     rescanMaxBodyChars: 2_000_000,
     rescanParseChars: 20_000_000,
     reminderPageRows: 1_000,
+    // Two pages and the urgent pairs of a pass (at most 5 x 99 rows) stay below rescanQueueMax.
+    pairsPageRows: 250,
   },
 } as const satisfies Record<string, MonitorPlan>;
 

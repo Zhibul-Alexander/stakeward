@@ -123,8 +123,12 @@ SELECT m.key, m.value FROM json_each(?1) AS m
 WHERE EXISTS (SELECT 1 FROM meta WHERE key = 'pass_lease' AND value ->> '$.pass' = ?2)
 ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
 
-  // ?1 = now s. Closed rows included: a rescan can reopen a row closed by a bad answer.
-  DAILY_PAIRS: `SELECT DISTINCT withdrawer, custodian FROM accounts WHERE lock_until > ?1 ORDER BY withdrawer, custodian`,
+  // ?1 = now s, ?2 and ?3 = the last pair of the previous page ('', '' = from the start), ?4 = page size. Pairs of
+  // locks not ended, keyset by (withdrawer, custodian). Closed rows included: a rescan can reopen a row closed by a bad
+  // answer.
+  DAILY_PAIRS: `SELECT DISTINCT withdrawer, custodian FROM accounts
+WHERE lock_until > ?1 AND (withdrawer, custodian) > (?2, ?3)
+ORDER BY withdrawer, custodian LIMIT ?4`,
 
   // ?1 = now s, ?2 = the last stake account of the previous page ('' = from the start), ?3 = page size. Live locks
   // ending within 30 days whose reminder is due: the CASE is core reminderDue (1, 3, 7, 14 or 30 days left; a test

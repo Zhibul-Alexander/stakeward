@@ -449,4 +449,122 @@ describe('the daily pass', () => {
     expect(await h.pass()).toMatchObject({ daily: true, rescans: 2 });
     expect(searchedPairs(h)).toEqual([...pairs, ...pairs]);
   });
+
+  /**
+   * Locks of others, closed and gone from the chain (a search finds nothing, so they stay closed), each with its own
+   * main key sorting before MAIN: anyone can have locks watched (D49) and pick such addresses.
+   */
+  async function seedForeignPairs(count: number): Promise<Address[]> {
+    // Two leading zero bytes: base58 '11...', before MAIN ('4vJ9...').
+    const mains = Array.from({ length: count }, (_, i) => {
+      const bytes = new Uint8Array(32).fill(0x33);
+      bytes[0] = 0;
+      bytes[1] = 0;
+      bytes[2] = i >> 8;
+      bytes[3] = i & 0xff;
+      return getAddressDecoder().decode(bytes);
+    }).sort();
+    expect(mains.every((m) => m < MAIN)).toBe(true);
+    for (let start = 0; start < mains.length; start += 100) {
+      await env.DB.batch(
+        mains.slice(start, start + 100).map((main, i) =>
+          env.DB.prepare(
+            `INSERT INTO accounts (stake_account, withdrawer, staker, custodian, lock_until, lamports, state, slot, checked_at, created_at)
+             VALUES (?1, ?2, ?2, ?3, ?4, '10000000000', 'closed', 1, 1, 1)`,
+          ).bind(addr(start + i, 0x55), main, SECOND, String(LOCK_UNTIL)),
+        ),
+      );
+    }
+    return mains;
+  }
+
+  it('pairs of others cannot crowd out the daily search: the pairs join the queue a page at a time, every one in its turn', { timeout: 180_000 }, async () => {
+    const PAGE = MONITOR_PLANS.free.pairsPageRows;
+    const h = await watched();
+    // More foreign pairs than the queue holds (1000), all before (MAIN, SECOND); then a split of S1 nobody watches yet.
+    await seedForeignPairs(1001);
+    h.chain.putStake(S2, SPEC, 1_000_000_000n);
+
+    h.at('2026-10-05T06:00:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 3, rescanQueue: PAGE - 3 });
+    const first = JSON.parse((await h.readMeta()).pairs_sweep ?? 'null') as { day: string; after: [string, string] | null };
+    expect(first.day).toBe('2026-10-05');
+    expect(first.after?.[1]).toBe(SECOND);
+
+    let passes = 1;
+    while ((await h.readAccounts()).every((row) => row.stake_account !== S2)) {
+      h.advance(120_000);
+      const report = await h.pass();
+      expect(report.outcome).toBe('ok');
+      // The queue never holds more than two pages: urgent pairs keep room in front.
+      expect(report.rescanQueue).toBeLessThan(2 * PAGE);
+      passes += 1;
+      expect(passes).toBeLessThanOrEqual(Math.ceil(1002 / 3) + 1);
+    }
+    // S2 sorts last: every pair was searched once, in address order.
+    const searched = searchedPairs(h);
+    expect(searched).toHaveLength(1002);
+    expect(new Set(searched.map(([main, second]) => `${main}/${second}`)).size).toBe(1002);
+    expect(searched.at(-1)).toEqual([MAIN, SECOND]);
+    expect(JSON.parse((await h.readMeta()).pairs_sweep ?? 'null')).toEqual({ day: '2026-10-05', after: null });
+    expect(h.db.journal.filter((e) => e.name === 'DAILY_PAIRS')).toHaveLength(Math.ceil(1002 / PAGE));
+    // Within the day nothing more is queued.
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ rescans: 0, rescanQueue: 0 });
+  });
+
+  it('a round not done by the next morning goes on where it stopped; the day\'s own round starts once it ended', async () => {
+    const PAGE = MONITOR_PLANS.free.pairsPageRows;
+    const h = await watched();
+    const mains = await seedForeignPairs(PAGE + 5);
+    const pagesRead = () => h.db.journal.filter((e) => e.name === 'DAILY_PAIRS').map((e) => e.args.slice(1));
+    const round = async () => JSON.parse((await h.readMeta()).pairs_sweep ?? 'null') as unknown;
+    // Yesterday's round stopped after its first page.
+    const stoppedAt = mains[PAGE - 1] ?? '';
+    await h.setMeta({ pairs_sweep: JSON.stringify({ day: '2026-10-04', after: [stoppedAt, SECOND] }) });
+
+    // Before 06:00 too: an open round goes on whatever the hour.
+    h.at('2026-10-05T05:00:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', pairsQueued: 6, rescans: 3, rescanQueue: 3 });
+    expect(pagesRead()).toEqual([[stoppedAt, SECOND, PAGE]]);
+    expect(await round()).toEqual({ day: '2026-10-04', after: null });
+    h.at('2026-10-05T05:58:00Z');
+    expect(await h.pass()).toMatchObject({ pairsQueued: 0, rescans: 3, rescanQueue: 0 });
+
+    // 06:00: today's round starts from the first pair.
+    h.at('2026-10-05T06:00:00Z');
+    expect(await h.pass()).toMatchObject({ pairsQueued: PAGE, rescans: 3, rescanQueue: PAGE - 3 });
+    expect(pagesRead().at(-1)).toEqual(['', '', PAGE]);
+    expect(await round()).toEqual({ day: '2026-10-05', after: [mains[PAGE - 1], SECOND] });
+
+    // Not done by the next morning: no new round, the open one goes on after its cursor and ends.
+    h.at('2026-10-06T06:00:00Z');
+    expect(await h.pass()).toMatchObject({ pairsQueued: 6, rescans: 3, rescanQueue: PAGE - 3 + 6 - 3 });
+    expect(pagesRead().at(-1)).toEqual([stoppedAt, SECOND, PAGE]);
+    expect(await round()).toEqual({ day: '2026-10-05', after: null });
+    // The next pass starts the day's own round; its first page waits until the queue is shorter than a page.
+    h.at('2026-10-06T06:02:00Z');
+    expect(await h.pass()).toMatchObject({ pairsQueued: 0, rescans: 3, rescanQueue: PAGE - 3 });
+    expect(await round()).toEqual({ day: '2026-10-06', after: ['', ''] });
+    h.at('2026-10-06T06:04:00Z');
+    expect(await h.pass()).toMatchObject({ rescans: 3 });
+    expect(pagesRead()).toHaveLength(4);
+    expect(pagesRead().at(-1)).toEqual(['', '', PAGE]);
+    expect(await round()).toEqual({ day: '2026-10-06', after: [mains[PAGE - 1], SECOND] });
+  });
+
+  it('a pass that dies after reading a page: the next one reads it again, no pair is lost', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const h = await watched();
+    h.chain.putStake(S2, SPEC, 1_000_000_000n);
+    h.db.failWhen = (e) => e.name === 'KNOWN_LIVE';
+    h.at('2026-10-05T06:00:00Z');
+    await expect(h.pass()).rejects.toThrow(/D1_ERROR/);
+    expect((await h.readMeta()).pairs_sweep).toBeUndefined();
+
+    h.db.failWhen = null;
+    h.at('2026-10-05T06:02:00Z');
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rescans: 1, autoWatched: 1 });
+    expect(JSON.parse((await h.readMeta()).pairs_sweep ?? 'null')).toEqual({ day: '2026-10-05', after: null });
+  });
 });

@@ -134,7 +134,7 @@ describe('an exception in each stage', () => {
       error: 'Error',
       at: '2026-10-05T12:00:00Z',
       arrange: (h) => {
-        h.db.failWhen = (e) => e.name === 'DAILY_PAIRS';
+        h.db.failWhen = (e) => e.name === 'DAILY_REMINDER_ROWS';
       },
     },
     {

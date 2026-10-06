@@ -354,7 +354,7 @@ describe('monitor chunk statements', () => {
 });
 
 describe('daily statements', () => {
-  it('DAILY_PAIRS: distinct (main key, second key) pairs of locks not ended, closed rows included', async () => {
+  it('DAILY_PAIRS: distinct (main key, second key) pairs of locks not ended, closed rows included, a page after the cursor', async () => {
     await seed(
       watchRow(10),
       watchRow(11),
@@ -363,7 +363,9 @@ describe('daily statements', () => {
       watchRow(14, { withdrawer: OTHER, custodian: MAIN }),
     );
     await closeRow(key(14));
-    const { results } = await db.prepare(SQL.DAILY_PAIRS).bind(NOW_S).all<{ withdrawer: string; custodian: string }>();
+    const pairs = async (after: [string, string], limit: number) =>
+      (await db.prepare(SQL.DAILY_PAIRS).bind(NOW_S, after[0], after[1], limit).all<{ withdrawer: string; custodian: string }>())
+        .results;
     const expected = [
       { withdrawer: MAIN, custodian: SECOND },
       { withdrawer: MAIN, custodian: OTHER },
@@ -371,7 +373,13 @@ describe('daily statements', () => {
     ].sort((a, b) =>
       a.withdrawer !== b.withdrawer ? (a.withdrawer < b.withdrawer ? -1 : 1) : a.custodian < b.custodian ? -1 : 1,
     );
-    expect(results).toEqual(expected);
+    expect(await pairs(['', ''], 100)).toEqual(expected);
+    // Keyset by (main key, second key): each page goes on after the last pair of the one before.
+    const [one, two, three] = expected;
+    expect(await pairs(['', ''], 2)).toEqual([one, two]);
+    expect(await pairs([two?.withdrawer ?? '', two?.custodian ?? ''], 2)).toEqual([three]);
+    expect(await pairs([one?.withdrawer ?? '', one?.custodian ?? ''], 1)).toEqual([two]);
+    expect(await pairs([three?.withdrawer ?? '', three?.custodian ?? ''], 2)).toEqual([]);
   });
 
   it('DAILY_REMINDER_ROWS: live locks ending within 30 days whose reminder is due, by address after the cursor', async () => {

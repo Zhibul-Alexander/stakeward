@@ -62,12 +62,13 @@ import {
  * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
  *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
  *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front.
- * 4. daily   - on the first pass after 06:00 UTC: every (main key, second key) pair joins the rescan queue, and the
- *              reminders due (REMINDER_<d> events) are written, one page per pass; a full page keeps the stage open
- *              for the next pass, which goes on after it (meta.daily_sweep).
+ * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
+ *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
  * 5. sends   - Telegram delivery (step 5 spec section 7): one message per chat, committed before the rescans.
  * 6. rescans - getProgramAccounts by (main key, second key) pair, urgent pairs first; locked accounts split off a
- *              watched one are watched from then on. A pass that read no chunk reads the Clock alone for them.
+ *              watched one are watched from then on. A pass that read no chunk reads the Clock alone for them. Once
+ *              a day from 06:00 UTC a round of every pair starts; its pairs join the back of the queue a page at a
+ *              time while the queue is short (meta.pairs_sweep).
  * 7. admin   - at most one admin alert.
  * 8. finish  - one statement: the lease released, the queue, the counters and, only when the pass succeeded, the
  *              marker `last_pass_at` that /api/health reads. It is always the pass's last statement.
@@ -123,6 +124,8 @@ export type PassReport = {
   events: number;
   reminders: number;
   daily: boolean;
+  /** Pairs of the daily round this pass added to the rescan queue. */
+  pairsQueued: number;
   rescans: number;
   rescansDropped: number;
   autoWatched: number;
@@ -182,16 +185,26 @@ type LoadedMeta = {
   rescanQueue: QueuedPair[];
   /** meta.daily_sweep: the daily stage of `day`, open after a full page of reminders that ended at `after`. */
   dailySweep: DailySweep | null;
+  /** meta.pairs_sweep: the daily search round. */
+  pairsSweep: PairsSweep | null;
   readFailures: number;
   adminAlerts: Record<string, number>;
   alertsSent: number;
 };
 
 /**
- * The daily stage a pass works on: the UTC day it started (its pairs queued unless `first`), and the last stake account
+ * The daily stage a pass works on: the UTC day it started, and the last stake account
  * whose reminder it got through ('' = none yet).
  */
 type DailySweep = { day: string; after: string };
+
+/**
+ * The daily search round (SECURITY-CHECK П25): started on `day`, its pairs queued up to and including `after`
+ * (['', ''] = none yet), keyset by (main key, second key); `after: null` once every pair was queued. A round that
+ * does not end within a day goes on: a new one starts only after it ended, so every pair is reached however many
+ * pairs sort before it.
+ */
+type PairsSweep = { day: string; after: readonly [string, string] | null };
 
 /** Where a pass is. Phases change it as they go; the exception path reads it. */
 type PassContext = {
@@ -223,12 +236,14 @@ type LoadedPass = PassContext & {
   upstream: UpstreamOptions;
   pastDeadline: () => boolean;
   dailyDue: boolean;
-  /** The daily stage to work on when due: the open one from meta, else a new one for today (`first`). */
-  sweep: DailySweep & { first: boolean };
+  /** The daily stage to work on when due: the open one from meta, else a new one for today. */
+  sweep: DailySweep;
   /** The rescan queue: meta.rescan_queue, then the daily pairs; urgent pairs go in front before the rescans. */
   queue: QueuedPair[];
   /** meta.rescan_queue as this pass last wrote it (or loaded it): the finish writes the queue only when it differs. */
   storedQueue: string;
+  /** The daily search round as this pass leaves it; the finish writes it with the queue. */
+  pairs: PairsSweep | null;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
   /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
@@ -321,9 +336,10 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     upstream: { timeoutMs: deps.upstream.timeoutMs, retryDelayMs: deps.upstream.retryDelayMs, fetch: budget.fetch },
     pastDeadline: () => deps.now() - t0 > MONITOR_LIMITS.softDeadlineMs,
     dailyDue,
-    sweep: open === null ? { day: today, after: '', first: true } : { ...open, first: false },
+    sweep: open ?? { day: today, after: '' },
     queue: [...meta.rescanQueue],
     storedQueue: JSON.stringify(meta.rescanQueue),
+    pairs: meta.pairsSweep,
     urgent: [],
     lastRead: null,
     readFailed: false,
@@ -435,15 +451,15 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
 }
 
 /**
- * Stage 4, once a day from the first pass after 06:00 UTC (worker clock): every (main key, second key) pair of a lock
- * not ended joins the back of the rescan queue, and each lock ending within 30 days gets the reminder now due (core
- * reminderDue), as a REMINDER_<d> event gated on the row version, with last_reminder_days in the same batch.
+ * Stage 4, once a day from the first pass after 06:00 UTC (worker clock): each lock ending within 30 days gets the
+ * reminder now due (core reminderDue), as a REMINDER_<d> event gated on the row version, with last_reminder_days in
+ * the same batch. The day's search of every (main key, second key) pair is a round of its own (queueDailyPairs).
  *
  * Reminders go one page per pass (DAILY_REMINDER_ROWS: only rows with a reminder due, by address). A page that comes
  * back full may have more after it: its batch also records the open stage (meta.daily_sweep: its day and the last row)
- * and the queue with the day's pairs, and the next pass goes on after that row without queueing the pairs again. The
- * day is recorded by the finish of the pass whose page was not full: a pass that dies before repeats its page, and the
- * recorded thresholds keep the reminders from repeating.
+ * and the queue, and the next pass goes on after that row. The day is recorded by the finish of the pass whose page
+ * was not full: a pass that dies before repeats its page, and the recorded thresholds keep the reminders from
+ * repeating.
  */
 async function daily(pass: LoadedPass): Promise<void> {
   const { deps, budget, report, t0, config, sweep } = pass;
@@ -452,14 +468,7 @@ async function daily(pass: LoadedPass): Promise<void> {
   const db = deps.db;
   const nowSec = Math.floor(t0 / 1000);
   const pageRows = config.plan.reminderPageRows;
-  const page = db.prepare(SQL.DAILY_REMINDER_ROWS).bind(nowSec, sweep.after, pageRows);
-  const results = await budget.batch(db, sweep.first ? [db.prepare(SQL.DAILY_PAIRS).bind(nowSec), page] : [page]);
-  if (sweep.first) {
-    const pairs = rowsOf<{ withdrawer: Address; custodian: Address }>(results[0]).map(
-      (p): Pair => [p.withdrawer, p.custodian],
-    );
-    pass.queue = uniquePairs([...pass.queue, ...pairs]);
-  }
+  const results = await budget.batch(db, [db.prepare(SQL.DAILY_REMINDER_ROWS).bind(nowSec, sweep.after, pageRows)]);
 
   type ReminderRow = { stake_account: Address; lock_until: string; last_reminder_days: number | null; slot: number; checked_at: number };
   const rows = rowsOf<ReminderRow>(results.at(-1));
@@ -597,10 +606,11 @@ async function deliver(pass: LoadedPass): Promise<void> {
  */
 async function rescans(pass: LoadedPass): Promise<void> {
   const { config, budget, report, deps } = pass;
+  report.stage = 'rescans';
   pass.queue = uniquePairs([...pass.urgent, ...pass.queue]);
   pass.urgent = [];
+  await queueDailyPairs(pass);
   if (pass.queue.length === 0) return;
-  report.stage = 'rescans';
   const lastRead = pass.lastRead ?? (await readClockAlone(pass));
   if (lastRead === null) return;
 
@@ -682,6 +692,34 @@ async function rescans(pass: LoadedPass): Promise<void> {
 }
 
 /**
+ * The daily search round (PairsSweep): from 06:00 UTC (worker clock) a day whose round has not started starts one,
+ * unless the last round is still open; then, while the queue holds fewer pairs than a page, the next page of pairs
+ * after the round's cursor joins the back of the queue (DAILY_PAIRS, one statement). The round and the queue are
+ * written together by the finish: a pass that dies before reads the same page again.
+ */
+async function queueDailyPairs(pass: LoadedPass): Promise<void> {
+  const { config, budget, report, deps, t0 } = pass;
+  const today = utcDay(t0);
+  const open = pass.pairs !== null && pass.pairs.after !== null;
+  if (!open && pass.pairs?.day !== today && new Date(t0).getUTCHours() >= MONITOR_LIMITS.dailyHourUtc) {
+    pass.pairs = { day: today, after: ['', ''] };
+  }
+  const round = pass.pairs;
+  const pageRows = config.plan.pairsPageRows;
+  if (round === null || round.after === null || pass.queue.length >= pageRows) return;
+  if (pass.pastDeadline() || budget.left() < 1) return;
+  const db = deps.db;
+  const [result] = await budget.batch(db, [
+    db.prepare(SQL.DAILY_PAIRS).bind(Math.floor(t0 / 1000), round.after[0], round.after[1], pageRows),
+  ]);
+  const pairs = rowsOf<{ withdrawer: Address; custodian: Address }>(result).map((p): Pair => [p.withdrawer, p.custodian]);
+  const last = pairs.length >= pageRows ? pairs.at(-1) : undefined;
+  pass.queue = uniquePairs([...pass.queue, ...pairs]);
+  pass.pairs = { day: round.day, after: last === undefined ? null : [last[0], last[1]] };
+  report.pairsQueued += pairs.length;
+}
+
+/**
  * The cluster clock for rescans in a pass that read no chunk: every watched row is closed (the page is empty), and
  * a queued search is the only way such a row comes back (DAILY_PAIRS keeps closed rows for that). Not after a chunk
  * that failed, past the soft deadline, or without the budget for the read and one search; a failed read leaves the
@@ -728,6 +766,8 @@ async function finish(pass: LoadedPass): Promise<void> {
   if (readFailures !== meta.readFailures) entries.read_failures = String(readFailures);
   if (pass.adminChanged) entries.admin_alerts = JSON.stringify(pass.adminSent);
   if (pass.dailyDone) entries.daily_day = pass.sweep.day;
+  const pairs = pass.pairs === null ? null : JSON.stringify(pass.pairs);
+  if (pairs !== null && pairs !== JSON.stringify(meta.pairsSweep)) entries.pairs_sweep = pairs;
   if (pass.resetCursor) entries.cursor = '';
   const success = !pass.readFailed && !pass.telegramConfigFailed;
   if (success) entries.last_pass_at = String(pass.t0);
@@ -842,6 +882,7 @@ function emptyReport(): PassReport {
     events: 0,
     reminders: 0,
     daily: false,
+    pairsQueued: 0,
     rescans: 0,
     rescansDropped: 0,
     autoWatched: 0,
@@ -868,6 +909,7 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     dailyDay: values.get('daily_day') ?? null,
     rescanQueue: parseQueue(values.get('rescan_queue')),
     dailySweep: parseSweep(values.get('daily_sweep')),
+    pairsSweep: parsePairsSweep(values.get('pairs_sweep')),
     readFailures: parseCount(values.get('read_failures')),
     adminAlerts: parseAdminAlerts(values.get('admin_alerts')),
     alertsSent: parseCount(values.get('alerts_sent')),
@@ -908,6 +950,22 @@ function parseSweep(text: string | undefined): DailySweep | null {
   if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   if (typeof after !== 'string' || (after !== '' && !isAddressText(after))) return null;
   return { day, after };
+}
+
+/** meta.pairs_sweep: {"day": "YYYY-MM-DD", "after": null or [main key, second key]}, '' for none yet; else null. */
+function parsePairsSweep(text: string | undefined): PairsSweep | null {
+  const json = parseJson(text);
+  if (typeof json !== 'object' || json === null) return null;
+  const { day, after } = json as Record<string, unknown>;
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  if (after === null) return { day, after: null };
+  if (!Array.isArray(after) || after.length !== 2) return null;
+  const [main, second] = after as unknown[];
+  const start = main === '' && second === '';
+  if (!start && !(typeof main === 'string' && isAddressText(main) && typeof second === 'string' && isAddressText(second))) {
+    return null;
+  }
+  return { day, after: [String(main), String(second)] };
 }
 
 /**
