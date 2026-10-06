@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
+import { formatUtcDate, scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
 import {
   CircleAlertIcon,
   CircleCheckIcon,
@@ -107,7 +107,7 @@ const NEW_TAB_REL = 'noopener noreferrer';
 /**
  * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures: what the
  * chain now shows protected, what is not protected yet and the one way forward for it, the second key and its risk,
- * monitoring, Telegram alerts and the recovery card.
+ * monitoring, Telegram alerts with the date the lock ends (only the bot reminds before it), and the recovery card.
  */
 export function ProtectDoneView({
   headingRef,
@@ -212,6 +212,12 @@ export function ProtectDoneView({
         {watch.kind === 'idle' ? null : <MonitoringCard watch={watch} onRetry={actions.retryMonitoring} />}
         {nonceClose}
         <DoneCard title={t('protect.done.telegram.title')} description={t('protect.done.telegram.body')}>
+          {done === 0 || lockUntil === null ? null : (
+            // "Monitoring is on" reminds nobody: only the bot's reminders come before the lock ends.
+            <RiskNote risk="lock-ends" date={lockUntil}>
+              <p>{t('protect.done.telegram.noReminder', { date: formatUtcDate(lockUntil) ?? '' })}</p>
+            </RiskNote>
+          )}
           <div>
             <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
               <a

@@ -79,3 +79,38 @@ describe('ProtectDoneView statuses', () => {
     expect(icon?.getAttribute('class')).toContain('text-danger');
   });
 });
+
+// SECURITY-CHECK П11: "Monitoring is on" does not remind anyone; the Done screen says when the lock ends and that only
+// Telegram alerts remind before then.
+describe('ProtectDoneView: when the lock ends', () => {
+  const T = 1_807_488_000n; // 12 April 2027
+  const after = {
+    address: S1,
+    lamports: 2_000_000_000n,
+    kind: 'initialized' as const,
+    rentExemptReserve: 1_000_000n,
+    staker: MAIN,
+    withdrawer: MAIN,
+    lockup: { unixTimestamp: T, epoch: 0n, custodian: SECOND },
+    delegation: null,
+  };
+  const protectedOutcome = { id: S1, state: { kind: 'done' as const, after }, before: null, action: null, lifetime: null, signature: null, bytes: null };
+
+  it('names the end date and that nobody reminds before it without Telegram alerts', () => {
+    show({ outcomes: [protectedOutcome], lockUntil: T, watch: { kind: 'on' } });
+    const note = document.querySelector('[data-risk="lock-ends"]');
+    expect(note).not.toBeNull();
+    expect(note).toHaveTextContent(
+      'On 12 April 2027 the lock ends and anyone with your main key can withdraw this stake. Extend it before then.',
+    );
+    expect(note).toHaveTextContent('Without Telegram alerts nobody reminds you before 12 April 2027.');
+    // It sits with the Telegram card, next to the button that turns the reminders on.
+    const card = screen.getByRole('heading', { name: 'Get alerts in Telegram' }).closest('[data-slot="card"]');
+    expect(card).toContainElement(note as HTMLElement);
+  });
+
+  it('says nothing about an end date when nothing was protected', () => {
+    show({ lockUntil: T });
+    expect(document.querySelector('[data-risk="lock-ends"]')).toBeNull();
+  });
+});

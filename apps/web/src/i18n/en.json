@@ -927,7 +927,8 @@
       "telegram": {
         "title": "Get alerts in Telegram",
         "body": "The Stakeward bot messages you if anything changes, for example a deactivation you did not make. It only needs your public main key address.",
-        "action": "Open the Stakeward bot in Telegram"
+        "action": "Open the Stakeward bot in Telegram",
+        "noReminder": "Without Telegram alerts nobody reminds you before {date}."
       },
       "recovery": {
         "title": "Keep a recovery card",
