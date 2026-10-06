@@ -36,6 +36,14 @@ export const test = base.extend<Fixtures>({
 });
 
 export async function expectNoA11yViolations(page: Page, options: { include?: string } = {}): Promise<void> {
+  // axe reads computed colours. Right after emulateMedia switches the theme, buttons still run their colour transitions,
+  // and halfway a button's text and background are both in between: a slow CI runner had axe fail colour contrast on a
+  // different button each run. Finite animations and transitions jump to their end first; spinners run on.
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+    }
+  });
   let builder = new AxeBuilder({ page }).withTags(AXE_TAGS);
   if (options.include !== undefined) builder = builder.include(options.include);
   const { violations } = await builder.analyze();

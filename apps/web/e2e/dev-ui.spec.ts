@@ -19,8 +19,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
   page,
   expectNoA11yViolations,
 }) => {
-  // The page holds every component and flow; axe over all of it in two themes takes longer than the default 30 s.
-  test.setTimeout(90_000);
+  // The page holds every component and flow; axe over all of it in two themes takes longer than the default 30 s:
+  // about 75 s on a developer machine, so a slower CI runner gets room.
+  test.setTimeout(150_000);
   const width = page.viewportSize()?.width ?? 0;
   await page.emulateMedia({ colorScheme: 'light' });
   const response = await page.goto('/dev/ui');
@@ -110,6 +111,28 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.emulateMedia({ colorScheme: 'dark' });
   await expectNoA11yViolations();
   expect(await qrColours()).toEqual(QR_COLOURS);
+
+  // A theme switch starts colour transitions (transition-colors, 150 ms). Halfway, a button's text and background are
+  // both in between and fail contrast: a slow CI runner had axe measure that, on a different button each run. axe must
+  // check the theme, not the transition, so frozen halfway it still passes. The transitions are slowed through CSSOM
+  // (the CSP allows it) so that they are surely running when frozen.
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty('--motion-duration-fast', '10s');
+  });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.waitForFunction(() => document.getAnimations().some((animation) => animation.playState === 'running'));
+  const frozen = await page.evaluate(() => {
+    const finite = document.getAnimations().filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity);
+    for (const animation of finite) {
+      animation.pause();
+      animation.currentTime = Number(animation.effect?.getComputedTiming().endTime) / 2;
+    }
+    return finite.length;
+  });
+  expect(frozen).toBeGreaterThan(0);
+  // The primitives hold every button variant; axe over the whole page a third time would not fit the timeout.
+  await expectNoA11yViolations({ include: '#primitives' });
+  await page.evaluate(() => document.documentElement.style.removeProperty('--motion-duration-fast'));
 
   await page.emulateMedia({ colorScheme: 'light' });
 
