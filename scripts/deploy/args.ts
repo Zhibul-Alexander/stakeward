@@ -36,7 +36,8 @@ export const DEPLOY_USAGE = [
 export const VERIFY_USAGE = [
   'Usage: pnpm verify-deploy --env <dev|prod> [--commit <ref>] [--origin <https origin>]',
   '  Builds the site of <ref> (default HEAD) in a temporary git worktree, for the cluster of the environment, then',
-  '  downloads index.html and every other file of that build from the deployed site and compares sha256.',
+  '  downloads index.html and every other file of that build from the deployed site and compares sha256, and checks',
+  '  that every response carries the headers of the build\'s _headers (CSP and the rest) with the same values.',
   '  Prints PASS or FAIL; exit code 0 only on PASS.',
   '  --env      dev (devnet build, dev origin) or prod (mainnet build, prod origin)',
   '  --commit   commit, tag or branch to build; default HEAD',

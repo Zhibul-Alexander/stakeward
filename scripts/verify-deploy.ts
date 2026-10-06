@@ -2,14 +2,16 @@
 // `pnpm verify-deploy --help`. Plain Node 24 (DECISIONS D8).
 // Builds the commit in a temporary git worktree (frozen install, no secrets in the environment, the environment's
 // cluster), downloads index.html and every other file of that build from the site, and compares sha256. Also checks
-// that every /assets/ file the served index.html loads is part of the local build.
+// that every /assets/ file the served index.html loads is part of the local build, and that every response carries the
+// headers of the build's _headers (the CSP and the rest of CLAUDE.md section 11) with the same values.
 // Exit code 0: PASS; 1: FAIL, or the check could not run.
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseHeadersFile } from '../apps/web/static-headers.ts';
 import { parseVerifyArgs, UsageError, VERIFY_USAGE } from './deploy/args.ts';
 import { buildEnv } from './deploy/env.ts';
 import { hashTree, type FileHash } from './deploy/manifest.ts';
@@ -30,8 +32,13 @@ function run(command: string, args: readonly string[], options: { cwd: string; e
   }
 }
 
-/** The site build of `commit` for `cluster`, made in a throwaway worktree that is removed afterwards. */
-function buildCommit(commit: string, cluster: 'devnet' | 'mainnet'): FileHash[] {
+type LocalBuild = { files: FileHash[]; staticHeaders: Record<string, string> | null };
+
+/**
+ * The site build of `commit` for `cluster`, made in a throwaway worktree that is removed afterwards: every file's hash
+ * and the `/*` block of its _headers.
+ */
+function buildCommit(commit: string, cluster: 'devnet' | 'mainnet'): LocalBuild {
   const parent = mkdtempSync(join(tmpdir(), 'stakeward-verify-'));
   const worktree = join(parent, 'repo');
   try {
@@ -40,7 +47,12 @@ function buildCommit(commit: string, cluster: 'devnet' | 'mainnet'): FileHash[] 
     const env = buildEnv(process.env, cluster);
     run('pnpm', ['install', '--frozen-lockfile'], { cwd: worktree, env });
     run('pnpm', ['--filter', '@stakeward/web', 'run', `build:${cluster}`], { cwd: worktree, env });
-    return hashTree(join(worktree, 'apps', 'web', 'dist'));
+    const dist = join(worktree, 'apps', 'web', 'dist');
+    const headersFile = join(dist, '_headers');
+    return {
+      files: hashTree(dist),
+      staticHeaders: existsSync(headersFile) ? parseHeadersFile(readFileSync(headersFile, 'utf8')) : null,
+    };
   } finally {
     try {
       git(['worktree', 'remove', '--force', worktree]);
@@ -52,7 +64,7 @@ function buildCommit(commit: string, cluster: 'devnet' | 'mainnet'): FileHash[] 
   }
 }
 
-/** The status and the sha256 of the body; redirects are not followed (a redirect is a failure here). */
+/** The status, the sha256 of the body and the headers; redirects are not followed (a redirect is a failure here). */
 async function fetchServed(url: string): Promise<{ served: Served; body: Buffer | null }> {
   try {
     const response = await fetch(url, {
@@ -62,7 +74,12 @@ async function fetchServed(url: string): Promise<{ served: Served; body: Buffer 
     });
     const body = Buffer.from(await response.arrayBuffer());
     return {
-      served: { status: response.status, sha256: createHash('sha256').update(body).digest('hex') },
+      served: {
+        status: response.status,
+        sha256: createHash('sha256').update(body).digest('hex'),
+        // fetch gives the names in lower case.
+        headers: Object.fromEntries(response.headers),
+      },
       body: response.status === 200 ? body : null,
     };
   } catch (error) {
@@ -77,7 +94,7 @@ async function main(argv: readonly string[]): Promise<number> {
     return 0;
   }
   const commit = git(['rev-parse', '--verify', '--end-of-options', `${args.commit}^{commit}`]);
-  const local = buildCommit(commit, args.cluster);
+  const { files: local, staticHeaders } = buildCommit(commit, args.cluster);
 
   console.log(`\n== downloading ${String(local.length)} files from ${args.origin}`);
   const served = new Map<string, Served>();
@@ -89,7 +106,7 @@ async function main(argv: readonly string[]): Promise<number> {
     served.set(path, result);
     if (path === '/' && body !== null) indexHtml = body.toString('utf8');
   }
-  const result = compareServed(local, served, assetReferences(indexHtml));
+  const result = compareServed(local, served, assetReferences(indexHtml), staticHeaders);
   console.log(`\n${renderVerifyReport(result, { origin: args.origin, commit, cluster: args.cluster })}`);
   return result.ok ? 0 : 1;
 }
