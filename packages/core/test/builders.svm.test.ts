@@ -141,6 +141,37 @@ describe('extend and unlock (SetLockup by the second key)', () => {
   });
 });
 
+describe('change-second-key (SetLockupChecked by the second key, with the new second key co-signing)', () => {
+  it('hands the lock to the new second key; its end and epoch stay as they were', async () => {
+    const K2 = await chain.fundedKey(1n);
+    // A past epoch next to the date shows that the epoch is kept too, not reset to 0.
+    const lockup: Lockup = { ...lockedUntil(100n), epoch: chain.clock().epoch - 1n };
+    const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address, lockup });
+    const tx = build({ kind: 'change-second-key', stakeAccount, secondKey: K.address, newSecondKey: K2.address });
+    expect(tx.meta.signers).toEqual([K2.address, K.address]);
+    const kBefore = chain.balance(K.address);
+    expectOk(await chain.send(tx.bytes, [K2, K]), 'change-second-key');
+    expect(chain.stakeAccount(stakeAccount)?.lockup).toEqual({ ...lockup, custodian: K2.address });
+    // The old second key pays nothing.
+    expect(chain.balance(K.address)).toBe(kBefore);
+  });
+
+  it('works on a delegated account, paid by the main key when asked (the F5 fallback)', async () => {
+    const K2 = await chain.fundedKey(1n);
+    const voteAccount = await chain.createVoteAccount();
+    const stakeAccount = await chain.createStakeAccount({
+      staker: A.address,
+      withdrawer: A.address,
+      lockup: lockedUntil(30n),
+      delegateTo: { voteAccount, stakerKey: A },
+    });
+    const tx = build({ kind: 'change-second-key', stakeAccount, secondKey: K.address, newSecondKey: K2.address }, undefined, A.address);
+    expect(tx.meta.signers[0]).toBe(A.address);
+    expectOk(await chain.send(tx.bytes, [A, K, K2]), 'change-second-key');
+    expect(chain.stakeAccount(stakeAccount)?.lockup.custodian).toBe(K2.address);
+  });
+});
+
 describe('withdraw (legacy layout, main key + second key)', () => {
   it('withdraws the full balance of a locked account to the main key', async () => {
     const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address, lockup: lockedUntil(100n) });

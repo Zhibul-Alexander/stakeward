@@ -79,6 +79,7 @@ const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
   deactivate: ['components.tx.cannot.stakeStays', 'components.tx.cannot.noKeyChange'],
   delegate: ['common.cannotMoveSol', 'components.tx.cannot.noKeyChange'],
   rescue: ['components.tx.cannot.rescueNoMove', 'components.tx.cannot.keepsLock'],
+  'change-second-key': ['common.cannotMoveSol', 'components.tx.cannot.changeOwner', 'components.tx.cannot.keepsEnd'],
   'nonce-setup': ['components.tx.cannot.noStake'],
   'nonce-close': ['components.tx.cannot.noStake'],
 };
@@ -365,6 +366,18 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
         },
         { label: lockLabel, before: lockNow, after: t('components.tx.lockUnchanged') },
       ];
+    case 'change-second-key': {
+      // Now: the key that holds the lock as the chain shows it (without the chain, the key the bytes say signs as it).
+      const custodian = current === undefined ? action.secondKey : custodianInForce(current, clock);
+      return [
+        {
+          label: roleLabel('second'),
+          before: custodian === null ? t('components.tx.none') : <Full address={custodian} />,
+          after: <Full address={action.newSecondKey} />,
+        },
+        { label: lockLabel, before: lockNow, after: t('components.tx.lockUnchanged') },
+      ];
+    }
     case 'deactivate':
       return [{ label: t('components.tx.staking'), before: t('components.tx.delegated'), after: t('components.tx.deactivating') }];
     case 'delegate':
@@ -405,7 +418,10 @@ function warningList(notes: readonly ReactNode[]): ReactNode {
   return notes.length === 0 ? null : <div className="flex flex-col gap-2">{notes}</div>;
 }
 
-/** Warnings from comparing the action with the account's state now: a second key replaced, a lock made shorter. */
+/**
+ * Warnings from comparing the action with the account's state now: a second key replaced, a change of second key its
+ * signer cannot make, a lock made shorter.
+ */
 function stateWarnings(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView): ReactNode[] {
   const notes: ReactNode[] = [];
   if (action.kind === 'protect' && current !== undefined) {
@@ -417,6 +433,14 @@ function stateWarnings(action: TransactionAction, current: OnChainContext | unde
         </Warning>,
       );
     }
+  }
+  // A change of second key fits only when its signer holds a lock in force now (core secondKeyChangeProblem).
+  if (action.kind === 'change-second-key' && current !== undefined && custodianInForce(current, clock) !== action.secondKey) {
+    notes.push(
+      <Warning key="not-holder" tone="danger">
+        {t('components.tx.warn.notSecondKeyNow')}
+      </Warning>,
+    );
   }
   const shortened = shortenedTo(action, current, clock);
   if (shortened !== null && current !== undefined) {

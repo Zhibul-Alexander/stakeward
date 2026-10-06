@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
+import type { ChangeSecondKeyAction } from './actions.ts';
 import { ZERO_ADDRESS, type Cluster } from './constants.ts';
-import type { Lockup } from './decode.ts';
+import type { Lockup, StakeAccount } from './decode.ts';
 
 /** The parts of the cluster clock the lockup rules need. `unixTimestamp` is in seconds. */
 export type ClockView = { unixTimestamp: bigint; epoch: bigint };
@@ -87,4 +88,63 @@ export function validateSecondKey(input: {
   if (input.second === input.staker) violations.push('staker');
   if (input.second === input.stakeAccount) violations.push('stake-account');
   return violations;
+}
+
+/** Why an address cannot become the new second key of a lock (F7): a rule of `validateSecondKey`, or the key now. */
+export type NewSecondKeyViolation = SecondKeyViolation | 'current-second-key';
+
+/**
+ * Checks a proposed new second key K2 for a lock that `current` holds now: every rule of {@link validateSecondKey}, in
+ * its order, then `current-second-key` when K2 is that same key. An empty list means K2 is allowed.
+ */
+export function validateNewSecondKey(input: {
+  second: Address;
+  mainKey: Address;
+  staker: Address;
+  stakeAccount: Address;
+  /** The second key that holds the lock now. */
+  current: Address;
+}): NewSecondKeyViolation[] {
+  const violations: NewSecondKeyViolation[] = validateSecondKey(input);
+  if (input.second === input.current) violations.push('current-second-key');
+  return violations;
+}
+
+/**
+ * Why a change of second key (F7) does not fit the stake account as the chain shows it.
+ * - `other-account`: the change is for another stake account;
+ * - `not-locked`: no lock is in force, or the main key itself or the zero key holds it. A lock not in force is set by
+ *   the withdrawer alone (that is a protect, F1), so the program refuses the second key's signature
+ *   (MissingRequiredSignature); a lock the main key holds protects nothing (D14);
+ * - `not-current-second-key`: another key holds the lock, and the program takes only its signature
+ *   (MissingRequiredSignature);
+ * - a rule the new second key breaks (`validateNewSecondKey`).
+ */
+export type SecondKeyChangeProblem = 'other-account' | 'not-locked' | 'not-current-second-key' | NewSecondKeyViolation;
+
+/**
+ * The inspector reads a change of second key from the bytes alone; the screens check it against the chain with this
+ * (CLAUDE.md section 3). Its signer must be the second key of a lock in force on `account` at `clock`, and the new
+ * second key must be allowed. Returns the first problem in the order of {@link SecondKeyChangeProblem}; null = it fits.
+ * A lock its epoch holds counts as in force (the program's rule); a page may still decline it.
+ */
+export function secondKeyChangeProblem(
+  change: Pick<ChangeSecondKeyAction, 'stakeAccount' | 'secondKey' | 'newSecondKey'>,
+  account: StakeAccount,
+  clock: ClockView,
+): SecondKeyChangeProblem | null {
+  if (change.stakeAccount !== account.address) return 'other-account';
+  const { lockup } = account;
+  if (!isLockupInForce(lockup, clock) || lockup.custodian === account.withdrawer || lockup.custodian === ZERO_ADDRESS) {
+    return 'not-locked';
+  }
+  if (lockup.custodian !== change.secondKey) return 'not-current-second-key';
+  const [violation] = validateNewSecondKey({
+    second: change.newSecondKey,
+    mainKey: account.withdrawer,
+    staker: account.staker,
+    stakeAccount: account.address,
+    current: lockup.custodian,
+  });
+  return violation ?? null;
 }

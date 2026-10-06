@@ -124,6 +124,7 @@ describe('cosign link rules', () => {
     unlock: () => Promise.resolve({ kind: 'unlock', stakeAccount: S, secondKey: K }),
     deactivate: () => Promise.resolve({ kind: 'deactivate', stakeAccount: S, staker: A }),
     delegate: () => Promise.resolve({ kind: 'delegate', stakeAccount: S, staker: A, voteAccount: key(5) }),
+    'change-second-key': () => Promise.resolve({ kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: D }),
     'nonce-setup': async () => ({
       kind: 'nonce-setup',
       nonceAccount: await deriveNonceAccountAddress(A),
@@ -140,6 +141,9 @@ describe('cosign link rules', () => {
 
   it.each<[string, () => Promise<TransactionSummary>, CosignLinkProblem]>([
     ['unlock on the second key\'s nonce, signed by it', () => summaryOf({ kind: 'unlock', stakeAccount: S, secondKey: K }, nonceOf(K), [secondKey]), 'not-linkable-kind'],
+    // F7 is live only (D69): even a well-formed link, paid by the new second key on its own nonce and signed, is refused.
+    ['change of second key on the new key\'s nonce, signed by it', () => summaryOf({ kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: D }, nonceOf(D), [newWallet]), 'not-linkable-kind'],
+    ['change of second key paid by the main key on its nonce, signed by it', () => summaryOf({ kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: D }, nonceOf(A), [mainKey], A), 'not-linkable-kind'],
     ['protect on a blockhash, signed by the main key', () => summaryOf(protect, BLOCKHASH, [mainKey]), 'not-nonce'],
     ['protect paid by the second key on the main key\'s nonce', () => summaryOf(protect, nonceOf(A), [secondKey, mainKey], K), 'nonce-not-fee-payer'],
     ['protect paid by the second key on its own nonce, signed by it', () => summaryOf(protect, nonceOf(K), [secondKey], K), 'unexpected-fee-payer'],

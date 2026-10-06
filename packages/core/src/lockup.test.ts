@@ -1,13 +1,19 @@
 import { getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
+import { stakeAccountOf } from '../test/raw-stake.ts';
+import type { ChangeSecondKeyAction } from './actions.ts';
 import { ZERO_ADDRESS } from './constants.ts';
+import type { Lockup } from './decode.ts';
 import {
   DEFAULT_LOCK_PERIOD,
   isLockupInForce,
   lockPeriodsFor,
   lockupEnd,
   lockupEndForPeriod,
+  secondKeyChangeProblem,
+  validateNewSecondKey,
   validateSecondKey,
+  type SecondKeyChangeProblem,
 } from './lockup.ts';
 
 const utc = (iso: string): bigint => BigInt(Date.parse(iso) / 1000);
@@ -120,5 +126,72 @@ describe('validateSecondKey', () => {
 
   it('reports every rule a key breaks', () => {
     expect(validateSecondKey({ second: mainKey, mainKey, staker: mainKey, stakeAccount })).toEqual(['main-key', 'staker']);
+  });
+});
+
+describe('validateNewSecondKey (F7)', () => {
+  const mainKey = key(1);
+  const staker = key(2);
+  const stakeAccount = key(3);
+  const current = key(4);
+
+  it('accepts another key', () => {
+    expect(validateNewSecondKey({ second: key(9), mainKey, staker, stakeAccount, current })).toEqual([]);
+  });
+
+  it.each([
+    [ZERO_ADDRESS, ['zero-key']],
+    [mainKey, ['main-key']],
+    [staker, ['staker']],
+    [stakeAccount, ['stake-account']],
+    [current, ['current-second-key']],
+  ] as const)('rejects %s', (second, violations) => {
+    expect(validateNewSecondKey({ second, mainKey, staker, stakeAccount, current })).toEqual(violations);
+  });
+
+  it('keeps the order of validateSecondKey, then the current key', () => {
+    expect(validateNewSecondKey({ second: mainKey, mainKey, staker: mainKey, stakeAccount, current: mainKey })).toEqual([
+      'main-key',
+      'staker',
+      'current-second-key',
+    ]);
+  });
+});
+
+describe('secondKeyChangeProblem: a change of second key against the chain (F7)', () => {
+  const A = key(1); // main key: withdrawer and staker
+  const K = key(2); // second key holding the lock
+  const K2 = key(5); // new second key
+  const S = key(9); // stakeAccountOf's address
+  const clock = { unixTimestamp: 1_800_000_000n, epoch: 1_000n };
+  const lockedBy = (custodian: Address, lockup: Partial<Lockup> = {}) =>
+    stakeAccountOf({ lockup: { unixTimestamp: clock.unixTimestamp + 86_400n, epoch: 0n, custodian, ...lockup } });
+  const change = { stakeAccount: S, secondKey: K, newSecondKey: K2 };
+
+  it('fits when the signer holds a lock in force and the new key is allowed', () => {
+    expect(secondKeyChangeProblem(change, lockedBy(K), clock)).toBeNull();
+    // A lock its epoch holds is in force too (the program's rule).
+    expect(secondKeyChangeProblem(change, lockedBy(K, { unixTimestamp: 0n, epoch: clock.epoch + 1n }), clock)).toBeNull();
+  });
+
+  it.each<[string, ReturnType<typeof stakeAccountOf>, typeof change, SecondKeyChangeProblem]>([
+    ['another stake account', lockedBy(K), { ...change, stakeAccount: key(8) }, 'other-account'],
+    ['no lock: SetLockupChecked would need the main key (that is protect)', stakeAccountOf(), change, 'not-locked'],
+    ['a lock that ended', lockedBy(K, { unixTimestamp: clock.unixTimestamp }), change, 'not-locked'],
+    ['a lock the main key holds itself', lockedBy(A), { ...change, secondKey: A }, 'not-locked'],
+    ['a lock nobody can sign for', lockedBy(ZERO_ADDRESS), { ...change, secondKey: ZERO_ADDRESS }, 'not-locked'],
+    ['a lock another key holds now', lockedBy(key(7)), change, 'not-current-second-key'],
+    ['the new key is the main key', lockedBy(K), { ...change, newSecondKey: A }, 'main-key'],
+    ['the new key manages the staking', stakeAccountOf({ ...lockedBy(K), staker: key(6) }), { ...change, newSecondKey: key(6) }, 'staker'],
+    ['the new key is the stake account', lockedBy(K), { ...change, newSecondKey: S }, 'stake-account'],
+    ['the new key is the zero key', lockedBy(K), { ...change, newSecondKey: ZERO_ADDRESS }, 'zero-key'],
+    ['the new key is the current one', lockedBy(K), { ...change, newSecondKey: K }, 'current-second-key'],
+  ])('refuses %s', (_name, account, proposed, problem) => {
+    expect(secondKeyChangeProblem(proposed, account, clock)).toBe(problem);
+  });
+
+  it('takes the action itself', () => {
+    const action: ChangeSecondKeyAction = { kind: 'change-second-key', ...change };
+    expect(secondKeyChangeProblem(action, lockedBy(K), clock)).toBeNull();
   });
 });

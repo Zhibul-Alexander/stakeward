@@ -331,6 +331,7 @@
         "deactivate": "Deactivate the stake",
         "delegate": "Delegate the stake",
         "rescue": "Move this stake to your new wallet",
+        "change-second-key": "Change the second key",
         "nonce-setup": "Set up signing by link",
         "nonce-close": "Close the link-signing account"
       },
@@ -373,6 +374,7 @@
         "onlyRecipient": "It can only send SOL to the address shown above.",
         "noKeyChange": "It does not change any key or the lock.",
         "keepsLock": "It does not change the lock.",
+        "keepsEnd": "It cannot change when the lock ends.",
         "rescueNoMove": "It cannot move your SOL out of the stake account: only its keys change.",
         "stakeStays": "This transaction cannot move your SOL: it stays in the stake account.",
         "noStake": "It cannot touch your stake accounts."
@@ -383,6 +385,7 @@
       "lighthouse": "Checks your wallet added at the end (Lighthouse): {count}. They only read accounts and cannot move funds.",
       "warn": {
         "replacesSecondKey": "This replaces the current second key:",
+        "notSecondKeyNow": "The key that signs as the second key does not hold this lock now, so the network will refuse this change.",
         "shortens": "This makes the lock end sooner: on {date} instead of {current}.",
         "recipientNotSigner": "The SOL goes to a wallet that does not sign this transaction. Make sure this address is yours:"
       },
