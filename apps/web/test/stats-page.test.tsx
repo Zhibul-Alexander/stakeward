@@ -15,7 +15,7 @@ const COUNTED_AT = new Date('2026-10-06T12:00:00.000Z');
 const STATS: Stats = { accountsLocked: 1_204, lamportsLocked: 48_250_750_000_000n, alertsSent: 37, countedAt: COUNTED_AT };
 const ZERO: Stats = { accountsLocked: 0, lamportsLocked: 0n, alertsSent: 0, countedAt: COUNTED_AT };
 
-const LABELS = ['Stake accounts locked', 'SOL locked', 'Alerts sent'];
+const LABELS = ['Locked stake accounts Stakeward watches', 'SOL locked', 'Alerts sent'];
 
 /** The monitor ran 2.5 minutes ago and the worker says it is fine. */
 const freshHealth = (): Promise<Health> => Promise.resolve({ ok: true, lastMonitorRunAt: new Date(Date.now() - 150_000) });
@@ -47,7 +47,7 @@ describe('/stats', () => {
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings).toHaveLength(1);
     expect(headings[0]).toHaveTextContent('Stakeward in numbers');
-    expect(screen.getByText(/^Three numbers, counted when you open this page/)).toBeInTheDocument();
+    expect(screen.getByText(/^Three numbers from Stakeward's records/)).toBeInTheDocument();
     expect(screen.getByText(/^Accounts and SOL come from public network data/)).toBeInTheDocument();
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading the numbers from Stakeward');
@@ -60,10 +60,10 @@ describe('/stats', () => {
     renderStats(() => Promise.resolve(STATS));
     expect(await screen.findByText('48,250.75 SOL')).toBeInTheDocument();
     expect(values()).toEqual(['1,204', '48,250.75 SOL', '37']);
-    expect(within(tile('Stake accounts locked')).getAllByRole('definition')[0]).toHaveTextContent('1,204');
+    expect(within(tile('Locked stake accounts Stakeward watches')).getAllByRole('definition')[0]).toHaveTextContent('1,204');
     expect(within(tile('Alerts sent')).getAllByRole('definition')[0]).toHaveTextContent('37');
     expect(within(tile('SOL locked')).getByText('A lock covers the whole balance of a stake account, so all of it counts.')).toBeInTheDocument();
-    expect(screen.getByText('Counted on 6 October 2026, 12:00 UTC.')).toBeInTheDocument();
+    expect(screen.getByText('Accounts and SOL counted on 6 October 2026, 12:00 UTC.')).toBeInTheDocument();
 
     // The wait is over: no status line, nothing busy, no error and no empty-state note.
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -83,9 +83,9 @@ describe('/stats', () => {
 
   it('zero: honest zeros with a way forward, nothing made up', async () => {
     const location = renderStats(() => Promise.resolve(ZERO));
-    const note = await screen.findByText('No stake account Stakeward watches has a lock in force right now.');
+    const note = await screen.findByText('At that count, no stake account Stakeward watches had a lock in force.');
     expect(values()).toEqual(['0', '0 SOL', '0']);
-    expect(screen.getByText(/^Three numbers, counted when you open this page/)).toBeInTheDocument();
+    expect(screen.getByText(/^Three numbers from Stakeward's records/)).toBeInTheDocument();
     const action = within(note).getByRole('link', { name: 'Check your stake' });
     expect(action).toHaveAttribute('href', '/app');
     await userEvent.click(action);
@@ -105,7 +105,7 @@ describe('/stats', () => {
     // The tiles keep their names and say the number is missing; nothing is guessed.
     for (const label of LABELS) expect(tile(label)).toHaveAttribute('data-state', 'error');
     expect(values()).toEqual(['Not available', 'Not available', 'Not available']);
-    expect(screen.queryByText('Counted on', { exact: false })).toBeNull();
+    expect(screen.queryByText('counted on', { exact: false })).toBeNull();
 
     await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('48,250.75 SOL')).toBeInTheDocument();

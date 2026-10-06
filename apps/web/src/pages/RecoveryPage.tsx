@@ -68,7 +68,12 @@ export function RecoveryPage() {
           }}
         />
       ) : result.kind === 'none' ? (
-        <NoRecoveryCard reason={result.reason} date={result.date} mainKey={loaded.account.withdrawer} />
+        <NoRecoveryCard
+          account={loaded.account.address}
+          reason={result.reason}
+          date={result.date}
+          mainKey={loaded.account.withdrawer}
+        />
       ) : (
         <RecoveryCardView card={result.card} cluster={CLUSTER} readAt={loaded.clock.unixTimestamp} siteOrigin={window.location.origin} />
       )}

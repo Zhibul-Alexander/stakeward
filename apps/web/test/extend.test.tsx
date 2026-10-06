@@ -232,6 +232,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await heading('The lock is removed');
       expect(w.testChain.stakeAccount(S)?.lockup.unixTimestamp).toBe(0n);
       expect(document.querySelector('[data-slot="extend-done"] [data-risk="unlock-opens-window"]')).toHaveAttribute('data-tone', 'danger');
+      // The way back to a lock with a new second key (FAQ: second key stolen), next to withdrawing.
+      expect(screen.getByRole('link', { name: 'Protect it again' })).toHaveAttribute('href', `/protect?account=${S}`);
       const withdrawNow = screen.getByRole('link', { name: 'Withdraw now' });
       expect(withdrawNow).toHaveAttribute('href', `/withdraw/${S}`);
 

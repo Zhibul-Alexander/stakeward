@@ -48,7 +48,8 @@ type StatsPageProps = {
  * /stats (CLAUDE.md sections 8 and 9): the worker's public numbers, which also feed the demand figures of the
  * hackathon submission. No wallet and no chain read: GET /api/stats counts what the monitor stored, and the
  * monitoring line (GET /api/health, as on /app) shows how fresh that is, red once the monitor is late. The numbers
- * are read once per visit and on Refresh, not polled: each read scans the watched accounts in D1.
+ * are read once per visit and on Refresh, not polled; the worker counts accounts and SOL at most every 10 minutes
+ * (D84), and the page says when.
  */
 export function StatsPage({ loadStats = loadStatsFromWorker, loadHealth = loadHealthFromWorker }: StatsPageProps) {
   const [attempt, setAttempt] = useState(0);
