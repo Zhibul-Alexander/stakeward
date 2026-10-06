@@ -18,7 +18,8 @@ export const ORIGIN_OF: Record<DeployEnv, string> = {
 export const DEPLOY_USAGE = [
   'Usage: pnpm deploy:dev [--allow-unpushed] [--dry-run] [--secrets-file <file>]',
   '       pnpm deploy:prod --prod-confirm [--dry-run] [--secrets-file <file>]',
-  '  Deploys the committed HEAD: refuses a dirty tree and a HEAD that is not origin/<branch>, installs with the frozen',
+  '  Deploys the committed HEAD: refuses a dirty tree and a HEAD that is not origin/<branch> (prod: also unless the',
+  '  CI job `check` passed on that commit, read from GitHub without a token), installs with the frozen',
   '  lockfile, builds the site without any secret in the environment, runs the build guards',
   '  (apps/web test/build-output.test.ts and test/test-code-guard.test.ts) on that very build, then runs',
   '  `wrangler deploy --env <dev|prod>` with only CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from the secrets',

@@ -73,6 +73,8 @@ export type DeployRecord = {
   commit: string;
   /** False when deployed with --allow-unpushed and HEAD was not origin/<branch>. */
   pushed: boolean;
+  /** True when the CI job `check` had passed on the commit (prod); dev deploys do not check CI. */
+  ciPassed: boolean;
   versionId: string;
   targets: string[];
   deployedAt: Date;
@@ -85,9 +87,10 @@ export const DEPLOYS_INTRO = `# Деплои
 Каждый \`pnpm deploy:dev\` и \`pnpm deploy:prod\` (обёртка \`scripts/deploy.ts\`, SECURITY-CHECK П18 и П19) дописывает
 сюда раздел: окружение, коммит, version id Cloudflare и sha256 каждого выгруженного файла сайта (\`apps/web/dist\`).
 Обёртка деплоит только чистое дерево, HEAD которого совпадает с origin/<ветка> (для dev можно \`--allow-unpushed\`, это
-отмечено в разделе), ставит зависимости с frozen lockfile, собирает сайт без секретов в окружении и прогоняет
-\`build-output.test.ts\` и \`test-code-guard.test.ts\` на этой самой папке. Токен Cloudflare и id аккаунта получает только
-\`wrangler deploy\`.
+отмечено в разделе). Для prod она ещё требует, чтобы на этом коммите прошла задача CI \`check\` (аудит, typecheck,
+линтер, все тесты, обе сборки; \`e2e\` не обязательна). Затем ставит зависимости с frozen lockfile, собирает сайт без
+секретов в окружении и прогоняет \`build-output.test.ts\` и \`test-code-guard.test.ts\` на этой самой папке. Токен
+Cloudflare и id аккаунта получает только \`wrangler deploy\`.
 
 Сверить живой сайт с коммитом: \`pnpm verify-deploy --env <dev|prod> --commit <sha>\`. Скрипт заново собирает коммит во
 временной копии репозитория и сравнивает sha256 каждого файла сборки с тем, что отдаёт сайт. Код воркера
@@ -106,6 +109,9 @@ export function renderDeploySection(record: DeployRecord): string {
     `## ${record.env} · ${utc(record.deployedAt)}`,
     '',
     `- Коммит: \`${record.commit}\`, ветка \`${record.branch}\`, ${origin}.`,
+    record.ciPassed
+      ? '- CI: задача `check` на этом коммите прошла (GitHub Actions).'
+      : `- CI: не проверялся (${record.env}).`,
     `- Version ID: \`${record.versionId}\`.`,
     `- Цели: ${record.targets.length === 0 ? '—' : record.targets.map((target) => `\`${target}\``).join(', ')}.`,
     `- Сборка сайта: ${record.cluster}; Node ${record.tools.node}, pnpm ${record.tools.pnpm}, wrangler ${record.tools.wrangler}.`,

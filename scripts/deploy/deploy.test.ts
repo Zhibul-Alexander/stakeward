@@ -87,6 +87,7 @@ describe('parseDeployArgs', () => {
   it('--help', () => {
     expect(parseDeployArgs(['--help'], HOME, '/repo')).toEqual({ help: true });
     expect(DEPLOY_USAGE).toContain('--prod-confirm');
+    expect(DEPLOY_USAGE).toContain('CI job `check`');
     expect(ORIGIN_OF.dev).toMatch(/^https:\/\/stakeward-dev\./);
   });
 });
@@ -327,6 +328,7 @@ describe('manifest', () => {
     branch: 'build/ops',
     commit: 'c'.repeat(40),
     pushed: false,
+    ciPassed: false,
     versionId: '0b6f3a3e-1111-2222-3333-444455556666',
     targets: ['stakeward-dev.someone.workers.dev', 'schedule: */2 * * * *'],
     deployedAt: new Date('2026-10-06T10:20:30.000Z'),
@@ -348,6 +350,13 @@ describe('manifest', () => {
     for (const file of record.files) expect(section).toContain(`| \`${file.path}\` | ${String(file.bytes)} | \`${file.sha256}\` |`);
     expect(section).toContain(`pnpm verify-deploy --env dev --commit ${record.commit}`);
     expect(renderDeploySection({ ...record, pushed: true })).not.toContain('--allow-unpushed');
+  });
+
+  it('says whether CI was checked: prod waits for the check job, dev does not', () => {
+    expect(renderDeploySection(record)).toContain('- CI: не проверялся (dev).');
+    const prod = renderDeploySection({ ...record, env: 'prod', cluster: 'mainnet', pushed: true, ciPassed: true });
+    expect(prod).toContain('- CI: задача `check` на этом коммите прошла (GitHub Actions).');
+    expect(DEPLOYS_INTRO).toContain('`check`');
   });
 
   it('appends: a new file gets the intro, an existing one keeps everything it had', () => {

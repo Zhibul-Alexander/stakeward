@@ -1,5 +1,6 @@
 // The commit a deploy may ship (SECURITY-CHECK P18): a clean tree (no changed, staged or untracked file), and a HEAD
-// that is origin/<branch>, so the commit is public.
+// that is origin/<branch>, so the commit is public. That CI ran is not enough: whether it passed is scripts/deploy/ci.ts,
+// checked for prod only.
 import { execFileSync } from 'node:child_process';
 
 /**
@@ -52,10 +53,10 @@ export function headProblem(state: HeadState): string | null {
   if (state.branch === 'HEAD') return 'HEAD is detached: check out the branch to deploy';
   if (state.allowUnpushed) return null;
   if (state.remoteHead === null) {
-    return `origin/${state.branch} does not exist: push the branch and let CI pass first`;
+    return `origin/${state.branch} does not exist: push the branch first`;
   }
   if (state.remoteHead !== state.head) {
-    return `HEAD ${state.head.slice(0, 12)} is not origin/${state.branch} (${state.remoteHead.slice(0, 12)}): push or pull first, then let CI pass`;
+    return `HEAD ${state.head.slice(0, 12)} is not origin/${state.branch} (${state.remoteHead.slice(0, 12)}): push or pull first`;
   }
   return null;
 }

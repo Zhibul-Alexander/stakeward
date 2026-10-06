@@ -1,7 +1,8 @@
 // Deploy wrapper (SECURITY-CHECK P18 and P19). Usage: scripts/deploy/args.ts, or `pnpm deploy:dev --help`.
 // Plain Node 24 (DECISIONS D8). In order: refuse secrets exported in this shell, a dirty tree, a HEAD that is not
-// origin/<branch>; frozen install; site build for the cluster; the build guards on that very folder; `wrangler deploy`
-// with only the Cloudflare token and account id from the secrets file; the record in docs/deploys.md.
+// origin/<branch>, and for prod a commit whose CI job `check` has not passed; frozen install; site build for the cluster;
+// the build guards on that very folder; `wrangler deploy` with only the Cloudflare token and account id from the secrets
+// file; the record in docs/deploys.md.
 // Exit code 0: deployed (or the dry run passed); 1: refused, or a step failed.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEPLOY_USAGE, parseDeployArgs, UsageError } from './deploy/args.ts';
+import { githubRepo, readCiProblem, REQUIRED_CI_JOB } from './deploy/ci.ts';
 import {
   baseEnv,
   buildEnv,
@@ -94,7 +96,7 @@ function wranglerBin(): { path: string; version: string } {
   return { path: join(dirname(manifestPath), manifest.bin.wrangler), version: manifest.version };
 }
 
-function main(argv: readonly string[]): number {
+async function main(argv: readonly string[]): Promise<number> {
   const args = parseDeployArgs(argv);
   if (args.help) {
     console.log(DEPLOY_USAGE);
@@ -126,6 +128,17 @@ function main(argv: readonly string[]): number {
   if (problem !== null) throw new Refusal(problem);
   const pushed = remote === head;
   console.log(`${branch} @ ${head}${pushed ? ', same as origin' : ', NOT on origin (--allow-unpushed)'}`);
+
+  const ciPassed = args.env === 'prod';
+  if (ciPassed) {
+    step(`CI: job "${REQUIRED_CI_JOB}" passed on HEAD`);
+    // The remote URL may carry credentials: only owner and name are kept, and the URL is never printed.
+    const repo = githubRepo(git(['remote', 'get-url', 'origin']));
+    if (repo === null) throw new Refusal('origin is not a GitHub repository, so the CI result of HEAD cannot be read');
+    const ciProblem = await readCiProblem(repo, head);
+    if (ciProblem !== null) throw new Refusal(ciProblem);
+    console.log(`${repo.owner}/${repo.repo}: "${REQUIRED_CI_JOB}" passed on ${head}`);
+  }
 
   const env = buildEnv(process.env, args.cluster);
   console.log(`Environment of install, build and guards: ${Object.keys(env).sort().join(', ')}`);
@@ -186,6 +199,7 @@ function main(argv: readonly string[]): number {
     branch,
     commit: head,
     pushed,
+    ciPassed,
     versionId: deployed.versionId,
     targets: deployed.targets,
     deployedAt: new Date(),
@@ -202,7 +216,7 @@ function main(argv: readonly string[]): number {
 }
 
 try {
-  process.exitCode = main(process.argv.slice(2));
+  process.exitCode = await main(process.argv.slice(2));
 } catch (error) {
   if (error instanceof UsageError) {
     console.error(`${error.message}\n\n${DEPLOY_USAGE}`);
