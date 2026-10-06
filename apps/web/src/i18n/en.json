@@ -1310,11 +1310,11 @@
     },
     "ask": {
       "protect": "The owner of this stake asks your wallet to become its second key until {date}. Until then, the owner cannot withdraw this stake or move it to a new wallet without your signature, and if you lose this wallet, they wait until {date}. Your wallet cannot take their SOL.",
-      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself on your other device, or the owner told you, by voice or in person, that they want to withdraw:",
+      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself, or the owner told you, by voice or in person, that they want to withdraw:",
       "rescue": "This gives full control of the stake to the new wallet below. A thief who has the main key would send you exactly this request, with their own wallet. Sign only if you checked this address with the owner by voice or in person, not in the chat that sent you this link:"
     },
     "confirm": {
-      "withdraw": "I started this withdrawal myself on my other device, or the owner told me by voice or in person that they want it",
+      "withdraw": "I started this withdrawal myself, or the owner told me by voice or in person that they want it",
       "rescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
     },
     "stale": "A link works until it is used or cancelled. If you are not sure the owner still wants this, ask first.",

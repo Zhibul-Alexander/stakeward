@@ -136,10 +136,10 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       // What the link asks, before anything else: the main key that receives, in full.
       const ask = await view.findByText(en.cosign.ask.withdraw, undefined, WAIT);
       expect(within(ask.closest('[data-slot="cosign-ask"]') as HTMLElement).getByText(w.A.address)).toBeInTheDocument();
-      // The second key is often the owner's own, on another device: the owner who started the withdrawal there can say
-      // so truthfully. The warning about a thief's link stays first.
+      // The second key is often the owner's own, on another device, in another browser or in the wallet app's own
+      // browser: the owner who started the withdrawal can say so truthfully. The warning about a thief's link stays first.
       expect(ask).toHaveTextContent(
-        'The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself on your other device, or the owner told you, by voice or in person, that they want to withdraw:',
+        'The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself, or the owner told you, by voice or in person, that they want to withdraw:',
       );
       expect(view.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
 
@@ -159,7 +159,7 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       await user.click(signButton);
       expect(await view.findByText('Tick the box above to continue.')).toBeInTheDocument();
       const box = view.getByRole('checkbox', {
-        name: 'I started this withdrawal myself on my other device, or the owner told me by voice or in person that they want it',
+        name: 'I started this withdrawal myself, or the owner told me by voice or in person that they want it',
       });
       expect(box).toHaveFocus();
       expect(second.requests).toHaveLength(0);
