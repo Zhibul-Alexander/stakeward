@@ -235,6 +235,11 @@ describe('/app on LiteSvmChain', () => {
     }
     expect(within(section('Stake accounts')).queryByText('Protected')).toBeNull();
     expect(section('Stake accounts').querySelector('[data-slot="totals"]')).toHaveTextContent(`${formatSol(0n)} protected`);
+    // Rescue all the same: the recovery card sends a victim to another computer, and that one knows no second key.
+    expect(within(section('Stake accounts')).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute(
+      'href',
+      `/rescue?address=${main.address}`,
+    );
     // A way to confirm: connect the second key (no wallets here, so the list says how to get one).
     await userEvent.click(within(section('Is this lock yours?')).getByRole('button', { name: 'Connect a wallet as Second key' }));
     expect(within(section('Is this lock yours?')).getByText(/No Solana wallet found in this browser/)).toBeVisible();
@@ -310,6 +315,18 @@ describe('/app on LiteSvmChain', () => {
     expect(theRow.queryByText('A staking service may manage this stake.')).toBeNull();
   });
 
+  it('offers Rescue for a main key whose stake has no lock at all (D70 moves those too)', async () => {
+    const owner = await generateKeyPairSigner();
+    const open = await testChain.createStakeAccount({ staker: owner.address, withdrawer: owner.address });
+    renderApp({ path: `/app?address=${owner.address}` }, chain);
+    await findRow(open);
+    expect(rowStatus(open)).toBe('unprotected');
+    expect(within(section('Stake accounts')).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute(
+      'href',
+      `/rescue?address=${owner.address}`,
+    );
+  });
+
   it('explains an address without stake accounts (UX rule 13)', async () => {
     const empty = (await generateKeyPairSigner()).address;
     renderApp({ path: `/app?address=${empty}` }, chain);
@@ -318,6 +335,8 @@ describe('/app on LiteSvmChain', () => {
     expect(screen.getByText(/Liquid staking tokens \(LSTs\)/)).toBeInTheDocument();
     expect(document.querySelector('[data-slot="totals"]')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'You are the second key for' })).toBeNull();
+    // Nothing for a rescue to move.
+    expect(screen.queryByRole('link', { name: 'Rescue your stake' })).toBeNull();
   });
 
   it('lists only the second-key accounts when the address is no main key', async () => {
@@ -326,6 +345,8 @@ describe('/app on LiteSvmChain', () => {
     expect(section('You are the second key for')).toContainElement(locked);
     expect(screen.getByText('No stake account has this address as its main key.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'No stake accounts found' })).toBeNull();
+    // A rescue moves the stake of a main key; this address is none.
+    expect(screen.queryByRole('link', { name: 'Rescue your stake' })).toBeNull();
   });
 
   it('says what went wrong when the network fails, with details and a retry', async () => {

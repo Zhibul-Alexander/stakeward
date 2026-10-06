@@ -33,8 +33,15 @@ export const FAQ_GROUPS: readonly { id: FaqGroupId; items: readonly FaqId[] }[] 
   { id: 'developers', items: ['on-chain', 'existing-accounts', 'terms', 'cli', 'programs', 'audit'] },
 ];
 
-/** Answers with more than text: the Ledger's fields (`ledger`), a link to the gate results (`gate-link`). */
-export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link'>> = { ledger: 'ledger', 'existing-accounts': 'gate-link' };
+/**
+ * Answers with more than text: the Ledger's fields (`ledger`), a link to the gate results (`gate-link`), a link to
+ * Rescue (`rescue-link`).
+ */
+export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-link'>> = {
+  ledger: 'ledger',
+  'existing-accounts': 'gate-link',
+  'main-stolen': 'rescue-link',
+};
 
 /** The reminder days as a sentence fragment: "30, 14, 7, 3, and 1" (core REMINDER_DAYS, the worker's thresholds). */
 export const REMINDER_DAYS_TEXT = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(REMINDER_DAYS.map(String));

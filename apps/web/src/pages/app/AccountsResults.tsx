@@ -144,7 +144,6 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
   const mainId = useId();
   const secondId = useId();
   const confirmId = useId();
-  const anyLocked = view.owned.some((row) => row.protection === 'protected' || row.protection === 'expiring');
   return (
     <>
       {view.noLongerProtected.length === 0 ? null : <NoLongerProtectedBanner accounts={view.noLongerProtected} />}
@@ -163,7 +162,9 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
         ) : (
           <p className="text-sm text-muted">{t('app.lists.noneOwned')}</p>
         )}
-        {anyLocked ? (
+        {/* For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
+            knows no second key and so calls none of the locks Protected (D35). */}
+        {view.owned.length > 0 ? (
           <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
             {t('app.results.rescueNote')}
             <Link

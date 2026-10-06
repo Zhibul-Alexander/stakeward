@@ -277,6 +277,15 @@ describe('landing FAQ', () => {
     await depositShown();
   });
 
+  it('the stolen main key answer leads to Rescue, a page of this site, in this tab', async () => {
+    renderLanding();
+    // `hidden`: the answer sits in a closed <details>.
+    const rescue = within(section('faq-main-stolen')).getByRole('link', { name: 'Rescue your stake', hidden: true });
+    expect(rescue).toHaveAttribute('href', '/rescue');
+    expect(rescue).not.toHaveAttribute('target');
+    await depositShown();
+  });
+
   it('lists what a Ledger should show, hedged until a device has shown it', async () => {
     renderLanding();
     const ledger = section('faq-ledger');

@@ -1603,6 +1603,7 @@
   "faq": {
     "title": "Questions and answers",
     "gateLink": "Test results in the repository (docs/gate.md)",
+    "rescueLink": "Rescue your stake",
     "groups": {
       "basics": "The basics",
       "keys": "Your keys, and what can go wrong",
