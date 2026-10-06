@@ -1,7 +1,15 @@
 // scripts/deploy/ci.ts without the network: which repository origin is, what the check runs of a commit say, and how
 // a GitHub answer or a failed request becomes a refusal.
 import { describe, expect, it } from 'vitest';
-import { checkRunsUrl, ciProblem, githubRepo, parseCheckRuns, readCiProblem, REQUIRED_CI_JOB, type CheckRun } from './ci.ts';
+import {
+  checkRunsUrl,
+  ciProblem,
+  githubRepo,
+  parseCheckRuns,
+  readCiProblem,
+  REQUIRED_CI_JOB,
+  type CheckRun,
+} from './ci.ts';
 
 const SHA = '745e54dcea2097cdaf05ab58502b27c35aaeb484';
 const REPO = { owner: 'Zhibul-Alexander', repo: 'stakeward' };

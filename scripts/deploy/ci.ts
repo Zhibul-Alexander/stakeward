@@ -1,5 +1,5 @@
-// A prod deploy ships only a commit whose CI passed (SECURITY-CHECK P18). The wrapper itself runs only the build guards;
-// the `check` job of .github/workflows/ci.yml runs the rest: audit, wrangler types, typecheck, lint, every core,
+// A prod deploy ships only a commit whose CI passed (SECURITY-CHECK P18). The wrapper itself runs only the build
+// guards; the `check` job of .github/workflows/ci.yml runs the rest: audit, wrangler types, typecheck, lint, every core,
 // worker, web and scripts test, both site builds and the prod config dry run. The `e2e` job is not required: it is
 // flaky at 360 px (TESTPLAN), and a red e2e must not block a fix from reaching prod.
 // GitHub's check runs are public for a public repository: read without a token, so no credential is involved.

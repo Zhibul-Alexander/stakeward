@@ -1,8 +1,8 @@
 // Deploy wrapper (SECURITY-CHECK P18 and P19). Usage: scripts/deploy/args.ts, or `pnpm deploy:dev --help`.
 // Plain Node 24 (DECISIONS D8). In order: refuse secrets exported in this shell, a dirty tree, a HEAD that is not
-// origin/<branch>, and for prod a commit whose CI job `check` has not passed; frozen install; site build for the cluster;
-// the build guards on that very folder; `wrangler deploy` with only the Cloudflare token and account id from the secrets
-// file; the record in docs/deploys.md.
+// origin/<branch>, and for prod a commit whose CI job `check` has not passed; frozen install; site build for the
+// cluster; the build guards on that very folder; `wrangler deploy` with only the Cloudflare token and account id from
+// the secrets file; the record in docs/deploys.md.
 // Exit code 0: deployed (or the dry run passed); 1: refused, or a step failed.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

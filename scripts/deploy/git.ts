@@ -1,6 +1,6 @@
 // The commit a deploy may ship (SECURITY-CHECK P18): a clean tree (no changed, staged or untracked file), and a HEAD
-// that is origin/<branch>, so the commit is public. That CI ran is not enough: whether it passed is scripts/deploy/ci.ts,
-// checked for prod only.
+// that is origin/<branch>, so the commit is public. That CI ran is not enough: whether it passed is
+// scripts/deploy/ci.ts, checked for prod only.
 import { execFileSync } from 'node:child_process';
 
 /**
