@@ -3,23 +3,82 @@
 Пункты «Проверяю я» из шагов сборки. Перед подачей весь список проходится на prod.
 Отметка: `- [x]` и дата, или заметка, что пошло не так.
 
-## Минимум владельца (06.10.2026)
+## Порядок действий владельца (06.10.2026)
 
-Только то, что не могу сделать я. Остальное в этом файле — подробности для этих шагов.
+Всё по порядку, каждый этап опирается на предыдущий. Адрес dev: https://stakeward-dev.zhibul-alexander.workers.dev (devnet, SOL там ничего не стоят). Подробные клики по отдельным проверкам — в разделах ниже. Если что-то не совпадает с описанием или непонятно — пишите в чат.
 
-1. Доступы, 5 минут: 2FA на Cloudflare, GitHub и аккаунте Telegram, которому принадлежат боты; BotFather `/setjoingroups` → Disable у `@stakeward_dev_bot` и `@stakeward_bot`.
-2. Devnet SOL: около 2 SOL с https://faucet.solana.com на спонсора `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`. Раздать SOL вашим кошелькам и прогнать команды карточки я смогу сам.
-3. Деплой dev, когда я скажу, что сборка готова. В корне репозитория, в новой оболочке:
+### Этап 0. Посмотреть интерфейс — сейчас, без кошелька, 5 минут
+
+На dev уже работает сборка 06.10 утра (8beb55d) со всеми экранами; сегодняшние правки появятся после этапа 2.
+- адрес dev — лендинг и FAQ;
+- `<адрес dev>/app?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` — ваши два тестовых стейк-аккаунта (Not protected);
+- `<адрес dev>/dev/ui` — все компоненты во всех состояниях; `<адрес dev>/stats`.
+
+### Этап 1. Доступы — 10 минут
+
+1. Cloudflare: двухфакторная аутентификация в профиле (My Profile → Authentication).
+2. GitHub: Settings → Password and authentication → Two-factor authentication.
+3. Telegram, аккаунт, которому принадлежат боты: Настройки → Конфиденциальность → Облачный пароль.
+4. BotFather: `/setjoingroups` → выбрать `@stakeward_dev_bot` → Disable; то же для `@stakeward_bot`.
+
+### Этап 2. Выкатить свежую сборку на dev — 5 минут
+
+Из сессии Claude деплой запрещён, команды запускаете вы, на сервере.
+1. Новый терминал на сервере, `cd ~/workspace/stakeward`.
+2. `pnpm deploy:dev` (3–5 минут). Успех — строка `Deployed build/product @ <коммит> to dev: version <id>.` Если обёртка отказала — прислать её текст.
+3. Миграция базы, вставить целиком:
    ```sh
-   pnpm deploy:dev
    ( set -a; . ~/.config/stakeward/secrets.env; set +a
-     exec env -i PATH="$PATH" HOME="$HOME" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
+     exec env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
        CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm --filter @stakeward/worker db:migrate:dev )
    ```
-   Написать в чат «задеплоил». Сверку и коммит `docs/deploys.md` делаю я.
-4. Один проход на dev с тремя аккаунтами Phantom (Main key, Second key, New wallet), около часа: `/dev/cosign` — 4 прогона и «Copy all» в чат (шаг 3 в); защита на 10 минут (шаг 4); привязать Telegram и снять стейк с делегирования — пришла тревога (шаг 5 в); вывод и продление (шаг 6); спасение на New wallet и подпись по ссылке с телефона (шаг 7). Что сломалось или непонятно — в чат.
-5. Mainnet (шаг 9): по моему слову `pnpm deploy:prod --prod-confirm` и та же миграция с `db:migrate:prod`; форма Phantom для адреса prod (шаг 3 д); тот же проход с маленьким своим стейком; уговорить одного-двух человек защитить свой стейк.
-6. Подача: раздел бизнеса в `docs/SUBMISSION.md`, питч-видео и демо по сценариям оттуда, заявка на Colosseum до 12.10 23:59 PT.
+   Wrangler покажет миграцию `0004_link_writes_without_chat_ids.sql` и спросит подтверждение — ответить `y`.
+4. Написать в чат «задеплоил». `docs/deploys.md` после деплоя изменён — не трогать, его коммитит Claude.
+
+### Этап 3. Devnet SOL и кошельки — 15 минут
+
+1. https://faucet.solana.com → Devnet → адрес спонсора `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` → 3–5 SOL (можно двумя запросами). Написать «SOL на спонсоре».
+2. Phantom на компьютере: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet.
+3. Третий аккаунт, New wallet, из новой seed-фразы: создать фразу так же, как для Phantom 2 (например, Phantom в отдельном профиле браузера → Create new wallet → записать фразу), затем в основном Phantom: Add account → Import Recovery Phrase. «Create new account» не подходит: он из той же фразы. Прислать адрес New wallet — Claude переведёт на него SOL.
+4. Для этапа 5: Phantom на телефоне с фразой Phantom 2 (Second key, тестовый кошелёк) и тот же Testnet Mode.
+
+### Этап 4. Проход на компьютере — около часа
+
+Main key — Phantom 1, Second key — Phantom 2, New wallet — третий аккаунт. Подписывать в Phantom тем аккаунтом, который называет страница.
+1. Матрица, 15–20 минут: `<адрес dev>/dev/cosign`, четыре прогона по «Шаг 3, в» ниже. После каждого прогона — «Remove the lock with the Second key», иначе аккаунт останется запертым на 10 минут. В конце «Copy all (N)» → в чат, дописав в каждом отчёте «Wallet warnings shown:» и «Notes:».
+2. Telegram: `<адрес dev>/app`, подключить Main key, «Get alerts in Telegram», в боте Start.
+3. Защита: Protect у любого аккаунта → на шаге Accounts отметить оба → Second key: подключить Phantom 2, галочка «My second key comes from a different seed phrase» → срок «1 hour (devnet test)» → «Review and sign» → подписать оба раза → экран Done. На `/app` оба — Expiring soon.
+4. Тревога: у делегированного аккаунта Withdraw → «First, stop staking» → «Review and sign» → подписать Main key. Через 2–4 минуты в боте «… was deactivated …» с кнопкой Open Rescue.
+5. Продление: у неделегированного аккаунта Extend → более поздний срок → подписать. В боте тревога о продлении с кнопкой «Review the lock».
+6. Вывод: у неделегированного аккаунта Withdraw → «Review and sign» → подписывают Main key и Second key. Аккаунт исчезает, SOL — на Main key.
+7. Спасение: `<адрес dev>/rescue?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` → подключить New wallet → подтвердить новую фразу → подключить Main key и Second key → проверить, что новый владелец — адрес New wallet целиком → создать link-signing account → подписать по очереди → Done. Там же закрыть link-signing account (залог вернётся).
+8. Написать «этап 4 готов» — Claude создаст на Main key два новых тестовых аккаунта (раньше нельзя: спасение забрало бы и их).
+
+### Этап 5. Телефон и баннер — 30 минут
+
+1. Защита по ссылке: Protect у нового неделегированного аккаунта → Second key по ссылке, вставить адрес Phantom 2 → подписать Main key → появятся QR и ссылка.
+2. Открыть ссылку в браузере внутри Phantom на телефоне (если камера открывает обычный браузер — отправить ссылку себе в Telegram и вставить в адресную строку браузера Phantom) → прочитать экран → галочка → подписать. Компьютер сам покажет Done.
+3. Вывод по ссылке: Withdraw этого аккаунта на компьютере, подписывает Main key → ссылка → на телефоне подписать Second key → на компьютере Done.
+4. Баннер F6: второй новый аккаунт защитить на «10 minutes (devnet test)», через 10 минут обновить `/app` — красный баннер «no longer protected» с кнопкой Protect again.
+
+### Этап 6. Отчёт Claude
+
+- отчёты `/dev/cosign`, что пришло в Telegram, что было непонятно или выглядело не так;
+- через сутки после этапа 2: Cloudflare → Workers & Pages → stakeward-dev → Observability → Logs, вызовы cron, максимум CPU time за сутки (решение Free или Paid, «Шаг 5, г»).
+Claude правит найденное и пишет «готово к prod».
+
+### Этап 7. Mainnet — по слову Claude, начать не позже 09.10
+
+1. `pnpm deploy:prod --prod-confirm`, затем миграция из этапа 2 с `db:migrate:prod`. Написать «задеплоил prod».
+2. В тот же день — форма проверки домена в Phantom для адреса prod («Шаг 3, д» ниже).
+3. Свой стейк: в Phantom на mainnet застейкать чуть больше 1 SOL (минимум делегирования); на New wallet — около 0,02 SOL. На prod: защита (1 month) → продление → Unstake (тревога) → спасение на New wallet → снять замок вторым ключом → через конец эпохи (до ~2 дней) вывести на New wallet. Вернётся всё, кроме комиссий.
+4. Первые пользователи: попросить одного-двух человек (валидаторы, Superteam Georgia) защитить свой стейк; записать, кому писали и что ответили.
+
+### Этап 8. Подача — до 12.10 23:59 PT (13.10 10:59 по Тбилиси)
+
+1. Раздел бизнеса в `docs/SUBMISSION.md` — ваш текст.
+2. Питч-видео 2–3 минуты и демо до 3 минут по сценариям из `docs/SUBMISSION.md`; цифры с `/stats`.
+3. Заявка на Colosseum: название, описание, логотип из `docs/brand/`, ссылки на репозиторий и видео.
 
 ## Шаг 0. Подготовка
 
