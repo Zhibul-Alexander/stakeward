@@ -1,5 +1,13 @@
 import type { Address } from '@solana/kit';
-import { scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount, type WalletRole } from '@stakeward/core';
+import {
+  isLockupInForce,
+  scannerStatus,
+  shortAddress,
+  stakeActivationStatus,
+  type ClockView,
+  type StakeAccount,
+  type WalletRole,
+} from '@stakeward/core';
 import { CircleAlertIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -84,6 +92,10 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
     const activation = stakeActivationStatus(after.delegation, clock.epoch);
     return activation === 'inactive' || activation === 'deactivating' ? [after] : [];
   });
+  // A rescue keeps each lock as it was (D70): say that the second key holds one only where there is one.
+  const read = moved.flatMap(({ after }) => (after === null ? [] : [after]));
+  const anyLocked = read.some((after) => isLockupInForce(after.lockup, clock));
+  const anyOpen = read.some((after) => !isLockupInForce(after.lockup, clock));
 
   return (
     <section aria-labelledby={headingId} data-slot="rescue-done" className="flex flex-col gap-8">
@@ -132,7 +144,13 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
         </List>
       )}
 
-      {done === 0 ? null : <p className="max-w-prose font-medium">{t('rescue.done.useNew')}</p>}
+      {done === 0 ? null : (
+        <div className="flex max-w-prose flex-col gap-2">
+          <p className="font-medium">{t('rescue.done.useNew')}</p>
+          {anyLocked ? <p>{t('rescue.done.lockKept')}</p> : null}
+          {anyOpen ? <p>{t('rescue.done.noLock')}</p> : null}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         {idle.length === 0 ? null : <DelegateCard accounts={idle} newWallet={newWallet} signing={signing} />}

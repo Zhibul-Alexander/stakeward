@@ -61,21 +61,24 @@ describe('/dev/ui flows', () => {
     ).toEqual(['signed', 'signed', 'link']);
     expect(screen.getByLabelText('I checked this new wallet address with the owner by voice or in person, or it is mine')).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Sign in Sample Wallet as Second key' })).toHaveAttribute('aria-disabled', 'true');
-    // The link card's cancel slot, then the link-signing account's cards: set up, close, cancel, refused, gate blocked.
+    // The link card's cancel slot, then the link-signing account's cards: set up (by link, for a rescue), close, cancel,
+    // refused, gate blocked.
     await waitFor(() => {
-      expect(document.querySelectorAll('#link > div:last-child > figure')).toHaveLength(5);
+      expect(document.querySelectorAll('#link > div:last-child > figure')).toHaveLength(6);
     });
     const cards = [...document.querySelectorAll('#link [data-slot="nonce-step"]')];
     expect(cards.map((card) => `${card.getAttribute('data-mode') ?? ''}/${card.getAttribute('data-variant') ?? ''}`)).toEqual([
       'close/cancel-link',
       'close/cancel-link',
       'setup/close',
+      'setup/rescue',
       'close/close',
       'close/cancel-link',
       'setup/close',
     ]);
     expect(screen.getAllByRole('button', { name: 'Cancel the link' })).toHaveLength(3);
-    expect(screen.getByRole('button', { name: 'Create the link-signing account' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Create the link-signing account' })).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: 'Set up the link-signing account' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close it' })).toBeInTheDocument();
     expect(screen.getAllByText(/already taken by another account/)).toHaveLength(2);
     expect(document.querySelectorAll('#link [data-slot="nonce-blocked"]')).toHaveLength(1);

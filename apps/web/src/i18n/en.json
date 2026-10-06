@@ -743,6 +743,7 @@
       "linkPaused": "Link open: stopped checking after 30 minutes",
       "cosignConfirm": "The device that opened the link: confirm, then sign",
       "nonceSetup": "Link-signing account: set up",
+      "nonceSetupRescue": "Link-signing account: set up for a rescue",
       "nonceClose": "Link-signing account: close",
       "nonceCancel": "Cancel a link",
       "nonceBlocked": "Set up refused: the address is taken",
@@ -1274,6 +1275,11 @@
       "body": "Signing on another device needs a small account that keeps the transaction valid until it is signed, even hours later. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
       "action": "Create the link-signing account"
     },
+    "setupRescue": {
+      "title": "Set up the link-signing account",
+      "body": "Rescue always uses a link-signing account: it keeps each transaction valid while three wallets sign, here or on another device. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "action": "Create the link-signing account"
+    },
     "close": {
       "title": "Close the link-signing account",
       "body": "Closing returns {amount} to your {role}. Any link still open stops working.",
@@ -1412,7 +1418,9 @@
       "movedList": "Moved to your new wallet",
       "notMovedList": "Not moved yet",
       "owner": "Now controlled by your new wallet:",
-      "useNew": "From now on your new wallet is the main key of these stake accounts. Your second key still holds the lock. Stop using the old main key: anything sent to it may be taken.",
+      "useNew": "From now on your new wallet is the main key of these stake accounts. Stop using the old main key: anything sent to it may be taken.",
+      "lockKept": "Each lock stays as it was, and your second key still holds it.",
+      "noLock": "A stake account that had no lock still has none. Protect it, with your new wallet as the main key.",
       "delegate": {
         "title": "Earn rewards again",
         "body": "These stake accounts are no longer staking. Your new wallet can delegate them to the same validator again. Check that this is your validator:",

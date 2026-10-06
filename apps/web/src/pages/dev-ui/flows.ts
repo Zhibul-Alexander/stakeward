@@ -283,8 +283,9 @@ export type NonceSample =
 export const SAMPLE_NONCE_DEPOSIT = 1_447_680n;
 
 /**
- * The link-signing account's cards: set up by the main key (protect or withdraw by link), close and cancel a link by
- * the new wallet (rescue), a setup refused because the address is taken, and the gate's notice for that case.
+ * The link-signing account's cards: set up by the main key (protect or withdraw by link) and by the new wallet for a
+ * rescue, close and cancel a link by the new wallet (rescue), a setup refused because the address is taken, and the
+ * gate's notice for that case.
  */
 export async function sampleNonceSteps(): Promise<NonceSample[]> {
   const nonceAccount = await deriveNonceAccountAddress(SAMPLE.mainKey);
@@ -299,6 +300,12 @@ export async function sampleNonceSteps(): Promise<NonceSample[]> {
   };
   return [
     { key: 'setup', label: 'devUi.flows.nonceSetup', kind: 'step', props: { mode: 'setup', role: 'main', amount: SAMPLE_NONCE_DEPOSIT } },
+    {
+      key: 'setup-rescue',
+      label: 'devUi.flows.nonceSetupRescue',
+      kind: 'step',
+      props: { mode: 'setup', variant: 'rescue', role: 'new', amount: SAMPLE_NONCE_DEPOSIT },
+    },
     { key: 'close', label: 'devUi.flows.nonceClose', kind: 'step', props: { mode: 'close', role: 'new', amount: SAMPLE_NONCE_DEPOSIT } },
     {
       key: 'cancel-link',
