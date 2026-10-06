@@ -358,15 +358,19 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
       const sameSecondKey = !secondKeyChanged && context.custodian === toCustodian;
       if (bySecondKey && !removed && sameSecondKey && context.lockUntil > context.now) {
         sentences.push(
-          'If you still have the second key, remove the lock with it now, then protect this stake again with a new ' +
-            'second key; until then the main key alone can withdraw this SOL.',
+          'In that case, if you still have the second key, remove the lock with it now, then protect this stake again ' +
+            'with a new second key; until then the main key alone can withdraw this SOL.',
           'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.',
         );
         return { text: sentences.join(' '), buttonLabel: 'Review the lock', path: `/extend/${event.stakeAccount}` };
       }
       if (removed) sentences.push('The main key alone can now withdraw this SOL.');
-      // Without the second key's lock, the main key and a new second key can lock it again at once.
-      if (removed && bySecondKey) sentences.push('Protect this stake again now with your main key and a new second key.');
+      // Without the second key's lock, the main key and a new second key can lock it again at once; the owner may also
+      // have removed it on purpose (the F3 fallback), so it is advice for the other case. No advice once a later pass
+      // has seen a new lock.
+      if (removed && bySecondKey && context.lockUntil <= context.now) {
+        sentences.push('If you did not remove it, protect this stake again now with your main key and a new second key.');
+      }
       return { text: sentences.join(' '), buttonLabel: 'Open Stakeward', path: accountsPage };
     }
     case 'BALANCE_DECREASED': {

@@ -387,8 +387,8 @@ describe('formatAlert', () => {
     // Every sentence names the key it means: no "it" that could read as "this SOL".
     const removeAndProtect =
       'Only the second key can do this. If this was not you, your second key may be stolen. ' +
-      'If you still have the second key, remove the lock with it now, then protect this stake again with a new second ' +
-      'key; until then the main key alone can withdraw this SOL. ' +
+      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a ' +
+      'new second key; until then the main key alone can withdraw this SOL. ' +
       'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.';
     const accountsButton = { buttonLabel: 'Open Stakeward', path: `/app?address=${A}` };
     // A routine renewal by the second key (the answer to a reminder) moves the date too: a neutral button to the lock's
@@ -446,7 +446,17 @@ describe('formatAlert', () => {
         text:
           'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
           'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL. ' +
-          'Protect this stake again now with your main key and a new second key.',
+          'If you did not remove it, protect this stake again now with your main key and a new second key.',
+        ...accountsButton,
+      });
+    });
+
+    it('a removal delivered only after a later pass saw a new lock: no advice to protect again', () => {
+      // Removed on purpose (the F3 fallback) or not, the stake is locked again by the time the alert goes out.
+      expect(formatAlert(lockMoved(0n), { ...lockedNow, lockUntil: T })).toEqual({
+        text:
+          'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
+          'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL.',
         ...accountsButton,
       });
     });

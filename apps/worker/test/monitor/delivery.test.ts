@@ -188,7 +188,7 @@ describe('messages', () => {
     expect(await next(h)).toMatchObject({ events: 1, messages: 2 });
     const text = extendedBy(SECOND);
     expect(text).toContain(
-      'If you still have the second key, remove the lock with it now, then protect this stake again with a new second key;',
+      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a new second key;',
     );
     for (const chat of [CHAT_A, CHAT_B]) {
       const [message] = h.telegram.delivered(chat);
