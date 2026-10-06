@@ -339,7 +339,7 @@ describe('accounts gone and the genesis check', () => {
     expect((await h.readAccounts()).every((a) => a.state === 'delegated')).toBe(true);
     expect(h.chain.callsOf('getGenesisHash')).toHaveLength(1);
     expect(h.adminMessages()).toEqual([
-      'Stakeward devnet monitor: RPC_URL answers for another cluster. Account closures were not recorded.',
+      'Stakeward devnet monitor: an RPC it reads answers for another cluster. Account closures were not recorded.',
     ]);
     expect((await h.readMeta()).last_pass_at).toBeUndefined();
   });
@@ -387,7 +387,7 @@ describe('accounts gone and the genesis check', () => {
     expect(await h.readEvents()).toEqual([]);
     expect((await h.readAccounts()).every((a) => a.state === 'delegated')).toBe(true);
     expect(h.adminMessages()).toEqual([
-      'Stakeward devnet monitor: RPC_URL answers for another cluster. Account closures were not recorded.',
+      'Stakeward devnet monitor: an RPC it reads answers for another cluster. Account closures were not recorded.',
     ]);
   });
 

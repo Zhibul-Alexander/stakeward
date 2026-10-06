@@ -95,8 +95,20 @@ export function monitorConfig(env: Env): MonitorConfig {
     siteOrigin: siteOriginOf(env),
     telegramToken: admin.token,
     adminChatId: admin.chatId,
-    rpc: { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL },
+    rpc: monitorRpcOf(env),
   };
+}
+
+/**
+ * The monitor's RPC endpoints. With MONITOR_RPC_URL set, the monitor reads through it (its own API key, so visitors'
+ * searches cannot use up the quota the alerts need) and falls back to RPC_FALLBACK_URL, or to the site's RPC_URL when
+ * there is no fallback. Without it: RPC_URL, then RPC_FALLBACK_URL, as for the site.
+ */
+export function monitorRpcOf(env: Env): { primary: string; fallback: string | undefined } {
+  const own = textOf(env.MONITOR_RPC_URL);
+  if (own === '') return { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL };
+  const fallback = textOf(env.RPC_FALLBACK_URL);
+  return { primary: own, fallback: fallback === '' ? env.RPC_URL : fallback };
 }
 
 /**

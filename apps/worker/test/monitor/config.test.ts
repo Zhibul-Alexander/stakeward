@@ -29,6 +29,17 @@ describe('monitorConfig', () => {
     expect(monitorConfig(envWith({ RPC_FALLBACK_URL: FALLBACK_URL })).rpc).toEqual({ primary: PRIMARY_URL, fallback: FALLBACK_URL });
   });
 
+  it('MONITOR_RPC_URL gives the monitor its own RPC first, then the fallback, else the site RPC', () => {
+    const own = 'https://monitor.rpc.test/?api-key=m';
+    expect(monitorConfig(envWith({ MONITOR_RPC_URL: own })).rpc).toEqual({ primary: own, fallback: PRIMARY_URL });
+    expect(monitorConfig(envWith({ MONITOR_RPC_URL: own, RPC_FALLBACK_URL: FALLBACK_URL })).rpc).toEqual({
+      primary: own,
+      fallback: FALLBACK_URL,
+    });
+    // Empty (a cleared secret) is the same as not set.
+    expect(monitorConfig(envWith({ MONITOR_RPC_URL: '' })).rpc).toEqual({ primary: PRIMARY_URL, fallback: undefined });
+  });
+
   it('picks the preset of MONITOR_PLAN; an unknown plan or cluster is a deploy bug', () => {
     expect(monitorConfig(envWith({ MONITOR_PLAN: 'paid', CLUSTER: 'mainnet' }))).toMatchObject({
       cluster: 'mainnet',

@@ -164,6 +164,7 @@ curl -sS "$API/getWebhookInfo"
 ## Шаг 11. Финиш
 
 - [ ] Прочитать `docs/SECURITY-CHECK.md`, закрыть свои пункты из «Открытые риски»: адрес prod в README, ротация токена бота, решение по Workers Paid и по ключу RPC для мониторинга.
+- [ ] Второй бесплатный ключ Helius для мониторинга: `pnpm --filter @stakeward/worker exec wrangler secret put MONITOR_RPC_URL --env prod` (адрес вида `https://mainnet.helius-rpc.com/?api-key=...`), то же для dev с devnet-ключом. После следующего прохода `/api/health` зелёный.
 - [ ] `docs/SUBMISSION.md`: заполнить FILL (цифры `/stats` на mainnet, отзывы, число уникальных основных ключей) и переписать OWNER (бизнес, логотип, ссылки на инциденты).
 - [ ] Записать питч и демо по сценариям из `docs/SUBMISSION.md`.
 
