@@ -45,8 +45,8 @@ test('/dev/ui shows every token and component without console errors, axe violat
   // Signing by link: the link card's QR code is one SVG path, drawn under the production CSP (no style attribute, no
   // <style> element, no data: URI; a refused inline style would also fail the fixture's console check). The components
   // section has one more (the QR code on its own) and the too-long state, which shows text instead.
-  // Three signing panels, then the link-signing account's five cards.
-  await expect(page.locator('#link figure')).toHaveCount(8);
+  // Three signing panels, then the link-signing account's six cards.
+  await expect(page.locator('#link figure')).toHaveCount(9);
   await expect(page.locator('#link svg[data-slot="qr-code"] path')).toHaveCount(2);
   await expect(page.locator('#components svg[data-slot="qr-code"] path')).toHaveCount(4);
   await expect(page.getByText('This link is too long for a QR code. Copy it instead.')).toBeVisible();
