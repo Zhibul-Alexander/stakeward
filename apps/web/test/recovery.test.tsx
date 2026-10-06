@@ -189,6 +189,11 @@ describe('/recovery/:account on LiteSvmChain', () => {
         expect(part).toHaveTextContent('Never use the Ledger that holds your main key or your second key, not even another account on it');
       }
       expect(caseOf('You lost the second key')).toHaveTextContent('a new second key made from a new seed phrase');
+      // Stopping an Activating stake makes it Inactive at once; only an Active one waits for the epoch's end (as the
+      // Deactivate summary says, 4e).
+      expect(within(caseOf('You want to withdraw')).getByText(/^If the stake is Active or Activating/)).toHaveTextContent(
+        'If the stake is Active or Activating, stop staking first. An Activating stake becomes Inactive at once; an Active one at the end of the epoch, within about 2 days. The second command shows the time left:',
+      );
       const limits = screen.getByRole('heading', { level: 2, name: 'What no one can undo' }).closest('section') as HTMLElement;
       expect(within(limits).getByText(/^Two keys from one seed phrase protect nothing/)).toBeInTheDocument();
       // The command line steps say what was run (keypair files) and what was not (a real Ledger), as the README does.

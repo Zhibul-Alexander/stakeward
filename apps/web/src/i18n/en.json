@@ -1552,7 +1552,7 @@
       },
       "withdraw": {
         "title": "You want to withdraw",
-        "deactivate": "If the stake is Active or Activating, stop staking first. It stops at the end of the epoch, within about 2 days. The second command shows the time left:",
+        "deactivate": "If the stake is Active or Activating, stop staking first. An Activating stake becomes Inactive at once; an Active one at the end of the epoch, within about 2 days. The second command shows the time left:",
         "managed": "If staking is managed by another key (see the list), that key or its service stops the staking, not your main key. A rescue would take staking back from that service.",
         "withdraw": "When the stake is Inactive, withdraw everything to your main key. Both keys sign; the main key pays the fee:",
         "remove": "Main key and second key not on the same computer? First stop staking and wait until the stake is Inactive. Only then does the second key remove the lock, and the main key withdraws right after:"
