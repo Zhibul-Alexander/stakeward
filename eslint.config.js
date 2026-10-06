@@ -13,6 +13,10 @@ export default defineConfig([
     '**/playwright-report/**',
     '**/test-results/**',
     '**/coverage/**',
+    // Agent worktrees (.claude/worktrees: whole checkouts of this repository) and local tool state (.cache: Playwright
+    // system libraries). Neither is part of this checkout's code; `eslint .` from the main checkout walked into both.
+    '.claude/**',
+    '.cache/**',
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
