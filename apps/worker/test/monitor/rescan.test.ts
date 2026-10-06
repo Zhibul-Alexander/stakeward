@@ -555,6 +555,89 @@ describe('the daily pass', () => {
     expect(await round()).toEqual({ day: '2026-10-06', after: [mains[PAGE - 1], SECOND] });
   });
 
+  /**
+   * The queue at its cap (rescanQueueMax, 1000) when urgent pairs come in front: 994 pairs nobody watches, then the
+   * pair of S1 (an urgent pair of an earlier pass) and the pairs of 5 closed locks the day's round already queued
+   * (its cursor is past all of them). In the pass at 07:00, 6 watched locks of others are gone from the chain: 6
+   * ACCOUNT_CLOSED events, 6 urgent pairs in front, and the cap cuts the last 6 pairs off the back.
+   */
+  async function overflowing(round: { after: unknown } | null = { after: [MAIN, SECOND] }) {
+    const h = await watched();
+    const daily = await seedForeignPairs(5);
+    const crowd = Array.from({ length: 6 }, (_, i) => addr(i, 0x99));
+    crowd.forEach((at, i) => {
+      const main = addr(i, 0xaa);
+      h.chain.putStake(at, { ...SPEC, staker: main, withdrawer: main, custodian: key(7) });
+    });
+    await h.seedWatched(crowd);
+    for (const at of crowd) h.chain.remove(at);
+    const fillers = Array.from({ length: 994 }, (_, i) => [addr(i, 0x66), key(8)]);
+    const cut = [[MAIN, SECOND], ...daily.map((main) => [main, SECOND])];
+    expect(fillers.length + cut.length).toBe(1000);
+    await h.setMeta({
+      rescan_queue: JSON.stringify([...fillers, ...cut]),
+      ...(round === null ? {} : { pairs_sweep: JSON.stringify({ day: '2026-10-05', ...round }) }),
+      daily_day: '2026-10-05',
+      bot_check_day: '2026-10-05',
+    });
+    h.at('2026-10-05T07:00:00Z');
+    const firstDaily = daily[0] ?? '';
+    return { h, cut, firstDaily };
+  }
+
+  it('urgent pairs that push the queue past its cap: the round goes back for the pairs cut off, none is lost', { timeout: 180_000 }, async () => {
+    const { h, cut, firstDaily } = await overflowing();
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', closed: 6, rescans: 3, rescanQueue: 997 });
+    const queue = JSON.parse((await h.readMeta()).rescan_queue ?? '[]') as string[][];
+    expect(queue).toHaveLength(997);
+    for (const [main, second] of cut) expect(queue.some((p) => p[0] === main && p[1] === second)).toBe(false);
+    // The round's cursor goes back to before the first pair cut off (every pair of its main key).
+    expect(JSON.parse((await h.readMeta()).pairs_sweep ?? 'null')).toEqual({ day: '2026-10-05', after: [firstDaily, ''] });
+
+    const searchedBefore = searchedPairs(h).length;
+    let passes = 0;
+    for (;;) {
+      h.advance(120_000);
+      const report = await h.pass();
+      expect(report.outcome).toBe('ok');
+      passes += 1;
+      const round = JSON.parse((await h.readMeta()).pairs_sweep ?? 'null') as { after: unknown };
+      if (report.rescanQueue === 0 && round.after === null) break;
+      expect(passes).toBeLessThanOrEqual(400);
+    }
+    const searchedAfter = new Set(searchedPairs(h).slice(searchedBefore).map(([main, second]) => `${main}/${second}`));
+    for (const [main, second] of cut) expect(searchedAfter.has(`${main ?? ''}/${second ?? ''}`)).toBe(true);
+  });
+
+  it('the round goes back only as far as the first pair cut off, opens again when it ended, and starts as usual when there is none', async () => {
+    const cases: [{ after: unknown } | null, unknown][] = [
+      [{ after: null }, 'first-cut'],
+      [{ after: ['', ''] }, ['', '']],
+      // No round yet: today's starts in this pass from the first pair.
+      [null, ['', '']],
+    ];
+    for (const [round, expected] of cases) {
+      const { h, firstDaily } = await overflowing(round);
+      expect(await h.pass()).toMatchObject({ outcome: 'ok', rescanQueue: 997 });
+      const after = expected === 'first-cut' ? [firstDaily, ''] : expected;
+      expect(JSON.parse((await h.readMeta()).pairs_sweep ?? 'null'), JSON.stringify(round)).toEqual({ day: '2026-10-05', after });
+      await env.DB.batch(['accounts', 'events', 'meta'].map((table) => env.DB.prepare(`DELETE FROM ${table}`)));
+    }
+  });
+
+  it('a pass that dies after the chunk commit: the cut queue and the round\'s cursor moved back are stored together', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { h, cut, firstDaily } = await overflowing();
+    h.db.failWhen = (e) => e.name === 'PENDING';
+    await expect(h.pass()).rejects.toThrow(/D1_ERROR/);
+    const meta = await h.readMeta();
+    const queue = JSON.parse(meta.rescan_queue ?? '[]') as string[][];
+    expect(queue).toHaveLength(1000);
+    expect(queue.slice(0, 6).every((p) => p[1] === key(7))).toBe(true);
+    for (const [main, second] of cut) expect(queue.some((p) => p[0] === main && p[1] === second)).toBe(false);
+    expect(JSON.parse(meta.pairs_sweep ?? 'null')).toEqual({ day: '2026-10-05', after: [firstDaily, ''] });
+  });
+
   it('a pass that dies after reading a page: the next one reads it again, no pair is lost', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const h = await watched();

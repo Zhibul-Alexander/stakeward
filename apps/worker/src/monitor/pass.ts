@@ -81,7 +81,8 @@ import {
  * 6. rescans - getProgramAccounts by (main key, second key) pair, urgent pairs first; locked accounts split off a
  *              watched one are watched from then on. A pass that read no chunk reads the Clock alone for them. Once
  *              a day from 06:00 UTC a round of every pair starts; its pairs join the back of the queue a page at a
- *              time while the queue is short (meta.pairs_sweep).
+ *              time while the queue is short (meta.pairs_sweep). Pairs the queue's cap cuts off the back send the
+ *              round back for them (withUrgent).
  * 7. admin   - at most one admin alert.
  * 8. finish  - one statement: the lease released, the queue, the counters and, only when the pass succeeded, the
  *              marker `last_pass_at` that /api/health reads. It is always the pass's last statement.
@@ -217,9 +218,10 @@ type DailySweep = { day: string; after: string };
 
 /**
  * The daily search round (SECURITY-CHECK П25): started on `day`, its pairs queued up to and including `after`
- * (['', ''] = none yet), keyset by (main key, second key); `after: null` once every pair was queued. A round that
- * does not end within a day goes on: a new one starts only after it ended, so every pair is reached however many
- * pairs sort before it.
+ * (['', ''] = none yet; [main key, ''] = every pair before that main key), keyset by (main key, second key);
+ * `after: null` once every pair was queued. A round that does not end within a day goes on: a new one starts only
+ * after it ended, so every pair is reached however many pairs sort before it. A pair the queue's cap cuts off puts
+ * `after` back before it, and opens a round that ended again (withUrgent).
  */
 type PairsSweep = { day: string; after: readonly [string, string] | null };
 
@@ -265,6 +267,8 @@ type LoadedPass = PassContext & {
   storedQueue: string;
   /** The daily search round as this pass leaves it; the finish writes it with the queue. */
   pairs: PairsSweep | null;
+  /** meta.pairs_sweep as this pass last wrote it (or loaded it), like storedQueue. */
+  storedPairs: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
   /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
@@ -365,6 +369,7 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     queue: [...meta.rescanQueue],
     storedQueue: JSON.stringify(meta.rescanQueue),
     pairs: meta.pairsSweep,
+    storedPairs: JSON.stringify(meta.pairsSweep),
     urgent: [],
     lastRead: null,
     readFailed: false,
@@ -461,8 +466,9 @@ async function checkGenesis(pass: LoadedPass, endpoint: EndpointName): Promise<'
 
 /**
  * One batch: the events (gated on the row versions), then the row writes (compare-and-set), then meta: the cursor and,
- * when this chunk calls for a rescan, the queue with the urgent pairs in front. Once the events are in, the next pass
- * sees no change and would not ask for that rescan again: a pass that fails or is killed later must leave it queued.
+ * when this chunk calls for a rescan, the queue with the urgent pairs in front (withUrgent) and the round it may have
+ * sent back. Once the events are in, the next pass sees no change and would not ask for that rescan again: a pass
+ * that fails or is killed later must leave it queued.
  */
 async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string | null, nowMs: number): Promise<void> {
   const db = pass.deps.db;
@@ -471,13 +477,12 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   if (out.updates.length > 0) statements.push(chunkUpdateStatement(db, out.updates));
   const entries: Record<string, string> = {};
   if (cursor !== null) entries.cursor = cursor;
-  const queue = out.rescan.length > 0 ? JSON.stringify(uniquePairs([...pass.urgent, ...pass.queue])) : null;
-  if (queue !== null && queue !== pass.storedQueue) entries.rescan_queue = queue;
+  const stored = out.rescan.length > 0 ? queueEntries(pass, withUrgent(pass), entries) : null;
   if (Object.keys(entries).length > 0) statements.push(putMetaStatement(db, entries, pass.passId));
   if (statements.length === 0) return;
   const results = await pass.budget.batch(db, statements);
   if (out.events.length > 0) pass.report.events += results[0]?.meta.changes ?? 0;
-  if (queue !== null) pass.storedQueue = queue;
+  if (stored !== null) Object.assign(pass, stored);
 }
 
 /**
@@ -521,19 +526,18 @@ async function daily(pass: LoadedPass): Promise<void> {
   const statements: D1PreparedStatement[] = [];
   if (events.length > 0) statements.push(chunkEventsStatement(db, events, deps.now()), reminderDaysStatement(db, days));
   const last = rows.length >= pageRows ? rows.at(-1) : undefined;
-  let queue: string | null = null;
+  let stored: Stored | null = null;
   if (last !== undefined) {
     const entries: Record<string, string> = { daily_sweep: JSON.stringify({ day: sweep.day, after: last.stake_account }) };
     // As commitChunk: the urgent pairs of this pass stay in front, in case it dies before the rescans.
-    queue = JSON.stringify(uniquePairs([...pass.urgent, ...pass.queue]));
-    if (queue !== pass.storedQueue) entries.rescan_queue = queue;
+    stored = queueEntries(pass, withUrgent(pass), entries);
     statements.push(putMetaStatement(db, entries, pass.passId));
   }
   if (statements.length > 0) {
     const [inserted] = await budget.batch(db, statements);
     if (events.length > 0) report.reminders += inserted?.meta.changes ?? 0;
   }
-  if (queue !== null) pass.storedQueue = queue;
+  if (stored !== null) Object.assign(pass, stored);
   pass.dailyDone = last === undefined;
   report.daily = true;
 }
@@ -694,7 +698,7 @@ async function deliver(pass: LoadedPass): Promise<void> {
 async function rescans(pass: LoadedPass): Promise<void> {
   const { config, budget, report, deps } = pass;
   report.stage = 'rescans';
-  pass.queue = uniquePairs([...pass.urgent, ...pass.queue]);
+  pass.queue = withUrgent(pass);
   pass.urgent = [];
   await queueDailyPairs(pass);
   if (pass.queue.length === 0) return;
@@ -807,6 +811,59 @@ async function queueDailyPairs(pass: LoadedPass): Promise<void> {
 }
 
 /**
+ * The urgent pairs of this pass in front of the queue, as uniquePairs keeps them: at most MONITOR_LIMITS.rescanQueueMax.
+ * Urgent pairs pile up over passes when more come in than are searched (or while searches fail), so the cap can cut
+ * pairs off the back: daily pairs the round's cursor already passed, urgent pairs of earlier passes. Every such pair
+ * sends the round back for it (roundBefore): the round queues it again once the queue is short, so no pair is lost
+ * while a watched lock has it (DAILY_PAIRS keeps closed rows). Called again later in the pass, with more urgent pairs,
+ * it cuts the same pairs and maybe more; the round goes back to the lowest pair cut (by address), never further.
+ */
+function withUrgent(pass: LoadedPass): QueuedPair[] {
+  const all = [...pass.urgent, ...pass.queue];
+  const kept = uniquePairs(all);
+  if (kept.length < MONITOR_LIMITS.rescanQueueMax) return kept;
+  const keptIds = new Set(kept.map(pairId));
+  for (const pair of all) {
+    if (!keptIds.has(pairId(pair))) pass.pairs = roundBefore(pass.pairs, pair);
+  }
+  return kept;
+}
+
+/**
+ * The round with its cursor before `pair`: [main key, ''], every pair of that main key (DAILY_PAIRS takes the pairs
+ * after the cursor), unless the cursor is there already. A round that ended opens again. No round yet: the first one,
+ * from 06:00 UTC, reaches every pair anyway.
+ */
+function roundBefore(round: PairsSweep | null, pair: QueuedPair): PairsSweep | null {
+  if (round === null) return null;
+  const before: [string, string] = [pair[0], ''];
+  if (round.after !== null && comparePairs(round.after, before) <= 0) return round;
+  return { day: round.day, after: before };
+}
+
+/** Text order of (main key, second key), as SQLite compares the TEXT columns of DAILY_PAIRS (base58 is ASCII). */
+function comparePairs(a: readonly [string, string], b: readonly [string, string]): number {
+  if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+  return a[1] === b[1] ? 0 : a[1] < b[1] ? -1 : 1;
+}
+
+/** What a meta write stored, for the pass to remember (storedQueue, storedPairs). */
+type Stored = { storedQueue: string; storedPairs: string };
+
+/**
+ * Adds to `entries` the queue and the round where they differ from what this pass stored last; returns what is
+ * stored once the write went through. The round is written with the queue it goes with: a queue without the pairs it
+ * cut must never be stored with a round that does not go back for them.
+ */
+function queueEntries(pass: LoadedPass, queue: readonly QueuedPair[], entries: Record<string, string>): Stored {
+  const storedQueue = JSON.stringify(queue);
+  if (storedQueue !== pass.storedQueue) entries.rescan_queue = storedQueue;
+  const storedPairs = JSON.stringify(pass.pairs);
+  if (pass.pairs !== null && storedPairs !== pass.storedPairs) entries.pairs_sweep = storedPairs;
+  return { storedQueue, storedPairs };
+}
+
+/**
  * The cluster clock for rescans in a pass that read no chunk: every watched row is closed (the page is empty), and
  * a queued search is the only way such a row comes back (DAILY_PAIRS keeps closed rows for that). Not after a chunk
  * that failed, past the soft deadline, or without the budget for the read and one search; a failed read leaves the
@@ -859,7 +916,7 @@ async function finish(pass: LoadedPass): Promise<void> {
     (!(pass.adminCounts.bot ?? []).includes('username') || !adminAllowed('bot-mismatch', pass.adminSent, deps.now()));
   if (botChecked) entries.bot_check_day = utcDay(pass.t0);
   const pairs = pass.pairs === null ? null : JSON.stringify(pass.pairs);
-  if (pairs !== null && pairs !== JSON.stringify(meta.pairsSweep)) entries.pairs_sweep = pairs;
+  if (pairs !== null && pairs !== pass.storedPairs) entries.pairs_sweep = pairs;
   if (pass.resetCursor) entries.cursor = '';
   const success = !pass.readFailed && !pass.telegramConfigFailed;
   if (success) entries.last_pass_at = String(pass.t0);
@@ -1046,7 +1103,10 @@ function parseSweep(text: string | undefined): DailySweep | null {
   return { day, after };
 }
 
-/** meta.pairs_sweep: {"day": "YYYY-MM-DD", "after": null or [main key, second key]}, '' for none yet; else null. */
+/**
+ * meta.pairs_sweep: {"day": "YYYY-MM-DD", "after": null, ['', ''] (none yet), [main key, ''] (before that main key)
+ * or [main key, second key]}; anything else is null.
+ */
 function parsePairsSweep(text: string | undefined): PairsSweep | null {
   const json = parseJson(text);
   if (typeof json !== 'object' || json === null) return null;
@@ -1055,11 +1115,10 @@ function parsePairsSweep(text: string | undefined): PairsSweep | null {
   if (after === null) return { day, after: null };
   if (!Array.isArray(after) || after.length !== 2) return null;
   const [main, second] = after as unknown[];
+  if (typeof main !== 'string' || typeof second !== 'string') return null;
   const start = main === '' && second === '';
-  if (!start && !(typeof main === 'string' && isAddressText(main) && typeof second === 'string' && isAddressText(second))) {
-    return null;
-  }
-  return { day, after: [String(main), String(second)] };
+  if (!start && !(isAddressText(main) && (second === '' || isAddressText(second)))) return null;
+  return { day, after: [main, second] };
 }
 
 /**
@@ -1086,12 +1145,17 @@ function parseJson(text: string | undefined): unknown {
   }
 }
 
+/** The identity of a queued search: its (main key, second key) pair. */
+function pairId(pair: QueuedPair): string {
+  return `${pair[0]}/${pair[1]}`;
+}
+
 /** First occurrence of each (main key, second key) pair, in order, at most MONITOR_LIMITS.rescanQueueMax. */
 function uniquePairs(pairs: readonly QueuedPair[]): QueuedPair[] {
   const seen = new Set<string>();
   const unique: QueuedPair[] = [];
   for (const pair of pairs) {
-    const id = `${pair[0]}/${pair[1]}`;
+    const id = pairId(pair);
     if (seen.has(id)) continue;
     seen.add(id);
     unique.push(pair);

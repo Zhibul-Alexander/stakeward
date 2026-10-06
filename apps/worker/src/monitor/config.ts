@@ -30,8 +30,10 @@ export type MonitorPlan = {
   reminderPageRows: number;
   /**
    * (main key, second key) pairs of the daily search round per page (DAILY_PAIRS). A page joins the back of the rescan
-   * queue only while the queue holds fewer pairs than this, so pairs of others never fill it (SECURITY-CHECK П25):
-   * every pair is reached in its turn, a round that does not end within a day goes on the next.
+   * queue only while the queue holds fewer pairs than this, so the round's own pairs never fill it (SECURITY-CHECK
+   * П25); a round that does not end within a day goes on the next. Urgent pairs pile up in front over passes and may
+   * still push the queue past rescanQueueMax: the pairs cut off the back send the round back for them (pass.ts
+   * withUrgent), so every pair is reached in its turn.
    */
   pairsPageRows: number;
 };
@@ -63,7 +65,8 @@ export const MONITOR_PLANS = {
     rescanMaxBodyChars: 2_000_000,
     rescanParseChars: 20_000_000,
     reminderPageRows: 1_000,
-    // Two pages and the urgent pairs of a pass (at most 5 x 99 rows) stay below rescanQueueMax.
+    // Two pages and the urgent pairs of one pass (at most 5 x 99 rows) stay below rescanQueueMax; urgent pairs of
+    // several passes may not, and the round goes back for what the cap cuts (pass.ts withUrgent).
     pairsPageRows: 250,
   },
 } as const satisfies Record<string, MonitorPlan>;
