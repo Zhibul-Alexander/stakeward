@@ -10,9 +10,12 @@ import { DEV_COSIGN_MARKER } from '@/pages/dev/DevCosignPage';
 import { DEV_UI_MARKER } from '@/pages/dev/DevUiPage';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
+import { prebuiltDist } from './support/prebuilt.ts';
 
 /**
- * Builds the site for both clusters, exactly as the deploy scripts do, and greps the output.
+ * Builds the site for both clusters, exactly as the deploy scripts do, and greps the output. When the deploy wrapper
+ * (scripts/deploy.ts) passes the folder it is about to upload (support/prebuilt.ts), that folder stands in for the
+ * build of its cluster and every check below runs on it; the other cluster is still built here.
  *
  * Marker convention (extend it, do not weaken it):
  * - Code that exists only in devnet builds exports a string literal starting with DEV_ONLY_PREFIX and renders or
@@ -34,9 +37,25 @@ const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
 const VITE_BIN = join(dirname(require.resolve('vite/package.json')), 'bin', 'vite.js');
 
-type Build = { dir: string; files: Map<string, string> };
+type Build = { dir: string; files: Map<string, string>; owned: boolean };
+
+const PREBUILT = prebuiltDist();
+
+function readBuild(dir: string, owned: boolean): Build {
+  const files = new Map<string, string>();
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else files.set(relative(dir, path), readFileSync(path, 'latin1'));
+    }
+  };
+  walk(dir);
+  return { dir, files, owned };
+}
 
 function build(cluster: 'devnet' | 'mainnet'): Build {
+  if (PREBUILT?.cluster === cluster) return readBuild(PREBUILT.dir, false);
   const dir = mkdtempSync(join(tmpdir(), `stakeward-${cluster}-`));
   // A clean environment: NODE_ENV=test from Vitest would make Vite bundle development React.
   const env: Record<string, string> = {};
@@ -49,16 +68,7 @@ function build(cluster: 'devnet' | 'mainnet'): Build {
     env,
     stdio: 'pipe',
   });
-  const files = new Map<string, string>();
-  const walk = (current: string) => {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const path = join(current, entry.name);
-      if (entry.isDirectory()) walk(path);
-      else files.set(relative(dir, path), readFileSync(path, 'latin1'));
-    }
-  };
-  walk(dir);
-  return { dir, files };
+  return readBuild(dir, true);
 }
 
 function filesContaining(output: Build, needle: string): string[] {
@@ -75,7 +85,8 @@ describe('production builds', () => {
   }, 180_000);
 
   afterAll(() => {
-    for (const output of [devnet, mainnet]) rmSync(output.dir, { recursive: true, force: true });
+    // A prebuilt folder is the deploy's, not ours to delete.
+    for (const output of [devnet, mainnet]) if (output.owned) rmSync(output.dir, { recursive: true, force: true });
   });
 
   it('the devnet build contains every devnet-only page (positive control)', () => {

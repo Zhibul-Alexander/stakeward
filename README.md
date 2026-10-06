@@ -439,10 +439,14 @@ Two Wrangler environments, each with its own D1 database, Telegram bot, RPC URL 
 
 ```sh
 pnpm deploy:dev
-pnpm deploy:prod
+pnpm deploy:prod --prod-confirm
 ```
 
-Each builds the site for its cluster and deploys the worker. Deploys are manual: CI has no Cloudflare token, and it only dry-runs the prod config. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
+Both run `scripts/deploy.ts`. It deploys only the committed HEAD of a clean tree, and only when that commit is on origin; for prod, also only once the CI job `check` has passed on it (GitHub's check runs, read without a token). It installs with the frozen lockfile, builds the site for the environment's cluster with no secret in the environment, runs the build guards on that very build, and gives the Cloudflare token and account id to `wrangler deploy` alone. It reads those two from `~/.config/stakeward/secrets.env` (`--secrets-file` to change) and refuses a shell that has exported that file, so never source it. `--dry-run` does everything but the upload; `pnpm deploy:dev --help` lists the options.
+
+Each deploy appends its commit, the Cloudflare version id and the sha256 of every site file to [docs/deploys.md](docs/deploys.md); commit that file. Then check the live site against the commit: `pnpm verify-deploy --env <dev|prod> --commit <sha>` builds the commit again in a temporary worktree, compares every file with what the site serves, and checks that every response carries the security headers of the build's `_headers` (the CSP and the rest) unchanged.
+
+`pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys are manual: CI has no Cloudflare token, and it only dry-runs the prod config. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
 
 - Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL`. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
 - `RPC_URL` must be a private RPC such as Helius: public Solana RPC endpoints refuse requests from Cloudflare Workers.

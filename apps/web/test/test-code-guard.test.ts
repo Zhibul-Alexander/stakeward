@@ -11,12 +11,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { COUNTING_CHAIN_MARKER } from './support/counting-chain.ts';
 import { FAKE_API_MARKER } from './support/fake-api.ts';
 import { FAKE_STANDARD_WALLET_MARKER } from './support/fake-standard-wallet.ts';
+import { prebuiltDist } from './support/prebuilt.ts';
 
 /**
  * CLAUDE.md section 11: the test wallet never reaches a production bundle, and no code path handles private keys.
  * The mainnet build (what deploy:prod ships) is scanned for the markers the test doubles carry and for what only key
  * handling or forbidden wallet features would bring in. Positive controls bundle each test double on its own and find
  * its marker, so a marker cannot silently fall out of minified code and make the scan meaningless.
+ * When the deploy wrapper (scripts/deploy.ts) passes the folder it is about to upload (support/prebuilt.ts), that folder
+ * is scanned too, whatever its cluster, and a mainnet one replaces the mainnet build made here.
  */
 const TEST_ONLY_PREFIX = 'stakeward-test-only:';
 const TEST_MARKERS = [
@@ -96,11 +99,17 @@ function bundle(source: string, options: { ssr?: boolean } = {}): string {
   }
 }
 
+const PREBUILT = prebuiltDist();
+
 describe('test code never ships', () => {
   let mainnet: Map<string, string>;
-  let outDir: string;
+  let outDir: string | null = null;
 
   beforeAll(() => {
+    if (PREBUILT?.cluster === 'mainnet') {
+      mainnet = readTree(PREBUILT.dir);
+      return;
+    }
     outDir = scratch('mainnet-');
     execFileSync(process.execPath, [VITE_BIN, 'build', '--outDir', outDir, '--emptyOutDir', '--logLevel', 'error'], {
       cwd: WEB_ROOT,
@@ -111,7 +120,7 @@ describe('test code never ships', () => {
   }, 180_000);
 
   afterAll(() => {
-    rmSync(outDir, { recursive: true, force: true });
+    if (outDir !== null) rmSync(outDir, { recursive: true, force: true });
   });
 
   it('every test double carries a test-only marker', () => {
@@ -121,6 +130,13 @@ describe('test code never ships', () => {
   it('the mainnet build has no test code, no LiteSVM, no key handling, no forbidden wallet features', () => {
     expect(mainnet.size).toBeGreaterThan(0);
     for (const needle of FORBIDDEN_IN_PRODUCTION) expect(found(mainnet, needle), String(needle)).toEqual([]);
+  });
+
+  it.runIf(PREBUILT !== null)('the build the deploy uploads has none of it either', () => {
+    if (PREBUILT === null) return;
+    const shipped = readTree(PREBUILT.dir);
+    expect(shipped.size).toBeGreaterThan(0);
+    for (const needle of FORBIDDEN_IN_PRODUCTION) expect(found(shipped, needle), String(needle)).toEqual([]);
   });
 
   it('positive control: a bundle of the test wallet keeps its marker (and shows its key generation)', () => {

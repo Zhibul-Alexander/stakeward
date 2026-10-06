@@ -6,11 +6,18 @@ savePrefix: ''
 allowBuilds:
   esbuild: true
   workerd: true
-minimumReleaseAgeExclude:
-  - '@types/node@24.19.1'
-  - vite@8.3.2
-  - miniflare@5.20261001.0-alpha
-  - wrangler@4.146.0
+# Supply chain (SECURITY-CHECK P20). An explicit minimumReleaseAge turns on minimumReleaseAgeStrict: a version younger
+# than one day fails the install (or asks for approval) instead of being added to minimumReleaseAgeExclude in silence,
+# as the built-in non-strict default does. A frozen install also checks every lockfile entry against it.
+minimumReleaseAge: 1440
+# A version published with weaker trust evidence (no provenance / trusted publisher) than an earlier one fails the
+# install with ERR_PNPM_TRUST_DOWNGRADE.
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Published 2023-07-10 by an npm CLI maintainer (lukekarrys) as the CVE-2022-25883 backport to the 6.x line, by hand
+  # without provenance, after 7.5.1-7.5.4 came with provenance from CI. Comes in via @babel/core
+  # (eslint-plugin-react-hooks). Exact version only.
+  - semver@6.3.1
 overrides:
   # @cloudflare/vitest-pool-workers@0.22.0 pins miniflare 5.20260815.0-alpha / wrangler 4.124.0 with undici 7.29.0
   # and sharp 0.35.2 (GHSA advisories, test-only path). Patch-level bumps; remove when pool-workers updates.
