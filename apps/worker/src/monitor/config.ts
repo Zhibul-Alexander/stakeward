@@ -131,10 +131,12 @@ export function monitorConfig(env: Env): MonitorConfig {
 }
 
 /**
- * The monitor's RPC (SECURITY-CHECK П22, В8). With MONITOR_RPC_URL set, the monitor reads through it: its own API key,
- * so visitors' searches through the site's RPC_URL cannot use up the quota the alerts need. When it fails,
- * RPC_FALLBACK_URL reads, or RPC_URL without a fallback. Unset or empty: RPC_URL, then RPC_FALLBACK_URL, as on the
- * site.
+ * The monitor's RPC (SECURITY-CHECK П22, В8). With MONITOR_RPC_URL set, the monitor reads through it, so visitors'
+ * searches through the site's RPC_URL cannot use up the quota the alerts need. That holds only when the URL comes from
+ * a quota of its own: another Helius account or project, or another provider. Helius counts credits and requests per
+ * second per project, and every API key of a project shares them, so a second key next to RPC_URL's protects nothing.
+ * When it fails, RPC_FALLBACK_URL reads, or RPC_URL without a fallback. Unset or empty: RPC_URL, then
+ * RPC_FALLBACK_URL, as on the site.
  */
 function monitorRpcOf(env: Env): Pick<MonitorConfig, 'rpc' | 'rpcSecrets'> {
   const own = textOf(env.MONITOR_RPC_URL);

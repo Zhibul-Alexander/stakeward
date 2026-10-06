@@ -6,7 +6,7 @@ import { encodeBase64 } from '../src/base64.ts';
 
 export const PRIMARY_URL = 'https://primary.rpc.test/?api-key=test-primary-key';
 export const FALLBACK_URL = 'https://fallback.rpc.test/?api-key=test-fallback-key';
-/** MONITOR_RPC_URL in the monitor tests: the monitor's own RPC key. */
+/** MONITOR_RPC_URL in the monitor tests: the monitor's own RPC URL (in production, from a quota of its own). */
 export const MONITOR_URL = 'https://monitor.rpc.test/?api-key=test-monitor-key';
 export const ORIGIN = 'https://stakeward.test';
 

@@ -29,10 +29,13 @@
   //   RPC_URL                  required. Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
   //   RPC_FALLBACK_URL         optional. Second RPC URL, used for reads only when RPC_URL fails. Not listed in
   //                            secrets.required, so wrangler dev ignores it in .dev.vars (set it with `wrangler secret put`).
-  //   MONITOR_RPC_URL          optional. RPC URL for the monitor alone, with its own API key, so that searches on the site
-  //                            cannot use up the quota the alerts need (SECURITY-CHECK П22). The monitor falls back to
-  //                            RPC_FALLBACK_URL, else RPC_URL. Unset: the monitor reads like the site. Not in
-  //                            secrets.required either (`wrangler secret put`, like RPC_FALLBACK_URL).
+  //   MONITOR_RPC_URL          optional. RPC URL for the monitor alone, so that searches on the site cannot use up the
+  //                            quota the alerts need (SECURITY-CHECK П22). It protects that quota only when it comes from
+  //                            a quota of its own: a different Helius account or project, or another provider. Helius
+  //                            counts credits and requests per second per project, so a second API key in the project of
+  //                            RPC_URL shares both and protects nothing. The monitor falls back to RPC_FALLBACK_URL, else
+  //                            RPC_URL. Unset: the monitor reads like the site. Not in secrets.required either
+  //                            (`wrangler secret put`, like RPC_FALLBACK_URL).
   //   TELEGRAM_BOT_TOKEN       required. Token of this environment's bot.
   //   TELEGRAM_WEBHOOK_SECRET  required. Value Telegram sends in X-Telegram-Bot-Api-Secret-Token.
   //   ADMIN_CHAT_ID            required. Telegram chat id for monitor and worker error reports.

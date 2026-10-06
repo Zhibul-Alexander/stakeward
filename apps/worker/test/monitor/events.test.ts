@@ -430,7 +430,7 @@ describe('accounts gone and the genesis check', () => {
   }
 });
 
-describe("MONITOR_RPC_URL: the monitor's own RPC key", () => {
+describe("MONITOR_RPC_URL: the monitor's own RPC URL", () => {
   const STAKES = [10, 11, 12, 13].map((n) => key(n));
   const rpcHosts = (h: Harness) => h.net.calls.map((call) => call.host).filter((host) => host.endsWith('.rpc.test'));
 
