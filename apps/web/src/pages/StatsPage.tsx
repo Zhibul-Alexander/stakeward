@@ -82,7 +82,9 @@ function StatsBody({ stats, onRetry }: { stats: Load<Stats>; onRetry: () => void
 
 /**
  * /stats (CLAUDE.md section 9, DECISIONS.md D82): three numbers from the Stakeward monitor, read once per visit from
- * GET /api/stats. No polling and no cache: a reload reads them again.
+ * GET /api/stats. The page does not poll or cache. The server counts the locked accounts and their SOL at most every
+ * 10 minutes (STATS_TTL_MS in apps/worker/src/public-api.ts), so a reload within that time shows the same two numbers;
+ * the alerts sent are read on every request.
  */
 export function StatsPage({ load = () => fetchStats() }: { load?: () => Promise<Stats> }) {
   const [attempt, setAttempt] = useState(0);
