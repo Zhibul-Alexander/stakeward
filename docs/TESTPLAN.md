@@ -27,7 +27,7 @@
 ### Этап 2. Кошельки — 15 минут
 
 1. Phantom на компьютере: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet.
-2. New wallet из новой seed-фразы. В Chrome создать отдельный профиль, поставить в нём Phantom → Create a New Wallet → Create a Recovery Phrase Wallet (не вход через почту, Google или Apple: у такого кошелька нет фразы) → записать 12 слов на бумагу. Затем в основном Phantom: Add Account → Import Recovery Phrase → эти 12 слов. «Create New Account» в основном Phantom не подходит: он из той же фразы.
+2. New wallet — третий аккаунт, он нужен только для спасения: новым владельцем стейка не может быть ни Main key, ни Second key (сайт их отклоняет). Для теста проще всего: в основном Phantom Add Account → Create New Account. Такой аккаунт из той же фразы, что Phantom 1, поэтому /rescue предупредит «Your new wallet and your main key are both in Phantom.» и попросит галочку «My new wallet comes from a new seed phrase…» — для теста её можно поставить. В жизни так нельзя: укравший фразу получит и этот кошелёк, поэтому настоящему пострадавшему нужна новая фраза.
 3. Прислать адрес New wallet — Claude переведёт на него 0,05 devnet SOL.
 4. Телефон: Phantom с фразой Phantom 2 (тестовый Second key), тот же Testnet Mode.
 5. Предупреждения «Both keys are in Phantom…» на /protect и «Your new wallet and your main key are both in Phantom.» на /rescue будут — так и должно быть: у Phantom 2 и New wallet свои фразы.
