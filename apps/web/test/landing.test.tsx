@@ -288,13 +288,18 @@ describe('landing FAQ', () => {
 
   it('quotes the status a lock of an unknown key shows, and says that on a new device it is how your own lock looks', async () => {
     renderLanding();
-    const label = en.status.lockedByOther;
+    const { lockedByOther, lockedByAnother, protected: protectedLabel, expiring } = en.status;
     const unknownLock = section('faq-locked-by-other');
-    expect(unknownLock.querySelector('summary')).toHaveTextContent(`Why does my stake account say ${label}?`);
+    expect(unknownLock.querySelector('summary')).toHaveTextContent(`Why does my stake account say ${lockedByOther}?`);
     expect(unknownLock).toHaveTextContent('On a new device or in another browser, your own lock looks like this');
-    // The fake-site check names the same status, and Protected as the only sign of your own key.
-    expect(section('faq-fake-site')).toHaveTextContent(`One that still says ${label} is not locked by the key you connected.`);
-    expect(document.body.textContent).not.toMatch(/Locked by another key/);
+    // Your own lock, once its key is connected, says Protected, or Expiring soon near its end: both are named.
+    expect(unknownLock).toHaveTextContent(`then it says ${protectedLabel} or ${expiring}.`);
+    // And what a browser that knows your second key calls a lock that key does not hold (D35).
+    expect(unknownLock).toHaveTextContent(`a lock held by any other key says ${lockedByAnother} instead.`);
+    // The fake-site check, made with the second key connected: your own key's statuses, and the one a fake site leaves.
+    const fakeSite = section('faq-fake-site');
+    expect(fakeSite).toHaveTextContent(`Each stake account you protected must say ${protectedLabel} or ${expiring}.`);
+    expect(fakeSite).toHaveTextContent(`One that says ${lockedByAnother} is not locked by the key you connected.`);
     await depositShown();
   });
 

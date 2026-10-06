@@ -127,7 +127,7 @@ They could not:
 
 To check your lock without Stakeward's server, type explorer.solana.com yourself and look up your stake account. At the top it must say "Account is locked! Lockup expires on" and the date you chose; if that line is missing, the account is not locked. Under Authorities, the Lockup Authority Address must be your second key and the Withdraw Authority Address your main key.
 
-A fake Stakeward site is the same danger. Type the address yourself or use a bookmark. After you protect your stake, open your accounts with your second key connected: a stake account marked Locked by another key is not locked by your key.
+A fake Stakeward site is the same danger. Type the address yourself or use a bookmark. After you protect your stake, open your accounts with your second key connected: each stake account you protected must say Protected or Expiring soon, and one marked Locked by another key is not locked by your key.
 
 ## Recover without Stakeward
 

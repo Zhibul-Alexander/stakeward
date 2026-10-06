@@ -11,6 +11,7 @@ import { StrictMode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
+import en from '@/i18n/en.json';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { PortsProvider } from '@/ports';
 import { CountingChain } from './support/counting-chain.ts';
@@ -134,8 +135,13 @@ describe('/recovery/:account on LiteSvmChain', () => {
       // Check first: before the keys, in the DOM order a reader and a printer follow (spec L6).
       const verify = screen.getByText('Check the second key first');
       expect(follows(verify, keys)).toBe(true);
-      // The card cannot know whose the second key is (D35).
+      // The card cannot know whose the second key is (D35). It links the FAQ answer about such a lock, by its question.
       expect(screen.queryByText('Protected')).toBeNull();
+      const verifyNote = verify.closest('[data-slot="recovery-verify"]') as HTMLElement;
+      expect(within(verifyNote).getByRole('link', { name: `Why a stake account says ${en.status.lockedByOther}` })).toHaveAttribute(
+        'href',
+        '/#faq-locked-by-other',
+      );
 
       // The route first, then the other account of this pair; neither the open one nor another second key's.
       const rows = [...document.querySelectorAll<HTMLElement>('[data-slot="recovery-account"]')];

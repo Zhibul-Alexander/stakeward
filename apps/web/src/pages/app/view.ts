@@ -16,6 +16,8 @@ export type AccountView = {
   activation: ActivationStatus;
   protection: ProtectionStatus;
   managedByService: boolean;
+  /** This browser knows a second key for the account's main key (AccountRow words a lock none of them holds by it). */
+  secondKeyKnown: boolean;
   /** F6: remembered on this device as protected and now without a lock. */
   wasProtected: boolean;
 };
@@ -76,6 +78,7 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
       activation: stakeActivationStatus(account.delegation, clock.epoch),
       protection: view.status,
       managedByService: view.managedByService,
+      secondKeyKnown: input.knownSecondKeys.length > 0,
       wasProtected: view.status === 'unprotected' && input.rememberedProtected.includes(account.address),
     };
   });
@@ -91,6 +94,8 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
         activation: stakeActivationStatus(account.delegation, clock.epoch),
         protection: view.status,
         managedByService: view.managedByService,
+        // The address holds these locks itself.
+        secondKeyKnown: true,
         wasProtected: false,
       };
     });

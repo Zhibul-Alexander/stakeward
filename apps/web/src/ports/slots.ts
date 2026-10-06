@@ -125,7 +125,8 @@ export function createSecondKeyMemory(
 /**
  * The second keys the site knows for this viewer (DECISIONS.md D14): the address in the "second" slot while its wallet
  * is connected and offers it, plus the second keys remembered on this device. scannerStatus needs this list: a lock
- * held by a key not in it is Locked by a second key (with an empty list, every lock), never Protected.
+ * held by a key not in it is never Protected: Locked by a second key with an empty list (every lock), Locked by another
+ * key otherwise.
  */
 export function knownSecondKeys(
   slots: WalletSlots,

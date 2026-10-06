@@ -102,7 +102,8 @@ function rowActions(row: SampleRow) {
 function rowLabel(row: SampleRow): string {
   if (row.key === 'managed-by-service') return t('devUi.states.managedByService');
   if (row.key === 'stake-key-changed') return t('devUi.states.stakeKeyChanged');
-  return statusLabel(row.key);
+  if (row.key === 'locked-new-device') return statusLabel('locked-by-other', false);
+  return statusLabel(row.key, row.secondKeyKnown);
 }
 
 function SummaryDemo({ sample }: { sample: SampleSummary }) {
@@ -178,6 +179,8 @@ export function ComponentsSection() {
             {STATUSES.map((status) => (
               <StatusBadge key={status} status={status} />
             ))}
+            {/* The same lock once this browser knows a second key that does not hold it (D35). */}
+            <StatusBadge status="locked-by-other" secondKeyKnown />
           </div>
         </Demo>
         <Demo label={t('devUi.states.loading')}>
@@ -231,6 +234,7 @@ export function ComponentsSection() {
                 activation={row.activation}
                 protection={row.protection}
                 managedByService={row.managedByService}
+                secondKeyKnown={row.secondKeyKnown}
                 wasProtected={row.wasProtected}
                 rescueHref={appLinks.rescue(row.account.withdrawer)}
                 actions={rowActions(row)}

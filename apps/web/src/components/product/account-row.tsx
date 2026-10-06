@@ -49,6 +49,12 @@ type AccountRowProps = {
   managedByService: boolean;
   /** Rescue for this account's main key (`/rescue?address=`): linked from that warning. Left out on the rescue pages. */
   rescueHref?: string | undefined;
+  /**
+   * This browser knows a second key for the account's main key: the list core `scannerStatus` got was not empty. With
+   * one, a `locked-by-other` lock is held by none of them and reads Locked by another key, with no "connect it" (what a
+   * fake site leaves, D35); without, Locked by a second key, which on a new device is the viewer's own lock too.
+   */
+  secondKeyKnown: boolean;
   /** F6: this account was protected and its lock is gone. With `protection: 'unprotected'` it shows red. */
   wasProtected?: boolean | undefined;
   /** Buttons or a selection checkbox for this account. */
@@ -76,6 +82,7 @@ export function AccountRow({
   activation,
   protection,
   managedByService,
+  secondKeyKnown,
   wasProtected = false,
   rescueHref,
   actions,
@@ -90,7 +97,7 @@ export function AccountRow({
       ? formatUtcDate(account.lockup.unixTimestamp)
       : null;
   const short = shortAddress(account.address);
-  const hintKey = HINTS[status];
+  const hintKey = status === 'locked-by-other' && secondKeyKnown ? 'status.lockedByAnotherHint' : HINTS[status];
   const hint = hintKey === null ? null : t(hintKey, { date: date ?? '' });
   // Another stake key under the viewer's own lock (SECURITY-CHECK П6): a thief with the main key can still stop or move
   // the stake, and this is what it looks like.
@@ -114,7 +121,7 @@ export function AccountRow({
         <SolAmount lamports={account.lamports} className="text-lg font-semibold" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <StatusBadge status={status} />
+        <StatusBadge status={status} secondKeyKnown={secondKeyKnown} />
         {date === null ? null : <span className="text-sm text-muted">{t('components.status.until', { date })}</span>}
         <ActivationBadge status={activation} />
       </div>

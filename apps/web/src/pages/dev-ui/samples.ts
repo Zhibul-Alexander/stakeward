@@ -145,22 +145,25 @@ function stakeAccount(sample: SampleStake): StakeAccount {
 }
 
 export type SampleRow = {
-  key: StatusBadgeStatus | 'managed-by-service' | 'stake-key-changed';
+  key: StatusBadgeStatus | 'locked-new-device' | 'managed-by-service' | 'stake-key-changed';
   account: StakeAccount;
   activation: ActivationStatus;
   protection: ProtectionStatus;
   managedByService: boolean;
+  /** This viewer knows a second key: a lock none of them holds reads Locked by another key (D35). */
+  secondKeyKnown: boolean;
   wasProtected: boolean;
 };
 
 /**
  * One account per status. Statuses come from core: `scannerStatus` with the second keys this viewer is known to
- * hold, and `stakeActivationStatus` from the epochs.
+ * hold, and `stakeActivationStatus` from the epochs. `locked-new-device` is the same lock seen by a browser that knows
+ * no second key yet (Locked by a second key); `locked-by-other` is a lock that the known key does not hold.
  */
 export function sampleRows(clock: ClockView): SampleRow[] {
   const known = [SAMPLE.secondKey];
   const lock = (unixTimestamp: bigint, custodian: Address): Lockup => ({ unixTimestamp, epoch: 0n, custodian });
-  const rows: { key: SampleRow['key']; stake: SampleStake; wasProtected?: boolean }[] =
+  const rows: { key: SampleRow['key']; stake: SampleStake; wasProtected?: boolean; knownKeys?: readonly Address[] }[] =
     [
       {
         key: 'protected',
@@ -174,6 +177,11 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       {
         key: 'locked-by-other',
         stake: { address: SAMPLE.stakeD, sol: 10n, activation: 'inactive', lockup: lock(SAMPLE_LOCK_END, SAMPLE.otherKey) },
+      },
+      {
+        key: 'locked-new-device',
+        stake: { address: SAMPLE.stakeH, sol: 25n, activation: 'active', lockup: lock(SAMPLE_LOCK_END, SAMPLE.secondKey) },
+        knownKeys: [],
       },
       {
         key: 'was-protected',
@@ -198,13 +206,15 @@ export function sampleRows(clock: ClockView): SampleRow[] {
     ];
   return rows.map((row) => {
     const account = stakeAccount(row.stake);
-    const view = scannerStatus(account, known, clock);
+    const keys = row.knownKeys ?? known;
+    const view = scannerStatus(account, keys, clock);
     return {
       key: row.key,
       account,
       activation: stakeActivationStatus(account.delegation, clock.epoch),
       protection: view.status,
       managedByService: view.managedByService,
+      secondKeyKnown: keys.length > 0,
       wasProtected: row.wasProtected ?? false,
     };
   });

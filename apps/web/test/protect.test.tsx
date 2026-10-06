@@ -689,8 +689,8 @@ describe('/protect step gates', () => {
       // Another key's lock: shown, not selectable.
       expect(selectBox(locked)).toBeDisabled();
       expect(selectBox(locked)).not.toBeChecked();
-      // Why it cannot be chosen; the row above says what to do if that key is the viewer's own.
-      expect(screen.getByText('Already locked by a second key, so it cannot be locked again here.')).toBeInTheDocument();
+      // Why it cannot be chosen, in words that hold whoever holds the lock; the row above says whose key it may be.
+      expect(screen.getByText('Already locked, so it cannot be locked again here.')).toBeInTheDocument();
       expect(
         within(screen.getByRole('article', { name: `Stake account ${shortAddress(locked)}` })).getByText(
           /^This browser does not know this key yet\. If it is your second key, connect it/,

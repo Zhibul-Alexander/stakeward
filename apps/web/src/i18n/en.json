@@ -260,11 +260,13 @@
     "expiring": "Expiring soon",
     "unprotected": "Not protected",
     "lockedByOther": "Locked by a second key",
+    "lockedByAnother": "Locked by another key",
     "lockedUntil": "Locked until {date}",
     "protectedHint": "Withdrawing or changing the owner needs your second key until {date}.",
     "expiringHint": "The lock ends on {date}. Extend it to stay protected.",
     "unprotectedHint": "Anyone with your main key can withdraw this stake.",
     "lockedByOtherHint": "This browser does not know this key yet. If it is your second key, connect it to manage the lock; if not, only that key can change it.",
+    "lockedByAnotherHint": "This is not the second key you connected here. If you did not set this lock, someone else holds it.",
     "managedByService": "A staking service may manage this stake."
   },
   "components": {
@@ -843,7 +845,7 @@
       "tooMany": "Choose up to {max} stake accounts at a time. Protect these first, then come back for the rest.",
       "alreadyProtected": "Already locked by your second key until {date}. To change the date, extend the lock.",
       "extend": "Extend the lock",
-      "lockedByOther": "Already locked by a second key, so it cannot be locked again here.",
+      "lockedByOther": "Already locked, so it cannot be locked again here.",
       "leftOut": "Left out: the connected main key cannot withdraw these stake accounts, so it cannot protect them.",
       "noneProtectable": "None of these stake accounts can be protected right now."
     },
@@ -1498,7 +1500,7 @@
       "rescue": "Rescue in Stakeward",
       "extend": "Extend in Stakeward",
       "source": "Stakeward source code",
-      "lockedByOther": "What a lock held by another key means"
+      "lockedByOther": "Why a stake account says Locked by a second key"
     },
     "commands": {
       "find": "List the stake accounts of the main key",
@@ -1678,11 +1680,11 @@
       },
       "locked-by-other": {
         "q": "Why does my stake account say Locked by a second key?",
-        "a": "Its lock is held by a key that this browser does not know as yours. On a new device or in another browser, your own lock looks like this until you connect your second key on your accounts page; then it says Protected. Stakeward never calls a lock Protected before that: the network does not say whose key it is.\n\nIf you never set this lock, someone else holds it, and only they can change it. They still cannot withdraw your SOL without your main key."
+        "a": "Its lock is held by a key that this browser does not know as yours. On a new device or in another browser, your own lock looks like this until you connect your second key on your accounts page; then it says Protected or Expiring soon. Stakeward never calls a lock Protected before that: the network does not say whose key it is.\n\nOnce this browser knows your second key, a lock held by any other key says Locked by another key instead. If you never set such a lock, someone else holds it, and only they can change it. They still cannot withdraw your SOL without your main key."
       },
       "fake-site": {
         "q": "How do I avoid a fake Stakeward site?",
-        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. Each stake account you protected must say Protected. One that still says Locked by a second key is not locked by the key you connected. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
+        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. Each stake account you protected must say Protected or Expiring soon. One that says Locked by another key is not locked by the key you connected. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
       },
       "check-explorer": {
         "q": "How can I check my lock without Stakeward?",

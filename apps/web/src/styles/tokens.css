@@ -27,7 +27,7 @@
  *   success   Protected
  *   warning   Expiring soon
  *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
- *   info      Locked by a second key (one this browser does not know)
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
  *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
  * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
  * modules on a light ground, so the code must not invert with the theme.

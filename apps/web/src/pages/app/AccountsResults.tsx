@@ -223,6 +223,7 @@ function AccountList({ rows, actions }: { rows: readonly AccountView[]; actions:
             activation={row.activation}
             protection={row.protection}
             managedByService={row.managedByService}
+            secondKeyKnown={row.secondKeyKnown}
             wasProtected={row.wasProtected}
             rescueHref={appLinks.rescue(row.account.withdrawer)}
             actions={actions(row) ?? undefined}

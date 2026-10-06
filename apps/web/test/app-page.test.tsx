@@ -12,6 +12,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import type { Health } from '@/api/health';
+import en from '@/i18n/en.json';
 import { AppPage } from '@/pages/AppPage';
 import {
   createProtectedAccountMemory,
@@ -169,8 +170,14 @@ describe('/app on LiteSvmChain', () => {
       within(row(stake.expiring)).getByText(`The lock ends on ${formatUtcDate(NOW + 10n * DAY) ?? ''}. Extend it to stay protected.`),
     ).toBeInTheDocument();
 
-    // Locked by a key that is not the viewer's second key: view only.
-    expect(within(row(stake.foreign)).getByText('Locked by a second key')).toBeInTheDocument();
+    // Locked by a key that is not the connected second key (what a fake site leaves, D35): said plainly, view only, and
+    // never the "connect it" of a lock this browser cannot judge.
+    const foreignRow = within(row(stake.foreign));
+    expect(rowStatus(stake.foreign)).toBe('locked-by-other');
+    expect(foreignRow.getByText(en.status.lockedByAnother)).toHaveAttribute('data-tone', 'info');
+    expect(foreignRow.getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
+    expect(row(stake.foreign)).not.toHaveTextContent(en.status.lockedByOther);
+    expect(row(stake.foreign)).not.toHaveTextContent(/does not know this key|connect it/i);
     expect(lockHolder(stake.foreign)).toBe(shortAddress(stranger));
     expect(within(row(stake.foreign)).queryAllByRole('link', { name: /stake account/ })).toEqual([]);
 
@@ -235,7 +242,7 @@ describe('/app on LiteSvmChain', () => {
         'This browser does not know this key yet. If it is your second key, connect it to manage the lock; if not, only that key can change it.',
       ),
     ).toBeInTheDocument();
-    expect(section('Stake accounts')).not.toHaveTextContent(/another key/i);
+    expect(section('Stake accounts')).not.toHaveTextContent(en.status.lockedByAnother);
 
     // The chain cannot say whose key holds a lock: none is called Protected or counted as protected SOL.
     for (const [account, holder] of [[stake.locked, K.address], [stake.expiring, K.address], [stake.foreign, stranger]] as const) {
@@ -257,12 +264,29 @@ describe('/app on LiteSvmChain', () => {
     expect(ports.protectedAccounts.getSnapshot()).toEqual([]);
   });
 
-  it('calls a lock held by an unknown key Locked by a second key once a second key is known', async () => {
+  it('calls a lock held by none of the known second keys Locked by another key, view only (D35)', async () => {
     const otherSecondKey = (await generateKeyPairSigner()).address;
     renderApp({ path: `/app?address=${main.address}`, rememberedSecondKeys: [otherSecondKey] }, chain);
     await findRow(stake.locked);
-    for (const account of [stake.locked, stake.expiring, stake.foreign]) expect(rowStatus(account)).toBe('locked-by-other');
+    // What a fake site's lock looks like to a browser that knows the real second key: the strong words, never the soft
+    // "connect it if it is yours" that would point the victim to that key.
+    for (const account of [stake.locked, stake.expiring, stake.foreign]) {
+      expect(rowStatus(account)).toBe('locked-by-other');
+      const lockRow = within(row(account));
+      expect(lockRow.getByText(en.status.lockedByAnother)).toHaveAttribute('data-tone', 'info');
+      expect(lockRow.getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
+      expect(row(account)).not.toHaveTextContent(en.status.lockedByOther);
+      expect(row(account)).not.toHaveTextContent(/does not know this key|connect it/i);
+      expect(lockRow.queryAllByRole('link', { name: /stake account/ })).toEqual([]);
+    }
     expect(lockHolder(stake.locked)).toBe(shortAddress(K.address));
+    // Last in the list, and no SOL counted as protected: as before.
+    expect(within(section('Stake accounts')).getAllByRole('article').slice(-3).map((article) => article.getAttribute('data-status'))).toEqual([
+      'locked-by-other',
+      'locked-by-other',
+      'locked-by-other',
+    ]);
+    expect(section('Stake accounts').querySelector('[data-slot="totals"]')).toHaveTextContent(`${formatSol(0n)} protected`);
     expect(within(row(stake.open)).getByText('Not protected')).toBeInTheDocument();
   });
 

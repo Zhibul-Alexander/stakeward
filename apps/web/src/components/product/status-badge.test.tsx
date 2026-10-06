@@ -36,6 +36,27 @@ describe('StatusBadge', () => {
     expect(new Set(classes).size).toBe(EXPECTED.length);
   });
 
+  // D35: once this browser knows a second key, a lock that none of them holds is what a fake site leaves. A stronger
+  // word, the same tone and icon.
+  it('locked-by-other once a second key is known: "Locked by another key", the same tone and icon', () => {
+    const { container: soft } = render(<StatusBadge status="locked-by-other" />);
+    const softIcon = soft.querySelector('svg')?.getAttribute('class');
+    const { container } = render(<StatusBadge status="locked-by-other" secondKeyKnown />);
+    const badge = screen.getByText('Locked by another key');
+    expect(badge).toHaveAttribute('data-status', 'locked-by-other');
+    expect(badge).toHaveAttribute('data-tone', 'info');
+    expect(badge).toHaveTextContent(/^Locked by another key$/);
+    expect(container.querySelector('svg')?.getAttribute('class')).toBe(softIcon);
+  });
+
+  it('a known second key changes no other status', () => {
+    for (const [status, word] of EXPECTED.filter(([status]) => status !== 'locked-by-other')) {
+      const { unmount } = render(<StatusBadge status={status} secondKeyKnown />);
+      expect(screen.getByText(word)).toHaveAttribute('data-status', status);
+      unmount();
+    }
+  });
+
   it('F6: "no longer protected" is the only danger status', () => {
     const danger = EXPECTED.filter(([, , tone]) => tone === 'danger').map(([status]) => status);
     expect(danger).toEqual(['was-protected']);

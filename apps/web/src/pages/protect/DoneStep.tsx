@@ -309,6 +309,7 @@ function ProtectedRow({
       activation={stakeActivationStatus(after.delegation, clock.epoch)}
       protection={view.status}
       managedByService={view.managedByService}
+      secondKeyKnown
       rescueHref={appLinks.rescue(after.withdrawer)}
       actions={transaction}
     />

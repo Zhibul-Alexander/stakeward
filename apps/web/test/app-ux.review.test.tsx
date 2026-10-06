@@ -225,6 +225,7 @@ describe('AccountRow lock date', () => {
         activation="active"
         protection="locked-by-other"
         managedByService={false}
+        secondKeyKnown={false}
       />,
     );
     // Fails today: "Locked by another key  until 13 September 2020".
