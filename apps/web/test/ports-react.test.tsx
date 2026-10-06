@@ -8,8 +8,10 @@ import {
   createSlotStore,
   PortsProvider,
   StaticWalletRegistry,
+  systemDeviceClock,
   useApi,
   useChain,
+  useDeviceClock,
   useKnownSecondKeys,
   useSlot,
   useWallets,
@@ -74,6 +76,41 @@ describe('ports in React', () => {
       ports.secondKeys.remember(remembered.address);
     });
     screen.getByText('known: 2');
+  });
+
+  // SECURITY-CHECK П12: protect and extend check the cluster clock against this one.
+  it('the device clock: the system clock unless the ports give one', () => {
+    let seen: bigint | null = null;
+    function ClockProbe() {
+      const clock = useDeviceClock();
+      seen = clock();
+      return null;
+    }
+    const base: Ports = {
+      chain: {} as Ports['chain'],
+      wallets: new StaticWalletRegistry([]),
+      slots: createSlotStore(null),
+      secondKeys: createSecondKeyMemory(null),
+      protectedAccounts: createProtectedAccountMemory(null),
+      api: createFakeApi(),
+    };
+    const before = BigInt(Math.floor(Date.now() / 1000));
+    const { unmount } = render(
+      <PortsProvider ports={base}>
+        <ClockProbe />
+      </PortsProvider>,
+    );
+    expect(seen).not.toBeNull();
+    expect(seen as unknown as bigint).toBeGreaterThanOrEqual(before);
+    expect(seen as unknown as bigint).toBeLessThanOrEqual(systemDeviceClock());
+    unmount();
+
+    render(
+      <PortsProvider ports={{ ...base, deviceClock: () => 42n }}>
+        <ClockProbe />
+      </PortsProvider>,
+    );
+    expect(seen).toBe(42n);
   });
 
   it('usePorts outside the provider is a clear error', () => {

@@ -1,7 +1,16 @@
 // Matcher types for this tsconfig (src/test/setup.ts registers them at run time).
 import '@testing-library/jest-dom/vitest';
 import { generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
-import { buildTransaction, formatSol, formatUtcDate, lockupEnd, networkFeeFor, ZERO_ADDRESS, type Lockup } from '@stakeward/core';
+import {
+  buildTransaction,
+  formatSol,
+  formatUtcDate,
+  formatUtcDateTime,
+  lockupEnd,
+  networkFeeFor,
+  ZERO_ADDRESS,
+  type Lockup,
+} from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { LAMPORTS_PER_SOL, START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -275,6 +284,34 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
 });
 
 describe('/extend/:account: gates', () => {
+  it(
+    'П12: a network clock more than a day off this device: no new end is offered, the error names both clocks; Try again reads again',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w);
+      const second = await secondWallet(w);
+      // The device is two days ahead of the cluster clock the worker passed on.
+      let ahead = 2n * DAY;
+      const { user } = renderStakePage(w.chain, `/extend/${S}`, [second], { deviceClock: () => w.testChain.clock().unixTimestamp + ahead });
+
+      const title = await screen.findByText('The network time does not match this device', undefined, WAIT);
+      const alert = title.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveTextContent(
+        `The network says it is ${formatUtcDateTime(START_UNIX_TIMESTAMP) ?? ''}, but this device says ${formatUtcDateTime(START_UNIX_TIMESTAMP + 2n * DAY) ?? ''}.`,
+      );
+      expect(alert).toHaveTextContent('They differ by 172800 seconds; at most 86400 are allowed.');
+      expect(screen.queryByRole('radio')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Review and sign' })).toBeNull();
+
+      ahead = 0n;
+      await user.click(within(alert).getByRole('button', { name: 'Try again' }));
+      expect(await radio(period('6 months (recommended)', SIX_MONTHS))).toBeChecked();
+      expect(screen.queryByText('The network time does not match this device')).toBeNull();
+      expect(second.requests).toHaveLength(0);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
   it(
     'E4a: no lock: a link to protect it, and nothing to sign',
     async () => {

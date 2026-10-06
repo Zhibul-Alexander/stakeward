@@ -10,7 +10,7 @@ import {
   type Address,
   type KeyPairSigner,
 } from '@solana/kit';
-import { deriveNonceAccountAddress, formatUtcDate, lockupEnd, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
+import { deriveNonceAccountAddress, formatUtcDate, formatUtcDateTime, lockupEnd, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -28,6 +28,7 @@ import {
   createSlotStore,
   PortsProvider,
   StaticWalletRegistry,
+  type DeviceClock,
   type Ports,
 } from '@/ports';
 import en from '@/i18n/en.json';
@@ -72,7 +73,13 @@ async function twoWallets(w: World): Promise<[TestWalletPort, TestWalletPort]> {
 
 type Page = { ports: Ports; api: FakeApi; location: ReturnType<typeof memoryLocation>; user: UserEvent };
 
-function renderProtect(w: World, accounts: readonly Address[], wallets: readonly TestWalletPort[]): Page {
+/** `deviceClock`: this device's clock; by default it reads the chain's clock (the two agree, as on a real device). */
+function renderProtect(
+  w: World,
+  accounts: readonly Address[],
+  wallets: readonly TestWalletPort[],
+  deviceClock: DeviceClock = () => w.testChain.clock().unixTimestamp,
+): Page {
   const api = createFakeApi(w.chain);
   const ports: Ports = {
     chain: w.chain,
@@ -81,6 +88,7 @@ function renderProtect(w: World, accounts: readonly Address[], wallets: readonly
     secondKeys: createSecondKeyMemory(null),
     protectedAccounts: createProtectedAccountMemory(null),
     api,
+    deviceClock,
   };
   const query = new URLSearchParams(accounts.map((account) => ['account', account])).toString();
   const location = memoryLocation({ path: query === '' ? '/protect' : `/protect?${query}`, record: true });
@@ -595,6 +603,52 @@ describe('/protect Done: uncertain outcomes', () => {
 });
 
 describe('/protect step gates', () => {
+  it(
+    'П12: a network clock more than a day ahead of this device gives no lock end: the error names both clocks, Try again reads again',
+    async () => {
+      const w = await world();
+      const { S1 } = await twoAccounts(w);
+      const [main, second] = await twoWallets(w);
+      // The device is two days behind the cluster clock the worker passed on (a worker that lies about the time).
+      let behind = 2n * DAY;
+      const { user } = renderProtect(w, [S1], [main, second], () => w.testChain.clock().unixTimestamp - behind);
+
+      await connect(user, 'Main key', 'Main Wallet');
+      await waitFor(() => {
+        expect(selectBox(S1)).toBeChecked();
+      }, WAIT);
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      await connect(user, 'Second key', 'Second Wallet');
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'How long should the lock hold?' });
+
+      const title = await screen.findByText('The network time does not match this device', undefined, WAIT);
+      const alert = title.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'danger');
+      expect(alert).toHaveTextContent(
+        `The network says it is ${formatUtcDateTime(START_UNIX_TIMESTAMP) ?? ''}, but this device says ${formatUtcDateTime(START_UNIX_TIMESTAMP - 2n * DAY) ?? ''}.`,
+      );
+      const details = within(alert).getByText('Details').closest('details') as HTMLElement;
+      expect(details).toHaveTextContent(`(unix ${START_UNIX_TIMESTAMP.toString()})`);
+      expect(details).toHaveTextContent('They differ by 172800 seconds; at most 86400 are allowed.');
+      expect(screen.queryByText(/^Locked until /)).not.toBeInTheDocument();
+      // No lock end, so no way on.
+      await user.click(continueButton());
+      expect(screen.getByRole('heading', { name: 'How long should the lock hold?' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Review and sign' })).toBeNull();
+
+      // The device clock agrees again: Try again reads the network and offers the lock end.
+      behind = 0n;
+      await user.click(within(alert).getByRole('button', { name: 'Try again' }));
+      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      expect(screen.queryByText('The network time does not match this device')).toBeNull();
+      expect(main.requests).toHaveLength(0);
+    },
+    TIMEOUT,
+  );
+
   it(
     'names link accounts before the main key; leaves out other keys’ accounts; locks held by others cannot be chosen; the seed box is required; devnet offers 6 periods',
     async () => {

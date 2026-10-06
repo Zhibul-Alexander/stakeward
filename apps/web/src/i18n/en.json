@@ -881,6 +881,11 @@
       "loadError": "Could not read the network time",
       "needClock": "The lock end needs the network time. Wait for it, or press Try again."
     },
+    "clockSkew": {
+      "title": "The network time does not match this device",
+      "body": "The network says it is {network}, but this device says {device}. The lock's end date is set from the network time, so Stakeward stops here. Check the date and time on this device. If they are right, the time Stakeward received is wrong: do not go on, and try again later.",
+      "detail": "Network clock: {networkTime} (unix {networkUnix}). Device clock: {deviceTime} (unix {deviceUnix}). They differ by {difference} seconds; at most {allowed} are allowed."
+    },
     "sign": {
       "heading": "Review and sign",
       "countOne": "1 transaction for 1 stake account. Your main key and your second key each approve it.",

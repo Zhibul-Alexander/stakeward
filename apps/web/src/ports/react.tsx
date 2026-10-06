@@ -2,6 +2,7 @@ import type { Address } from '@solana/kit';
 import type { ChainPort, WalletPort, WalletRole, WalletSlots } from '@stakeward/core';
 import { createContext, use, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import type { ApiPort } from '@/api/watch';
+import { systemDeviceClock, type DeviceClock } from './device-clock.ts';
 import type { ProtectedAccountMemory } from './protected-accounts.ts';
 import { knownSecondKeys, resolveSlot, type ResolvedSlot, type SecondKeyMemory, type SlotStore } from './slots.ts';
 import type { WalletRegistry } from './wallet-registry.ts';
@@ -20,6 +21,12 @@ export type Ports = {
   protectedAccounts: ProtectedAccountMemory;
   /** The worker's own endpoints beyond the RPC proxy (POST /api/watch). */
   api: ApiPort;
+  /**
+   * This device's clock. The cluster clock reaches the site through the worker, so protect and extend check it against
+   * this one before they compute a lock end (SECURITY-CHECK П12). Default: the system clock (useDeviceClock); tests
+   * on a LiteSVM chain, whose clock is set, pass one that follows it.
+   */
+  deviceClock?: DeviceClock | undefined;
 };
 
 const PortsContext = createContext<Ports | null>(null);
@@ -40,6 +47,11 @@ export function useChain(): ChainPort {
 
 export function useApi(): ApiPort {
   return usePorts().api;
+}
+
+/** This device's clock (Ports `deviceClock`, else the system clock). */
+export function useDeviceClock(): DeviceClock {
+  return usePorts().deviceClock ?? systemDeviceClock;
 }
 
 /** Wallets the user can connect; re-renders when the list or a wallet's accounts change. */
