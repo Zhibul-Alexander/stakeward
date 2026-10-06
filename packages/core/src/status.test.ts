@@ -8,6 +8,8 @@ import {
   protectBlock,
   scannerStatus,
   SLOT_MS_ESTIMATE,
+  SLOT_MS_MIN_SLOTS,
+  slotMsEstimate,
   stakeActivationStatus,
 } from './status.ts';
 
@@ -160,7 +162,7 @@ describe('groupForViewer', () => {
   });
 });
 
-describe('epochEndEstimate (400 ms per slot)', () => {
+describe('epochEndEstimate (400 ms per slot unless given)', () => {
   const now = 1_800_000_000n;
   const info = { epoch: 1_047n, slotIndex: 431_000n, slotsInEpoch: 432_000n };
 
@@ -187,5 +189,48 @@ describe('epochEndEstimate (400 ms per slot)', () => {
   it('a slot index at or past the epoch length leaves no slots of the current epoch', () => {
     expect(epochEndEstimate({ ...info, slotIndex: info.slotsInEpoch }, now)).toBe(now);
     expect(epochEndEstimate({ ...info, slotIndex: info.slotsInEpoch }, now, info.epoch + 1n)).toBe(now + 172_800n);
+  });
+
+  it('counts with a given slot time', () => {
+    // 1 000 slots x 270 ms = 270 s; one more epoch adds 432 000 x 0.27 s = 116 640 s.
+    expect(epochEndEstimate(info, now, info.epoch, 270n)).toBe(now + 270n);
+    expect(epochEndEstimate(info, now, info.epoch + 1n, 270n)).toBe(now + 270n + 116_640n);
+    // 1 slot = 0.27 s -> 1 s.
+    expect(epochEndEstimate({ ...info, slotIndex: 431_999n }, now, info.epoch, 270n)).toBe(now + 1n);
+  });
+});
+
+describe('slotMsEstimate (this epoch so far, from the Clock sysvar)', () => {
+  const start = 1_800_000_000n;
+  const info = { epoch: 1_050n, slotIndex: 100_000n };
+  /** The Clock sysvar `seconds` after the first slot of epoch 1050. */
+  const clockAfter = (seconds: bigint) => ({ epoch: 1_050n, epochStartTimestamp: start, unixTimestamp: start + seconds });
+
+  it('averages the slots of this epoch so far, rounded up to whole milliseconds', () => {
+    // 100 000 slots in 27 000 s: 270 ms, as on mainnet in October 2026.
+    expect(slotMsEstimate(clockAfter(27_000n), info)).toBe(270n);
+    // 239.01 ms -> 240.
+    expect(slotMsEstimate(clockAfter(23_901n), info)).toBe(240n);
+  });
+
+  it('falls back to the 400 ms target early in the epoch', () => {
+    expect(SLOT_MS_MIN_SLOTS).toBe(10_000n);
+    expect(slotMsEstimate(clockAfter(2_699n), { ...info, slotIndex: SLOT_MS_MIN_SLOTS - 1n })).toBe(SLOT_MS_ESTIMATE);
+    expect(slotMsEstimate(clockAfter(2_700n), { ...info, slotIndex: SLOT_MS_MIN_SLOTS })).toBe(270n);
+    expect(slotMsEstimate(clockAfter(0n), { ...info, slotIndex: 0n })).toBe(SLOT_MS_ESTIMATE);
+  });
+
+  it('falls back when the clock and the epoch info are from different epochs', () => {
+    expect(slotMsEstimate({ ...clockAfter(27_000n), epoch: 1_051n }, info)).toBe(SLOT_MS_ESTIMATE);
+    expect(slotMsEstimate(clockAfter(27_000n), { ...info, epoch: 1_049n })).toBe(SLOT_MS_ESTIMATE);
+  });
+
+  it('falls back on an average outside 50-2000 ms: a stalled or wrong clock', () => {
+    expect(slotMsEstimate(clockAfter(4_900n), info)).toBe(SLOT_MS_ESTIMATE);
+    expect(slotMsEstimate(clockAfter(5_000n), info)).toBe(50n);
+    expect(slotMsEstimate(clockAfter(200_000n), info)).toBe(2_000n);
+    expect(slotMsEstimate(clockAfter(200_001n), info)).toBe(SLOT_MS_ESTIMATE);
+    expect(slotMsEstimate(clockAfter(-1n), info)).toBe(SLOT_MS_ESTIMATE);
+    expect(slotMsEstimate(clockAfter(-27_000n), info)).toBe(SLOT_MS_ESTIMATE);
   });
 });

@@ -22,7 +22,7 @@ import {
 } from './wizard.ts';
 
 const NOW = 1_800_000_000n;
-const CLOCK = { unixTimestamp: NOW, epoch: 900n };
+const CLOCK = { unixTimestamp: NOW, epoch: 900n, epochStartTimestamp: NOW };
 const DAY = 86_400n;
 const A = key(1);
 const K = key(2);

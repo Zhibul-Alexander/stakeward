@@ -29,7 +29,7 @@ function ports(): Ports {
 function donePlan() {
   const prepare = vi.fn((_chain: ChainPort, ids: readonly string[]) =>
     Promise.resolve({
-      clock: { slot: 1n, epoch: 1n, unixTimestamp: 1n },
+      clock: { slot: 1n, epochStartTimestamp: 1n, epoch: 1n, unixTimestamp: 1n },
       jobs: Object.fromEntries(ids.map((id) => [id, { kind: 'done', after: { address: id as Address } as StakeAccount } as const])),
     }),
   );

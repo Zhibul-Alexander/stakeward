@@ -72,7 +72,7 @@ export type SigningSample = { key: string; label: MessageKey; state: SigningStat
 /** The signing panel of a protect round over two stake accounts, in every phase the panel explains. */
 export async function sampleSigningStates(clock: ClockView): Promise<SigningSample[]> {
   const lifetime: BlockhashLifetime = { kind: 'blockhash', blockhash: SAMPLE.blockhash, lastValidBlockHeight: 300_000_000n };
-  const chainClock: ChainClock = { ...clock, slot: 300_000_000n };
+  const chainClock: ChainClock = { ...clock, slot: 300_000_000n, epochStartTimestamp: clock.unixTimestamp };
   const befores = [sampleStake(SAMPLE.stakeC, 3n), sampleStake(SAMPLE.stakeF, 120n)];
   const txs: RoundTx[] = [];
   for (const before of befores) {
@@ -219,7 +219,7 @@ export async function sampleLinkStates(clock: ClockView): Promise<SigningSample[
   const { bytes, lifetime } = await sampleRescueOnNonce();
   const inspected = await inspectTransaction(bytes);
   if (!inspected.ok) throw new Error(`the sample rescue transaction was refused: ${inspected.error.message}`);
-  const chainClock: ChainClock = { ...clock, slot: 300_000_000n };
+  const chainClock: ChainClock = { ...clock, slot: 300_000_000n, epochStartTimestamp: clock.unixTimestamp };
   const tx: RoundTx = { id: SAMPLE.stakeA, bytes, summary: inspected.summary, lifetime };
   const job: JobView = {
     id: tx.id,

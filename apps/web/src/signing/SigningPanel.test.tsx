@@ -24,7 +24,7 @@ const LIFETIME: BlockhashLifetime = {
   blockhash: 'BZFufDqppShyDDC1njm4fMpRbfnLwrpzzwG6WGgcmsxb' as Blockhash,
   lastValidBlockHeight: 1_150n,
 };
-const CLOCK: ChainClock = { slot: 64_000n, epoch: 850n, unixTimestamp: 1_790_812_800n };
+const CLOCK: ChainClock = { slot: 64_000n, epochStartTimestamp: 1_790_800_000n, epoch: 850n, unixTimestamp: 1_790_812_800n };
 
 function before(address: Address): StakeAccount {
   return {

@@ -1,4 +1,4 @@
-import { epochEndEstimate, formatSol, isLockupInForce, stakeActivationStatus } from '@stakeward/core';
+import { epochEndEstimate, formatSol, isLockupInForce, slotMsEstimate, stakeActivationStatus } from '@stakeward/core';
 import { RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -41,8 +41,10 @@ export function withdrawTitle(what: WithdrawWhat, lamports: bigint): string {
  */
 export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMode, onCheckAgain, onCountdownEnd }: StageBlockProps) {
   const headingId = useId();
-  // Epoch ends are estimated from the device clock at the read: the countdown ticks on the device clock.
+  // Epoch ends are estimated from the device clock at the read: the countdown ticks on the device clock. Slots count
+  // at this epoch's own average so far, read from the cluster clock.
   const { account, clock, epoch, readAt: nowSec } = loaded;
+  const slotMs = slotMsEstimate(clock, epoch);
   const heading = (text: string) => (
     <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
       {text}
@@ -50,7 +52,7 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
   );
   switch (withdrawStage(account, clock)) {
     case 'deactivate': {
-      const left = epochEndEstimate(epoch, nowSec) - nowSec;
+      const left = epochEndEstimate(epoch, nowSec, epoch.epoch, slotMs) - nowSec;
       // Delegated in this epoch: stopping it now makes it inactive at once (activation epoch = deactivation epoch).
       const activating = stakeActivationStatus(account.delegation, clock.epoch) === 'activating';
       return (
@@ -89,7 +91,7 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
         <Stage headingId={headingId}>
           {heading(t('withdraw.deactivating.title'))}
           <Countdown
-            to={epochEndEstimate(epoch, nowSec, until)}
+            to={epochEndEstimate(epoch, nowSec, until, slotMs)}
             label={t('withdraw.deactivating.label')}
             onEnd={onCountdownEnd}
           />

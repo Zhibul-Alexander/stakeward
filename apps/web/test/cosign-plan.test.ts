@@ -18,7 +18,7 @@ import type { SignerResolver } from '@/signing/types';
 // The /cosign plan's rules that need no nonce account (step 7 spec 8.2); the chain cases (done, link-used, stale) run
 // on LiteSVM in cosign.test.tsx C3.
 
-const CLOCK: ChainClock = { unixTimestamp: 1_800_000_000n, epoch: 900n, slot: 1n };
+const CLOCK: ChainClock = { unixTimestamp: 1_800_000_000n, epochStartTimestamp: 1_800_000_000n, epoch: 900n, slot: 1n };
 const NONCE_VALUE = 'BZFufDqppShyDDC1njm4fMpRbfnLwrpzzwG6WGgcmsxb' as Nonce;
 const S = key(11);
 

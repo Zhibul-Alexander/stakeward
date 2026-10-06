@@ -149,8 +149,10 @@ describe('decodeClockSysvar', () => {
     return bytes;
   }
 
-  it('reads slot, epoch and unix timestamp', () => {
-    expect(decodeClockSysvar(clockBytes())).toEqual({ slot: 452_000_123n, epoch: 1_047n, unixTimestamp: 1_790_812_800n });
+  const DECODED = { slot: 452_000_123n, epochStartTimestamp: 1_790_000_000n, epoch: 1_047n, unixTimestamp: 1_790_812_800n };
+
+  it('reads slot, epoch start, epoch and unix timestamp', () => {
+    expect(decodeClockSysvar(clockBytes())).toEqual(DECODED);
   });
 
   it('reads the unix timestamp as a signed integer', () => {
@@ -160,7 +162,7 @@ describe('decodeClockSysvar', () => {
   it('reads data that is a view into a larger buffer, and ignores bytes after the first 40', () => {
     const buffer = new Uint8Array(CLOCK_SYSVAR_SIZE + 12).fill(0xff);
     buffer.set(clockBytes(), 7);
-    expect(decodeClockSysvar(buffer.subarray(7))).toEqual({ slot: 452_000_123n, epoch: 1_047n, unixTimestamp: 1_790_812_800n });
+    expect(decodeClockSysvar(buffer.subarray(7))).toEqual(DECODED);
   });
 
   it('returns null for data shorter than 40 bytes', () => {
@@ -172,6 +174,7 @@ describe('decodeClockSysvar', () => {
     const chain = await TestChain.create();
     const raw = chain.account(SYSVAR_CLOCK_ADDRESS);
     expect(raw?.owner).toBe(SYSVAR_PROGRAM_ADDRESS);
-    expect(decodeClockSysvar(raw?.data ?? new Uint8Array())).toEqual({ ...chain.clock(), slot: chain.svm.getClock().slot });
+    const { slot, epochStartTimestamp } = chain.svm.getClock();
+    expect(decodeClockSysvar(raw?.data ?? new Uint8Array())).toEqual({ ...chain.clock(), slot, epochStartTimestamp });
   });
 });

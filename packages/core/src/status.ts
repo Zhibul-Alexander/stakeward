@@ -2,26 +2,52 @@ import type { Address } from '@solana/kit';
 import { EXPIRING_THRESHOLD_SECONDS, U64_MAX } from './constants.ts';
 import type { Delegation, StakeAccount } from './decode.ts';
 import { isLockupInForce, type ClockView } from './lockup.ts';
-import type { EpochInfo } from './ports.ts';
+import type { ChainClock, EpochInfo } from './ports.ts';
 
-/** Milliseconds per slot for epoch-end estimates: the cluster's target (getRecentPerformanceSamples is not allowed). */
+/** Milliseconds per slot when the epoch's own average is not at hand: the cluster's target. */
 export const SLOT_MS_ESTIMATE = 400n;
+
+/** Slots into the epoch before its average slot time counts (about 45 minutes at 270 ms). */
+export const SLOT_MS_MIN_SLOTS = 10_000n;
+
+/** An average outside this range means a stalled or wrong clock, not a real slot time. */
+const SLOT_MS_MIN = 50n;
+const SLOT_MS_MAX = 2_000n;
+
+/**
+ * Average milliseconds per slot so far in this epoch, from the Clock sysvar: (unixTimestamp - epochStartTimestamp) x
+ * 1000 / slotIndex, rounded up (getRecentPerformanceSamples is not allowed through the proxy, and needs no extra call
+ * this way). On 06.10.2026 slots took about 270 ms on mainnet and 240 ms on devnet, so the 400 ms target overstated
+ * a wait by about 1.5 times (DECISIONS D108). Falls back to SLOT_MS_ESTIMATE when the clock and the epoch info are
+ * from different epochs, fewer than SLOT_MS_MIN_SLOTS slots have passed, or the average is outside 50-2000 ms.
+ */
+export function slotMsEstimate(
+  clock: Pick<ChainClock, 'epoch' | 'epochStartTimestamp' | 'unixTimestamp'>,
+  info: Pick<EpochInfo, 'epoch' | 'slotIndex'>,
+): bigint {
+  if (clock.epoch !== info.epoch || info.slotIndex < SLOT_MS_MIN_SLOTS) return SLOT_MS_ESTIMATE;
+  const elapsedMs = (clock.unixTimestamp - clock.epochStartTimestamp) * 1000n;
+  const slotMs = (elapsedMs + info.slotIndex - 1n) / info.slotIndex;
+  return slotMs >= SLOT_MS_MIN && slotMs <= SLOT_MS_MAX ? slotMs : SLOT_MS_ESTIMATE;
+}
 
 /**
  * Estimated unix seconds when `targetEpoch` ends (default: the current epoch, `info.epoch`):
  * slotsLeft = (slotsInEpoch - slotIndex) + max(0, targetEpoch - epoch) x slotsInEpoch, then
- * nowSeconds + ceil(slotsLeft x 400 / 1000). A target epoch already over gives `nowSeconds`.
- * An estimate only: slots run slower or faster than 400 ms; before a Withdraw the real check is a simulation.
+ * nowSeconds + ceil(slotsLeft x slotMs / 1000). A target epoch already over gives `nowSeconds`. Pass `slotMs` from
+ * `slotMsEstimate`; the default is the 400 ms target. An estimate only: slot times drift; before a Withdraw the real
+ * check is a simulation.
  */
 export function epochEndEstimate(
   info: Pick<EpochInfo, 'epoch' | 'slotIndex' | 'slotsInEpoch'>,
   nowSeconds: bigint,
   targetEpoch: bigint = info.epoch,
+  slotMs: bigint = SLOT_MS_ESTIMATE,
 ): bigint {
   if (targetEpoch < info.epoch) return nowSeconds;
   const inThisEpoch = info.slotsInEpoch > info.slotIndex ? info.slotsInEpoch - info.slotIndex : 0n;
   const slotsLeft = inThisEpoch + (targetEpoch - info.epoch) * info.slotsInEpoch;
-  return nowSeconds + (slotsLeft * SLOT_MS_ESTIMATE + 999n) / 1000n;
+  return nowSeconds + (slotsLeft * slotMs + 999n) / 1000n;
 }
 
 export type ActivationStatus = 'inactive' | 'activating' | 'active' | 'deactivating';

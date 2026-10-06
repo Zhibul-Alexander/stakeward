@@ -60,7 +60,7 @@ function itemOf(spec: StakeAccountSpec, lamports = 10_000_000_000n): RawItem {
 }
 
 function readOf(items: RawItem[]): ChunkRead {
-  return { slot: ROW_SLOT + 300, clock: { slot: 1n, epoch: 950n, unixTimestamp: CLOCK_S }, clockMs: Number(CLOCK_S) * 1000, items };
+  return { slot: ROW_SLOT + 300, clock: { slot: 1n, epochStartTimestamp: CLOCK_S - 3_600n, epoch: 950n, unixTimestamp: CLOCK_S }, clockMs: Number(CLOCK_S) * 1000, items };
 }
 
 const rows = (n: number) => Array.from({ length: n }, (_, i) => rowOf(address(i)));

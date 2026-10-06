@@ -13,7 +13,7 @@ const S2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6' as Address;
 const NONCE_ACCOUNT = '5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj' as Address;
 const NONCE_VALUE = 'GfnhkAa2bfg4dTjLfwhLSWg1b8zrJw9u8jCmVSUJhy9Y' as Nonce;
 const TX_ID = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW' as Signature;
-const CLOCK: ChainClock = { slot: 64_000n, epoch: 1_000n, unixTimestamp: 1_790_812_800n };
+const CLOCK: ChainClock = { slot: 64_000n, epochStartTimestamp: 1_790_800_000n, epoch: 1_000n, unixTimestamp: 1_790_812_800n };
 const ORIGIN = 'https://stakeward.example';
 const LIFETIME = { kind: 'nonce', nonceAccount: NONCE_ACCOUNT, nonceAuthority: MAIN, nonceValue: NONCE_VALUE } as const;
 

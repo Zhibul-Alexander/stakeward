@@ -127,7 +127,12 @@ describe('HttpChain', () => {
         value: { data: [getBase64Decoder().decode(bytes), 'base64'], executable: false, lamports: 1n, owner: key(5), space: 40n },
       },
     }));
-    expect(await chain.getClock()).toEqual({ slot: 452_000_123n, epoch: 1_047n, unixTimestamp: 1_790_812_800n });
+    expect(await chain.getClock()).toEqual({
+      slot: 452_000_123n,
+      epochStartTimestamp: 1_790_000_000n,
+      epoch: 1_047n,
+      unixTimestamp: 1_790_812_800n,
+    });
     expect(calls[0]).toMatchObject({
       method: 'getAccountInfo',
       params: [SYSVAR_CLOCK_ADDRESS, { encoding: 'base64', commitment: 'confirmed' }],

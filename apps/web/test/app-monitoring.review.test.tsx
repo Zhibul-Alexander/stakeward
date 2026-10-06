@@ -39,7 +39,7 @@ describe('review: /app monitoring line on a page left open', () => {
       simulate: unused,
       send: unused,
       getSignatureStatuses: unused,
-      getClock: () => Promise.resolve({ slot: 1n, epoch: 1n, unixTimestamp: 1_790_812_800n }),
+      getClock: () => Promise.resolve({ slot: 1n, epochStartTimestamp: 1_790_800_000n, epoch: 1n, unixTimestamp: 1_790_812_800n }),
       findStakeAccounts: () => Promise.resolve({ slot: 1n, accounts: [] }),
     };
     // The monitor runs every 2 minutes: whenever the page asks, the last pass is at most 2 minutes old.

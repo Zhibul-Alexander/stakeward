@@ -32,7 +32,7 @@ function readOf(items: (RawItem | null)[], options: { slot?: number; clockS?: bi
   const clockS = options.clockS ?? ROW_S + 120n;
   return {
     slot: options.slot ?? ROW_SLOT + 300,
-    clock: { slot: 1n, epoch: 950n, unixTimestamp: clockS },
+    clock: { slot: 1n, epochStartTimestamp: clockS - 3_600n, epoch: 950n, unixTimestamp: clockS },
     clockMs: Number(clockS) * 1000,
     items,
   };

@@ -109,7 +109,12 @@ export class LiteSvmChain implements ChainPort {
   getClock(): Promise<ChainClock> {
     return this.answer('getClock', () => {
       const clock = this.testChain.svm.getClock();
-      return { slot: clock.slot, epoch: clock.epoch, unixTimestamp: clock.unixTimestamp };
+      return {
+        slot: clock.slot,
+        epochStartTimestamp: clock.epochStartTimestamp,
+        epoch: clock.epoch,
+        unixTimestamp: clock.unixTimestamp,
+      };
     });
   }
 

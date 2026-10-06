@@ -28,7 +28,7 @@ import { rawStakeAccount } from './support/raw-stake.ts';
 const DAY = 86_400n;
 const SOL = 1_000_000_000n;
 const ZERO = '11111111111111111111111111111111' as Address;
-const CLOCK: ChainClock = { unixTimestamp: 1_790_942_400n, epoch: 850n, slot: 367_201_000n };
+const CLOCK: ChainClock = { unixTimestamp: 1_790_942_400n, epochStartTimestamp: 1_790_900_000n, epoch: 850n, slot: 367_201_000n };
 
 async function newAddress(): Promise<Address> {
   return (await generateKeyPairSigner()).address;

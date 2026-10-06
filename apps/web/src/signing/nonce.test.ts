@@ -16,7 +16,7 @@ const AUTHORITY = address('B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8');
 const OTHER = address('9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi');
 const NONCE_VALUE = 'BZFufDqppShyDDC1njm4fMpRbfnLwrpzzwG6WGgcmsxb' as Nonce;
 const DEPOSIT = 1_447_680n;
-const CLOCK: ChainClock = { unixTimestamp: 1_790_000_000n, epoch: 850n, slot: 300_000_000n };
+const CLOCK: ChainClock = { unixTimestamp: 1_790_000_000n, epochStartTimestamp: 1_789_990_000n, epoch: 850n, slot: 300_000_000n };
 
 /** An initialized durable nonce account of `authority` (System program layout, 80 bytes). */
 function nonceAccount(authority: Address, lamports = DEPOSIT, owner: Address = SYSTEM_PROGRAM_ADDRESS): RawAccount {

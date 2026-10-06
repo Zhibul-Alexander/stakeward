@@ -20,7 +20,7 @@ const S1 = 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW';
 const S2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6';
 const S3 = '8EoRwu9o1xqJ68N1ECPGoGN3DG8hrFwZPN3pxpdEGNpe';
 const BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N' as Blockhash;
-const CLOCK: ChainClock = { slot: 64_000n, epoch: 1_000n, unixTimestamp: 1_790_812_800n };
+const CLOCK: ChainClock = { slot: 64_000n, epochStartTimestamp: 1_790_800_000n, epoch: 1_000n, unixTimestamp: 1_790_812_800n };
 const ERROR: FriendlyError = { code: 'network', title: 'The network did not respond.', detail: 'fetch failed' };
 
 function summary(stakeAccount: string, present: readonly Address[] = []): TransactionSummary {

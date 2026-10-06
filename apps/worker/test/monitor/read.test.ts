@@ -59,7 +59,7 @@ describe('parseMultipleAccounts', () => {
     const read = parseMultipleAccounts(multipleAccountsText(1, 5000, [CLOCK, STAKE, null, STAKE]), 4);
     expect(read).toEqual({
       slot: 5000,
-      clock: { slot: 4_000_123n, epoch: 950n, unixTimestamp: CLOCK_UNIX },
+      clock: { slot: 4_000_123n, epochStartTimestamp: CLOCK_UNIX - 3_600n, epoch: 950n, unixTimestamp: CLOCK_UNIX },
       clockMs: Number(CLOCK_UNIX) * 1000,
       items: [
         { owner: STAKE_PROGRAM_ADDRESS, dataBase64: encodeBase64(STAKE_DATA), lamports: 9_007_199_254_740_993n },

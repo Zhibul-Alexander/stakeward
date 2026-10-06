@@ -9,7 +9,7 @@ const SIGNATURE = signature('5'.repeat(88));
 
 const chain = {
   getAccounts: (addresses) => Promise.resolve({ slot: 1n, accounts: addresses.map(() => null) }),
-  getClock: () => Promise.resolve({ slot: 1n, epoch: 1000n, unixTimestamp: 1_790_812_800n }),
+  getClock: () => Promise.resolve({ slot: 1n, epochStartTimestamp: 1_790_800_000n, epoch: 1000n, unixTimestamp: 1_790_812_800n }),
   getLatestBlockhash: () =>
     Promise.resolve({ blockhash: blockhash('EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N'), lastValidBlockHeight: 150n }),
   getBlockHeight: () => Promise.resolve(1n),

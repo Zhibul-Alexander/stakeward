@@ -60,7 +60,8 @@ describe('LiteSvmChain', () => {
     expect(accounts[0]?.data.length).toBe(STAKE_ACCOUNT_SIZE);
     expect(accounts[1]).toBeNull();
 
-    expect(await chain.getClock()).toEqual({ slot, epoch: START_EPOCH, unixTimestamp: START_UNIX_TIMESTAMP });
+    const { epochStartTimestamp } = testChain.svm.getClock();
+    expect(await chain.getClock()).toEqual({ slot, epochStartTimestamp, epoch: START_EPOCH, unixTimestamp: START_UNIX_TIMESTAMP });
     expect(await chain.getBalance(A.address)).toBe(10n * LAMPORTS_PER_SOL);
     expect(await chain.getBalance(missing)).toBe(0n);
     // Mainnet rent (D22): 5080 lamports per byte including the 128-byte header.

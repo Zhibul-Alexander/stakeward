@@ -13,8 +13,11 @@ import type { ClockView } from './lockup.ts';
  * Methods never resolve with partial data to hide a failure.
  */
 
-/** The Clock sysvar: what lockup rules need (ClockView) plus the slot it was read at. */
-export type ChainClock = ClockView & { slot: bigint };
+/**
+ * The Clock sysvar: what lockup rules need (ClockView) plus the slot it was read at and the unix time of the epoch's
+ * first slot (epoch-end estimates measure the epoch's slot time from it, status.ts `slotMsEstimate`).
+ */
+export type ChainClock = ClockView & { slot: bigint; epochStartTimestamp: bigint };
 
 /** A blockhash lifetime for a new transaction (BlockhashLifetime without its `kind`). */
 export type LatestBlockhash = { blockhash: Blockhash; lastValidBlockHeight: bigint };

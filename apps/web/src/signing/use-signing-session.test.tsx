@@ -14,7 +14,7 @@ const AFTER = { address: S1 } as StakeAccount;
 const DONE_PLAN: SigningPlan = {
   prepare: (_chain, ids) =>
     Promise.resolve({
-      clock: { slot: 1n, epoch: 1n, unixTimestamp: 1n },
+      clock: { slot: 1n, epochStartTimestamp: 1n, epoch: 1n, unixTimestamp: 1n },
       jobs: Object.fromEntries(ids.map((id) => [id, { kind: 'done', after: AFTER } as const])),
     }),
 };

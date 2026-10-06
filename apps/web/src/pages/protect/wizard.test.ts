@@ -30,7 +30,7 @@ const S2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6' as Address;
 const S3 = '8EoRwu9o1xqJ68N1ECPGoGN3DG8hrFwZPN3pxpdEGNpe' as Address;
 const S4 = '5RA1fUbNMm4rdu5EuQhiBMGsCFfspRzCscfojXZFWAXU' as Address;
 const NOW = 1_790_812_800n;
-const CLOCK: ChainClock = { slot: 1n, epoch: 1_000n, unixTimestamp: NOW };
+const CLOCK: ChainClock = { slot: 1n, epochStartTimestamp: NOW, epoch: 1_000n, unixTimestamp: NOW };
 const LOCK_END = NOW + 180n * 86_400n;
 
 function stake(address: Address, overrides: Partial<StakeAccount> = {}): StakeAccount {
