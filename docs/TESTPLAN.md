@@ -6,7 +6,7 @@
 ## Шаг 0. Подготовка
 
 - [ ] `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` проходят на чистом клоне.
-- [ ] GitHub Actions зелёные на последнем push. 05.10.2026: check зелёный, e2e красный на build/product (#9, #10): axe находит недостаточный контраст кнопок на ширине 360, каждый раз разных, часть тестов проходит со второй попытки.
+- [ ] GitHub Actions зелёные на последнем push. 05.10.2026: check зелёный, e2e красный на build/product (#9, #10): axe находит недостаточный контраст кнопок на ширине 360, каждый раз разных, часть тестов проходит со второй попытки. 06.10.2026: на a5f563c наоборот — e2e зелёный (контраст один раз упал и на 1280, `/cosign#tx=@@`, прошёл со второй попытки), check красный на `pnpm test`: гонка блокхэша в тестовой подготовке LiteSVM (SECURITY-CHECK П27), исправлено в d0c5e7d. Для prod нужен зелёный check: без него `pnpm deploy:prod` откажет.
 - [x] 05.10.2026: prod открывается на временном адресе https://stakeward-prod.zhibul-alexander.workers.dev (свой домен не куплен, DECISIONS.md «Развёртывание»), заголовки безопасности на месте (`curl -I`).
 - [x] 05.10.2026: проверка Helius записана в docs/DECISIONS.md, раздел «Проверка RPC».
 
@@ -22,7 +22,7 @@
 
 ### а) Первый деплой в dev
 
-Сделано 05.10.2026 по API-токену владельца, вместе с prod: базы D1, миграции 0001–0003, секреты, деплой, вебхуки ботов (DECISIONS.md, «Развёртывание»). Следующие деплои: `set -a; . ~/.config/stakeward/secrets.env; set +a; pnpm deploy:dev`.
+Сделано 05.10.2026 по API-токену владельца, вместе с prod: базы D1, миграции 0001–0003, секреты, деплой, вебхуки ботов (DECISIONS.md, «Развёртывание»). Следующие деплои — только `pnpm deploy:dev` из оболочки, куда файл секретов не подключён: обёртка сама берёт из него два ключа Cloudflare (DECISIONS D96). Порядок выкатки и миграций — в разделе «Выкатка новой сборки» в конце.
 
 - [ ] Открыть адрес dev в браузере: лендинг; `/app`, `/dev/ui`, `/dev/cosign` открываются (curl 05.10.2026: все 200).
 - [x] 05.10.2026: `/api/health` сразу после деплоя ответил 503 `{"ok":false,"lastMonitorRunAt":null,…}`, после первого прохода в 19:18 UTC — 200.
@@ -89,14 +89,16 @@
 - [ ] Открыть `<адрес dev>/app`, подключить кошелёк как Main key. У двух аккаунтов статус Not protected. Нажать Protect у одного, затем вернуться и выбрать оба: адрес страницы `/protect?account=…&account=…`.
 - [ ] Шаг «Accounts»: оба аккаунта отмечены. Аккаунт чужого ключа из ссылки, если подставить его в адрес руками, попадает в «Left out».
 - [ ] Шаг «Second key»: подключить второй кошелёк из другой seed-фразы. Если подключить тот же аккаунт, что Main key, страница откажет и попросит переключить аккаунт. Без галочки «My second key comes from a different seed phrase» Continue не пускает.
+- [ ] С парой Phantom 1 / Phantom 2 (один кошелёк) на этом шаге видно предупреждение «Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase…» и строку «Use your second key only to co-sign Stakeward transactions…».
 - [ ] Шаг «Lock period»: на devnet есть «10 minutes (devnet test)». Выбрать его. Под выбором дата окончания (для 10 минут это сегодняшняя дата, время не показывается) и предупреждение «If you lose the second key, you wait until …».
 - [ ] Шаг «Review and sign»: одна карточка «Protect this stake» со списком двух аккаунтов целиком, «Who signs» (Main key платит комиссию), «Network fee», «What this transaction cannot do» и строка «Stakeward never asks for your seed phrase». Нажать «Sign 2 transactions in <кошелёк> as Main key», одобрить в кошельке; потом то же для Second key. Если Phantom участвует, страница может сама попросить его подписать первым.
 - [ ] Записать, что показал каждый кошелёк (предупреждения, сколько транзакций в одном окне). Если кошелёк не умеет подписать две транзакции одним запросом, страница предложит «Sign one stake account at a time».
-- [ ] Экран «Done»: «2 stake accounts are protected», у каждого ссылка на транзакцию и на карточку восстановления, строка мониторинга, карточка Telegram (ссылка откроет бота после шага 5).
+- [ ] Экран «Done»: «2 stake accounts are protected», у каждого ссылка на транзакцию и на карточку восстановления, строка мониторинга, карточка Telegram (ссылка откроет бота после шага 5) с датой конца замка и строкой «Without Telegram alerts nobody reminds you before <дата>».
 - [ ] На `/app` оба аккаунта «Expiring soon» (замок на 10 минут короче 30 дней; при сроке от месяца было бы «Protected»).
 - [ ] В штатном экране стейкинга кошелька попробовать вывести SOL из защищённого аккаунта (сначала Unstake, если он делегирован). Вывод должен упасть с ошибкой про lockup.
 - [ ] Через 10 минут обновить `/app`: аккаунты без защиты, красный баннер «… no longer protected» с кнопкой «Protect again».
 - [ ] Отказ: начать защиту ещё раз и нажать Reject во втором кошельке. Страница пишет, что ничего не отправлено, и даёт «Try again».
+- [ ] По желанию: перевести часы компьютера на 2 дня вперёд и открыть шаг «Lock period»: страница не считает дату, говорит, что время сети и устройства не совпадает, оба времени под Details, есть Try again. Вернуть часы.
 - [ ] Сравнить экраны с макетами, когда появится шаг 3б (или утвердить по скриншотам `docs/screens/protect-*`, `dev-ui-signing-*`, `dev-ui-protect-result-*`).
 
 
@@ -108,8 +110,9 @@
 - [x] 05.10.2026: боты `@stakeward_dev_bot` и `@stakeward_bot`, chat id владельца (@userinfobot), секреты вебхука, секреты обоих окружений в Cloudflare, миграции 0001–0003 (DECISIONS.md, «Развёртывание»). Файлы секретов окружений: `~/.config/stakeward/dev.vars` и `prod.vars` на VPS.
 
 ### б) Регистрация бота (из корня репозитория)
-Сделано 05.10.2026 для обоих ботов; команды ниже нужны для повтора, например после смены адреса сайта. Для prod — `prod.vars`.
+Сделано 05.10.2026 для обоих ботов; команды ниже нужны для повтора, например после смены адреса сайта. Для prod — `prod.vars`. Блок идёт в подоболочке `( … )`: переменные из файла уходят вместе с ней, и оболочка остаётся пригодной для `pnpm deploy:*`.
 ```sh
+(
 set -a; . ~/.config/stakeward/dev.vars; set +a
 API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
 curl -sS "$API/setWebhook" --data-urlencode "url=$SITE_ORIGIN/api/telegram/webhook" \
@@ -123,11 +126,36 @@ curl -sS "$API/setMyCommands" -H 'Content-Type: application/json' -d '{"commands
 curl -sS "$API/setMyDescription" --data-urlencode "description=Stakeward alerts for natively staked SOL. Send /start followed by a wallet address to get a message when one of its stake accounts changes and before a lock ends. Alerts only link to $SITE_ORIGIN. Stakeward never asks for your seed phrase."
 curl -sS "$API/setMyShortDescription" --data-urlencode "short_description=Alerts for SOL stake protected by Stakeward. Site: $SITE_ORIGIN"
 curl -sS "$API/getWebhookInfo"
+)
 ```
 У dev-бота оба описания начинаются с «Devnet test bot.».
+
+Ротация токена бота — по тревоге bot-mismatch в админском чате или при подозрении на кражу (SECURITY-CHECK П17, DECISIONS D89). Для prod — prod-бот, `--env prod` в шаге 3 и адрес `https://stakeward-prod.zhibul-alexander.workers.dev/api/telegram/webhook` в шаге 4. Шаги 3 и 4 делать подряд: пока секрет вебхука в Cloudflare и в Telegram разный, бот отвечает 401 на все обновления, /start и /stop не работают.
+1. BotFather → /revoke → выбрать бота → новый токен.
+2. Новый секрет вебхука: `openssl rand -hex 32`. Держать на экране до шага 4, в файлы не сохранять.
+3. Оба секрета в Cloudflare. Wrangler дважды спросит «Enter a secret value:», не называя секрет: первым ввести новый токен бота, вторым — новый секрет вебхука (цикл печатает имя перед каждым). В историю оболочки значения не попадут:
+   ```sh
+   ( set -a; . ~/.config/stakeward/secrets.env; set +a; cd apps/worker
+     for name in TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET; do
+       echo "$name:"
+       env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
+         CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm exec wrangler secret put "$name" --env dev
+     done )
+   ```
+4. Вебхук с новым токеном и тем же секретом:
+   ```sh
+   ( read -rsp 'New bot token: ' TOKEN; echo; read -rsp 'New webhook secret: ' SECRET; echo
+     curl -sS "https://api.telegram.org/bot$TOKEN/setWebhook" \
+       --data-urlencode "url=https://stakeward-dev.zhibul-alexander.workers.dev/api/telegram/webhook" \
+       --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member"]'
+     curl -sS "https://api.telegram.org/bot$TOKEN/getWebhookInfo" )
+   ```
+5. Проверить: `getWebhookInfo` — наш URL, нет `last_error_message`; /start в боте отвечает; в Workers Logs у следующей записи `monitor pass` поле `botCheck: "ok"`. На отсутствие тревоги bot-mismatch не полагаться: она приходит не чаще раза в час (D89), а ротацию обычно начинают как раз после неё. Если вор менял описания бота, повторить `setMyDescription` и `setMyShortDescription` из блока выше с новым токеном: `API` задать через `read -rsp`, как в шаге 4, `SITE_ORIGIN` — адрес окружения (в `dev.vars` и `prod.vars` остался отозванный токен). У dev-бота оба описания начинаются с «Devnet test bot.».
+6. Если `dev.vars` или `prod.vars` ещё лежат на VPS, удалить их (SECURITY-CHECK В3): в них отозванный токен и старый секрет вебхука, а новые значения в файлы не сохраняем.
 - [x] 05.10.2026: `getWebhookInfo` у обоих ботов: верный `url`, `pending_update_count: 0`, нет `last_error_message`.
 - [x] 05.10.2026, dev: `/api/health` — 200, первый проход в 19:18:10 UTC.
-- [ ] Prod: `/api/health` отвечает 200 со свежим `lastMonitorRunAt` (cron может включаться до 15 минут после деплоя).
+- [x] 06.10.2026: prod (сборка 05.10) — `/api/health` 200, проход 02:48:32 UTC.
+- [ ] Prod после выкатки новой сборки: `/api/health` отвечает 200 со свежим `lastMonitorRunAt` (cron может включаться до 15 минут после деплоя).
 
 ### в) Проверяю я
 - [ ] Открыть `<адрес dev>/app?address=<Main key>`, нажать Get alerts in Telegram, в боте нажать Start. Ответ «Alerts are on for …». `/status` показывает кошелёк и число аккаунтов.
@@ -144,6 +172,7 @@ curl -sS "$API/getWebhookInfo"
   - есть ли исходы Exceeded CPU;
   - приходили ли тревоги «the previous pass did not finish».
 - [ ] Запасной путь — GraphQL Analytics, набор `workersInvocationsScheduled`, поле `cpuTimeUs`.
+- [ ] После выкатки новой сборки в dev — замерить снова: с 06.10.2026 каждый проход ещё спрашивает у Telegram вебхук (`getWebhookInfo`), а суточная часть читает до 250 строк напоминаний (DECISIONS D88, D89). Заодно: в админском чате нет тревог bot-mismatch; в Workers Logs у запросов `/api/stake-accounts` и `/api/accounts` нет `?withdrawer=` и `?wallet=` (D95).
 
 ## Шаг 8. Карточка восстановления (команды CLI)
 
@@ -156,17 +185,18 @@ curl -sS "$API/getWebhookInfo"
 
 - [ ] Вывод из защищённого неделегированного аккаунта: `/withdraw/<аккаунт>`, подписывают Main key и Second key. Аккаунт исчезает, SOL приходят на основной ключ.
 - [ ] Продление другого аккаунта одним вторым кошельком: в браузере на компьютере и во встроенном браузере кошелька на телефоне. В эксплорере новая дата и комиссия списана со второго ключа.
-- [ ] Опустошить второй кошелёк и продлить снова: экран говорит, что платит основной ключ, Main key подписывает первым.
+- [ ] Опустошить второй кошелёк и продлить снова: экран говорит, что платит основной ключ, Main key подписывает первым, и предупреждает «If your main key may be stolen, send SOL to the second key instead.»
+- [ ] Опустошить и основной кошелёк: страница просит пополнить Second key, а не Main key.
 - [ ] С `/withdraw` пройти «Remove the lock first»: галочка, подписывает Second key, затем вывод одним Main key. Перед снятием видно предупреждение, что это открывает окно для вора.
 - [ ] Снять делегированный аккаунт с делегирования и сравнить отсчёт с концом эпохи в эксплорере.
 
 ## Шаг 7. Спасение, nonce, подпись по ссылке
 
-- [ ] Спасение двух защищённых аккаунтов на новый кошелёк тремя кошельками в одном браузере: `/rescue?address=<Main key>`. На новом кошельке около 0,01 SOL. На Ledger (если есть) поле «New authority» равно новому кошельку. В эксплорере у обоих аккаунтов оба ключа — новый кошелёк, дата замка та же. Затем делегировать снова и закрыть link-signing account.
-- [ ] По желанию «вор сменил staker»: если Main key — файл ключа, `solana stake-authorize-checked <аккаунт> --new-stake-authority <другой ключ> --stake-authority <main.json> --url devnet`, затем спасение того же аккаунта проходит.
+- [ ] Спасение двух защищённых аккаунтов на новый кошелёк тремя кошельками в одном браузере: `/rescue?address=<Main key>`. На новом кошельке около 0,01 SOL. Если New wallet — ещё один аккаунт того же Phantom, на шагах New wallet, Keys и Move видно предупреждение, что ключи в одном кошельке, и совет подписывать, только если у нового кошелька своя seed-фраза. На Ledger (если есть) поле «New authority» равно новому кошельку. В эксплорере у обоих аккаунтов оба ключа — новый кошелёк, дата замка та же. Затем делегировать снова и закрыть link-signing account.
+- [ ] По желанию «вор сменил staker»: если Main key — файл ключа, `solana stake-authorize-checked <аккаунт> --new-stake-authority <другой ключ> --stake-authority <main.json> --url devnet`. На `/app?address=<Main key>` у аккаунта «Another key can stop or move this stake. If you did not set this up, your main key may be stolen.» и Open Rescue; спасение того же аккаунта проходит.
 - [ ] Вывод по ссылке: Main key подписывает на компьютере, QR-код сканирует телефон, ссылка открывается во встроенном браузере кошелька второго ключа, галочка, подпись. Компьютер сам показывает «Done».
 - [ ] Отменить ссылку и открыть её снова: «already used or cancelled».
-- [ ] Защита по ссылке с вставленным адресом второго ключа.
+- [ ] Защита по ссылке с вставленным адресом второго ключа. Подсказка под полем: «Paste only the address of a wallet you or a person you trust created…».
 - [ ] Строки матрицы кошельков: меняет ли Phantom (Solflare, Backpack) байты, которые уже подписал другой кошелёк; предупреждения на nonce-транзакциях; что показывает Ledger.
 
 ## Шаг 8. Тексты
@@ -191,13 +221,42 @@ curl -sS "$API/getWebhookInfo"
 - [ ] `/stats` и `/no-such-page`.
 - [ ] Telegram в dev-боте: /start, /status, /stop, тревога каждого типа, напоминания.
 - [ ] Факты в вопросе FAQ «Has staked SOL really been stolen like this?» верны, называть компании можно.
+- [ ] FAQ «How can I check my lock without Stakeward?»: открыть защищённый devnet-аккаунт на explorer.solana.com (сеть Devnet) и сверить надписи из ответа: баннер «Account is locked! Lockup expires on …», Lockup Authority Address (второй ключ), Withdraw Authority Address (основной ключ). Надписи взяты из исходников эксплорера, на живой странице не сверены (SECURITY-CHECK П26).
 
-## Шаг 8. Выкатка новой версии в prod
+## Выкатка новой сборки
+
+Деплой и удалённые миграции — только по слову владельца (DECISIONS «Развёртывание»), команды из корня репозитория, в оболочке без подключённого файла секретов. Обёртка откажет на грязном дереве, на HEAD не с origin и, для prod, без зелёного check на HEAD (D96).
+
+### а) Dev
+
+- [ ] `pnpm deploy:dev`. Обёртка дописывает раздел в `docs/deploys.md`: закоммитить и запушить.
+- [ ] Миграция 0004 после деплоя кода (D90): применить командой из DECISIONS D96 (подоболочка, только два ключа Cloudflare); `migrations apply` сам покажет 0004 среди неприменённых и спросит подтверждение. Без ключей в окружении wrangler на VPS не работает (OAuth-входа там нет), поэтому и отдельный список — в такой же подоболочке, с `pnpm exec wrangler d1 migrations list DB --remote --env dev` в `apps/worker`.
+- [ ] `pnpm verify-deploy --env dev --commit <sha>` — PASS.
+- [ ] `curl -sI https://stakeward-dev.zhibul-alexander.workers.dev/app` — есть `cross-origin-opener-policy: same-origin`; `/api/health` — 200 через 2–4 минуты.
+
+### б) Prod
 
 Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
 
-- [ ] Решение владельца: выкатить текущую `build/product` в prod (по-моему, сразу после проверки шагов 4–7 в dev).
-- [ ] `cd apps/worker && pnpm exec wrangler d1 migrations list DB --remote --env prod`: новых миграций нет (0001–0003 уже применены).
-- [ ] Из корня: `set -a; . ~/.config/stakeward/secrets.env; set +a; pnpm deploy:prod`. Я могу сделать это сам по вашему слову.
-- [ ] `curl -s https://stakeward-prod.zhibul-alexander.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet.
+- [ ] Решение владельца: выкатить текущую `build/product` в prod. Перед этим В7: слить `build/product` в main.
+- [ ] Зелёный check на HEAD в GitHub Actions. Можно сначала `pnpm deploy:prod --prod-confirm --dry-run`.
+- [ ] `pnpm deploy:prod --prod-confirm`; закоммитить и запушить `docs/deploys.md`. Я могу сделать это сам по вашему слову.
+- [ ] Миграция 0004 на prod той же командой с `db:migrate:prod`.
+- [ ] `pnpm verify-deploy --env prod --commit <sha>` — PASS.
+- [ ] `curl -s https://stakeward-prod.zhibul-alexander.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP.
+- [ ] Старый preview-адрес `https://037f86ff-stakeward-prod.zhibul-alexander.workers.dev/` больше не открывается (SECURITY-CHECK В5).
 - [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
+
+## Перед подачей: за владельцем
+
+Пункты В1–В9 из docs/SECURITY-CHECK.md, «За владельцем».
+
+- [ ] В1. Решение Free или Workers Paid за 5 долларов по CPU проходов (Шаг 5 г); настоящая тревога и LOCKUP_CHANGED в dev (Шаг 5 в).
+- [ ] В2. Домен: купить или оставить workers.dev; вписать адрес в README и описания ботов; форма Phantom; на своём домене — Always Use HTTPS и выключить Network Error Logging. Решить, называть ли адрес prod до шага 9 (П24).
+- [ ] В3. 2FA на Cloudflare, GitHub и аккаунте Telegram, который владеет ботами. Токен Cloudflare с минимальными правами и сроком жизни, отзывать после деплоя. В `~/.config/stakeward/secrets.env` оставить только `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`, удалить `dev.vars` и `prod.vars`. Защита ветки main и запрет force-push.
+- [ ] В4. Dependabot alerts в настройках GitHub.
+- [ ] В5. Preview-адреса prod: выключить Preview URLs в настройках воркера stakeward-prod в панели Cloudflare или дождаться деплоя prod с `preview_urls: false`; проверить, что старый адрес не открывается.
+- [ ] В6. BotFather `/setjoingroups` → Disable у обоих ботов.
+- [ ] В7. До выкатки prod слить `build/product` в main: ссылки сайта на README и docs/gate.md ведут на main, а там код шага 3; суточный аудит CI тоже идёт только по main.
+- [ ] В8. Второй ключ Helius (или платный план) только для монитора.
+- [ ] В9. Решение: разрешить ли спасение пачкой по блокхэшу, когда все три ключа в одном браузере (сейчас всегда nonce, по аккаунту за раз).

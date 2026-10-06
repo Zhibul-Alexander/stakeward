@@ -42,7 +42,8 @@ So a thief with only your main key can stop your rewards, move your stake to a v
 ## The second key: read this first
 
 - **Whoever holds your second key can freeze your stake.** The second key cannot move your SOL, but it can set any end date, even years ahead, and hand the lock to any other key. Guard it as carefully as your main key.
-- **Make it from a different seed phrase.** One seed phrase makes all of its wallets. If one phrase makes both keys, whoever steals it has both, and the lock stops nothing. A second account in the same wallet app usually comes from the same seed phrase, unless you imported it from its own. Stakeward asks you to confirm this, but it cannot check it for you.
+- **Make it from a different seed phrase.** One seed phrase makes all of its wallets. If one phrase makes both keys, whoever steals it has both, and the lock stops nothing. A second account in the same wallet app usually comes from the same seed phrase, unless you imported it from its own. Stakeward asks you to confirm this and warns when both keys are accounts of one wallet app, but it cannot check it for you.
+- **Use it only for Stakeward.** Use your second key only to co-sign Stakeward transactions and the Solana command-line steps of your recovery card; do not connect it to other sites. One signature on a fake site can hand your lock to a thief's key.
 - **Keep it apart from your main key:** on a hardware wallet, on another device, or with a person you trust. A person who holds your second key co-signs by link from their own device.
 - **If you lose it,** your SOL is safe, but it stays locked until the lock's end date. Nobody can shorten the wait, not even Stakeward. After that, your main key alone controls the stake again.
 - **If someone steals it,** they cannot take your SOL, but they can keep it locked. Hand the lock to a new second key at once: see [Second key stolen](#second-key-stolen).
@@ -52,6 +53,7 @@ So a thief with only your main key can stop your rewards, move your stake to a v
 
 - It cannot protect liquid staking tokens, stake on an exchange, SOL in your wallet balance or validator vote accounts.
 - It cannot stop a thief with your main key from stopping your staking or moving it to another validator. While the lock holds, they still cannot take the SOL.
+- It cannot stop a thief with your main key from splitting your stake into many small stake accounts. Each part keeps the lock, but a rescue moves at most 10 of them per run: act early, and extend the lock with your second key first.
 - It cannot keep a thief out after the lock ends. If your main key may be stolen, rescue your stake before that date.
 - It cannot help if you lose your main key. Withdrawing always needs the main key, with or without the lock.
 - It cannot shorten the wait if you lose your second key. The lock ends on its date, not before.
@@ -122,6 +124,8 @@ They could not:
 - withdraw a locked stake, hand it to another wallet or change its lock unless your second key signs too;
 - change how the lock works: that is the stake program's rule, not Stakeward's;
 - stop you from recovering with the Solana command line, as below.
+
+To check your lock without Stakeward's server, type explorer.solana.com yourself and look up your stake account. At the top it must say "Account is locked! Lockup expires on" and the date you chose; if that line is missing, the account is not locked. Under Authorities, the Lockup Authority Address must be your second key and the Withdraw Authority Address your main key.
 
 A fake Stakeward site is the same danger. Type the address yourself or use a bookmark. After you protect your stake, open your accounts with your second key connected: a stake account marked Locked by another key is not locked by your key.
 
@@ -359,8 +363,8 @@ A pnpm monorepo:
 | `packages/core` | Pure TypeScript with no I/O: stake account decoding, lock rules, stake status, transaction builders, the inspector, signature checks, snapshot diffs for alerts, error texts, recovery card commands. Used by the site, the worker, the scripts and the tests. Test doubles (`LiteSvmChain`, an in-memory test wallet, a LiteSVM harness with the mainnet stake program v5.1.0) are in `packages/core/test`. |
 | `apps/web` | The site: Vite, React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, lucide-react. Design tokens in `src/styles/tokens.css`, every UI string in `src/i18n/en.json`. `/dev/ui` shows every component in every state (devnet build only). |
 | `apps/worker` | One Cloudflare Worker on Hono: serves the built site, the API under `/api/*`, the monitor (a Cron Trigger every 2 minutes) and the Telegram webhook. Data in D1; schema only through `migrations/`. |
-| `scripts` | The mechanism check (`gate`), devnet test accounts (`dev-accounts`), an RPC check (`check-rpc`) and a runner for the recovery card's CLI commands (`recovery-cli`). |
-| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `gate.md`, `recovery-cli.md` (all in Russian) and screenshots in `screens/`. |
+| `scripts` | The mechanism check (`gate`), devnet test accounts (`dev-accounts`), an RPC check (`check-rpc`), a runner for the recovery card's CLI commands (`recovery-cli`), the deploy wrapper (`deploy.ts`) and the live-site check (`verify-deploy.ts`). |
+| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `SECURITY-CHECK.md`, `deploys.md`, `gate.md`, `recovery-cli.md` (in Russian), `SUBMISSION.md` (the hackathon entry drafts) and screenshots in `screens/`. |
 
 `CLAUDE.md` is the build spec (in Russian). Every deviation from it is recorded in `docs/DECISIONS.md`.
 
@@ -373,7 +377,7 @@ The worker's API:
 | `GET /api/stake-accounts?withdrawer=` or `?custodian=` | stake accounts of a key, via `getProgramAccounts`, decoded |
 | `POST /api/watch` | reads each account from the network and starts watching it only if it is a stake account with a lock in force |
 | `GET /api/accounts?wallet=` | watched accounts where the wallet is the main or second key, with recent events |
-| `POST /api/rpc` | JSON-RPC proxy: an allow-list of methods with strict params; `simulateTransaction` and `sendTransaction` only for transactions the inspector accepts with valid signatures |
+| `POST /api/rpc` | JSON-RPC proxy: an allow-list of methods with strict params; `simulateTransaction` and `sendTransaction` only for transactions the inspector accepts (`sendTransaction` also needs every signature present and valid), a withdrawal only to the stake account's main key and a nonce account closed only to its owner |
 | `POST /api/telegram/webhook` | the bot's webhook, checked with the secret token header |
 | `GET /api/telegram/link?wallet=` | redirects to the bot with `/start <wallet>` |
 | `GET /api/health` | time of the last successful monitor pass; HTTP 503 when it is older than 10 minutes |
@@ -397,7 +401,7 @@ Versions are exact and the lockfile is committed: always install with `--frozen-
 
 ### Tests
 
-Four automated layers run in GitHub Actions on every push, with `pnpm audit`:
+Four automated layers run in GitHub Actions on every push, with `pnpm audit`; a daily scheduled job runs the frozen install and `pnpm audit` again on the default branch:
 
 1. **Core** (`packages/core`): unit tests, and integration tests on LiteSVM with the mainnet stake program build v5.1.0. Every builder runs on LiteSVM; every kind of transaction goes through the inspector; the inspector and the signature checks reject what they must.
 2. **Worker** (`apps/worker`): tests inside workerd (`@cloudflare/vitest-pool-workers`) with a local D1 and fake RPC and Telegram: the RPC proxy, `/api/watch`, the monitor (each event once, reminders, pass limits), the webhook, rate limits and security headers.
@@ -450,9 +454,9 @@ Each deploy appends its commit, the Cloudflare version id and the sha256 of ever
 
 - Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL`. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
 - `RPC_URL` must be a private RPC such as Helius: public Solana RPC endpoints refuse requests from Cloudflare Workers.
-- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
+- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. They are not part of the deploy: run them as a separate step. The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
 - The monitor fits the Workers Free plan in small batches (`MONITOR_PLAN` = `free`); the paid plan allows bigger passes (`paid`).
-- The Telegram webhook registration, the manual checks and the release steps are in [docs/TESTPLAN.md](docs/TESTPLAN.md). The current deployment, its decisions and the reasons behind them are in [docs/DECISIONS.md](docs/DECISIONS.md), section "Развёртывание" and D84.
+- The Telegram webhook registration, the bot token rotation, the manual checks and the release steps are in [docs/TESTPLAN.md](docs/TESTPLAN.md). The monitor checks the bot's webhook on every pass and alerts the admin chat (`bot-mismatch`) when it points elsewhere; then rotate both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` and set the webhook again with the new secret. The current deployment, its decisions and the reasons behind them are in [docs/DECISIONS.md](docs/DECISIONS.md), section "Развёртывание" and D84.
 
 ## License
 
