@@ -81,9 +81,10 @@ export type BuiltTransaction = {
  * Keys are addresses only: the builder never sees a private key, wallets sign the returned bytes.
  * Throws on inputs the program would reject anyway (zero or negative amounts, a second key equal to the main key, ...)
  * and on inputs Stakeward never sends: a lockup end after `MAX_LOCKUP_END`, a nonce seed other than
- * `NONCE_ACCOUNT_SEED`, and a rescue that the new wallet does not pay for or that runs on someone else's nonce
- * (CLAUDE.md section 5: the compromised main key never pays and never owns the nonce account). The inspector rebuilds
- * every transaction it accepts with this function, so these rules hold for /cosign links and the RPC proxy too.
+ * `NONCE_ACCOUNT_SEED`, a rescue that the new wallet does not pay for or that runs on someone else's nonce, and a change
+ * of second key that the old second key pays for or that runs on its nonce (CLAUDE.md section 5: a key that may be
+ * compromised never pays and never owns the nonce account). The inspector rebuilds every transaction it accepts with
+ * this function, so these rules hold for /cosign links and the RPC proxy too.
  */
 export function buildTransaction(action: TransactionAction, options: BuildOptions): BuiltTransaction {
   const transaction = compileTransaction(transactionMessage(action, options));
@@ -119,6 +120,14 @@ function transactionMessage(action: TransactionAction, options: BuildOptions) {
     check(
       lifetime.kind === 'blockhash' || lifetime.nonceAuthority === action.newWallet,
       "A rescue runs on a blockhash or on the new wallet's nonce account",
+    );
+  }
+  if (action.kind === 'change-second-key') {
+    // The old second key is the one that may be stolen here (F7): it never pays and never owns the nonce.
+    check(options.feePayer !== action.secondKey, 'A change of second key is never paid by the old second key');
+    check(
+      lifetime.kind === 'blockhash' || lifetime.nonceAuthority !== action.secondKey,
+      "A change of second key never runs on the old second key's nonce account",
     );
   }
   const instructions = [
@@ -237,6 +246,21 @@ function actionInstructions(action: TransactionAction): Instruction[] {
             stakeAuthorize: StakeAuthorize.Withdrawer,
           }),
         ),
+      ];
+    case 'change-second-key':
+      requireDistinct([action.secondKey, action.newSecondKey, action.stakeAccount]);
+      check(action.newSecondKey !== ZERO_ADDRESS, 'The new second key must not be the zero key');
+      // Neither a timestamp nor an epoch: the program keeps both (Meta::set_lockup sets only the values given), so only
+      // the custodian changes. The Ledger app's parser prints only the values present (its source, not yet seen on a
+      // device): here "New authority".
+      return [
+        getSetLockupCheckedInstruction({
+          stake: action.stakeAccount,
+          authority: signer(action.secondKey),
+          newAuthority: signer(action.newSecondKey),
+          unixTimestamp: null,
+          epoch: null,
+        }),
       ];
     case 'nonce-setup':
       requireLamports(action.lamports);

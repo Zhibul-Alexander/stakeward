@@ -1,6 +1,7 @@
 import {
   AccountRole,
   createAddressWithSeed,
+  isNone,
   isSome,
   mergeRoles,
   type Address,
@@ -96,7 +97,8 @@ import {
  *   7. Backstop: `buildTransaction(summary.action, { feePayer, lifetime })` must compile to the same message, apart
  *      from the accepted Lighthouse tail (`compareMessages`). So the inspector accepts nothing the builder would not
  *      build, including the builder's own input checks (distinct keys, positive amounts, lockup end at most
- *      `MAX_LOCKUP_END`, the one nonce seed, a rescue paid by the new wallet and never on another key's nonce).
+ *      `MAX_LOCKUP_END`, the one nonce seed, a rescue paid by the new wallet and never on another key's nonce, a change
+ *      of second key never paid by the old second key nor on its nonce).
  *      The builder's compiled message is compared field by field (`compileActionMessage`, `isSameMessage`), which is
  *      the same as comparing the encoded bytes but skips encoding (CPU budget of the worker, DECISIONS.md D23).
  *   8. Every present signature verifies against the message bytes (`verification-unavailable` when this browser
@@ -105,15 +107,19 @@ import {
  * Decisions: the compute budget must be exactly the fixed limit and price (a different price could drain the fee
  * payer; a different limit is not our format). A Lighthouse tail may reference existing accounts with their roles
  * unchanged, but every account it adds is a read-only non-signer (Lighthouse assertions only read), and the Lighthouse
- * program itself is one of the added accounts. Apart from the rescue, the fee payer is reported, not enforced: the
- * builder accepts any fee payer (F5 lets the main key pay for the second key); the screens compare it with
- * `expectedFeePayer`.
+ * program itself is one of the added accounts. Apart from the rescue and the change of second key, the fee payer is
+ * reported, not enforced: the builder accepts any fee payer (F5 lets the main key pay for the second key); the screens
+ * compare it with `expectedFeePayer`.
+ *
+ * SetLockupChecked is two kinds, told apart by its data alone: `protect` sets the lock end (unix timestamp), while
+ * `change-second-key` (F7) sets neither the end nor the epoch, so only the custodian changes.
  *
  * The summary is context-free: it says what the bytes do, not whether that makes sense for the account on chain.
  * The screens compare it with the chain: "protect" signed by the current custodian is a hand-over of the second key
- * (F7), an "extend" whose end is not later than the current one shortens or ends the lock, recipients and new keys are
- * shown in full. Unsigned and partly signed bytes pass; the RPC proxy runs `verifyAllSignatures` before
- * sendTransaction.
+ * that also moves the end, a "change-second-key" fits only when its signer holds a lock in force
+ * (`secondKeyChangeProblem`), an "extend" whose end is not later than the current one shortens or ends the lock,
+ * recipients and new keys are shown in full. Unsigned and partly signed bytes pass; the RPC proxy runs
+ * `verifyAllSignatures` before sendTransaction.
  */
 
 /** Lifetime as the bytes show it. A blockhash transaction does not carry its last valid block height. */
@@ -752,10 +758,20 @@ async function actionFromSteps(steps: readonly Step[]): Promise<TransactionActio
 function stakeAction(step: StakeStep): TransactionAction {
   switch (step.type) {
     case 'set-lockup-checked': {
-      const lockUntil = someValue(step.unixTimestamp);
       if (step.newAuthority === null) notBuilt('SetLockupChecked without a new custodian');
-      if (lockUntil === null || lockUntil <= 0n) notBuilt('SetLockupChecked without a future lockup end');
       if (isSome(step.epoch)) notBuilt('SetLockupChecked that changes the lockup epoch');
+      // F7: no lock end either, so only the custodian changes; the authority is the second key that holds the lock
+      // (the screens check that against the chain, secondKeyChangeProblem). A protect always sets the end.
+      if (isNone(step.unixTimestamp)) {
+        return {
+          kind: 'change-second-key',
+          stakeAccount: step.stake,
+          secondKey: step.authority,
+          newSecondKey: step.newAuthority,
+        };
+      }
+      const lockUntil = someValue(step.unixTimestamp);
+      if (lockUntil === null || lockUntil <= 0n) notBuilt('SetLockupChecked without a future lockup end');
       return {
         kind: 'protect',
         stakeAccount: step.stake,

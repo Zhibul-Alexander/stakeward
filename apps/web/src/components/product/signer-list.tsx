@@ -15,7 +15,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
-import { roleLabel } from './wallet-slot.tsx';
+import { useRoleWords } from './wallet-slot.tsx';
 
 /** `link`: this key signs on another device through the signing link, never in this browser. */
 export type SignerStatus = 'waiting' | 'current' | 'signed' | 'switch' | 'stopped' | 'missing' | 'link';
@@ -50,12 +50,13 @@ const LOOKS: Record<SignerStatus, Look> = {
  * it approves and its status in a word, a colour and an icon. Presentational: the signing engine computes the items.
  */
 export function SignerList({ items, className }: { items: readonly SignerListItem[]; className?: string | undefined }) {
+  const words = useRoleWords();
   return (
     <ol aria-label={t('signing.signers')} data-slot="signer-list" className={cn('flex flex-col gap-3', className)}>
       {items.map((item, index) => {
         const { tone, icon: Icon, label } = LOOKS[item.status];
         const n = index + 1;
-        const role = roleLabel(item.role);
+        const role = words.label(item.role);
         return (
           <li
             key={`${String(index)}-${item.address}`}

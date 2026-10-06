@@ -22,6 +22,7 @@ import {
 import { newTestWallet, type TestWallet } from '../test/wallet.ts';
 import type { BlockhashLifetime, Lifetime, TransactionAction } from './actions.ts';
 import { inspectTransaction } from './inspect.ts';
+import { signingOrder } from './signing-order.ts';
 import { checkSigningStep, verifyAllSignatures, type SigningStepErrorCode } from './verify.ts';
 
 const STAKE = key(4);
@@ -248,6 +249,64 @@ describe('verifyAllSignatures', () => {
     expect(await verifyAllSignatures(forged)).toMatchObject({
       ok: false,
       error: { code: 'invalid-signatures', signers: [offCurve] },
+    });
+  });
+});
+
+describe('a change of second key (F7) under the same checks', () => {
+  /** Main key A, old second key K and new second key K2, with real keys; `payer` is K2 or the main key (fallback). */
+  async function change(payer: 'new' | 'main') {
+    const [main, oldKey, newKey] = await Promise.all([newTestWallet(), newTestWallet(), newTestWallet()]);
+    const action: TransactionAction = {
+      kind: 'change-second-key',
+      stakeAccount: STAKE,
+      secondKey: oldKey.address,
+      newSecondKey: newKey.address,
+    };
+    const feePayer = payer === 'new' ? newKey : main;
+    const built = build(action, BLOCKHASH, feePayer.address);
+    // Section 6 order without a tail wallet: the fee payer, then the rest in message order.
+    const wallets = [main, oldKey, newKey];
+    const order = signingOrder({ required: built.meta.signers, present: [], feePayer: feePayer.address, appendsTail: () => false }).map(
+      (address) => wallets.find((wallet) => wallet.address === address) as TestWallet,
+    );
+    return { main, oldKey, newKey, action, built, order };
+  }
+
+  it.each(['new', 'main'] as const)('every signer in turn returns the same message, then every signature verifies (%s key pays)', async (payer) => {
+    const { action, built, order, newKey, oldKey, main } = await change(payer);
+    expect(order.map((wallet) => wallet.address)).toEqual(
+      payer === 'new' ? [newKey.address, oldKey.address] : [main.address, ...built.meta.signers.slice(1)],
+    );
+    let bytes = built.bytes;
+    for (const wallet of order) {
+      const signed = await sign(wallet, bytes);
+      expect(await verdict(bytes, signed)).toBe('ok:0');
+      bytes = signed;
+    }
+    expect(await verifyAllSignatures(bytes)).toStrictEqual({ ok: true });
+    const inspected = await inspectTransaction(bytes);
+    expect(inspected.ok && inspected.summary).toMatchObject({ action, presentSignatures: built.meta.signers });
+  });
+
+  it('rejects a wallet that hands the lock to another key, or adds a tail after the first signature', async () => {
+    const { action, built, order } = await change('main');
+    const [first, second] = order;
+    if (first === undefined || second === undefined) throw new Error('two signers expected');
+    // A wallet that swaps the new second key for a thief's key: another message.
+    const swapped = build({ ...action, newSecondKey: X }, BLOCKHASH, first.address).bytes;
+    expect(await verdict(built.bytes, swapped)).toBe('message-changed');
+    const byFirst = await sign(first, built.bytes);
+    expect(await verdict(byFirst, await sign(second, appendLighthouseTail(byFirst)))).toBe('tail-not-first-signer');
+  });
+
+  it('names the new second key when only the others signed', async () => {
+    const { built, order, newKey } = await change('main');
+    let bytes = built.bytes;
+    for (const wallet of order.filter((signer) => signer !== newKey)) bytes = await sign(wallet, bytes);
+    expect(await verifyAllSignatures(bytes)).toMatchObject({
+      ok: false,
+      error: { code: 'missing-signatures', signers: [newKey.address] },
     });
   });
 });

@@ -31,7 +31,7 @@ import { AddressText } from './address-text.tsx';
 import { ErrorDetails } from './error-state.tsx';
 import { RiskNote } from './risk-note.tsx';
 import { SolAmount } from './sol-amount.tsx';
-import { roleLabel } from './wallet-slot.tsx';
+import { useRoleWords, type RoleWords } from './wallet-slot.tsx';
 
 /**
  * What the chain says about the stake account right now (read by the page, never taken from the link or the app's
@@ -79,6 +79,7 @@ const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
   deactivate: ['components.tx.cannot.stakeStays', 'components.tx.cannot.noKeyChange'],
   delegate: ['common.cannotMoveSol', 'components.tx.cannot.noKeyChange'],
   rescue: ['components.tx.cannot.rescueNoMove', 'components.tx.cannot.keepsLock'],
+  'change-second-key': ['common.cannotMoveSol', 'components.tx.cannot.changeOwner', 'components.tx.cannot.keepsEnd'],
   'nonce-setup': ['components.tx.cannot.noStake'],
   'nonce-close': ['components.tx.cannot.noStake'],
 };
@@ -125,6 +126,7 @@ export function lockText(lockup: Lockup, clock: ClockView): string {
  */
 export function TransactionSummary({ summary, current: single, knownRoles = {}, batch, headingLevel = 2, className }: TransactionSummaryProps) {
   const titleId = useId();
+  const words = useRoleWords();
   const { action } = summary;
   const roles = rolesOf(action, knownRoles);
   // A batch has no single "now": its rows show the After values, its accounts their own state.
@@ -132,7 +134,7 @@ export function TransactionSummary({ summary, current: single, knownRoles = {}, 
   const clock = current?.clock ?? localClock();
   const TitleTag: Heading = headingLevel === 2 ? 'h2' : 'h3';
   const SectionTag: Heading = headingLevel === 2 ? 'h3' : 'h4';
-  const changes = changeRows(action, current, clock);
+  const changes = changeRows(action, current, clock, words);
   // With a batch, the warnings that depend on an account's state move to that account; the others stay here, once.
   const warnings = warningList(
     batch === undefined ? [...stateWarnings(action, current, clock), ...actionWarnings(summary)] : actionWarnings(summary),
@@ -182,7 +184,7 @@ export function TransactionSummary({ summary, current: single, knownRoles = {}, 
             return (
               <li key={signer} className="flex flex-col gap-1 rounded-md border border-border p-3" data-signer={role ?? 'other'}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold">{role === undefined ? t('components.tx.signer') : roleLabel(role)}</span>
+                  <span className="text-sm font-semibold">{role === undefined ? t('components.tx.signer') : words.label(role)}</span>
                   {signed ? (
                     <Badge tone="success">
                       <CircleCheckIcon aria-hidden="true" />
@@ -316,9 +318,10 @@ function ChangeRow({ label, before, after }: Row) {
 }
 
 function Full({ address, role }: { address: Address; role?: WalletRole | undefined }) {
+  const words = useRoleWords();
   return (
     <span className="flex flex-col">
-      {role === undefined ? null : <span>{roleLabel(role)}</span>}
+      {role === undefined ? null : <span>{words.label(role)}</span>}
       <AddressText address={address} variant="full" />
     </span>
   );
@@ -329,7 +332,7 @@ function custodianInForce(current: OnChainContext, clock: ClockView): Address | 
   return isLockupInForce(lockup, clock) && lockup.custodian !== ZERO_ADDRESS ? lockup.custodian : null;
 }
 
-function changeRows(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView): Row[] {
+function changeRows(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView, words: RoleWords): Row[] {
   const lockNow = current === undefined ? undefined : lockText(current.lockup, clock);
   const lockLabel = t('components.tx.lock');
   switch (action.kind) {
@@ -338,7 +341,7 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
       return [
         { label: lockLabel, before: lockNow, after: t('components.tx.lockedUntil', { date: dateText(action.lockUntil) }) },
         {
-          label: roleLabel('second'),
+          label: words.label('second'),
           before: custodian === undefined ? undefined : custodian === null ? t('components.tx.none') : <Full address={custodian} />,
           after: <Full address={action.secondKey} />,
         },
@@ -365,6 +368,18 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
         },
         { label: lockLabel, before: lockNow, after: t('components.tx.lockUnchanged') },
       ];
+    case 'change-second-key': {
+      // Now: the key that holds the lock as the chain shows it (without the chain, the key the bytes say signs as it).
+      const custodian = current === undefined ? action.secondKey : custodianInForce(current, clock);
+      return [
+        {
+          label: words.label('second'),
+          before: custodian === null ? t('components.tx.none') : <Full address={custodian} />,
+          after: <Full address={action.newSecondKey} />,
+        },
+        { label: lockLabel, before: lockNow, after: t('components.tx.lockUnchanged') },
+      ];
+    }
     case 'deactivate':
       return [{ label: t('components.tx.staking'), before: t('components.tx.delegated'), after: t('components.tx.deactivating') }];
     case 'delegate':
@@ -405,7 +420,10 @@ function warningList(notes: readonly ReactNode[]): ReactNode {
   return notes.length === 0 ? null : <div className="flex flex-col gap-2">{notes}</div>;
 }
 
-/** Warnings from comparing the action with the account's state now: a second key replaced, a lock made shorter. */
+/**
+ * Warnings from comparing the action with the account's state now: a second key replaced, a change of second key its
+ * signer cannot make, a lock made shorter.
+ */
 function stateWarnings(action: TransactionAction, current: OnChainContext | undefined, clock: ClockView): ReactNode[] {
   const notes: ReactNode[] = [];
   if (action.kind === 'protect' && current !== undefined) {
@@ -417,6 +435,14 @@ function stateWarnings(action: TransactionAction, current: OnChainContext | unde
         </Warning>,
       );
     }
+  }
+  // A change of second key fits only when its signer holds a lock in force now (core secondKeyChangeProblem).
+  if (action.kind === 'change-second-key' && current !== undefined && custodianInForce(current, clock) !== action.secondKey) {
+    notes.push(
+      <Warning key="not-holder" tone="danger">
+        {t('components.tx.warn.notSecondKeyNow')}
+      </Warning>,
+    );
   }
   const shortened = shortenedTo(action, current, clock);
   if (shortened !== null && current !== undefined) {

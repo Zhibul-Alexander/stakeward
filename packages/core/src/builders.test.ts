@@ -61,6 +61,7 @@ const D = key(3);
 const S = key(4);
 const VOTE = key(5);
 const NONCE = key(6);
+const K2 = key(7); // new second key (F7)
 const T = 1_825_545_600n;
 
 const blockhashLifetime: BlockhashLifetime = { kind: 'blockhash', blockhash: blockhash(key(20)), lastValidBlockHeight: 100n };
@@ -74,6 +75,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: K2 },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_447_680n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: NONCE, nonceAuthority: D, recipient: D, lamports: 1_447_680n },
 };
@@ -206,6 +208,23 @@ describe('stake instructions', () => {
     expect(built.meta.signers[0]).toBe(D);
     expect([...built.meta.signers].sort()).toEqual([A, D, K].sort());
   });
+
+  it('change-second-key: SetLockupChecked(stake, K, K2) with neither a lock end nor an epoch, so only the custodian changes', () => {
+    const [ix, ...rest] = body(ACTIONS['change-second-key']);
+    expect(rest).toEqual([]);
+    expect(ix?.programAddress).toBe(STAKE_PROGRAM_ADDRESS);
+    expect(ix?.accounts).toEqual([S, K, K2]);
+    // The old and the new second key sign; K2 is also the fee payer, so the message makes it writable.
+    expect(ix?.roles).toEqual([AccountRole.WRITABLE, AccountRole.READONLY_SIGNER, AccountRole.WRITABLE_SIGNER]);
+    expect(getSetLockupCheckedInstructionDataDecoder().decode(ix?.data ?? new Uint8Array())).toEqual({
+      discriminator: 12,
+      unixTimestamp: { __option: 'None' },
+      epoch: { __option: 'None' },
+    });
+    // The same 6 data bytes as `solana stake-set-lockup-checked --new-custodian` without a date or an epoch.
+    expect([...(ix?.data ?? [])]).toEqual([12, 0, 0, 0, 0, 0]);
+    expect(build(ACTIONS['change-second-key']).built.meta.signers).toEqual([K2, K]);
+  });
 });
 
 describe('nonce instructions', () => {
@@ -254,6 +273,7 @@ describe('fee payer', () => {
       deactivate: A,
       delegate: A,
       rescue: D,
+      'change-second-key': K2,
       'nonce-setup': D,
       'nonce-close': D,
     });
@@ -262,6 +282,12 @@ describe('fee payer', () => {
   it('adds an explicit fee payer as a signer (F5: main key pays for the second key)', () => {
     const built = buildTransaction(ACTIONS.extend, { feePayer: A, lifetime: blockhashLifetime });
     expect(built.meta.signers).toEqual([A, K]);
+  });
+
+  it('change-second-key: the main key may pay instead of the new second key (the F5 fallback), and signs too', () => {
+    const built = buildTransaction(ACTIONS['change-second-key'], { feePayer: A, lifetime: blockhashLifetime });
+    expect(built.meta.signers[0]).toBe(A);
+    expect([...built.meta.signers].sort()).toEqual([A, K, K2].sort());
   });
 });
 
@@ -279,6 +305,9 @@ describe('input validation', () => {
     ['withdraw with the main key as custodian', { ...ACTIONS.withdraw, secondKey: A }],
     ['rescue to the main key', { ...ACTIONS.rescue, newWallet: A }],
     ['rescue to the second key', { ...ACTIONS.rescue, newWallet: K }],
+    ['a change of second key to the stake account', { ...ACTIONS['change-second-key'], newSecondKey: S }],
+    ['a change of second key to the zero key', { ...ACTIONS['change-second-key'], newSecondKey: ZERO_ADDRESS }],
+    ['a change of second key signed by the stake account', { ...ACTIONS['change-second-key'], secondKey: S }],
     ['nonce setup with an empty seed', { ...ACTIONS['nonce-setup'], seed: '' }],
     ['nonce setup with a 33-byte seed', { ...ACTIONS['nonce-setup'], seed: 'x'.repeat(33) }],
     ['nonce setup with another seed', { ...ACTIONS['nonce-setup'], seed: 'stakeward-nonce-2' }],
@@ -298,5 +327,25 @@ describe('input validation', () => {
       );
     }
     expect(buildTransaction(ACTIONS.rescue, { feePayer: D, lifetime: nonceLifetime }).meta.signers[0]).toBe(D);
+  });
+
+  it('rejects a change of second key to the key that holds the lock now', () => {
+    // Paid by the main key, so the old-key-never-pays rule is not what refuses it.
+    const same = { ...ACTIONS['change-second-key'], newSecondKey: K };
+    expect(() => buildTransaction(same, { feePayer: A, lifetime: blockhashLifetime })).toThrow(/different addresses/);
+  });
+
+  it('rejects a change of second key the old second key pays for, or on a nonce account it owns (section 5, F7)', () => {
+    const change = ACTIONS['change-second-key'];
+    expect(() => buildTransaction(change, { feePayer: K, lifetime: blockhashLifetime })).toThrow(/never paid by the old second key/);
+    expect(() => buildTransaction(change, { feePayer: K2, lifetime: { ...nonceLifetime, nonceAuthority: K } })).toThrow(
+      /old second key's nonce/,
+    );
+    // The new second key or the main key pays; any nonce account but the old key's.
+    for (const feePayer of [K2, A]) {
+      expect(buildTransaction(change, { feePayer, lifetime: { ...nonceLifetime, nonceAuthority: feePayer } }).meta.feePayer).toBe(
+        feePayer,
+      );
+    }
   });
 });

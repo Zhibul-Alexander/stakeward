@@ -14,6 +14,7 @@ export type TransactionKind =
   | 'deactivate'
   | 'delegate'
   | 'rescue'
+  | 'change-second-key'
   | 'nonce-setup'
   | 'nonce-close';
 
@@ -86,6 +87,22 @@ export type RescueAction = {
 };
 
 /**
+ * F7. SetLockupChecked signed by the current custodian K (the second key) with the new second key K2 as the new
+ * custodian; K2 co-signs. It passes neither a unix timestamp nor an epoch (None = unchanged), so the lock keeps its end:
+ * only the key that holds it changes. The program takes K's signature only while the lock is in force (a lock not in
+ * force is set by the withdrawer, and that is a protect), so the screens check the change against the chain with
+ * `secondKeyChangeProblem`. The main key is not part of it; it signs only when it pays the fee (`expectedFeePayer`).
+ */
+export type ChangeSecondKeyAction = {
+  kind: 'change-second-key';
+  stakeAccount: Address;
+  /** The second key that holds the lock now (its custodian): it signs as the authority. */
+  secondKey: Address;
+  /** The new second key: the new custodian, which signs too. */
+  newSecondKey: Address;
+};
+
+/**
  * Creates a durable nonce account with System CreateAccountWithSeed (base = `nonceAuthority`, which pays and signs)
  * and initializes it with `nonceAuthority` as its authority. `nonceAccount` must equal
  * `deriveNonceAccountAddress(nonceAuthority, seed)`; no extra keypair is involved.
@@ -117,6 +134,7 @@ export type TransactionAction =
   | DeactivateAction
   | DelegateAction
   | RescueAction
+  | ChangeSecondKeyAction
   | NonceSetupAction
   | NonceCloseAction;
 
@@ -140,6 +158,9 @@ export type Lifetime = BlockhashLifetime | NonceLifetime;
  * - deactivate, delegate: the staker who signs it.
  * - rescue: the new wallet D, never the main key; the builder refuses any other fee payer, and a nonce account that
  *   D does not own.
+ * - change-second-key: the new second key K2. The same fallback as F5: when K2 has too little SOL the main key pays
+ *   and co-signs (the caller passes it explicitly). Never the old second key K, which may be stolen: a sweeper bot
+ *   drains it; the builder refuses K as fee payer and a nonce account K owns.
  * - nonce setup and close: the nonce authority.
  */
 export function expectedFeePayer(action: TransactionAction): Address {
@@ -155,6 +176,8 @@ export function expectedFeePayer(action: TransactionAction): Address {
       return action.staker;
     case 'rescue':
       return action.newWallet;
+    case 'change-second-key':
+      return action.newSecondKey;
     case 'nonce-setup':
     case 'nonce-close':
       return action.nonceAuthority;
@@ -162,13 +185,16 @@ export function expectedFeePayer(action: TransactionAction): Address {
 }
 
 /**
- * Roles the action itself names: mainKey -> main, secondKey (when not null) -> second, newWallet -> new. Other keys
- * (a staker, a nonce authority, a recipient) have no role of their own; the page knows whose they are.
+ * Roles the action itself names: mainKey -> main, secondKey (when not null) -> second, newWallet -> new. A change of
+ * second key's newSecondKey -> new too: the new second key fills the New wallet slot (one of the three slots of
+ * CLAUDE.md section 6), and the page that changes the key names that slot "New second key". Other keys (a staker, a
+ * nonce authority, a recipient) have no role of their own; the page knows whose they are.
  */
 export function actionRoles(action: TransactionAction): Partial<Record<WalletRole, Address>> {
   const roles: Partial<Record<WalletRole, Address>> = {};
   if ('mainKey' in action) roles.main = action.mainKey;
   if ('secondKey' in action && action.secondKey !== null) roles.second = action.secondKey;
   if ('newWallet' in action) roles.new = action.newWallet;
+  if ('newSecondKey' in action) roles.new = action.newSecondKey;
   return roles;
 }

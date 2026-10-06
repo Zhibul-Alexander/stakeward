@@ -177,6 +177,51 @@ describe('TransactionSummary', () => {
     expect(forbiddenRoleWords()).toEqual([]);
   });
 
+  it('change of second key: the second key now and after, the lock stays, it cannot move SOL or change the end', async () => {
+    const change: TransactionAction = { kind: 'change-second-key', stakeAccount: STAKE, secondKey: SECOND, newSecondKey: OTHER };
+    render(
+      <TransactionSummary
+        summary={await inspected(change, OTHER)}
+        current={{ lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: SECOND }, clock: NOW }}
+      />,
+    );
+
+    const summary = document.querySelector('[data-slot="transaction-summary"]');
+    expect(summary).toHaveAttribute('data-kind', 'change-second-key');
+    expect(screen.getByRole('heading', { level: 2, name: 'Change the second key' })).toBeInTheDocument();
+    const secondKey = screen.getByText('Second key', { selector: 'dt' }).parentElement as HTMLElement;
+    expect(secondKey).toHaveTextContent(`Now${SECOND}`);
+    expect(secondKey).toHaveTextContent(`After${OTHER}`);
+    const lock = screen.getByText('Lock', { selector: 'dt' }).parentElement as HTMLElement;
+    expect(lock).toHaveTextContent('NowLocked until 12 April 2027');
+    expect(lock).toHaveTextContent('AfterStays as it is');
+    // Two signatures; the new key pays (the old one may be stolen and drained).
+    expect(screen.getByText('Up to 0.0000106 SOL')).toBeInTheDocument();
+    expect(signers()[0]).toContain('Pays the network fee');
+    expect(signers()[0]).toContain(OTHER);
+    expect(signers()[1]).toBe(`Second keyNot signed yet${SECOND}`);
+    expect(screen.getByText('This transaction cannot move your SOL.')).toBeInTheDocument();
+    expect(screen.getByText('It cannot change who can withdraw: only the lock and its second key change.')).toBeInTheDocument();
+    expect(screen.getByText('It cannot change when the lock ends.')).toBeInTheDocument();
+    expect(screen.queryByText(/does not hold this lock now/)).not.toBeInTheDocument();
+    expect(forbiddenRoleWords()).toEqual([]);
+  });
+
+  it('change of second key signed by a key that does not hold the lock now warns in red', async () => {
+    const change: TransactionAction = { kind: 'change-second-key', stakeAccount: STAKE, secondKey: SECOND, newSecondKey: OTHER };
+    const summary = await inspected(change, OTHER);
+    const { unmount } = render(
+      <TransactionSummary summary={summary} current={{ lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: MAIN }, clock: NOW }} />,
+    );
+    const warning = screen.getByText(/does not hold this lock now, so the network will refuse this change/).closest('[data-slot="alert"]');
+    expect(warning).toHaveAttribute('data-tone', 'danger');
+    unmount();
+    // No lock in force: the same.
+    render(<TransactionSummary summary={summary} current={{ lockup: NO_LOCK, clock: NOW }} />);
+    expect(screen.getByText(/does not hold this lock now/)).toBeInTheDocument();
+    expect((screen.getByText('Second key', { selector: 'dt' }).parentElement as HTMLElement)).toHaveTextContent('NowNone');
+  });
+
   it('extend to an earlier date warns that it shortens the lock', async () => {
     const extend: TransactionAction = { kind: 'extend', stakeAccount: STAKE, secondKey: SECOND, lockUntil: JANUARY_2027 };
     render(

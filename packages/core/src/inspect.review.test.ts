@@ -75,6 +75,7 @@ const VOTE = key(5);
 const NONCE = key(6);
 const THIEF = key(8);
 const THIEF2 = key(9);
+const K2 = key(10); // new second key (F7)
 const T = 1_825_545_600n;
 const SETUP_NONCE = await deriveNonceAccountAddress(D);
 const RENT_SYSVAR = 'SysvarRent111111111111111111111111111111111' as Address;
@@ -91,6 +92,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: K2 },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
 };
@@ -234,6 +236,22 @@ describe('review: what the summary exposes (accepted on purpose; the screens mus
       K,
     );
     expect((await summaryOf(shorten)).action).toStrictEqual({ kind: 'extend', stakeAccount: S, secondKey: K, lockUntil: 1n });
+  });
+
+  // A change of second key (F7) reads the same whoever signs it: the bytes cannot say whether the signer holds the lock
+  // now (the program takes only the custodian's signature while the lock holds, and refuses it once the lock ended).
+  // A screen must check it against the chain with secondKeyChangeProblem (lockup.test.ts) before it asks anyone.
+  it('S7: "change-second-key" signed by a key that may not hold the lock', async () => {
+    const byStranger = craftBody(
+      [getSetLockupCheckedInstruction({ stake: S, authority: signer(THIEF), newAuthority: signer(THIEF2), unixTimestamp: null, epoch: null })],
+      THIEF2,
+    );
+    expect((await summaryOf(byStranger)).action).toStrictEqual({
+      kind: 'change-second-key',
+      stakeAccount: S,
+      secondKey: THIEF,
+      newSecondKey: THIEF2,
+    });
   });
 
   // A rescue paid by A or on a nonce A owns (section 5) is accepted today; spec.review.test.ts R3/R4 already asks the

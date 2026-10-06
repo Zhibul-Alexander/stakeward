@@ -45,6 +45,7 @@ describe('networkFeeFor: the fee a plan expects before anything is built', () =>
     deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
     delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: key(5) },
     rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+    'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: key(7) },
     'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
     'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
   };
@@ -86,6 +87,7 @@ describe('payerOutflow: what the fee payer pays besides the fee', () => {
     { kind: 'protect', stakeAccount: S, mainKey: A, secondKey: key(2), lockUntil: 1_825_545_600n },
     { kind: 'withdraw', stakeAccount: S, mainKey: A, secondKey: null, recipient: A, lamports: 5_000_000_000n },
     { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: key(2), newWallet: key(3) },
+    { kind: 'change-second-key', stakeAccount: S, secondKey: key(2), newSecondKey: key(3) },
     { kind: 'nonce-close', nonceAccount: key(6), nonceAuthority: A, recipient: A, lamports: 1_056_640n },
   ])('$kind: nothing', (action) => {
     expect(payerOutflow(action)).toBe(0n);

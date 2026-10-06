@@ -147,6 +147,10 @@ export function RecoveryCardView({ card, cluster, readAt, siteOrigin }: Recovery
       </CardSection>
 
       <CardSection title={t('recovery.stolenSecond.title')}>
+        {/* /second-key changes the key of a lock that ends on a date only (as /extend); the command works for both. */}
+        {byDate ? (
+          <InStakeward text={t('recovery.stolenSecond.stakeward')} path={`/second-key/${account.address}`} siteOrigin={siteOrigin} />
+        ) : null}
         <CommandStep
           text={t('recovery.stolenSecond.body')}
           argv={commands['change-second-key']}

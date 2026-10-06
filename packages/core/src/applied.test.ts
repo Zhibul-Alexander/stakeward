@@ -160,6 +160,31 @@ describe('actionApplied', () => {
     });
   });
 
+  describe('change-second-key', () => {
+    const K2 = key(5);
+    const action: TransactionAction = { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: K2 };
+    const before = locked();
+    const handed = (lockup: Partial<StakeAccount['lockup']> = {}) =>
+      rawStakeAccount(locked({ lockup: { unixTimestamp: T, epoch: 0n, custodian: K2, ...lockup } }));
+    it.each([
+      ['the new second key holds the lock, same end and epoch', handed(), before, true],
+      ['the new second key holds the lock, nothing known before', handed(), null, true],
+      ['the old second key still holds the lock', rawStakeAccount(before), before, false],
+      ['another key holds the lock', handed({ custodian: D }), before, false],
+      ['the new second key holds it, but the end moved', handed({ unixTimestamp: T + 1n }), before, false],
+      ['the new second key holds it, but the lock was removed', handed({ unixTimestamp: 0n }), before, false],
+      ['the new second key holds it, but the epoch changed', handed({ epoch: 7n }), before, false],
+      ['the account is gone', null, before, false],
+      ['not a stake account', notAStakeAccount, before, false],
+    ] as const)('%s -> %s', (_name, after, previous, expected) => {
+      expect(actionApplied(action, after, previous)).toBe(expected);
+    });
+
+    it('is the stake account that it reads', () => {
+      expect(actionTarget(action)).toBe(S);
+    });
+  });
+
   describe('nonce setup and close', () => {
     const setup: TransactionAction = {
       kind: 'nonce-setup',

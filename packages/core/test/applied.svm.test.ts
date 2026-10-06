@@ -121,6 +121,15 @@ describe('actionApplied on the chain, for every builder kind', () => {
     );
   });
 
+  it('change-second-key', async () => {
+    const K2 = await chain.fundedKey(1n);
+    const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address, lockup: lockedUntil(100n) });
+    await expectAppliedOnlyAfterSending(
+      { kind: 'change-second-key', stakeAccount, secondKey: K.address, newSecondKey: K2.address },
+      [K2, K],
+    );
+  });
+
   it('nonce setup, then nonce close', async () => {
     const nonceAccount = await deriveNonceAccountAddress(D.address);
     const lamports = chain.svm.minimumBalanceForRentExemption(BigInt(NONCE_ACCOUNT_SIZE));

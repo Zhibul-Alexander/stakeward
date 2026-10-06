@@ -63,6 +63,7 @@ import {
   NONCE_ACCOUNT_SIZE,
   SYSTEM_PROGRAM_ADDRESS,
   SYSVAR_CLOCK_ADDRESS,
+  ZERO_ADDRESS,
 } from './constants.ts';
 import { inspectTransaction, type InspectedLifetime, type InspectErrorCode } from './inspect.ts';
 import { toLegacyLayout, type StakeIx } from './legacy-layout.ts';
@@ -75,6 +76,7 @@ const VOTE = key(5);
 const NONCE = key(6); // nonce account of the nonce lifetime
 const S2 = key(7);
 const X = key(8); // a stranger
+const K2 = key(10); // new second key (F7)
 const T = 1_825_545_600n;
 const SETUP_NONCE = await deriveNonceAccountAddress(D);
 const RENT_SYSVAR = address('SysvarRent111111111111111111111111111111111');
@@ -91,6 +93,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: K2 },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
 };
@@ -201,6 +204,24 @@ describe('accepts every transaction the builder makes, and says exactly what it 
       const result = await inspectTransaction(built.bytes);
       expect(result.ok && result.summary).toMatchObject({ action, feePayer: A, requiredSigners: [A, K] });
     }
+  });
+
+  it('a change of second key reports the stake account, the old and the new second key, who pays and who signs', async () => {
+    const action = ACTIONS['change-second-key'];
+    // Paid by the new second key: it and the old second key sign.
+    const byNewKey = await inspectTransaction(build(action, BLOCKHASH).bytes);
+    expect(byNewKey.ok && byNewKey.summary).toMatchObject({
+      action: { kind: 'change-second-key', stakeAccount: S, secondKey: K, newSecondKey: K2 },
+      feePayer: K2,
+      requiredSigners: [K2, K],
+      networkFeeLamports: 10_600n,
+    });
+    // The F5 fallback: the main key pays and signs too, and the action is the same.
+    const built = build(action, BLOCKHASH, A);
+    const byMainKey = await inspectTransaction(built.bytes);
+    expect(byMainKey.ok && byMainKey.summary).toMatchObject({ action, feePayer: A, networkFeeLamports: 15_600n });
+    expect(byMainKey.ok && [...byMainKey.summary.requiredSigners].sort()).toEqual([A, K, K2].sort());
+    expect(byMainKey.ok && byMainKey.summary.requiredSigners).toEqual(built.meta.signers);
   });
 
   it('crafting the built instructions again gives the same bytes (the crafted cases below change one thing)', () => {
@@ -521,7 +542,103 @@ describe('rejects parameters Stakeward never builds', () => {
     expect(await verdict(checked({ unixTimestamp: T, epoch: null }))).toBe('unknown-instruction');
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: T, epoch: 2_000n }))).toBe('unknown-instruction');
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: 0n, epoch: null }))).toBe('unknown-instruction');
+    // Without an end it reads as a change of second key (below), whose authority never pays: here A signs and pays.
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: null, epoch: null }))).toBe('unknown-instruction');
+  });
+
+  describe('a change of second key (F7) is told apart from protect by its data alone', () => {
+    /** SetLockupChecked by `authority` handing the lock to `newAuthority`, with these lock values, paid by `feePayer`. */
+    const checked = (input: {
+      authority?: Address;
+      /** null: no new custodian account at all. */
+      newAuthority?: Address | null;
+      unixTimestamp?: bigint | null;
+      epoch?: bigint | null;
+      feePayer?: Address;
+      lifetime?: Lifetime;
+    }) =>
+      craftBody(
+        [
+          getSetLockupCheckedInstruction({
+            stake: S,
+            authority: signer(input.authority ?? K),
+            ...(input.newAuthority === null ? {} : { newAuthority: signer(input.newAuthority ?? K2) }),
+            unixTimestamp: input.unixTimestamp ?? null,
+            epoch: input.epoch ?? null,
+          }),
+        ],
+        input.lifetime ?? BLOCKHASH,
+        input.feePayer ?? K2,
+      );
+
+    it('no lock end and no epoch: a change of second key; a lock end: a protect', async () => {
+      const change = await inspectTransaction(checked({}));
+      expect(change.ok && change.summary.action).toStrictEqual(ACTIONS['change-second-key']);
+      expect(checked({})).toStrictEqual(build(ACTIONS['change-second-key'], BLOCKHASH).bytes);
+      const protect = await inspectTransaction(checked({ unixTimestamp: T, authority: A, newAuthority: K, feePayer: A }));
+      expect(protect.ok && protect.summary.action).toStrictEqual(ACTIONS.protect);
+    });
+
+    it('accepts the main key as fee payer, on a blockhash or on a nonce the payer owns', async () => {
+      for (const feePayer of [K2, A]) {
+        const lifetime: NonceLifetime = { ...NONCE_LIFETIME, nonceAuthority: feePayer };
+        for (const bytes of [checked({ feePayer }), checked({ feePayer, lifetime })]) {
+          const result = await inspectTransaction(bytes);
+          expect(result.ok && result.summary).toMatchObject({ action: ACTIONS['change-second-key'], feePayer });
+        }
+      }
+    });
+
+    it('refuses one paid by the old second key, or on a nonce the old second key owns', async () => {
+      const paidByOldKey = await inspectTransaction(checked({ feePayer: K }));
+      expect(!paidByOldKey.ok && paidByOldKey.error).toMatchObject({
+        code: 'unknown-instruction',
+        message: expect.stringMatching(/never paid by the old second key/) as unknown,
+      });
+      const onOldKeysNonce = await inspectTransaction(checked({ lifetime: { ...NONCE_LIFETIME, nonceAuthority: K } }));
+      expect(!onOldKeysNonce.ok && onOldKeysNonce.error).toMatchObject({
+        code: 'unknown-instruction',
+        message: expect.stringMatching(/old second key's nonce/) as unknown,
+      });
+    });
+
+    it('refuses an epoch, a new key the builder refuses, or no new key at all', async () => {
+      expect(await verdict(checked({ epoch: 0n }))).toBe('unknown-instruction');
+      expect(await verdict(checked({ epoch: 2_000n }))).toBe('unknown-instruction');
+      for (const newAuthority of [K, S, ZERO_ADDRESS]) {
+        expect(await verdict(checked({ newAuthority, feePayer: A })), newAuthority).toBe('unknown-instruction');
+      }
+      expect(await verdict(checked({ authority: S, feePayer: A }))).toBe('unknown-instruction');
+      expect(await verdict(checked({ newAuthority: null }))).toBe('unknown-instruction');
+    });
+
+    it('refuses the new second key as a non-signer, the old one as writable, or a lock end of tag 2', async () => {
+      const action = ACTIONS['change-second-key'];
+      // Paid by the main key: as fee payer the new second key would be a writable signer whatever the instruction says.
+      const roleAt = (account: number, role: AccountRole) => {
+        const built = build(action, BLOCKHASH, A);
+        const instructions = instructionsOf(built.bytes).map((ix, index) =>
+          index === 2 ? mapAccounts(ix, (meta, i) => (i === account ? { ...meta, role } : meta)) : ix,
+        );
+        return craft(instructions, A, lifetimeToken(BLOCKHASH));
+      };
+      expect(await verdict(roleAt(2, AccountRole.READONLY))).toBe('bad-layout');
+      expect(await verdict(roleAt(1, AccountRole.READONLY))).toBe('bad-layout');
+      expect(await verdict(roleAt(1, AccountRole.WRITABLE_SIGNER))).toBe('bad-layout');
+      expect(await verdict(roleAt(0, AccountRole.READONLY))).toBe('bad-layout');
+      // Data: u32 12, then two option tags (0 = None). Tag 2 decodes as None too; the canonical re-encoding catches it.
+      const tag2 = withInstruction(action, 2, (ix) => withData(ix, (data) => data.map((byte, i) => (i === 4 ? 2 : byte))));
+      expect(await verdict(tag2)).toBe('malformed');
+    });
+
+    it('SetLockup (unchecked) still never moves the custodian: the new key must sign (F1.4)', async () => {
+      const unchecked = craftBody(
+        [getSetLockupInstruction({ stake: S, authority: signer(K), unixTimestamp: null, epoch: null, custodian: K2 })],
+        BLOCKHASH,
+        K2,
+      );
+      expect(await verdict(unchecked)).toBe('unknown-instruction');
+    });
   });
 
   it('keys the builder refuses (second key = main key, zero amounts)', async () => {

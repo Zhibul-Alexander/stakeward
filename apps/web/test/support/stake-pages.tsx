@@ -1,6 +1,6 @@
-// Test-only rendering of the stake account pages (/withdraw/:account, /extend/:account, /cosign, /rescue and the
-// recovery card) for scenario tests: the real routes and pages over a LiteSvmChain and test wallets, in StrictMode as
-// in main.tsx. Never imported from src.
+// Test-only rendering of the stake account pages (/withdraw/:account, /extend/:account, /second-key/:account, /cosign,
+// /rescue and the recovery card) for scenario tests: the real routes and pages over a LiteSvmChain and test wallets, in
+// StrictMode as in main.tsx. Never imported from src.
 import { getSignatureFromTransaction, getTransactionDecoder, type Signature } from '@solana/kit';
 import type { ChainPort } from '@stakeward/core';
 import type { TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -14,6 +14,7 @@ import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { SecondKeyPage } from '@/pages/SecondKeyPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
   createProtectedAccountMemory,
@@ -75,6 +76,9 @@ export function renderStakePage(
             <Route path="/extend/:account">
               <ExtendPage signing={signing} />
             </Route>
+            <Route path="/second-key/:account">
+              <SecondKeyPage signing={signing} />
+            </Route>
             <Route path="/rescue">
               <RescuePage signing={signing} />
             </Route>
@@ -89,7 +93,7 @@ export function renderStakePage(
   return { ports: page, location, user, view: within(container) };
 }
 
-export type RoleName = 'Main key' | 'Second key' | 'New wallet';
+export type RoleName = 'Main key' | 'Second key' | 'New wallet' | 'New second key';
 
 /** One /cosign page in its own React root (the other device): its own ports, wallets and key slots. */
 /** `container`: this root's own element, for DOM queries that must not reach another root on the page. */
