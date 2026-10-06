@@ -16,7 +16,9 @@ import type { Messages } from '@/i18n';
  *    for blind signing; does-not-work: could not finish.
  * 5. Pick a note, or add one under landing.wallets.notes in en.json.
  * 6. Set LEDGER_CHECKED_ON only if a device showed exactly the fields below; otherwise edit LEDGER_SCREENS.
- * 7. Then edit the hedged sentences faq.items.ledger.a and faq.ledger.phantom in en.json to match.
+ * 7. Then edit the hedged sentences faq.items.ledger.a and faq.ledger.phantom in en.json to match, and after a Ledger run
+ *    faq.ledger.fromSource, faq.items.good-second-key.a and faq.items.fake-site.a too.
+ * 8. A wallet that gets a pair is no longer "not tested": edit landing.wallets.intro.
  */
 
 export type WalletSetup = keyof Messages['landing']['wallets']['setups'];
@@ -35,11 +37,12 @@ export type PairSupport = {
 /** UTC 'YYYY-MM-DD' of the wallet matrix run (TESTPLAN step 3). Null: not run. */
 export const WALLET_MATRIX_DATE: string | null = null;
 
-/** The pairs of TESTPLAN step 3, none run yet. */
+/**
+ * The pairs the wallet matrix runs (TESTPLAN step 3), none run yet. Only two Phantom accounts: the owner has no Solflare,
+ * Backpack or Ledger to test with (05.10.2026), so the table lists no pair that no one will run, and the intro says
+ * those wallets are not tested. A pair goes in when a run of it is planned.
+ */
 export const WALLET_PAIRS: readonly PairSupport[] = [
-  { id: 'phantom+solflare', main: 'phantom', second: 'solflare', here: 'not-verified', link: 'not-verified', note: null },
-  { id: 'phantom+backpack', main: 'phantom', second: 'backpack', here: 'not-verified', link: 'not-verified', note: null },
-  { id: 'solflare+backpack', main: 'solflare', second: 'backpack', here: 'not-verified', link: 'not-verified', note: null },
   {
     id: 'phantom+phantom-imported',
     main: 'phantom',
@@ -48,9 +51,6 @@ export const WALLET_PAIRS: readonly PairSupport[] = [
     link: 'not-verified',
     note: null,
   },
-  { id: 'ledger-phantom+any', main: 'ledger-phantom', second: 'any', here: 'not-verified', link: 'not-verified', note: null },
-  { id: 'ledger-solflare+any', main: 'ledger-solflare', second: 'any', here: 'not-verified', link: 'not-verified', note: null },
-  { id: 'ledger-backpack+any', main: 'ledger-backpack', second: 'any', here: 'not-verified', link: 'not-verified', note: null },
 ];
 
 export type LedgerField = keyof Messages['faq']['ledger']['fields'];

@@ -182,8 +182,8 @@
     },
     "wallets": {
       "title": "Which wallets work",
-      "intro": "You need two wallets made from different seed phrases. Stakeward talks to browser wallets through the Wallet Standard, such as Phantom, Solflare and Backpack. A Ledger connects through one of them. The table shows what we have tested.",
-      "notVerified": "We are still testing these pairs on devnet. Until a pair says Works, try it with a small stake first.",
+      "intro": "You need two wallets made from different seed phrases. Stakeward talks to browser wallets through the Wallet Standard, such as Phantom, Solflare and Backpack. A Ledger connects through one of them. Only Phantom is being tested with Stakeward. Solflare, Backpack and Ledger are not tested, and no test of them is planned.",
+      "notVerified": "A pair marked Not verified yet has not been tested. Until a pair says Works, try it with a small stake first.",
       "checkedOn": "Tested on Solana devnet on {date}.",
       "pairLabel": "{main} and {second}",
       "here": "Both wallets in this browser",
@@ -1621,7 +1621,7 @@
       },
       "good-second-key": {
         "q": "What makes a good second key?",
-        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase."
+        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Stakeward has not been tested with a Ledger, so try one with a small stake first. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase."
       },
       "different-seed": {
         "q": "Why must the two keys come from different seed phrases?",
@@ -1661,7 +1661,7 @@
       },
       "fake-site": {
         "q": "How do I avoid a fake Stakeward site?",
-        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. A stake account that says Locked by another key is not locked by your key. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
+        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. A stake account that says Locked by another key is not locked by your key. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
       },
       "ledger": {
         "q": "What will my Ledger show?",
@@ -1729,7 +1729,7 @@
       }
     },
     "ledger": {
-      "fromSource": "This list comes from the source code of Ledger's Solana app. We have not checked it on a device yet.",
+      "fromSource": "This list comes from the source code of Ledger's Solana app, not from a device. Stakeward has not been tested with a Ledger.",
       "checkedOn": "Checked on a Ledger on {date}.",
       "actions": {
         "protect": "Protect",
@@ -1782,7 +1782,7 @@
       },
       "authorizedBy": "Some screens also show \"Authorized by\": the key that approves the change.",
       "withdrawNote": "When you withdraw, the Ledger does not show your second key. The Stakeward screen shows it in full.",
-      "phantom": "Phantom may add its own safety checks to a transaction. If it does that for a Ledger account (not tested yet), the Ledger cannot read them and asks for blind signing. The wallet table above shows what we have tested.",
+      "phantom": "Phantom may add its own safety checks to a transaction. If it does that for a Ledger account, the Ledger cannot read them and asks for blind signing. Whether it does is not known.",
       "termsLink": "What custodian, withdrawer and staker mean"
     }
   }

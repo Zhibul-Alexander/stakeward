@@ -204,18 +204,33 @@ describe('landing network line', () => {
 });
 
 describe('landing wallet table', () => {
-  it('claims nothing before the wallet matrix: every pair "Not verified yet", and the note says so', async () => {
+  it('claims nothing before the wallet matrix: the one Phantom pair is "Not verified yet", and the note says so', async () => {
     renderLanding();
     const wallets = section('wallets');
-    expect(wallets.querySelectorAll('[data-pair]')).toHaveLength(7);
+    // Only the pair the matrix runs (TESTPLAN step 3: two Phantom accounts; no Solflare, Backpack or Ledger to test).
+    expect([...wallets.querySelectorAll('[data-pair]')].map((pair) => pair.getAttribute('data-pair'))).toEqual(['phantom+phantom-imported']);
     const verdicts = [...wallets.querySelectorAll('[data-verdict]')];
-    expect(verdicts).toHaveLength(14);
+    expect(verdicts).toHaveLength(2);
     expect(new Set(verdicts.map((badge) => badge.textContent))).toEqual(new Set(['Not verified yet']));
     expect(within(wallets).getByRole('note')).toHaveTextContent(en.landing.wallets.notVerified);
-    expect(within(wallets).getAllByText('Signing by link')).toHaveLength(7);
-    expect(within(wallets).getAllByText('Both wallets in this browser')).toHaveLength(7);
-    expect(within(wallets).getByRole('heading', { level: 3, name: 'Ledger through Phantom and any other wallet' })).toBeInTheDocument();
+    expect(within(wallets).getAllByText('Signing by link')).toHaveLength(1);
+    expect(within(wallets).getAllByText('Both wallets in this browser')).toHaveLength(1);
+    expect(
+      within(wallets).getByRole('heading', { level: 3, name: 'Phantom and Phantom, an account imported from another seed phrase' }),
+    ).toBeInTheDocument();
+    // The wallets that are not in the table are named as untested, with no test promised.
+    expect(wallets).toHaveTextContent('Solflare, Backpack and Ledger are not tested, and no test of them is planned.');
     expect(wallets).not.toHaveTextContent('Tested on Solana devnet');
+    await depositShown();
+  });
+
+  it('promises no test that is not planned and claims none that has not run (UX rule П10)', async () => {
+    renderLanding();
+    expect(document.body.textContent).not.toMatch(/still testing|what we have tested|on a device yet|not tested yet/i);
+    // The Ledger is known from its Solana app's source code only: every answer that leans on it says so.
+    expect(section('faq-ledger')).toHaveTextContent('Stakeward has not been tested with a Ledger.');
+    expect(section('faq-good-second-key')).toHaveTextContent('Stakeward has not been tested with a Ledger');
+    expect(section('faq-fake-site')).toHaveTextContent("source code of Ledger's Solana app, not from a test on a device");
     await depositShown();
   });
 
@@ -275,7 +290,7 @@ describe('landing FAQ', () => {
     const labels = [...ledger.querySelectorAll('dt')].map((term) => term.textContent);
     for (const label of ['New authority', 'Custodian', 'Create nonce acct']) expect(labels).toContain(label);
     expect(LEDGER_CHECKED_ON).toBeNull();
-    expect(ledger).toHaveTextContent('We have not checked it on a device yet');
+    expect(ledger).toHaveTextContent("This list comes from the source code of Ledger's Solana app, not from a device.");
     expect(ledger.querySelector('a[href="#faq-terms"]')).toHaveTextContent('What custodian, withdrawer and staker mean');
     expect(document.body.textContent).not.toContain('without blind signing');
     await depositShown();

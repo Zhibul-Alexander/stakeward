@@ -18,6 +18,10 @@ describe('wallet support data', () => {
     for (const pair of WALLET_PAIRS) expect(pair.id).toBe(`${pair.main}+${pair.second}`);
   });
 
+  it('lists only the pair the wallet matrix runs: two Phantom accounts (TESTPLAN step 3; no Solflare, Backpack or Ledger)', () => {
+    expect(WALLET_PAIRS.map((pair) => pair.id)).toEqual(['phantom+phantom-imported']);
+  });
+
   it('claims nothing before the matrix has run', () => {
     if (WALLET_MATRIX_DATE !== null) {
       expect(matrixDateText(WALLET_MATRIX_DATE)).not.toBeNull();
