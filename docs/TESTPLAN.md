@@ -112,6 +112,7 @@ Claude правит найденное и пишет «готово к prod».
 - [x] 05.10.2026: спонсор `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` пополнен на 5 SOL.
 - [x] 05.10.2026: Main key — Phantom 1 `KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw`. `pnpm dev-accounts` создал делегированный `9SV2x3NahSEWTbAizM26q8z5AGdAPCVwtiPtULCmrph2` (1 SOL) и неделегированный `6GqZV9JSD9z6EdfvFYzPr2VaT2Ssrb2P54hdTF5aPkv3` (0,1 SOL), без замка. Second key — Phantom 2 `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK`.
 - [x] 05.10.2026: на Phantom 1 переведено 0,2 SOL со спонсора на комиссии и залог nonce-аккаунта (вместо faucet). Second key SOL не нужен.
+- [x] 06.10.2026: со спонсора по 0,05 SOL на Second key `2Fz9TU…` (чтобы он сам платил за продление и снятие замка) и на New wallet `2VFhJxmyDPCYSjhaSddnLmjWdzYyvTnLVRKNgYcFXizR` (Account 3 в Phantom, Create New Account из фразы Phantom 1; только для теста спасения).
 - [ ] Открыть `<адрес dev>/app?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw`: два аккаунта со статусом Not protected.
 
 ### в) Матрица кошельков на /dev/cosign
