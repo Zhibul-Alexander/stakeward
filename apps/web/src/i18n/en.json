@@ -1078,7 +1078,8 @@
     },
     "sign": {
       "heading": "Hand the lock to your new second key",
-      "mainPays": "Your new second key has too little SOL for the network fee, so your main key pays and signs too. To have the new second key pay, send it at least {amount}, then press Check again."
+      "ledger": "On a Ledger, check that the new authority it shows is your new second key's address before you approve.",
+      "mainPays": "Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key at least {amount} from another wallet, then press Check again."
     },
     "result": "Second key change",
     "done": {

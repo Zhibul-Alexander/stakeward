@@ -66,9 +66,13 @@ export function SecondKeySigning({
   const mainPays = feePayer !== undefined && feePayer !== newSecondKey && rent0.status === 'ready' && restartable;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-        {t('secondKey.sign.heading')}
-      </h2>
+      <div className="flex flex-col gap-2">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
+          {t('secondKey.sign.heading')}
+        </h2>
+        {/* The Ledger app names the new custodian "New authority" (CLAUDE.md section 6), as on the protect step. */}
+        <p className="max-w-prose text-sm text-muted">{t('secondKey.sign.ledger')}</p>
+      </div>
       {mainPays ? (
         <Alert tone="info" role="note">
           <InfoIcon aria-hidden="true" />

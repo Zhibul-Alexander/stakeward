@@ -120,6 +120,9 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       await click(user, 'Continue');
 
       await heading('Hand the lock to your new second key');
+      expect(
+        screen.getByText("On a Ledger, check that the new authority it shows is your new second key's address before you approve."),
+      ).toBeInTheDocument();
       await screen.findByRole('button', { name: 'Sign in New Key Wallet as New second key' }, WAIT);
       const summary = await theSummary();
       expect(summary).toHaveAttribute('data-kind', 'change-second-key');
@@ -130,7 +133,7 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       expect(within(newSigner).getByText('New second key')).toBeInTheDocument();
       expect(within(newSigner).getByText('Pays the network fee')).toBeInTheDocument();
       expect(within(summary).getByText('It cannot change when the lock ends.')).toBeInTheDocument();
-      expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/so your main key would pay and sign too/)).not.toBeInTheDocument();
       const signers = screen.getByRole('list', { name: 'Signatures' });
       expect(within(signers).getAllByRole('listitem').map((item) => item.getAttribute('data-role'))).toEqual(['new', 'second']);
       expect(within(signers).getByText('1. New second key in New Key Wallet')).toBeInTheDocument();
@@ -207,7 +210,7 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       await user.click(screen.getByRole('checkbox', { name: SEED_CHECK }));
       await click(user, 'Continue');
       await screen.findByText(
-        `Your new second key has too little SOL for the network fee, so your main key pays and signs too. To have the new second key pay, send it at least ${formatSol(networkFeeFor(2) + rent0)}, then press Check again.`,
+        `Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key at least ${formatSol(networkFeeFor(2) + rent0)} from another wallet, then press Check again.`,
         undefined,
         WAIT,
       );
@@ -260,13 +263,13 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       await connectNewKey(user, 'New Key Wallet');
       await user.click(screen.getByRole('checkbox', { name: SEED_CHECK }));
       await click(user, 'Continue');
-      await screen.findByText(/so your main key pays and signs too/, undefined, WAIT);
+      await screen.findByText(/so your main key would pay and sign too/, undefined, WAIT);
 
       w.testChain.airdrop(w.K2.address, LAMPORTS_PER_SOL / 100n);
       await click(user, 'Check again');
       await screen.findByRole('button', { name: 'Sign in New Key Wallet as New second key' }, WAIT);
       expect(summarySigners(await theSummary())).toEqual(['new', 'second']);
-      expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/so your main key would pay and sign too/)).not.toBeInTheDocument();
       await click(user, 'Sign in New Key Wallet as New second key');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await click(user, 'Sign in Second Wallet as Second key');
