@@ -82,6 +82,8 @@ solana stake-authorize-checked \
 
 This works even if the thief changed who manages staking. The lock and its end time stay. From then on the new wallet is your main key: use it wherever this page says `<MAIN_KEY>`. If the stake stopped earning, stake it again from the new wallet, in Stakeward or in a wallet app that holds the new wallet.
 
+When every stake account is moved, run the command that lists them again: the thief may have split off another one in the meantime. Move each one it still lists, until it lists none.
+
 ### Withdraw
 
 If your main key may be stolen, do not withdraw to it. Move the stake to a new wallet instead, as in [Main key stolen](#main-key-stolen).
@@ -169,7 +171,7 @@ solana stake-set-lockup \
 
 ### Second key stolen
 
-The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
+The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
 
 ```sh
 solana stake-set-lockup-checked \

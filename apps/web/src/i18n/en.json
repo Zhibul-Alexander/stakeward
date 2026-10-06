@@ -182,7 +182,7 @@
     },
     "wallets": {
       "title": "Which wallets work",
-      "intro": "You need two wallets made from different seed phrases. Stakeward talks to browser wallets through the Wallet Standard, such as Phantom, Solflare and Backpack. A Ledger connects through one of them. Only Phantom is being tested with Stakeward. Solflare, Backpack and Ledger are not tested, and no test of them is planned.",
+      "intro": "You need two wallets made from different seed phrases. Stakeward talks to browser wallets through the Wallet Standard, such as Phantom, Solflare and Backpack. A Ledger connects through one of them. So far only Phantom has been tested with Stakeward. Solflare, Backpack and Ledger have not been tested yet.",
       "notVerified": "A pair marked Not verified yet has not been tested. Until a pair says Works, try it with a small stake first.",
       "checkedOn": "Tested on Solana devnet on {date}.",
       "pairLabel": "{main} and {second}",

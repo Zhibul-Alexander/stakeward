@@ -218,8 +218,8 @@ describe('landing wallet table', () => {
     expect(
       within(wallets).getByRole('heading', { level: 3, name: 'Phantom and Phantom, an account imported from another seed phrase' }),
     ).toBeInTheDocument();
-    // The wallets that are not in the table are named as untested, with no test promised.
-    expect(wallets).toHaveTextContent('Solflare, Backpack and Ledger are not tested, and no test of them is planned.');
+    // The wallets that are not in the table are named as untested.
+    expect(wallets).toHaveTextContent('Solflare, Backpack and Ledger have not been tested yet.');
     expect(wallets).not.toHaveTextContent('Tested on Solana devnet');
     await depositShown();
   });
