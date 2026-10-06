@@ -3,6 +3,24 @@
 Пункты «Проверяю я» из шагов сборки. Перед подачей весь список проходится на prod.
 Отметка: `- [x]` и дата, или заметка, что пошло не так.
 
+## Минимум владельца (06.10.2026)
+
+Только то, что не могу сделать я. Остальное в этом файле — подробности для этих шагов.
+
+1. Доступы, 5 минут: 2FA на Cloudflare, GitHub и аккаунте Telegram, которому принадлежат боты; BotFather `/setjoingroups` → Disable у `@stakeward_dev_bot` и `@stakeward_bot`.
+2. Devnet SOL: около 2 SOL с https://faucet.solana.com на спонсора `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL`. Раздать SOL вашим кошелькам и прогнать команды карточки я смогу сам.
+3. Деплой dev, когда я скажу, что сборка готова. В корне репозитория, в новой оболочке:
+   ```sh
+   pnpm deploy:dev
+   ( set -a; . ~/.config/stakeward/secrets.env; set +a
+     exec env -i PATH="$PATH" HOME="$HOME" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
+       CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm --filter @stakeward/worker db:migrate:dev )
+   ```
+   Написать в чат «задеплоил». Сверку и коммит `docs/deploys.md` делаю я.
+4. Один проход на dev с тремя аккаунтами Phantom (Main key, Second key, New wallet), около часа: `/dev/cosign` — 4 прогона и «Copy all» в чат (шаг 3 в); защита на 10 минут (шаг 4); привязать Telegram и снять стейк с делегирования — пришла тревога (шаг 5 в); вывод и продление (шаг 6); спасение на New wallet и подпись по ссылке с телефона (шаг 7). Что сломалось или непонятно — в чат.
+5. Mainnet (шаг 9): по моему слову `pnpm deploy:prod --prod-confirm` и та же миграция с `db:migrate:prod`; форма Phantom для адреса prod (шаг 3 д); тот же проход с маленьким своим стейком; уговорить одного-двух человек защитить свой стейк.
+6. Подача: раздел бизнеса в `docs/SUBMISSION.md`, питч-видео и демо по сценариям оттуда, заявка на Colosseum до 12.10 23:59 PT.
+
 ## Шаг 0. Подготовка
 
 - [ ] `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` проходят на чистом клоне.
