@@ -147,10 +147,10 @@
 - Поля ввода: `signing/AddressField.tsx` и `pages/app/AddressForm.tsx` (публичный адрес, только если проходит `isAddress`), демо на /dev/ui, поле ссылки только для чтения. localStorage хранит только адреса. `.gitignore` закрывает `.env*`, `.dev.vars*`, `.keys/`.
 - `apps/web` `vitest run test/build-output.test.ts test/test-code-guard.test.ts` — 12 из 12 (06.10.2026, аудит). Guard собирает mainnet и ищет метки двойников, litesvm, generateKey, pkcs8, `solana:signMessage`, `solana:signIn`, у каждого двойника положительный контроль. Живые бандлы dev и prod этих меток не содержат. `importKey` в бандле — только импорт публичного Ed25519 для проверки подписи.
 
-### О10. Репозиторий открыт (MIT), «No warranty» в подвале и README — выполнено; за владельцем В7
+### О10. Репозиторий открыт (MIT), «No warranty» в подвале и README — выполнено; В7 сделан
 
 - `SiteFooter.tsx` на каждом маршруте: «No warranty. MIT license.», строка есть в живых бандлах dev и prod. README.md:461-465, LICENSE (MIT), `license: MIT` во всех package.json. github.com/Zhibul-Alexander/stakeward отвечает 200.
-- Ссылки сайта ведут на ветку main (`config.ts:23-29`): `#recover-without-stakeward`, `blob/main/docs/gate.md`. На origin/main раздела «Recover without Stakeward» ещё нет (В7).
+- Ссылки сайта ведут на ветку main (`config.ts:23-29`): `#recover-without-stakeward`, `blob/main/docs/gate.md`. С 06.10.2026 main догнан до `build/product` (В7), ссылки ведут на актуальные README и docs/gate.md.
 
 
 ## Исправлено 06.10.2026
@@ -241,7 +241,7 @@
 ### П21. Нет расписания аудита (низкий)
 
 - Стало: `.github/workflows/ci.yml` — задача `audit` раз в сутки в 05:17 UTC (frozen install и `pnpm audit`), `check` и `e2e` по расписанию пропускаются.
-- Остаток за владельцем: GitHub запускает расписание только по ci.yml ветки по умолчанию, а в ci.yml ветки main (ac9d7b0) нет ни расписания, ни задачи `audit`: пока `build/product` не слит (В7), суточного аудита нет вовсе. Dependabot alerts не включены (В4).
+- GitHub запускает расписание только по ci.yml ветки по умолчанию. С 06.10.2026 main догнан до `build/product` (В7), так что суточный аудит идёт по main. Остаток за владельцем: Dependabot alerts не включены (В4).
 
 ### П23. URL запросов с адресами кошельков в логах Cloudflare (низкий)
 
@@ -289,13 +289,13 @@
 
 ## За владельцем
 
-- **В1. Мониторинг на mainnet.** Workers Paid за 5 долларов: пустой проход cron — 7–8 мс CPU из 10, проход с 20 декодированиями — 10–15 мс, на free лимит снижен до 8 декодирований (D63). С 06.10.2026 каждый проход ещё делает `getWebhookInfo` (D89): CPU перемерить после деплоя. Пройти TESTPLAN «Шаг 5» в): настоящая тревога после Deactivate, LOCKUP_CHANGED после продления. После деплоя новой сборки в prod проверить `/api/health` (06.10.2026 02:49 UTC старая сборка prod отвечала 200, последний проход 02:48:32 UTC).
+- **В1. Мониторинг на mainnet.** Решение владельца 06.10.2026: пока остаёмся на Workers Free. Если CPU проходов подойдёт к 10 мс, говорю владельцу (§8); вариант — Workers Paid за 5 долларов. Замеры: пустой проход cron — 7–8 мс CPU из 10, проход с 20 декодированиями — 10–15 мс, на free лимит снижен до 8 декодирований (D63). С 06.10.2026 каждый проход ещё делает `getWebhookInfo` (D89): CPU перемерить после деплоя. Пройти TESTPLAN «Шаг 5» в): настоящая тревога после Deactivate, LOCKUP_CHANGED после продления. После деплоя новой сборки в prod проверить `/api/health` (06.10.2026 02:49 UTC старая сборка prod отвечала 200, последний проход 02:48:32 UTC).
 - **В2. Домен.** Купить короткий домен (§3 требует его с первого дня), вписать в README и описания ботов, пройти форму Phantom. В зоне включить Always Use HTTPS (потом HSTS preload) и выключить Network Error Logging. До этого решить П24.
 - **В3. Доступы.** 2FA на Cloudflare, GitHub и аккаунте Telegram, который владеет ботами. Токен Cloudflare с минимальными правами и сроком жизни, отзывать после деплоя. В `~/.config/stakeward/secrets.env` на VPS оставить только `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID` (токены ботов и ключ Helius уже в секретах Cloudflare), удалить `dev.vars` и `prod.vars` (П19). Блок регистрации бота в TESTPLAN «Шаг 5», б читает эти файлы, а секрет вебхука из Cloudflare не прочитать: при переезде на свой домен (В2) токен вводить вручную и выпустить новый секрет вебхука по шагам ротации там же. Защита ветки main и запрет force-push.
 - **В4. Dependabot alerts** в настройках GitHub.
 - **В5. Preview-адреса prod.** У `stakeward-prod` `previews_enabled: true`: `https://037f86ff-stakeward-prod.zhibul-alexander.workers.dev/` отдаёт приложение с базой и секретами prod. В конфиге уже `preview_urls: false`, вступит со следующим деплоем prod; сразу — выключить в панели. После деплоя проверить, что старый адрес не открывается. У dev выключено.
 - **В6. Боты в группах.** `can_join_groups: true` у обоих: в группе любой участник может сделать `/stop`, список кошельков виден группе, а 20 групп одного аккаунта выбирают суточный лимит /start (П10). BotFather `/setjoingroups` → Disable.
-- **В7. Слить build/product в main** до публикации prod: ссылки сайта на README («Recover without Stakeward») и docs/gate.md ведут на main, а там код шага 3; суточный аудит по расписанию (П21) тоже идёт только на main.
+- **В7. Слить build/product в main** — сделано 06.10.2026 по слову владельца: main перемотан (fast-forward) до `build/product`. Ссылки сайта на README («Recover without Stakeward») и docs/gate.md и суточный аудит по расписанию (П21) теперь идут по актуальному коду. Дальше main догоняется вместе с `build/product` перед каждым деплоем prod.
 - **В8. Второй ключ Helius** (или платный план) только для монитора, чтобы прокси не мог выжечь кредиты тревог (П22).
 - **В9. Решение по F4.3**: разрешить спасение пачкой по блокхэшу, когда A, D и K подключены в одном браузере (П4).
 
@@ -317,5 +317,5 @@
 
 - Дождаться зелёного `check` на HEAD после пуша исправлений П27 и П28 (на a5f563c он красный).
 - С разрешения владельца: `pnpm deploy:dev`, коммит и push `docs/deploys.md`, миграция 0004 на dev (DECISIONS D96), `pnpm verify-deploy --env dev --commit <sha>`, в `wrangler tail` — CPU прохода с `getWebhookInfo` и страницей напоминаний.
-- Prod — только по решению владельца, после слияния в main (В7) и зелёного `check` на HEAD: `pnpm deploy:prod --prod-confirm`, коммит и push `docs/deploys.md`, миграция 0004 на prod, `pnpm verify-deploy --env prod --commit <sha>`, проверка старого preview-адреса (В5).
+- Prod — только по решению владельца, с main, догнанным до `build/product` (В7), и после зелёного `check` на HEAD: `pnpm deploy:prod --prod-confirm`, коммит и push `docs/deploys.md`, миграция 0004 на prod, `pnpm verify-deploy --env prod --commit <sha>`, проверка старого preview-адреса (В5).
 - Код: П9 (кнопка снятия замка в тревоге LOCKUP_CHANGED), П4 «Extend all» и тревога на массовый Split — если владелец согласен; П22 — лимиты, когда будет второй ключ RPC.

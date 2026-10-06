@@ -166,7 +166,7 @@ curl -sS "$API/getWebhookInfo"
 - [ ] По желанию: заблокировать бота, разблокировать, `/status` показывает, что привязок нет.
 
 ### г) CPU (решение Free или Paid)
-Решение 05.10.2026: пока Free. Первый проход dev (0 строк, холодный изолят) занял 9 мс CPU из 10.
+Решение 05.10.2026: пока Free, подтверждено 06.10.2026. Первый проход dev (0 строк, холодный изолят) занял 9 мс CPU из 10.
 - [ ] Через сутки в Cloudflare: Workers & Pages → stakeward-dev → Observability → Logs. Отфильтровать вызовы cron (scheduled), посмотреть CPU time (поле `$workers.cpuTimeMs`, если имя другое — колонка CPU time). Прислать в чат:
   - максимум за 24 часа;
   - есть ли исходы Exceeded CPU;
@@ -238,7 +238,7 @@ curl -sS "$API/getWebhookInfo"
 
 Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
 
-- [ ] Решение владельца: выкатить текущую `build/product` в prod. Перед этим В7: слить `build/product` в main.
+- [ ] Решение владельца: выкатить текущую `build/product` в prod. Перед этим догнать main до `build/product` (В7).
 - [ ] Зелёный check на HEAD в GitHub Actions. Можно сначала `pnpm deploy:prod --prod-confirm --dry-run`.
 - [ ] `pnpm deploy:prod --prod-confirm`; закоммитить и запушить `docs/deploys.md`. Я могу сделать это сам по вашему слову.
 - [ ] Миграция 0004 на prod той же командой с `db:migrate:prod`.
@@ -251,12 +251,13 @@ Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, 
 
 Пункты В1–В9 из docs/SECURITY-CHECK.md, «За владельцем».
 
-- [ ] В1. Решение Free или Workers Paid за 5 долларов по CPU проходов (Шаг 5 г); настоящая тревога и LOCKUP_CHANGED в dev (Шаг 5 в).
+- [x] 06.10.2026, В1: решение — пока Workers Free.
+- [ ] В1. CPU проходов после деплоя (Шаг 5 г): если подходит к 10 мс, вернуться к Workers Paid; настоящая тревога и LOCKUP_CHANGED в dev (Шаг 5 в).
 - [ ] В2. Домен: купить или оставить workers.dev; вписать адрес в README и описания ботов; форма Phantom; на своём домене — Always Use HTTPS и выключить Network Error Logging. Решить, называть ли адрес prod до шага 9 (П24).
 - [ ] В3. 2FA на Cloudflare, GitHub и аккаунте Telegram, который владеет ботами. Токен Cloudflare с минимальными правами и сроком жизни, отзывать после деплоя. В `~/.config/stakeward/secrets.env` оставить только `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`, удалить `dev.vars` и `prod.vars`. Защита ветки main и запрет force-push.
 - [ ] В4. Dependabot alerts в настройках GitHub.
 - [ ] В5. Preview-адреса prod: выключить Preview URLs в настройках воркера stakeward-prod в панели Cloudflare или дождаться деплоя prod с `preview_urls: false`; проверить, что старый адрес не открывается.
 - [ ] В6. BotFather `/setjoingroups` → Disable у обоих ботов.
-- [ ] В7. До выкатки prod слить `build/product` в main: ссылки сайта на README и docs/gate.md ведут на main, а там код шага 3; суточный аудит CI тоже идёт только по main.
+- [x] 06.10.2026, В7: main перемотан до `build/product` (ссылки сайта на README и docs/gate.md и суточный аудит CI идут по main). Перед деплоем prod догонять снова.
 - [ ] В8. Второй ключ Helius (или платный план) только для монитора.
 - [ ] В9. Решение: разрешить ли спасение пачкой по блокхэшу, когда все три ключа в одном браузере (сейчас всегда nonce, по аккаунту за раз).
