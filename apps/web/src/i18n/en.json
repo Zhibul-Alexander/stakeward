@@ -206,7 +206,7 @@
         "question": "What if someone steals my second key?",
         "answer": {
           "cannot": "They cannot take your SOL: withdrawing still needs your main key. But whoever holds the second key can freeze the stake: set any end date, or hand the lock to their own key.",
-          "act": "Act before the thief does. Safest: hand the lock to a new second key in one step with the Solana command line (guide below), so the stake stays locked throughout. In Stakeward: first get the new second key ready, from a new seed phrase. Then remove the lock with the old second key and protect the stake again with the new one right away. Until you do, your main key alone can withdraw, so do this only if your main key is safe.",
+          "act": "Act before the thief does: hand the lock to a new second key that comes from its own seed phrase. In Stakeward, on your accounts page choose Extend for the stake account, then Hand the lock to a new second key: the old and the new second key sign together on one computer, the end date stays, and the stake stays locked throughout. The Solana command line can do the same in one step (guide below).",
           "late": "If the thief has already handed the lock to their own key, only that key can change it, and the stake stays locked until the date they chose, which can be years away. Your SOL still cannot leave without your main key."
         },
         "link": "Second key stolen: the command line steps on GitHub"

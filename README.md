@@ -218,7 +218,7 @@ solana stake-set-lockup \
 
 ### Second key stolen
 
-The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
+The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key, made from its own seed phrase. In Stakeward, open the stake account's Extend page and choose "Hand the lock to a new second key". With the command line, the old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
 
 ```sh
 solana stake-set-lockup-checked \

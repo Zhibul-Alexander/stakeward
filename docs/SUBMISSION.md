@@ -47,6 +47,7 @@ keys sign one `SetLockupChecked` per account. From then on:
 - Rescue moves every stake account to a new wallet with the main key, the second key and the new wallet signing one
   transaction per account, on a durable nonce so three signatures never race a blockhash, and it works even if the thief
   already changed the staker;
+- if the second key may be stolen, it hands the lock to a new second key in one transaction, and the lock never opens;
 - a printable recovery card and the README give the Solana CLI commands that do all of this without Stakeward.
 
 **What makes it trustworthy.** Stakeward is non-custodial and deploys no on-chain program: every transaction holds
