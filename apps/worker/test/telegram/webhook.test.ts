@@ -5,7 +5,12 @@ import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MAX_LINK_WRITES_PER_CHAT_PER_DAY } from '../../src/telegram/texts.ts';
-import { MAX_LINK_WRITES_PER_DAY, MAX_TELEGRAM_UPDATE_BYTES, parseCommand } from '../../src/telegram/webhook.ts';
+import {
+  MAX_LINK_WRITES_PER_DAY,
+  MAX_TELEGRAM_UPDATE_BYTES,
+  parseCommand,
+  TELEGRAM_WEBHOOK_PATH,
+} from '../../src/telegram/webhook.ts';
 import { fakeUpstream, SECURITY_HEADERS, securityHeadersOf, testApp } from '../fakes.ts';
 import { countingDb, type CountingDb } from '../monitor/harness.ts';
 import { key } from '../transactions.ts';
@@ -41,7 +46,8 @@ function bot(options: { env?: Partial<Env>; now?: () => number } = {}): Bot {
     const secret = init.secret === undefined ? SECRET : init.secret;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (secret !== null) headers['X-Telegram-Bot-Api-Secret-Token'] = secret;
-    return app.request('/api/telegram/webhook', {
+    // The path the monitor's daily bot check expects Telegram to deliver to (SITE_ORIGIN + TELEGRAM_WEBHOOK_PATH).
+    return app.request(TELEGRAM_WEBHOOK_PATH, {
       method: 'POST',
       headers,
       body: typeof update === 'string' ? update : JSON.stringify(update),

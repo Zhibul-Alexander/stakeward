@@ -37,6 +37,9 @@ import {
 
 export const MAX_TELEGRAM_UPDATE_BYTES = 64 * 1024;
 
+/** The path of this webhook, the one setWebhook gives Telegram (after SITE_ORIGIN); the monitor checks it daily. */
+export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
+
 /**
  * Links /start may add per UTC day, for every chat together. The per-chat rate limit does not bound writes: any user
  * can open more chats (a group is free), and a /start and /stop churn of distinct wallets writes about 4 rows per new

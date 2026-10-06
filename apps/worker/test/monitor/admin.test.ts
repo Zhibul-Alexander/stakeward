@@ -12,6 +12,19 @@ describe('admin alerts', () => {
       'Stakeward devnet monitor: the RPC could not be read for 4 passes in a row. Health turns red after 10 minutes.',
     );
     expect(adminText('rescan-dropped', 'devnet', { kb: 100 })).toBe('Stakeward devnet monitor: a rescan answer over 100 KB was skipped.');
+    const advice =
+      'If you did not change it, the bot token may be stolen: revoke it with BotFather, put the new one with wrangler ' +
+      'secret put TELEGRAM_BOT_TOKEN, then set the webhook again with a new secret token.';
+    expect(adminText('bot-mismatch', 'mainnet', { bot: ['webhook'] })).toBe(
+      `Stakeward mainnet monitor: Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook. ${advice}`,
+    );
+    expect(adminText('bot-mismatch', 'mainnet', { bot: ['username'] })).toBe(
+      `Stakeward mainnet monitor: the bot token belongs to another bot than TELEGRAM_BOT_USERNAME. ${advice}`,
+    );
+    expect(adminText('bot-mismatch', 'devnet', { bot: ['webhook', 'username'] })).toBe(
+      "Stakeward devnet monitor: Telegram sends this bot's updates to another address than " +
+        `SITE_ORIGIN/api/telegram/webhook, and the bot token belongs to another bot than TELEGRAM_BOT_USERNAME. ${advice}`,
+    );
     // CLUSTER itself broken: the monitor without a cluster name.
     expect(adminText('pass-error', null, { stage: 'config', errorName: 'MonitorConfigError' })).toMatch(
       /^Stakeward monitor: the pass failed at config \(MonitorConfigError\)\./,
@@ -33,8 +46,10 @@ describe('admin alerts', () => {
     expect(adminAllowed('pass-died', sent, 1_001)).toBe(true);
   });
 
-  it('one alert a pass: the first due by priority (pass-error, wrong-cluster, pass-died, rpc-down, rescan-dropped)', () => {
+  it('one alert a pass: the first due by priority (pass-error, wrong-cluster, bot-mismatch, pass-died, rpc-down, rescan-dropped)', () => {
     const now = 10 * HOUR;
+    expect(ADMIN_KINDS).toEqual(['pass-error', 'wrong-cluster', 'bot-mismatch', 'pass-died', 'rpc-down', 'rescan-dropped']);
+    expect(adminKindToSend(new Set(['pass-died', 'bot-mismatch'] as const), {}, now)).toBe('bot-mismatch');
     expect(adminKindToSend(new Set(['rescan-dropped', 'rpc-down', 'pass-died'] as const), {}, now)).toBe('pass-died');
     expect(adminKindToSend(new Set(['rescan-dropped', 'wrong-cluster'] as const), {}, now)).toBe('wrong-cluster');
     // A kind sent within the hour gives way to the next one due.

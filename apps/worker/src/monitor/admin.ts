@@ -8,12 +8,27 @@ import type { Stage } from './pass.ts';
  * hour. The texts carry counts and names only: no addresses, chat ids, URLs or error messages, which may quote them.
  */
 
-export type AdminKind = 'pass-error' | 'wrong-cluster' | 'pass-died' | 'rpc-down' | 'rescan-dropped';
+export type AdminKind = 'pass-error' | 'wrong-cluster' | 'bot-mismatch' | 'pass-died' | 'rpc-down' | 'rescan-dropped';
 
 /** The order in which a pass picks its one admin alert. */
-export const ADMIN_KINDS: readonly AdminKind[] = ['pass-error', 'wrong-cluster', 'pass-died', 'rpc-down', 'rescan-dropped'];
+export const ADMIN_KINDS: readonly AdminKind[] = [
+  'pass-error',
+  'wrong-cluster',
+  'bot-mismatch',
+  'pass-died',
+  'rpc-down',
+  'rescan-dropped',
+];
 
-export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number };
+/** What the daily bot check found not to be this deployment's: the webhook URL, the bot's username. */
+export type BotMismatch = 'webhook' | 'username';
+
+export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number; bot?: readonly BotMismatch[] };
+
+const BOT_MISMATCH: Record<BotMismatch, string> = {
+  webhook: "Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook",
+  username: 'the bot token belongs to another bot than TELEGRAM_BOT_USERNAME',
+};
 
 export function adminText(kind: AdminKind, cluster: Cluster | null, counts: AdminCounts): string {
   const monitor = cluster === null ? 'Stakeward monitor' : `Stakeward ${cluster} monitor`;
@@ -37,6 +52,14 @@ export function adminText(kind: AdminKind, cluster: Cluster | null, counts: Admi
       );
     case 'rescan-dropped':
       return `${monitor}: a rescan answer over ${String(counts.kb ?? 0)} KB was skipped.`;
+    case 'bot-mismatch': {
+      const found = (counts.bot ?? []).map((what) => BOT_MISMATCH[what]);
+      const what = found.length === 0 ? "Telegram's webhook or bot is not this deployment's" : found.join(', and ');
+      return (
+        `${monitor}: ${what}. If you did not change it, the bot token may be stolen: revoke it with BotFather, put ` +
+        'the new one with wrangler secret put TELEGRAM_BOT_TOKEN, then set the webhook again with a new secret token.'
+      );
+    }
   }
 }
 

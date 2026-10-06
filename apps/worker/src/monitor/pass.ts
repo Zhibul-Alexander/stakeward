@@ -12,7 +12,8 @@ import {
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
-import { sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
+import { getBotIdentity, sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
+import { TELEGRAM_WEBHOOK_PATH } from '../telegram/webhook.ts';
 import { callUpstream, DEFAULT_UPSTREAM_OPTIONS, type EndpointName, type UpstreamOptions } from '../upstream.ts';
 import {
   adminAllowed,
@@ -22,10 +23,19 @@ import {
   safeErrorName,
   type AdminCounts,
   type AdminKind,
+  type BotMismatch,
 } from './admin.ts';
 import { COST, PassBudget } from './budget.ts';
 import { classifyChunk, type ChunkOutcome, type Pair, type StoredEvent } from './classify.ts';
-import { adminChannelOf, clusterOf, MONITOR_LIMITS, MONITOR_PLANS, monitorConfig, type MonitorConfig } from './config.ts';
+import {
+  adminChannelOf,
+  botUsernameOf,
+  clusterOf,
+  MONITOR_LIMITS,
+  MONITOR_PLANS,
+  monitorConfig,
+  type MonitorConfig,
+} from './config.ts';
 import {
   linkOf,
   pendingEventOf,
@@ -64,6 +74,8 @@ import {
  *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
+ * 4b. bot    - once a day from 06:00 UTC: getWebhookInfo and getMe; a webhook that is not SITE_ORIGIN's or a token of
+ *              another bot than TELEGRAM_BOT_USERNAME is an admin alert (meta.bot_check_day).
  * 5. sends   - Telegram delivery (step 5 spec section 7): one message per chat, committed before the rescans.
  * 6. rescans - getProgramAccounts by (main key, second key) pair, urgent pairs first; locked accounts split off a
  *              watched one are watched from then on. A pass that read no chunk reads the Clock alone for them. Once
@@ -103,7 +115,7 @@ export type MonitorDeps = {
   adminMemory: Map<string, number>;
 };
 
-export type Stage = 'config' | 'load' | 'chunks' | 'daily' | 'sends' | 'rescans' | 'admin' | 'finish';
+export type Stage = 'config' | 'load' | 'chunks' | 'daily' | 'bot' | 'sends' | 'rescans' | 'admin' | 'finish';
 
 export type PassOutcome = 'ok' | 'skipped-lease' | 'read-failed' | 'telegram-config' | 'error';
 
@@ -124,6 +136,8 @@ export type PassReport = {
   events: number;
   reminders: number;
   daily: boolean;
+  /** The daily bot check of this pass (null: not due or not run). */
+  botCheck: 'ok' | 'mismatch' | 'config' | 'retry' | null;
   /** Pairs of the daily round this pass added to the rescan queue. */
   pairsQueued: number;
   rescans: number;
@@ -182,6 +196,8 @@ type LoadedMeta = {
   lease: Lease | null;
   cursor: string;
   dailyDay: string | null;
+  /** meta.bot_check_day: the UTC day of the last bot check that got an answer (and its alert out). */
+  botCheckDay: string | null;
   rescanQueue: QueuedPair[];
   /** meta.daily_sweep: the daily stage of `day`, open after a full page of reminders that ended at `after`. */
   dailySweep: DailySweep | null;
@@ -236,6 +252,8 @@ type LoadedPass = PassContext & {
   upstream: UpstreamOptions;
   pastDeadline: () => boolean;
   dailyDue: boolean;
+  /** The daily bot check is due: from 06:00 UTC on a day not checked yet. */
+  botCheckDue: boolean;
   /** The daily stage to work on when due: the open one from meta, else a new one for today. */
   sweep: DailySweep;
   /** The rescan queue: meta.rescan_queue, then the daily pairs; urgent pairs go in front before the rescans. */
@@ -286,6 +304,7 @@ export async function runMonitorPass(deps: MonitorDeps): Promise<PassReport> {
     }
     await readChunks(pass);
     await daily(pass);
+    await checkBot(pass);
     await deliver(pass);
     await rescans(pass);
     await admin(pass);
@@ -325,7 +344,8 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
   // starts on the first pass after 06:00 UTC of a day not done yet.
   const today = utcDay(t0);
   const open = openSweep(meta, today);
-  const dailyDue = open !== null || (new Date(t0).getUTCHours() >= MONITOR_LIMITS.dailyHourUtc && meta.dailyDay !== today);
+  const afterDailyHour = new Date(t0).getUTCHours() >= MONITOR_LIMITS.dailyHourUtc;
+  const dailyDue = open !== null || (afterDailyHour && meta.dailyDay !== today);
 
   // The same object, grown: the exception path keeps seeing what the phases change.
   return Object.assign(ctx, {
@@ -336,6 +356,7 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     upstream: { timeoutMs: deps.upstream.timeoutMs, retryDelayMs: deps.upstream.retryDelayMs, fetch: budget.fetch },
     pastDeadline: () => deps.now() - t0 > MONITOR_LIMITS.softDeadlineMs,
     dailyDue,
+    botCheckDue: afterDailyHour && meta.botCheckDay !== today,
     sweep: open ?? { day: today, after: '' },
     queue: [...meta.rescanQueue],
     storedQueue: JSON.stringify(meta.rescanQueue),
@@ -371,7 +392,8 @@ async function readChunks(pass: LoadedPass): Promise<void> {
     return;
   }
   for (let start = 0; start < rows.length; start += perChunk) {
-    const needed = COST.chunk + COST.sendFloor + (pass.dailyDue ? COST.daily : 0);
+    const needed =
+      COST.chunk + COST.sendFloor + (pass.dailyDue ? COST.daily : 0) + (pass.botCheckDue ? COST.botCheck : 0);
     if (pass.pastDeadline() || budget.left() < needed) {
       report.deferred = true;
       return;
@@ -506,6 +528,44 @@ async function daily(pass: LoadedPass): Promise<void> {
   if (queue !== null) pass.storedQueue = queue;
   pass.dailyDone = last === undefined;
   report.daily = true;
+}
+
+/**
+ * Stage 4b, once a day from 06:00 UTC (SECURITY-CHECK П17): whoever holds the bot token can point the webhook at their
+ * own server and answer users with phishing links, while sendMessage keeps working for this worker. getWebhookInfo
+ * and getMe (COST.botCheck): a webhook URL other than SITE_ORIGIN + TELEGRAM_WEBHOOK_PATH (none set included), or a
+ * username other than TELEGRAM_BOT_USERNAME (case aside), is a `bot-mismatch` admin alert. A token Telegram refuses
+ * fails the pass like a refused sendMessage. The finish records the day once Telegram answered and, for a mismatch,
+ * the alert went out (within the hour): until then every pass checks again. Only the outcome is logged.
+ */
+async function checkBot(pass: LoadedPass): Promise<void> {
+  const { config, budget, report, deps } = pass;
+  if (!pass.botCheckDue || pass.pastDeadline() || budget.left() < COST.botCheck) return;
+  report.stage = 'bot';
+  const identity = await getBotIdentity({
+    token: config.telegramToken,
+    fetch: budget.fetch,
+    timeoutMs: deps.telegramTimeoutMs,
+  });
+  if (identity.outcome !== 'ok') {
+    report.botCheck = identity.outcome;
+    if (identity.outcome === 'config') {
+      pass.telegramConfigFailed = true;
+      deps.log(TELEGRAM_CONFIG_ERROR);
+    }
+    return;
+  }
+  const found: BotMismatch[] = [];
+  if (config.siteOrigin !== null && identity.webhookUrl !== `${config.siteOrigin}${TELEGRAM_WEBHOOK_PATH}`) {
+    found.push('webhook');
+  }
+  const username = botUsernameOf(deps.env);
+  if (username !== null && identity.username.toLowerCase() !== username.toLowerCase()) found.push('username');
+  report.botCheck = found.length === 0 ? 'ok' : 'mismatch';
+  if (found.length > 0) {
+    pass.adminDue.add('bot-mismatch');
+    pass.adminCounts.bot = found;
+  }
 }
 
 /**
@@ -766,6 +826,11 @@ async function finish(pass: LoadedPass): Promise<void> {
   if (readFailures !== meta.readFailures) entries.read_failures = String(readFailures);
   if (pass.adminChanged) entries.admin_alerts = JSON.stringify(pass.adminSent);
   if (pass.dailyDone) entries.daily_day = pass.sweep.day;
+  const botChecked =
+    report.botCheck === 'ok' ||
+    report.botCheck === 'config' ||
+    (report.botCheck === 'mismatch' && !adminAllowed('bot-mismatch', pass.adminSent, deps.now()));
+  if (botChecked) entries.bot_check_day = utcDay(pass.t0);
   const pairs = pass.pairs === null ? null : JSON.stringify(pass.pairs);
   if (pairs !== null && pairs !== JSON.stringify(meta.pairsSweep)) entries.pairs_sweep = pairs;
   if (pass.resetCursor) entries.cursor = '';
@@ -882,6 +947,7 @@ function emptyReport(): PassReport {
     events: 0,
     reminders: 0,
     daily: false,
+    botCheck: null,
     pairsQueued: 0,
     rescans: 0,
     rescansDropped: 0,
@@ -907,6 +973,7 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     lease: parseLease(values.get('pass_lease')),
     cursor: values.get('cursor') ?? '',
     dailyDay: values.get('daily_day') ?? null,
+    botCheckDay: values.get('bot_check_day') ?? null,
     rescanQueue: parseQueue(values.get('rescan_queue')),
     dailySweep: parseSweep(values.get('daily_sweep')),
     pairsSweep: parsePairsSweep(values.get('pairs_sweep')),

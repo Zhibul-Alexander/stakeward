@@ -41,9 +41,9 @@ describe('PassBudget', () => {
     expect(new BudgetExhaustedError('x').name).toBe('BudgetExhaustedError');
   });
 
-  it('the Free worst case of the spec fits: load, a chunk with the sends floor and the daily work, then the reserves', () => {
+  it('the Free worst case of the spec fits: load, a chunk with the sends floor, the daily work and the bot check, then the reserves', () => {
     const load = 3;
-    expect(load + COST.chunk + COST.sendFloor + COST.daily + 2).toBeLessThanOrEqual(48);
+    expect(load + COST.chunk + COST.sendFloor + COST.daily + COST.botCheck + 2).toBeLessThanOrEqual(48);
     expect(COST.urgentRescan).toBe(COST.rescanCall + COST.rescanPost);
   });
 });

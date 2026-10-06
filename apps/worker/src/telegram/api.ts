@@ -56,6 +56,62 @@ export async function sendTelegramMessage(opts: {
   }
 }
 
+/** What Telegram reports about the bot behind a token (getBotIdentity). */
+export type BotIdentity = { outcome: 'ok'; webhookUrl: string; username: string } | { outcome: 'config' | 'retry' };
+
+/** Bot API answers this small; anything longer is not read on. */
+const MAX_IDENTITY_BODY_BYTES = 64 * 1024;
+
+/**
+ * The webhook URL Telegram delivers this bot's updates to (getWebhookInfo; '' when none is set) and the bot's username
+ * (getMe), for the monitor's daily check (SECURITY-CHECK П17). Two requests, one after the other; a refused token
+ * (401, 404, or none set) is `config` and stops after the first, anything else that is not a Bot API result is
+ * `retry`. Like sendMessage: the URL carries the token, so nothing here is logged.
+ */
+export async function getBotIdentity(opts: {
+  token: string | null;
+  fetch: typeof fetch;
+  timeoutMs: number;
+}): Promise<BotIdentity> {
+  const { token } = opts;
+  if (token === null) return { outcome: 'config' };
+  const webhook = await botApiResult(token, 'getWebhookInfo', opts);
+  if (webhook.outcome !== 'ok') return webhook;
+  const me = await botApiResult(token, 'getMe', opts);
+  if (me.outcome !== 'ok') return me;
+  const webhookUrl = webhook.result.url;
+  const username = me.result.username;
+  if (typeof webhookUrl !== 'string' || typeof username !== 'string') return { outcome: 'retry' };
+  return { outcome: 'ok', webhookUrl, username };
+}
+
+async function botApiResult(
+  token: string,
+  method: 'getWebhookInfo' | 'getMe',
+  opts: { fetch: typeof fetch; timeoutMs: number },
+): Promise<{ outcome: 'ok'; result: Record<string, unknown> } | { outcome: 'config' | 'retry' }> {
+  const answer = await attemptPost(`https://api.telegram.org/bot${token}/${method}`, '{}', {
+    timeoutMs: opts.timeoutMs,
+    fetch: opts.fetch,
+    maxBodyBytes: MAX_IDENTITY_BODY_BYTES,
+  });
+  if (typeof answer === 'string') return { outcome: 'retry' };
+  if (answer.status === 401 || answer.status === 404) return { outcome: 'config' };
+  if (answer.body === null) return { outcome: 'retry' };
+  let json: unknown;
+  try {
+    json = JSON.parse(answer.body);
+  } catch {
+    return { outcome: 'retry' };
+  }
+  if (typeof json !== 'object' || json === null || !('ok' in json) || json.ok !== true || !('result' in json)) {
+    return { outcome: 'retry' };
+  }
+  const { result } = json;
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) return { outcome: 'retry' };
+  return { outcome: 'ok', result: result as Record<string, unknown> };
+}
+
 /**
  * The absolute URL of a site path for an alert button: alerts link only to Stakeward's own origin (CLAUDE.md
  * section 11). Throws unless `path` starts with a single '/' and stays on `origin`.
