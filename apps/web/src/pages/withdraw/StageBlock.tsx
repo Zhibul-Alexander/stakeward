@@ -124,7 +124,8 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
                 <p className="max-w-prose text-sm text-muted">{t('withdraw.desktop')}</p>
               </>
             ) : (
-              <p className="max-w-prose">{t('withdraw.ready.mainAlone')}</p>
+              // "No lock" or "Lock ended on <date>": a stake that never had a lock is not told one ended.
+              <p className="max-w-prose">{t('withdraw.ready.mainAlone', { lock: lockText(lockup, clock) })}</p>
             )}
             <div>
               <Button

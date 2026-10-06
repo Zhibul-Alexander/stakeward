@@ -1,7 +1,7 @@
 // Matcher types for this tsconfig (src/test/setup.ts registers them at run time).
 import '@testing-library/jest-dom/vitest';
 import { generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
-import { buildTransaction, formatSol, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
+import { buildTransaction, formatSol, formatUtcDate, shortAddress, ZERO_ADDRESS } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -176,6 +176,13 @@ describe('/withdraw/:account: a stake delegated in this epoch', () => {
       expect(screen.queryByText(/stops at the end of the current epoch/)).not.toBeInTheDocument();
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
+      // The summary agrees with the page: a stake that has not started earning does not wait for the epoch's end.
+      const summary = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>('[data-slot="transaction-summary"][data-kind="deactivate"]');
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      }, WAIT);
+      expect(within(summary).getByText('Stops at the end of this epoch, or at once if it has not started earning yet')).toBeInTheDocument();
       await click(user, 'Sign in Main Wallet as Main key');
 
       await heading('Staking stopped. You can withdraw now.');
@@ -197,6 +204,36 @@ describe('/withdraw/:account: a stake delegated in this epoch', () => {
   );
 });
 
+describe('/withdraw/:account: no lock holds the stake now', () => {
+  it(
+    'W5: a lock that ended says when it ended; the main key signs alone',
+    async () => {
+      const w = await world();
+      const ended = START_UNIX_TIMESTAMP - DAY;
+      const S = await w.testChain.createStakeAccount({
+        staker: w.A.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: ended, epoch: 0n, custodian: w.K.address },
+      });
+      renderStakePage(w.chain, `/withdraw/${S}`, []);
+      await screen.findByText(`Lock ended on ${formatUtcDate(ended) ?? ''}, so your main key signs alone.`, undefined, WAIT);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'W6: a stake that never had a lock does not speak of a lock that ended',
+    async () => {
+      const w = await world();
+      const S = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
+      renderStakePage(w.chain, `/withdraw/${S}`, []);
+      await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
+      expect(screen.queryByText(/lock has ended/i)).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
 describe('/withdraw/:account: an uncertain outcome', () => {
   it(
     'W4: Stop waiting leaves it uncertain; Check again says when the network cannot be read, then finds the withdrawal',
@@ -207,7 +244,7 @@ describe('/withdraw/:account: an uncertain outcome', () => {
       const lamports = w.testChain.account(S)?.lamports ?? 0n;
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main]);
 
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await waitFor(() => {
@@ -334,7 +371,7 @@ describe('/withdraw/:account: gates', () => {
       const S = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
       const [main, second] = await wallets(w);
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main, second]);
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
 
       const { bytes } = buildTransaction(
         { kind: 'delegate', stakeAccount: S, staker: w.A.address, voteAccount: w.vote },

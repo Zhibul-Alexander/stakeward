@@ -351,7 +351,7 @@
       "controlledBy": "Controlled by",
       "staking": "Staking",
       "delegated": "Delegated",
-      "deactivating": "Deactivating: stops earning at the end of this epoch",
+      "deactivating": "Stops at the end of this epoch, or at once if it has not started earning yet",
       "validator": "Validator",
       "signingAccount": "Link-signing account",
       "created": "Created",
@@ -745,6 +745,7 @@
       "linkPaused": "Link open: stopped checking after 30 minutes",
       "cosignConfirm": "The device that opened the link: confirm, then sign",
       "nonceSetup": "Link-signing account: set up",
+      "nonceSetupRescue": "Link-signing account: set up for a rescue",
       "nonceClose": "Link-signing account: close",
       "nonceCancel": "Cancel a link",
       "nonceBlocked": "Set up refused: the address is taken",
@@ -806,6 +807,7 @@
     "noLongerProtected": {
       "titleOne": "1 stake account is no longer protected",
       "titleOther": "{count} stake accounts are no longer protected",
+      "bodyOne": "This device saw it protected, but its lock has ended. Anyone with your main key can withdraw it now.",
       "body": "This device saw them protected, but their lock has ended. Anyone with your main key can withdraw them now.",
       "action": "Protect again"
     },
@@ -971,7 +973,7 @@
       "title": "Withdraw {amount} to your main key",
       "mainKey": "Your main key receives it and pays the network fee:",
       "secondSigns": "{lock}. Your second key co-signs:",
-      "mainAlone": "The lock has ended, so your main key signs alone.",
+      "mainAlone": "{lock}, so your main key signs alone.",
       "action": "Review and sign"
     },
     "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, sign by link, or remove the lock first.",
@@ -1276,6 +1278,11 @@
       "body": "Signing on another device needs a small account that keeps the transaction valid until it is signed, even hours later. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
       "action": "Create the link-signing account"
     },
+    "setupRescue": {
+      "title": "Set up the link-signing account",
+      "body": "Rescue always uses a link-signing account: it keeps each transaction valid while three wallets sign, here or on another device. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "action": "Create the link-signing account"
+    },
     "close": {
       "title": "Close the link-signing account",
       "body": "Closing returns {amount} to your {role}. Any link still open stops working.",
@@ -1304,12 +1311,12 @@
       "nothing-to-sign": "Every wallet has already signed this transaction. There is nothing for you to sign."
     },
     "ask": {
-      "protect": "The owner of this stake asks your wallet to become its second key.",
-      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if the owner told you, by voice or in person, that they want to withdraw:",
+      "protect": "The owner of this stake asks your wallet to become its second key until {date}. Until then, the owner cannot withdraw this stake or move it to a new wallet without your signature, and if you lose this wallet, they wait until {date}. Your wallet cannot take their SOL.",
+      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself, or the owner told you, by voice or in person, that they want to withdraw:",
       "rescue": "This gives full control of the stake to the new wallet below. A thief who has the main key would send you exactly this request, with their own wallet. Sign only if you checked this address with the owner by voice or in person, not in the chat that sent you this link:"
     },
     "confirm": {
-      "withdraw": "The owner told me by voice or in person that they want this withdrawal",
+      "withdraw": "I started this withdrawal myself, or the owner told me by voice or in person that they want it",
       "rescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
     },
     "stale": "A link works until it is used or cancelled. If you are not sure the owner still wants this, ask first.",
@@ -1414,7 +1421,19 @@
       "movedList": "Moved to your new wallet",
       "notMovedList": "Not moved yet",
       "owner": "Now controlled by your new wallet:",
-      "useNew": "From now on your new wallet is the main key of these stake accounts. Your second key still holds the lock. Stop using the old main key: anything sent to it may be taken.",
+      "useNew": "From now on your new wallet is the main key of these stake accounts. Stop using the old main key: anything sent to it may be taken.",
+      "lockKept": "Each lock stays as it was, and your second key still holds it.",
+      "noLockOne": "1 stake account had no lock, and it still has none.",
+      "noLockOther": "{count} stake accounts had no lock, and they still have none.",
+      "lockEndedOne": "The lock of 1 stake account had already ended, so it is not protected now.",
+      "lockEndedOther": "The locks of {count} stake accounts had already ended, so they are not protected now.",
+      "protectOne": "Protect 1 stake account with your new wallet as the main key",
+      "protectOther": "Protect {count} stake accounts with your new wallet as the main key",
+      "recovery": {
+        "title": "Print a new recovery card",
+        "body": "Your new wallet is now the main key of these stake accounts. A recovery card printed before names your old main key, and its commands no longer work for them. Print the new card and keep it with your second key. It holds no secrets.",
+        "open": "Open the new recovery card"
+      },
       "delegate": {
         "title": "Earn rewards again",
         "body": "These stake accounts are no longer staking. Your new wallet can delegate them to the same validator again. Check that this is your validator:",
@@ -1437,6 +1456,7 @@
   },
   "recovery": {
     "title": "Stakeward recovery card",
+    "documentTitle": "Stakeward recovery card {account}",
     "intro": "Print this card and keep it with your second key. It holds no secrets, only public addresses, and says what to do if a key is lost or stolen.",
     "print": "Print this card",
     "printHint": "To keep a file, choose Save as PDF in the print dialog.",
@@ -1544,7 +1564,7 @@
       },
       "withdraw": {
         "title": "You want to withdraw",
-        "deactivate": "If the stake is Active or Activating, stop staking first. It stops at the end of the epoch, within about 2 days. The second command shows the time left:",
+        "deactivate": "If the stake is Active or Activating, stop staking first. An Activating stake becomes Inactive at once; an Active one at the end of the epoch, within about 2 days. The second command shows the time left:",
         "managed": "If staking is managed by another key (see the list), that key or its service stops the staking, not your main key. A rescue would take staking back from that service.",
         "withdraw": "When the stake is Inactive, withdraw everything to your main key. Both keys sign; the main key pays the fee:",
         "remove": "Main key and second key not on the same computer? First stop staking and wait until the stake is Inactive. Only then does the second key remove the lock, and the main key withdraws right after:"

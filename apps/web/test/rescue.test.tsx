@@ -430,6 +430,13 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await throughKeys(user, { secondMode: 'here', chooseSecond: w.K.address, choices: [w.K.address, K2.address] });
       expect(ports.secondKeys.getSnapshot()).toEqual([]);
       expect(screen.getAllByText(w.D.address).length).toBeGreaterThan(0);
+      // Every key signs here, yet the move runs on the new wallet's link-signing account (F4.3): the step says why,
+      // not that the account is for signing on another device.
+      const setup = (await heading('Set up the link-signing account')).closest('section') as HTMLElement;
+      expect(setup).toHaveTextContent(
+        'Rescue always uses a link-signing account: it keeps each transaction valid while three wallets sign, here or on another device.',
+      );
+      expect(screen.queryByText(/^Signing on another device needs/)).not.toBeInTheDocument();
       await setUpNonce(user);
       const nonceD = await deriveNonceAccountAddress(w.D.address);
       await signRound(user, 1, 3);
@@ -437,6 +444,18 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await signRound(user, 3, 3);
 
       await heading('3 stake accounts are safe');
+      // S1 and S2 keep their lock; S3 had none and still has none. Done says both, never that the second key locks S3.
+      expect(screen.queryByText(/still holds the lock/)).not.toBeInTheDocument();
+      expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
+      expect(screen.getByText('1 stake account had no lock, and it still has none.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Protect 1 stake account with your new wallet as the main key' })).toHaveAttribute(
+        'href',
+        `/protect?account=${S3}`,
+      );
+      // A card printed before names the old main key: the new card of the pair (D74) opens from the first locked account.
+      expect(screen.getByRole('link', { name: 'Open the new recovery card' }).getAttribute('href')).toMatch(
+        new RegExp(`^/recovery/(${S1}|${S2})$`),
+      );
       for (const id of [S1, S2, S3]) {
         const after = w.testChain.stakeAccount(id);
         expect(after?.staker).toBe(w.D.address);
@@ -616,6 +635,11 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       expect(w.testChain.stakeAccount(split)?.lockup.custodian).toBe(w.K.address);
 
       await heading(en.rescue.done.titleOne);
+      // Only a locked account moved: nothing to say about accounts without a lock.
+      expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
+      expect(screen.queryByText(/had no lock/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Protect / })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Open the new recovery card' })).toHaveAttribute('href', `/recovery/${S1}`);
       expect(w.testChain.stakeAccount(S1)?.withdrawer).toBe(w.D.address);
       expect(w.testChain.stakeAccount(split)?.withdrawer).toBe(w.A.address);
 

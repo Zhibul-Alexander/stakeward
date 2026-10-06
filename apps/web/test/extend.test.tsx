@@ -269,7 +269,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
 
       await user.click(withdrawNow);
       expect(location.history.at(-1)).toBe(`/withdraw/${S}`);
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       expect(summarySigners(await theSummary())).toEqual(['main']);

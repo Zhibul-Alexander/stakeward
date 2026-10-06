@@ -18,6 +18,7 @@ import {
   deriveNonceAccountAddress,
   encodeBase64Url,
   formatSol,
+  formatUtcDate,
   inspectTransaction,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
@@ -136,6 +137,11 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       // What the link asks, before anything else: the main key that receives, in full.
       const ask = await view.findByText(en.cosign.ask.withdraw, undefined, WAIT);
       expect(within(ask.closest('[data-slot="cosign-ask"]') as HTMLElement).getByText(w.A.address)).toBeInTheDocument();
+      // The second key is often the owner's own, on another device, in another browser or in the wallet app's own
+      // browser: the owner who started the withdrawal can say so truthfully. The warning about a thief's link stays first.
+      expect(ask).toHaveTextContent(
+        'The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself, or the owner told you, by voice or in person, that they want to withdraw:',
+      );
       expect(view.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
 
       // The key this link needs is asked for by its exact account.
@@ -153,7 +159,9 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       expect(signButton).toHaveAttribute('aria-disabled', 'true');
       await user.click(signButton);
       expect(await view.findByText('Tick the box above to continue.')).toBeInTheDocument();
-      const box = view.getByRole('checkbox', { name: en.cosign.confirm.withdraw });
+      const box = view.getByRole('checkbox', {
+        name: 'I started this withdrawal myself, or the owner told me by voice or in person that they want it',
+      });
       expect(box).toHaveFocus();
       expect(second.requests).toHaveLength(0);
       await user.click(box);
@@ -164,6 +172,33 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       expect(w.testChain.balance(w.A.address)).toBe(balanceBefore + lamports - networkFeeFor(2));
       expect(second.requests).toHaveLength(1);
       expect(w.chain.count('send')).toBe(1);
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
+describe('/cosign: what a protect link asks of the second key (UX rule 6)', () => {
+  it(
+    'names the lock end, what the owner then needs from this wallet and that it cannot take their SOL, before anything is asked',
+    async () => {
+      const w = await world();
+      const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K] });
+      const open = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
+      const action: TransactionAction = { kind: 'protect', stakeAccount: open, mainKey: w.A.address, secondKey: w.K.address, lockUntil: T };
+      const { bytes } = buildTransaction(action, { feePayer: w.A.address, lifetime: nonceOf(w.testChain, w.nonceA, w.A.address) });
+      renderCosignPage(w.chain, fragmentOf(await sign(bytes, [w.A])), [second]);
+
+      const date = formatUtcDate(T) ?? '';
+      const ask = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>('[data-slot="cosign-ask"][data-kind="protect"]');
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      }, WAIT);
+      expect(ask).toHaveTextContent(
+        `The owner of this stake asks your wallet to become its second key until ${date}. Until then, the owner cannot withdraw this stake or move it to a new wallet without your signature, and if you lose this wallet, they wait until ${date}. Your wallet cannot take their SOL.`,
+      );
+      expect(document.querySelector('[data-risk="second-key-can-freeze"]')).not.toBeNull();
+      expect(second.requests).toHaveLength(0);
     },
     SCENARIO_TIMEOUT,
   );

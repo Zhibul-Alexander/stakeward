@@ -50,7 +50,8 @@ function newEndDateExample(earliestEnd: bigint): string {
 /*
  * On paper, sections and cases may break across sheets: several are taller than a sheet, and keeping them whole pushes
  * them to a new sheet that splits them anyway, leaving a sheet nearly empty or a heading alone on one. Only their
- * heading stays with what follows it; the small blocks inside (commands, rows, notes) do not break.
+ * heading stays with what follows it, and so does the sentence that leads into a command (Lead); the small blocks
+ * inside (commands, rows, notes) do not break.
  */
 
 function CardSection({ title, children }: { title: string; children: ReactNode }) {
@@ -75,6 +76,14 @@ function Case({ title, children }: { title: string; children: ReactNode }) {
       {children}
     </section>
   );
+}
+
+/**
+ * The sentence that leads into the command after it ("…run:"). On paper it stays on that command's sheet: a command torn
+ * from the words that say when to run it is worse than a page break before both.
+ */
+function Lead({ children }: { children: ReactNode }) {
+  return <p className="print:break-after-avoid">{children}</p>;
 }
 
 /** A numbered list of steps; the numbers come from the list, not from en.json. */
@@ -185,7 +194,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         <p>{t('recovery.cli.intro')}</p>
         <p>{t('recovery.cli.needs')}</p>
         <p className="text-sm text-muted">{t('recovery.cli.tested', { version: RECOVERY_CLI_VERSION })}</p>
-        <p>{t('recovery.cli.install', { version: RECOVERY_CLI_VERSION })}</p>
+        <Lead>{t('recovery.cli.install', { version: RECOVERY_CLI_VERSION })}</Lead>
         <CommandBlock argv={INSTALL_CLI_COMMAND} label={t('recovery.commands.install')} />
         <p>
           {t('recovery.cli.installHint', { version: RECOVERY_CLI_VERSION })}{' '}
@@ -193,7 +202,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         </p>
         <p>{t('recovery.cli.stakeAccount')}</p>
         <p>{t('recovery.cli.keys')}</p>
-        <p>{t('recovery.cli.ledger')}</p>
+        <Lead>{t('recovery.cli.ledger')}</Lead>
         <CommandBlock argv={LEDGER_PUBKEY_COMMAND} label={t('recovery.commands.ledger')} />
         <p>{t('recovery.cli.twoLedgers')}</p>
         <p>{t('recovery.cli.oneLine')}</p>
@@ -211,7 +220,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
             <li>{t('recovery.cases.stolen.cleanDevice')}</li>
             <li>{t('recovery.cases.stolen.newWallet', { amount: formatSol(SUGGESTED_RESCUE_LAMPORTS) })}</li>
             <li className="space-y-2">
-              <p>{t('recovery.cases.stolen.find')}</p>
+              <Lead>{t('recovery.cases.stolen.find')}</Lead>
               {command('find')}
             </li>
             <li>
@@ -219,7 +228,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
               <PrintedLink href={appLinks.rescue(card.mainKey)} label={t('recovery.links.rescue')} />
             </li>
             <li className="space-y-2">
-              <p>{t('recovery.cases.stolen.cli')}</p>
+              <Lead>{t('recovery.cases.stolen.cli')}</Lead>
               {command('rescue')}
             </li>
           </Steps>
@@ -229,7 +238,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
 
         <Case title={t('recovery.cases.lostSecond.title')}>
           <p>{t('recovery.cases.lostSecond.body')}</p>
-          <p>{t('recovery.cases.lostSecond.after')}</p>
+          <Lead>{t('recovery.cases.lostSecond.after')}</Lead>
           {command('withdraw-alone')}
           <p>{t('recovery.cases.lostSecond.reprotect')}</p>
         </Case>
@@ -240,7 +249,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
           <p>
             <PrintedLink href={appLinks.extend(card.route)} label={t('recovery.links.extend')} />
           </p>
-          <p>{t('recovery.cases.ending.stakeward')}</p>
+          <Lead>{t('recovery.cases.ending.stakeward')}</Lead>
           {command('extend')}
           <p>{t('recovery.cli.date', { example })}</p>
           <p>{t('recovery.cases.ending.mainPays')}</p>
@@ -250,24 +259,24 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
           <RiskNote risk="withdraw-compromised" tone="danger" className="print:break-inside-avoid" />
           <Steps>
             <li className="space-y-2">
-              <p>{t('recovery.cases.withdraw.deactivate')}</p>
+              <Lead>{t('recovery.cases.withdraw.deactivate')}</Lead>
               {command('deactivate')}
               {command('epoch')}
             </li>
             {managed ? <li>{t('recovery.cases.withdraw.managed')}</li> : null}
             <li className="space-y-2">
-              <p>{t('recovery.cases.withdraw.withdraw')}</p>
+              <Lead>{t('recovery.cases.withdraw.withdraw')}</Lead>
               {command('withdraw')}
             </li>
           </Steps>
-          <p>{t('recovery.cases.withdraw.remove')}</p>
-          <RiskNote risk="unlock-opens-window" className="print:break-inside-avoid" />
+          <Lead>{t('recovery.cases.withdraw.remove')}</Lead>
+          <RiskNote risk="unlock-opens-window" className="print:break-inside-avoid print:break-after-avoid" />
           {command('remove-lock')}
           {command('withdraw-alone')}
         </Case>
 
         <Case title={t('recovery.cases.stolenSecond.title')}>
-          <p>{t('recovery.cases.stolenSecond.body')}</p>
+          <Lead>{t('recovery.cases.stolenSecond.body')}</Lead>
           {command('change-second-key')}
           <p>{t('recovery.cases.stolenSecond.late')}</p>
         </Case>
@@ -277,7 +286,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
             {t('recovery.cases.down.body')} <PrintedLink href={SOURCE_CODE_URL} label={t('recovery.links.source')} />
           </p>
           <p>{t('recovery.cases.down.browserOnly')}</p>
-          <p>{t('recovery.cases.down.check')}</p>
+          <Lead>{t('recovery.cases.down.check')}</Lead>
           {command('show')}
         </Case>
       </CardSection>

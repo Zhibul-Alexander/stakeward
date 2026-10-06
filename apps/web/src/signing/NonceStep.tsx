@@ -17,13 +17,21 @@ import { useSigningSession } from './use-signing-session.ts';
 import { defaultJobReason, jobStatus } from './view.ts';
 
 export type NonceMode = 'setup' | 'close';
-/** How a close is put: closing the account (`close`), or cancelling the open link by closing it (`cancel-link`). */
-export type NonceVariant = 'close' | 'cancel-link';
+/**
+ * How the step is put. A close: closing the account (`close`, the default), or cancelling the open link by closing it
+ * (`cancel-link`). A setup: for signing by link (the default), or for a rescue (`rescue`), which always uses the
+ * account (F4 step 3), even when every key signs in this browser.
+ */
+export type NonceVariant = 'close' | 'cancel-link' | 'rescue';
 
 type Texts = { title: MessageKey; body: MessageKey; action: MessageKey };
 
 function textsOf(mode: NonceMode, variant: NonceVariant): Texts {
-  if (mode === 'setup') return { title: 'nonce.setup.title', body: 'nonce.setup.body', action: 'nonce.setup.action' };
+  if (mode === 'setup') {
+    return variant === 'rescue'
+      ? { title: 'nonce.setupRescue.title', body: 'nonce.setupRescue.body', action: 'nonce.setupRescue.action' }
+      : { title: 'nonce.setup.title', body: 'nonce.setup.body', action: 'nonce.setup.action' };
+  }
   if (variant === 'cancel-link') {
     return { title: 'signing.link.cancelTitle', body: 'signing.link.cancelBody', action: 'signing.link.cancelAction' };
   }

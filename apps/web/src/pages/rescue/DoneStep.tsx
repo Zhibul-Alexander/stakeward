@@ -1,6 +1,14 @@
 import type { Address } from '@solana/kit';
-import { scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount, type WalletRole } from '@stakeward/core';
-import { CircleAlertIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon } from 'lucide-react';
+import {
+  isLockupInForce,
+  scannerStatus,
+  shortAddress,
+  stakeActivationStatus,
+  type ClockView,
+  type StakeAccount,
+  type WalletRole,
+} from '@stakeward/core';
+import { CircleAlertIcon, FileTextIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon, ShieldCheckIcon } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AccountRow } from '@/components/product/account-row';
@@ -11,6 +19,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { telegramLinkPath } from '@/api/telegram';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
+import { appLinks } from '@/pages/app/view';
+import { cardLock } from '@/pages/recovery/view';
 import { usePorts } from '@/ports';
 import { createPageSession, type SigningTestOptions } from '@/signing/create';
 import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
@@ -84,6 +94,7 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
     const activation = stakeActivationStatus(after.delegation, clock.epoch);
     return activation === 'inactive' || activation === 'deactivating' ? [after] : [];
   });
+  const locks = lockSummary(moved, clock, secondKey);
 
   return (
     <section aria-labelledby={headingId} data-slot="rescue-done" className="flex flex-col gap-8">
@@ -132,10 +143,54 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
         </List>
       )}
 
-      {done === 0 ? null : <p className="max-w-prose font-medium">{t('rescue.done.useNew')}</p>}
+      {done === 0 ? null : (
+        <div className="flex max-w-prose flex-col gap-2">
+          <p className="font-medium">{t('rescue.done.useNew')}</p>
+          {locks.held === 0 ? null : <p>{t('rescue.done.lockKept')}</p>}
+          {locks.noLock.length === 0 ? null : (
+            <p>
+              {locks.noLock.length === 1
+                ? t('rescue.done.noLockOne')
+                : t('rescue.done.noLockOther', { count: locks.noLock.length })}
+            </p>
+          )}
+          {locks.ended.length === 0 ? null : (
+            <p>
+              {locks.ended.length === 1
+                ? t('rescue.done.lockEndedOne')
+                : t('rescue.done.lockEndedOther', { count: locks.ended.length })}
+            </p>
+          )}
+          {locks.open.length === 0 ? null : (
+            <div>
+              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                <Link href={appLinks.protect(locks.open)}>
+                  <ShieldCheckIcon aria-hidden="true" />
+                  {locks.open.length === 1
+                    ? t('rescue.done.protectOne')
+                    : t('rescue.done.protectOther', { count: locks.open.length })}
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         {idle.length === 0 ? null : <DelegateCard accounts={idle} newWallet={newWallet} signing={signing} />}
+        {locks.card === null ? null : (
+          // A card printed before names the old main key; one new card covers every account of the pair (D74).
+          <DoneCard title={t('rescue.done.recovery.title')} description={t('rescue.done.recovery.body')}>
+            <div>
+              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                <Link href={appLinks.recovery(locks.card)}>
+                  <FileTextIcon aria-hidden="true" />
+                  {t('rescue.done.recovery.open')}
+                </Link>
+              </Button>
+            </div>
+          </DoneCard>
+        )}
         <NonceCloseCard authority={newWallet} role="new" signing={signing} />
         <DoneCard title={t('rescue.done.telegram')}>
           <div>
@@ -165,6 +220,45 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
       </div>
     </section>
   );
+}
+
+type LockSummary = {
+  /** Moved accounts whose lock is in force and held by this rescue's second key. */
+  held: number;
+  /** The first of them a recovery card can be written for, or null (a lock an epoch holds has no card, D74). */
+  card: Address | null;
+  /** Moved accounts that never had a lock (`lockText` says "No lock"), and those whose lock had ended. */
+  noLock: readonly Address[];
+  ended: readonly Address[];
+  /** Both, in the order they moved: the accounts to protect again. */
+  open: readonly Address[];
+};
+
+/**
+ * A rescue keeps each lock as it was (D70). The Done screen says the second key holds a lock only where it holds one
+ * in force (as MovedRow's status does), tells an account that never had a lock from one whose lock had ended, and
+ * offers a recovery card only where one can be written.
+ */
+function lockSummary(moved: readonly { after: StakeAccount | null }[], clock: ClockView, secondKey: Address): LockSummary {
+  const summary: { held: number; card: Address | null; noLock: Address[]; ended: Address[]; open: Address[] } = {
+    held: 0,
+    card: null,
+    noLock: [],
+    ended: [],
+    open: [],
+  };
+  for (const { after } of moved) {
+    if (after === null) continue;
+    if (isLockupInForce(after.lockup, clock)) {
+      if (after.lockup.custodian !== secondKey) continue;
+      summary.held += 1;
+      if (summary.card === null && cardLock(after, clock) === 'protected') summary.card = after.address;
+      continue;
+    }
+    (after.lockup.unixTimestamp > 0n ? summary.ended : summary.noLock).push(after.address);
+    summary.open.push(after.address);
+  }
+  return summary;
 }
 
 function List({ title, children }: { title: string; children: ReactNode }) {

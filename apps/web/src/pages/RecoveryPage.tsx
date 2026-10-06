@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
+import { shortAddress } from '@stakeward/core';
 import { CircleAlertIcon, LoaderCircleIcon, PrinterIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { AccountRowSkeleton } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
@@ -144,6 +145,16 @@ export function RecoveryPage() {
   const [attempt, setAttempt] = useState(0);
   const load = useRecovery(chain, route, attempt);
   const card = load.status === 'ready' && load.value.kind === 'card' ? load.value.card : null;
+
+  // The tab title, and so the file name a browser suggests for Save as PDF: one per stake account, not "Stakeward".
+  useEffect(() => {
+    if (route === null) return undefined;
+    const previous = document.title;
+    document.title = t('recovery.documentTitle', { account: shortAddress(route) });
+    return () => {
+      document.title = previous;
+    };
+  }, [route]);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

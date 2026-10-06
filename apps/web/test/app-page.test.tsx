@@ -319,7 +319,8 @@ describe('/app on LiteSvmChain', () => {
     });
     const banner = screen.getByRole('alert');
     expect(banner).toHaveTextContent('1 stake account is no longer protected');
-    expect(banner).toHaveTextContent('Anyone with your main key can withdraw them now.');
+    // One account: said of "it", not "them".
+    expect(banner).toHaveTextContent('This device saw it protected, but its lock has ended. Anyone with your main key can withdraw it now.');
     expect(within(banner).getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${account}`);
     expect(within(row(account)).getByText('No longer protected')).toBeInTheDocument();
     expect(within(row(account)).getByRole('link', { name: `Protect again stake account ${shortAddress(account)}` })).toBeInTheDocument();

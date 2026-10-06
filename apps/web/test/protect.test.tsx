@@ -540,7 +540,7 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       // The other device: /cosign with only the second key's wallet.
       const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K] });
       const other = renderCosignPage(w.chain, new URL(url).hash, [second]);
-      await other.view.findByText(en.cosign.ask.protect, undefined, WAIT);
+      await other.view.findByText(en.cosign.ask.protect.replaceAll('{date}', formatUtcDate(T) ?? ''), undefined, WAIT);
       await connectAndContinue(other.user, 'Second key', 'Second Wallet', other.view);
       await other.user.click(await other.view.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT));
       await other.view.findByRole('heading', { name: en.cosign.done.title }, WAIT);
