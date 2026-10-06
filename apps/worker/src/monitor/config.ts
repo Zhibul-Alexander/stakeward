@@ -28,6 +28,14 @@ export type MonitorPlan = {
    * stage open: the next pass goes on after the last row of the page (DECISIONS.md D58).
    */
   reminderPageRows: number;
+  /**
+   * (main key, second key) pairs of the daily search round per page (DAILY_PAIRS). A page joins the back of the rescan
+   * queue only while the queue holds fewer pairs than this, so the round's own pairs never fill it (SECURITY-CHECK
+   * П25); a round that does not end within a day goes on the next. Urgent pairs pile up in front over passes and may
+   * still push the queue past rescanQueueMax: the pairs cut off the back send the round back for them (pass.ts
+   * withUrgent), so every pair is reached in its turn.
+   */
+  pairsPageRows: number;
 };
 
 export const MONITOR_PLANS = {
@@ -45,6 +53,8 @@ export const MONITOR_PLANS = {
     // CPU: a page is read, checked and written in one pass. 250 keeps it a small part of the 10 ms; a crowd of 1000 due
     // reminders takes four passes, eight minutes.
     reminderPageRows: 250,
+    // About 33 passes of 3 searches: one DAILY_PAIRS statement an hour while a round lasts.
+    pairsPageRows: 100,
   },
   paid: {
     name: 'paid',
@@ -55,6 +65,9 @@ export const MONITOR_PLANS = {
     rescanMaxBodyChars: 2_000_000,
     rescanParseChars: 20_000_000,
     reminderPageRows: 1_000,
+    // Two pages and the urgent pairs of one pass (at most 5 x 99 rows) stay below rescanQueueMax; urgent pairs of
+    // several passes may not, and the round goes back for what the cap cuts (pass.ts withUrgent).
+    pairsPageRows: 250,
   },
 } as const satisfies Record<string, MonitorPlan>;
 
@@ -71,6 +84,8 @@ export const MONITOR_LIMITS = {
   dailyHourUtc: 6,
   rescanQueueMax: 1_000,
   adminThrottleMs: 3_600_000,
+  /** A 401 Telegram got from the webhook this recently is a bot-mismatch (pass.ts checkBot). */
+  webhookErrorWindowMs: 600_000,
   rpcDownPasses: 3,
   telegramTimeoutMs: 8_000,
 } as const;

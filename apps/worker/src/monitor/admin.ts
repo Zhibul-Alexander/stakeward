@@ -8,12 +8,36 @@ import type { Stage } from './pass.ts';
  * hour. The texts carry counts and names only: no addresses, chat ids, URLs or error messages, which may quote them.
  */
 
-export type AdminKind = 'pass-error' | 'wrong-cluster' | 'pass-died' | 'rpc-down' | 'rescan-dropped';
+export type AdminKind = 'pass-error' | 'wrong-cluster' | 'bot-mismatch' | 'pass-died' | 'rpc-down' | 'rescan-dropped';
 
 /** The order in which a pass picks its one admin alert. */
-export const ADMIN_KINDS: readonly AdminKind[] = ['pass-error', 'wrong-cluster', 'pass-died', 'rpc-down', 'rescan-dropped'];
+export const ADMIN_KINDS: readonly AdminKind[] = [
+  'pass-error',
+  'wrong-cluster',
+  'bot-mismatch',
+  'pass-died',
+  'rpc-down',
+  'rescan-dropped',
+];
 
-export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number };
+/**
+ * What the bot check found not to be this deployment's: the webhook URL, Telegram's updates refused by this worker
+ * (401: they do not carry TELEGRAM_WEBHOOK_SECRET), the bot's username.
+ */
+export type BotMismatch = 'webhook' | 'refused' | 'username';
+
+export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number; bot?: readonly BotMismatch[] };
+
+/** The wrangler environment that deploys each cluster (wrangler.jsonc: env.dev is devnet, env.prod is mainnet). */
+const WRANGLER_ENV: Record<Cluster, string> = { devnet: 'dev', mainnet: 'prod' };
+
+const BOT_MISMATCH: Record<BotMismatch, string> = {
+  webhook: "Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook",
+  refused:
+    `this worker refused Telegram's updates with 401 in the last ${String(MONITOR_LIMITS.webhookErrorWindowMs / 60_000)} ` +
+    'minutes: Telegram does not send TELEGRAM_WEBHOOK_SECRET with them',
+  username: 'the bot token belongs to another bot than TELEGRAM_BOT_USERNAME',
+};
 
 export function adminText(kind: AdminKind, cluster: Cluster | null, counts: AdminCounts): string {
   const monitor = cluster === null ? 'Stakeward monitor' : `Stakeward ${cluster} monitor`;
@@ -37,6 +61,20 @@ export function adminText(kind: AdminKind, cluster: Cluster | null, counts: Admi
       );
     case 'rescan-dropped':
       return `${monitor}: a rescan answer over ${String(counts.kb ?? 0)} KB was skipped.`;
+    case 'bot-mismatch': {
+      const found = (counts.bot ?? []).map((what) => BOT_MISMATCH[what]);
+      const what = found.length === 0 ? "Telegram's webhook or bot is not this deployment's" : found.join(', and ');
+      // The rotation runbook (SECURITY-CHECK П17): both secrets, in the cluster's environment. A webhook set with a new
+      // secret_token while the worker keeps the old TELEGRAM_WEBHOOK_SECRET answers every update 401.
+      const env = cluster === null ? '<env>' : WRANGLER_ENV[cluster];
+      return (
+        `${monitor}: ${what}. If you did not change it, the bot token may be stolen. Revoke it with BotFather and ` +
+        `put the new one with wrangler secret put TELEGRAM_BOT_TOKEN --env ${env}. Then put a new webhook secret with ` +
+        `wrangler secret put TELEGRAM_WEBHOOK_SECRET --env ${env} and call setWebhook with ` +
+        'SITE_ORIGIN/api/telegram/webhook and that same secret as secret_token: while the two differ, the webhook ' +
+        'refuses every update.'
+      );
+    }
   }
 }
 

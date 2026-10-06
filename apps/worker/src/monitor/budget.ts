@@ -22,10 +22,14 @@ export const COST = {
   /** Kept while reading chunks: the delivery load (2) + 10 sends + the delivery commit (4). */
   sendFloor: 16,
   /**
-   * DAILY_PAIRS + DAILY_REMINDER_ROWS, then the reminder events + REMINDER_DAYS + (a full page: more may be due) the
-   * open stage in meta.
+   * DAILY_REMINDER_ROWS, then the reminder events + REMINDER_DAYS + (a full page: more may be due) the open stage in
+   * meta.
    */
-  daily: 5,
+  daily: 4,
+  /** The bot check of every pass: getWebhookInfo, one attempt. */
+  webhookCheck: 1,
+  /** The daily part of the bot check: getMe, one attempt. */
+  usernameCheck: 1,
   sendLoad: 2,
   sendCommit: 4,
   /** One rescan call and its post-processing. */

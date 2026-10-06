@@ -3,14 +3,24 @@ import type { Context, MiddlewareHandler } from 'hono';
 import * as z from 'zod';
 import { isAddressText } from '../address.ts';
 import { botUsernameOf, siteOriginOf, webhookSecretOf } from '../monitor/config.ts';
-import { lastPassAtOf, SQL } from '../monitor/store.ts';
+import {
+  lastPassAtOf,
+  linkCounterKey,
+  linkStateOf,
+  linkStateStatement,
+  linkWalletStatements,
+  SQL,
+  type LinkState,
+} from '../monitor/store.ts';
 import { allowRequest } from '../rate-limit.ts';
 import type { AppEnv } from '../app.ts';
 import {
+  chatLinkBudgetText,
   helpText,
   linkBudgetText,
   linkedText,
   linkLimitText,
+  MAX_LINK_WRITES_PER_CHAT_PER_DAY,
   MAX_LINKS_PER_CHAT,
   notAnAddressText,
   statusText,
@@ -26,21 +36,35 @@ import {
  * 4. At most TELEGRAM_RATE_LIMIT updates per chat (the IP is always Telegram's); over it, 200 {} without a reply.
  * 5. `my_chat_member` kicked or left (the user blocked the bot or removed it from a group) forgets the chat at once.
  * 6. /start <address>, /status, /stop, /help. The reply goes in the response body (a sendMessage the Bot API runs
- *    for us): no outgoing request and no token needed. Every /start counts against MAX_LINK_WRITES_PER_DAY.
+ *    for us): no outgoing request and no token needed. Only a /start that adds a link counts against
+ *    MAX_LINK_WRITES_PER_DAY and MAX_LINK_WRITES_PER_CHAT_PER_DAY; a wallet the chat already follows is confirmed
+ *    without a write. The per-chat count is kept under an HMAC of the day and the chat id (linkCounterKey), so the
+ *    chat id lives only in alert_links and /stop forgets it, while the count survives /stop.
  * A D1 failure is thrown to app.onError -> 500, and Telegram retries; every command is idempotent.
  * Logged: the kind of update only. Never the body, the chat id, the wallet or the headers.
  */
 
 export const MAX_TELEGRAM_UPDATE_BYTES = 64 * 1024;
 
+/** The path of this webhook, the one setWebhook gives Telegram (after SITE_ORIGIN); the monitor checks it daily. */
+export const TELEGRAM_WEBHOOK_PATH = '/api/telegram/webhook';
+
 /**
- * /start link writes per UTC day, for every chat together. The per-chat rate limit does not bound writes: any user can
- * open more chats (a group is free), and a /start and /stop churn of distinct wallets writes about 4 rows per update.
- * The free D1 write quota (100 000 rows a day) is shared by dev and prod, and the monitor's lease is a write: once it
- * is used up no pass runs anywhere until 00:00 UTC. A /start counts whether or not it adds a link (one meta row);
- * a /stop deletes only links some /start added. Past the budget /start writes nothing; /status and /stop still work.
+ * Links /start may add per UTC day, for every chat together. The per-chat rate limit does not bound writes: any user
+ * can open more chats (a group is free), and a /start and /stop churn of distinct wallets writes about 4 rows per new
+ * link. The free D1 write quota (100 000 rows a day) is shared by dev and prod, and the monitor's lease is a write:
+ * once it is used up no pass runs anywhere until 00:00 UTC. Only a link actually added counts (LINK_COUNT), so
+ * repeated /start of a followed wallet cannot use the budget up, and one chat adds at most
+ * MAX_LINK_WRITES_PER_CHAT_PER_DAY of them. A /stop deletes only links some /start added. Past a budget /start writes
+ * nothing; /status and /stop still work.
  */
 export const MAX_LINK_WRITES_PER_DAY = 1_000;
+
+const LINK_LIMITS = {
+  linksPerChat: MAX_LINKS_PER_CHAT,
+  writesPerDay: MAX_LINK_WRITES_PER_DAY,
+  writesPerChatPerDay: MAX_LINK_WRITES_PER_CHAT_PER_DAY,
+} as const;
 
 const SECRET_HEADER = 'X-Telegram-Bot-Api-Secret-Token';
 
@@ -173,16 +197,27 @@ export function telegramWebhookHandler(now: () => number) {
         if (wallet === null) return reply(c, chatId, helpText(origin));
         if (!isAddressText(wallet) || wallet === ZERO_ADDRESS) return reply(c, chatId, notAnAddressText(origin));
         const today = new Date(now()).toISOString().slice(0, 10);
-        const used = await db.prepare(SQL.LINK_WRITES).bind(today).first<{ n: unknown }>();
-        if (Number(used?.n ?? 0) >= MAX_LINK_WRITES_PER_DAY) return reply(c, chatId, linkBudgetText());
-        const [, , state] = await db.batch([
-          db.prepare(SQL.LINK_WRITES_UP).bind(today),
-          db.prepare(SQL.LINK_WALLET).bind(wallet, chatId, now(), MAX_LINKS_PER_CHAT),
-          db.prepare(SQL.LINK_STATE).bind(wallet, chatId),
-        ]);
-        const row = state?.results[0] as { linked: unknown; watched: unknown } | undefined;
-        if (row === undefined || Number(row.linked) !== 1) return reply(c, chatId, linkLimitText());
-        return reply(c, chatId, linkedText(wallet, Number(row.watched), origin));
+        const secret = webhookSecretOf(c.env);
+        // telegramSecret() answers 503 before this handler runs without one.
+        if (secret === null) throw new Error('TELEGRAM_WEBHOOK_SECRET is not set');
+        const counterKey = await linkCounterKey(secret, chatId, today);
+        const before = linkStateOf(await linkStateStatement(db, wallet, chatId, today, counterKey).all());
+        if (before?.linked === true) return reply(c, chatId, linkedText(wallet, before.watched, origin));
+        const refused = before === null ? null : linkRefusal(before);
+        if (refused !== null) return reply(c, chatId, refused);
+        const statements = linkWalletStatements(db, {
+          wallet,
+          chatId,
+          today,
+          counterKey,
+          nowMs: now(),
+          token: crypto.randomUUID(),
+          limits: LINK_LIMITS,
+        });
+        const after = linkStateOf((await db.batch(statements))[2]);
+        if (after === null) return reply(c, chatId, linkBudgetText());
+        if (!after.linked) return reply(c, chatId, linkRefusal(after) ?? linkBudgetText());
+        return reply(c, chatId, linkedText(wallet, after.watched, origin));
       }
       case 'status': {
         const [links, marker] = await db.batch([db.prepare(SQL.STATUS).bind(chatId), db.prepare(SQL.LAST_PASS_AT)]);
@@ -198,6 +233,14 @@ export function telegramWebhookHandler(now: () => number) {
         return reply(c, chatId, stopText());
     }
   };
+}
+
+/** Why a link not there yet cannot be added now (the first limit reached), or null when it can. */
+function linkRefusal(state: LinkState): string | null {
+  if (state.links >= LINK_LIMITS.linksPerChat) return linkLimitText();
+  if (state.chatWrites >= LINK_LIMITS.writesPerChatPerDay) return chatLinkBudgetText();
+  if (state.dayWrites >= LINK_LIMITS.writesPerDay) return linkBudgetText();
+  return null;
 }
 
 /** The reply as a Bot API method in the webhook response: plain text, link previews off. */

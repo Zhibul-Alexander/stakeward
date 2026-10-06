@@ -257,7 +257,7 @@ describe('reminders: locks of others do not crowd out a due reminder', () => {
     expect(await h.pass()).toMatchObject({ daily: false, reminders: 0 });
   });
 
-  it('a pass that dies after a full page: the next one goes on after it, the day\'s pairs stay queued', { timeout: 60_000 }, async () => {
+  it('a pass that dies after a full page: the next one goes on after it, the day\'s pairs are not lost', { timeout: 60_000 }, async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const h = createHarness();
@@ -273,12 +273,15 @@ describe('reminders: locks of others do not crowd out a due reminder', () => {
     const meta = await h.readMeta();
     expect(meta.daily_day).toBeUndefined();
     expect(JSON.parse(meta.daily_sweep ?? '')).toEqual({ day: before(30, '00:00:00').slice(0, 10), after: addresses[FREE_PAGE - 1] });
-    expect(JSON.parse(meta.rescan_queue ?? '[]')).toEqual([[MAIN, SECOND]]);
+    // The day's pairs join the queue in the rescans stage and are committed with their round at the finish: the pass
+    // died before, so the round has not started.
+    expect(meta.pairs_sweep).toBeUndefined();
     expect((await remindersBy(h)).size).toBe(FREE_PAGE);
 
     h.db.failWhen = null;
     h.at(before(30, '06:32:00'));
-    expect(await h.pass()).toMatchObject({ outcome: 'ok', daily: true, reminders: 1 });
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', daily: true, reminders: 1, rescans: 1 });
+    expect(JSON.parse((await h.readMeta()).pairs_sweep ?? 'null')).toEqual({ day: before(30, '00:00:00').slice(0, 10), after: null });
     expect((await h.readMeta()).daily_day).toBe(before(30, '00:00:00').slice(0, 10));
     const by = await remindersBy(h);
     expect(by.size).toBe(addresses.length);

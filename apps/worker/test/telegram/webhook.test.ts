@@ -4,7 +4,14 @@
 import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MAX_LINK_WRITES_PER_DAY, MAX_TELEGRAM_UPDATE_BYTES, parseCommand } from '../../src/telegram/webhook.ts';
+import { linkCounterKey } from '../../src/monitor/store.ts';
+import { MAX_LINK_WRITES_PER_CHAT_PER_DAY } from '../../src/telegram/texts.ts';
+import {
+  MAX_LINK_WRITES_PER_DAY,
+  MAX_TELEGRAM_UPDATE_BYTES,
+  parseCommand,
+  TELEGRAM_WEBHOOK_PATH,
+} from '../../src/telegram/webhook.ts';
 import { fakeUpstream, SECURITY_HEADERS, securityHeadersOf, testApp } from '../fakes.ts';
 import { countingDb, type CountingDb } from '../monitor/harness.ts';
 import { key } from '../transactions.ts';
@@ -40,7 +47,8 @@ function bot(options: { env?: Partial<Env>; now?: () => number } = {}): Bot {
     const secret = init.secret === undefined ? SECRET : init.secret;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (secret !== null) headers['X-Telegram-Bot-Api-Secret-Token'] = secret;
-    return app.request('/api/telegram/webhook', {
+    // The path the monitor's daily bot check expects Telegram to deliver to (SITE_ORIGIN + TELEGRAM_WEBHOOK_PATH).
+    return app.request(TELEGRAM_WEBHOOK_PATH, {
       method: 'POST',
       headers,
       body: typeof update === 'string' ? update : JSON.stringify(update),
@@ -292,24 +300,90 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
   const today = new Date(NOW).toISOString().slice(0, 10);
   const linkWrites = async () =>
     JSON.parse((await env.DB.prepare("SELECT value FROM meta WHERE key = 'link_writes'").first<{ value: string }>())?.value ?? 'null') as unknown;
+  /** The key meta.link_writes counts `chat` under on `day` (an HMAC: the chat id itself is not kept there). */
+  const keyOf = (chat: number, day = today) => linkCounterKey(SECRET, String(chat), day);
+  /** meta.link_writes of today: `n` links in all, `chats` per chat id (stored under keyOf). */
+  const setLinkWrites = async (n: number, chats: Record<number, number> = {}) => {
+    const keyed = Object.fromEntries(
+      await Promise.all(Object.entries(chats).map(async ([chat, count]) => [await keyOf(Number(chat)), count] as const)),
+    );
+    await env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('link_writes', ?1)")
+      .bind(JSON.stringify({ day: today, n, chats: keyed }))
+      .run();
+  };
+  const CHAT_BUDGET_TEXT =
+    `This chat has added ${String(MAX_LINK_WRITES_PER_CHAT_PER_DAY)} alert links today, the most allowed. Try again ` +
+    'after 00:00 UTC; the alerts you already have keep coming.';
 
-  it('every /start counts, a /start and /stop churn too', async () => {
+  it('only a /start that adds a link counts; a /start and /stop churn counts each link it adds', async () => {
     const chat = freshChat();
     for (let round = 0; round < 2; round++) {
       for (let i = 0; i < 5; i++) await replyOf(await bot().send(message(chat, `/start ${key(100 + i)}`)));
+      // Again for a wallet the chat already follows: confirmed, not counted.
+      await replyOf(await bot().send(message(chat, `/start ${key(100)}`)));
       await replyOf(await bot().send(message(chat, '/stop')));
     }
-    expect(await linkWrites()).toEqual({ day: today, n: 10 });
+    expect(await linkWrites()).toMatchObject({ day: today, n: 10, chats: { [await keyOf(chat)]: 10 } });
+  });
+
+  it('a refused /start counts nothing: the 21st wallet of a chat', async () => {
+    const chat = freshChat();
+    for (let i = 0; i < 20; i++) await addLink(key(100 + i), chat);
+    const b = bot();
+    expect((await replyOf(await b.send(message(chat, `/start ${WALLET}`)))).text).toMatch(/^This chat already follows 20 wallets/);
+    expect(b.db.journal.map((e) => e.name)).toEqual(['LINK_STATE']);
+    expect(await linkWrites()).toBeNull();
+  });
+
+  it('a wallet the chat already follows is confirmed past every budget, without a write', async () => {
+    const chat = freshChat();
+    await addLink(WALLET, chat);
+    await setLinkWrites(MAX_LINK_WRITES_PER_DAY, { [chat]: MAX_LINK_WRITES_PER_CHAT_PER_DAY });
+    const b = bot();
+    expect((await replyOf(await b.send(message(chat, `/start ${WALLET}`)))).text).toMatch(/^Alerts are on for /);
+    expect(b.db.journal.map((e) => e.name)).toEqual(['LINK_STATE']);
+    expect(await linkWrites()).toEqual({
+      day: today,
+      n: MAX_LINK_WRITES_PER_DAY,
+      chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY },
+    });
+  });
+
+  it(`a chat adds at most ${String(MAX_LINK_WRITES_PER_CHAT_PER_DAY)} links a day; other chats still link; the next UTC day it links again`, async () => {
+    const chat = freshChat();
+    await setLinkWrites(10, { [chat]: MAX_LINK_WRITES_PER_CHAT_PER_DAY - 1 });
+    await replyOf(await bot().send(message(chat, `/start ${WALLET}`)));
+    expect(await links()).toHaveLength(1);
+    expect(await linkWrites()).toMatchObject({ n: 11, chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY } });
+
+    const full = bot();
+    expect((await replyOf(await full.send(message(chat, `/start ${key(5)}`)))).text).toBe(CHAT_BUDGET_TEXT);
+    expect(full.db.journal.map((e) => e.name)).toEqual(['LINK_STATE']);
+    expect(await links()).toHaveLength(1);
+    // /stop still works, and the count stays: churn does not reopen the budget.
+    await replyOf(await full.send(message(chat, '/stop')));
+    expect((await replyOf(await full.send(message(chat, `/start ${WALLET}`)))).text).toBe(CHAT_BUDGET_TEXT);
+    expect(await links()).toEqual([]);
+
+    const other = freshChat();
+    expect((await replyOf(await bot().send(message(other, `/start ${key(5)}`)))).text).toMatch(/^Alerts are on for /);
+    expect(await linkWrites()).toMatchObject({
+      n: 12,
+      chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY, [await keyOf(other)]: 1 },
+    });
+
+    const tomorrow = bot({ now: () => NOW + 86_400_000 });
+    expect((await replyOf(await tomorrow.send(message(chat, `/start ${key(5)}`)))).text).toMatch(/^Alerts are on for /);
+    const tomorrowDay = new Date(NOW + 86_400_000).toISOString().slice(0, 10);
+    expect(await linkWrites()).toMatchObject({ day: tomorrowDay, n: 1, chats: { [await keyOf(chat, tomorrowDay)]: 1 } });
   });
 
   it('past the budget /start writes nothing and says so; /status and /stop still work; the next UTC day it links again', async () => {
-    await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('link_writes', ?1)")
-      .bind(JSON.stringify({ day: today, n: MAX_LINK_WRITES_PER_DAY - 1 }))
-      .run();
+    await setLinkWrites(MAX_LINK_WRITES_PER_DAY - 1);
     const chat = freshChat();
     await replyOf(await bot().send(message(chat, `/start ${WALLET}`)));
     expect(await links()).toHaveLength(1);
-    expect(await linkWrites()).toEqual({ day: today, n: MAX_LINK_WRITES_PER_DAY });
+    expect(await linkWrites()).toMatchObject({ day: today, n: MAX_LINK_WRITES_PER_DAY });
 
     const full = bot();
     const reply = await replyOf(await full.send(message(chat, `/start ${key(5)}`)));
@@ -317,14 +391,14 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
       'Stakeward has added as many alert links today as it allows. Try again after 00:00 UTC; the alerts you already ' +
         'have keep coming.',
     );
-    expect(full.db.journal.map((e) => e.name)).toEqual(['LINK_WRITES']);
+    expect(full.db.journal.map((e) => e.name)).toEqual(['LINK_STATE']);
     expect(await links()).toHaveLength(1);
     expect((await replyOf(await full.send(message(chat, '/status')))).text).toMatch(/^This chat gets alerts for:/);
 
     const tomorrow = bot({ now: () => NOW + 86_400_000 });
     expect((await replyOf(await tomorrow.send(message(chat, `/start ${key(5)}`)))).text).toMatch(/^Alerts are on for /);
     expect(await links()).toHaveLength(2);
-    expect(await linkWrites()).toEqual({ day: new Date(NOW + 86_400_000).toISOString().slice(0, 10), n: 1 });
+    expect(await linkWrites()).toMatchObject({ day: new Date(NOW + 86_400_000).toISOString().slice(0, 10), n: 1 });
     await replyOf(await tomorrow.send(message(chat, '/stop')));
     expect(await links()).toEqual([]);
   });
@@ -377,6 +451,21 @@ describe('/status, /stop, /help and other text', () => {
     // Idempotent.
     await replyOf(await bot().send(message(chat, '/stop')));
     expect(await links()).toHaveLength(1);
+  });
+
+  it.each(['/stop', 'kicked', 'left'])('after /start and then %s the chat id is nowhere in D1', async (how) => {
+    const chat = freshChat();
+    const everything = async () => {
+      const tables = ['meta', 'alert_links', 'accounts', 'events'];
+      const rows = await Promise.all(tables.map((table) => env.DB.prepare(`SELECT * FROM ${table}`).all()));
+      return JSON.stringify(rows.map((result) => result.results));
+    };
+    await replyOf(await bot().send(message(chat, `/start ${WALLET}`)));
+    await replyOf(await bot().send(message(chat, `/start ${key(2)}`)));
+    expect(await everything()).toContain(String(chat));
+    if (how === '/stop') await replyOf(await bot().send(message(chat, '/stop')));
+    else await expectNoReply(await bot().send(memberUpdate(chat, how)));
+    expect(await everything()).not.toContain(String(chat));
   });
 
   it('/help, /start without an address and any other private text get the help, without D1', async () => {

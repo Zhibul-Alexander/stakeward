@@ -53,6 +53,19 @@ describe('D1 migrations', () => {
     expect(index?.sql).toBe('CREATE INDEX events_pending ON events (id) WHERE notified_at IS NULL');
   });
 
+  it('0004 drops the per-chat counts of meta.link_writes, which were kept under the chat id', async () => {
+    const migration = env.TEST_MIGRATIONS.find((m) => m.name.startsWith('0004_'));
+    expect(migration).toBeDefined();
+    const legacy = { day: '2026-10-06', n: 3, chats: { '1234567890': 2, '-1001234567890': 1 }, last: 'tok' };
+    await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('link_writes', ?1), ('cursor', 'x')").bind(JSON.stringify(legacy)).run();
+    for (const query of migration?.queries ?? []) await env.DB.prepare(query).run();
+    const { results } = await env.DB.prepare('SELECT key, value FROM meta ORDER BY key').all<{ key: string; value: string }>();
+    expect(results.map((row) => [row.key, row.key === 'link_writes' ? (JSON.parse(row.value) as unknown) : row.value])).toEqual([
+      ['cursor', 'x'],
+      ['link_writes', { day: '2026-10-06', n: 3, last: 'tok' }],
+    ]);
+  });
+
   it('0002 adds alert_links.last_event_id, INTEGER NOT NULL DEFAULT 0', async () => {
     expect((await columns('alert_links')).find((c) => c.name === 'last_event_id')).toEqual({
       name: 'last_event_id',

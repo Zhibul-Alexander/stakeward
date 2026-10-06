@@ -51,6 +51,50 @@ export async function signedProtect(): Promise<ProtectSetup> {
   return { ...setup, bytes: bySecond ?? new Uint8Array() };
 }
 
+/**
+ * Withdraw of 1 SOL from a locked account to `recipient` (the main key when not given), signed by the main key and the
+ * second key, on a blockhash.
+ */
+export async function signedWithdraw(recipient?: Address): Promise<Uint8Array> {
+  const [mainKey, secondKey] = await Promise.all([newTestWallet(), newTestWallet()]);
+  const built = buildTransaction(
+    {
+      kind: 'withdraw',
+      stakeAccount: key(7),
+      mainKey: mainKey.address,
+      secondKey: secondKey.address,
+      recipient: recipient ?? mainKey.address,
+      lamports: 1_000_000_000n,
+    },
+    { feePayer: mainKey.address, lifetime: { kind: 'blockhash', blockhash: BLOCKHASH, lastValidBlockHeight: 1000n } },
+  );
+  let bytes = built.bytes;
+  for (const wallet of [mainKey, secondKey]) {
+    const [signed] = await wallet.signTransactions([bytes]);
+    if (signed === undefined) throw new Error('wallet returned nothing');
+    bytes = signed;
+  }
+  return bytes;
+}
+
+/** Nonce account close to `recipient` (its authority when not given), signed by the authority, on a blockhash. */
+export async function signedNonceClose(recipient?: Address): Promise<Uint8Array> {
+  const authority = await newTestWallet();
+  const built = buildTransaction(
+    {
+      kind: 'nonce-close',
+      nonceAccount: key(11),
+      nonceAuthority: authority.address,
+      recipient: recipient ?? authority.address,
+      lamports: 1_447_680n,
+    },
+    { feePayer: authority.address, lifetime: { kind: 'blockhash', blockhash: BLOCKHASH, lastValidBlockHeight: 1000n } },
+  );
+  const [signed] = await authority.signTransactions([built.bytes]);
+  if (signed === undefined) throw new Error('wallet returned nothing');
+  return signed;
+}
+
 /** Fully signed rescue on the new wallet's durable nonce: the heaviest kind (3 signatures, 2 stake instructions). */
 export async function signedNonceRescue(): Promise<Uint8Array> {
   const [mainKey, secondKey, newWallet] = await Promise.all([newTestWallet(), newTestWallet(), newTestWallet()]);

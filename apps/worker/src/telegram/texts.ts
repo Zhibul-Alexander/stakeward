@@ -5,8 +5,14 @@
  * Stakeward site" instead of a link.
  */
 
-/** Wallets one chat may follow (LINK_WALLET). */
+/** Wallets one chat may follow (LINK_COUNT). */
 export const MAX_LINKS_PER_CHAT = 20;
+
+/**
+ * Links one chat may add per UTC day (LINK_COUNT, telegram/webhook.ts): a /start and /stop churn of one chat cannot use
+ * up the day's budget of every chat (MAX_LINK_WRITES_PER_DAY).
+ */
+export const MAX_LINK_WRITES_PER_CHAT_PER_DAY = 50;
 
 const NO_SEED_PHRASE = 'Stakeward never asks for your seed phrase.';
 const COMMANDS = '/status lists the wallets of this chat, /stop turns all alerts off.';
@@ -62,11 +68,19 @@ export function linkLimitText(): string {
   );
 }
 
-/** /start <address> refused: the webhook made MAX_LINK_WRITES_PER_DAY link writes today (telegram/webhook.ts). */
+/** /start <address> refused: the webhook added MAX_LINK_WRITES_PER_DAY links today (telegram/webhook.ts). */
 export function linkBudgetText(): string {
   return (
     'Stakeward has added as many alert links today as it allows. Try again after 00:00 UTC; the alerts you already ' +
     'have keep coming.'
+  );
+}
+
+/** /start <address> refused: this chat added MAX_LINK_WRITES_PER_CHAT_PER_DAY links today. */
+export function chatLinkBudgetText(): string {
+  return (
+    `This chat has added ${String(MAX_LINK_WRITES_PER_CHAT_PER_DAY)} alert links today, the most allowed. Try again ` +
+    'after 00:00 UTC; the alerts you already have keep coming.'
   );
 }
 
