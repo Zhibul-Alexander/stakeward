@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { CLUSTER } from '@/config';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import { useChain } from '@/ports';
+import { useChain, useDeviceClock } from '@/ports';
+import { ClockSkewError } from './ClockSkewError.tsx';
 import { useClusterClock } from './load.ts';
 import { StepButtons } from './StepButtons.tsx';
 import { blockers, type BlockerInput } from './wizard.ts';
@@ -26,12 +27,17 @@ type PeriodStepProps = {
 
 /**
  * Step 3 (F1 step 3): how long the lock holds. T (00:00 UTC after the period, CLAUDE.md section 5) comes from the
- * cluster clock read when the step opens, and the risk is said with that date (UX rule 6).
+ * cluster clock read when the step opens, and the risk is said with that date (UX rule 6). A cluster clock more than a
+ * day off this device's clock gives no T: the step says so and offers Try again (SECURITY-CHECK П12).
  */
 export function PeriodStep({ headingRef, period, blockerInput, onPeriod, onBack, onContinue }: PeriodStepProps) {
   const chain = useChain();
+  const deviceClock = useDeviceClock();
   const [attempt, setAttempt] = useState(0);
-  const clock = useClusterClock(chain, attempt);
+  const clock = useClusterClock(chain, attempt, deviceClock);
+  const retry = () => {
+    setAttempt((value) => value + 1);
+  };
   const headingId = useId();
   const legendId = useId();
   const periods = lockPeriodsFor(CLUSTER);
@@ -71,10 +77,10 @@ export function PeriodStep({ headingRef, period, blockerInput, onPeriod, onBack,
           title={t('protect.period.loadError')}
           message={errorMessage(clock.error)}
           detail={clock.error.detail}
-          onRetry={() => {
-            setAttempt((value) => value + 1);
-          }}
+          onRetry={retry}
         />
+      ) : clock.status === 'skewed' ? (
+        <ClockSkewError skew={clock.skew} onRetry={retry} />
       ) : lockUntil === null ? null : (
         <div className="flex flex-col gap-3">
           <p role="status" className="text-lg font-semibold">

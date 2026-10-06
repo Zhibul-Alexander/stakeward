@@ -12,6 +12,7 @@ export {
   type ConfirmationOptions,
   type ConfirmationOutcome,
 } from './confirm.ts';
+export { systemDeviceClock, type DeviceClock } from './device-clock.ts';
 export { refreshStakeAccounts } from './fresh-accounts.ts';
 export { HttpChain, type HttpChainOptions } from './http-chain.ts';
 export {
@@ -24,6 +25,7 @@ export {
   PortsProvider,
   useApi,
   useChain,
+  useDeviceClock,
   useKnownSecondKeys,
   usePorts,
   useProtectedAccounts,

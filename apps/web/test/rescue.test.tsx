@@ -18,6 +18,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import en from '@/i18n/en.json';
+import { createSlotStore } from '@/ports';
 import {
   click,
   connect,
@@ -210,6 +211,182 @@ describe('/rescue: the first step never states a date a lock does not have', () 
       }, WAIT);
       expect(screen.queryByText(/1 January 1970/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Finish the move before then/)).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
+// SECURITY-CHECK П5: in a panic the "new wallet" is often one more account next to the stolen main key, in the same
+// wallet app, from the same seed phrase. Each step that connects a key says so: the new wallet step before the seed
+// box, the keys step, and the move step before the main key or the second key signs.
+const SEED_CONTINUE =
+  'Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you made your new wallet from a new seed phrase.';
+const SEED_SIGN =
+  'Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Sign only if you made your new wallet from a new seed phrase. If not, go back and connect a wallet made from a new seed phrase as your new wallet.';
+describe('/rescue: a new wallet in the same wallet app as a key', () => {
+  it(
+    'warns when the new wallet is an account of the main key\'s wallet app; not when it has a wallet app of its own',
+    async () => {
+      const w = await world();
+      await stake(w, { custodian: w.K.address });
+      // One wallet app holds the main key and the account the user is about to call the new wallet.
+      const shared = await createTestWalletPort({ name: 'Shared Wallet', signers: [w.A, w.D], connected: true });
+      const slots = createSlotStore(null);
+      slots.assign('main', { walletId: shared.id, address: w.A.address });
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.newWallet, w.second], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      await connect(user, 'New wallet', 'Shared Wallet');
+      expect(slots.getSnapshot().new?.address).toBe(w.D.address);
+      const line = await screen.findByText('Your new wallet and your main key are both in Shared Wallet.', undefined, WAIT);
+      const alert = line.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'warning');
+      expect(alert).toHaveTextContent(SEED_CONTINUE);
+
+      // Another wallet app for the new wallet: no warning.
+      slots.clear('new');
+      await connect(user, 'New wallet', 'New Wallet');
+      expect(slots.getSnapshot().new?.address).toBe(w.D.address);
+      await waitFor(() => {
+        expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      });
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'the Telegram path, no key connected: the wallet app showed the main key, the user added an account in it as the new wallet',
+    async () => {
+      const w = await world();
+      await stake(w, { custodian: w.K.address });
+      // One account at a time, showing the (stolen) main key: the user switches it to a new account of the same app.
+      const shared = await createTestWalletPort({ name: 'Shared Wallet', signers: [w.A, w.D], exposed: [w.A.address] });
+      const slots = createSlotStore(null);
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.second], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      const slot = await screen.findByRole('group', { name: 'New wallet' }, WAIT);
+      await user.click(within(slot).getByRole('button', { name: 'Connect a wallet as New wallet' }));
+      await user.click(within(slot).getByRole('button', { name: 'Shared Wallet' }));
+      await within(slot).findByText('This account is already your Main key.', undefined, WAIT);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      shared.setExposedAccounts([w.D.address]);
+      await user.click(within(slot).getByRole('button', { name: 'Continue' }));
+      await waitFor(() => {
+        expect(slots.getSnapshot().new).toEqual({ walletId: shared.id, address: w.D.address });
+      }, WAIT);
+      expect(slots.getSnapshot().main).toBeNull();
+      const line = await screen.findByText('Your new wallet and your main key are both in Shared Wallet.', undefined, WAIT);
+      const alert = line.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'warning');
+      expect(alert).toHaveTextContent(SEED_CONTINUE);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'the main key connected later, at the move step, from the new wallet\'s wallet app: warned there before it signs',
+    async () => {
+      const w = await world();
+      await stake(w, { custodian: w.K.address });
+      await stake(w, { custodian: w.K.address });
+      // One account at a time, showing the new wallet; the main key is another account of the same app.
+      const shared = await createTestWalletPort({ name: 'Shared Wallet', signers: [w.A, w.D], exposed: [w.D.address] });
+      const slots = createSlotStore(null);
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.second], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      await connect(user, 'New wallet', 'Shared Wallet');
+      await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
+      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      await click(user, 'Continue');
+      await heading(en.rescue.keys.heading);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      for (const role of ['Main key', 'Second key']) {
+        const where = screen.getByRole('radiogroup', { name: `Where does your ${role} sign?` });
+        await user.click(within(where).getByRole('radio', { name: 'In this browser' }));
+      }
+      await click(user, 'Continue');
+      await heading(en.rescue.move.heading);
+      await click(user, 'Create the link-signing account');
+      await click(user, 'Sign in Shared Wallet as New wallet');
+      await screen.findByText('Round 1 of 2', undefined, WAIT);
+      await click(user, 'Sign in Shared Wallet as New wallet');
+
+      const MAIN_HERE: Signer = { role: 'Main key', wallet: 'Shared Wallet' };
+      const pending = [MAIN_HERE, SECOND];
+      for (;;) {
+        const { signer, connect: mustConnect } = await nextSigner(pending);
+        if (signer !== MAIN_HERE) {
+          if (mustConnect) await connectAndContinue(user, signer.role, signer.wallet);
+          await click(user, `Sign in ${signer.wallet} as ${signer.role}`);
+          pending.splice(pending.indexOf(signer), 1);
+          continue;
+        }
+        expect(mustConnect).toBe(true);
+        expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+        // The user switches the app to the main key's account and connects it here.
+        shared.setExposedAccounts([w.A.address]);
+        await connectAndContinue(user, 'Main key', 'Shared Wallet');
+        break;
+      }
+      expect(slots.getSnapshot().main).toEqual({ walletId: shared.id, address: w.A.address });
+      await screen.findByRole('button', { name: 'Sign in Shared Wallet as Main key' }, WAIT);
+      const line = await screen.findByText('Your new wallet and your main key are both in Shared Wallet.', undefined, WAIT);
+      const alert = line.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'warning');
+      expect(alert).toHaveTextContent(SEED_SIGN);
+      // Nothing was sent: the main key has not signed.
+      expect(shared.requests.filter((request) => request.address === w.A.address)).toHaveLength(0);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'no lock: the second key connected at the keys step from the new wallet\'s wallet app is warned there',
+    async () => {
+      const w = await world();
+      await stake(w);
+      // One wallet app offers the new wallet and the wallet the user is about to call the second key.
+      const shared = await createTestWalletPort({ name: 'Shared Wallet', signers: [w.D, w.K] });
+      const other = await createTestWalletPort({ name: 'Other Wallet' });
+      const slots = createSlotStore(null);
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, other], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      await connect(user, 'New wallet', 'Shared Wallet');
+      expect(slots.getSnapshot().new?.address).toBe(w.D.address);
+      await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
+      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      // No second key yet: nothing to name.
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      await click(user, 'Continue');
+      await heading(en.rescue.keys.heading);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      await connect(user, 'Second key', 'Shared Wallet');
+      expect(slots.getSnapshot().second).toEqual({ walletId: shared.id, address: w.K.address });
+      const line = await screen.findByText('Your new wallet and your second key are both in Shared Wallet.', undefined, WAIT);
+      const alert = line.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'warning');
+      expect(alert).toHaveTextContent(SEED_CONTINUE);
+
+      // A second key the new wallet's app never offered, in another app: no warning. (Not K in another app: the shared
+      // app offered K above, so K is in the new wallet's app too.)
+      slots.clear('second');
+      await connect(user, 'Second key', 'Other Wallet');
+      await waitFor(() => {
+        expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      });
     },
     SCENARIO_TIMEOUT,
   );

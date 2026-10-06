@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
 import { ContinueButtons } from '@/pages/protect/StepButtons';
 import { SignWhere, type SignMode } from '@/signing/SignWhere';
+import { SameWalletWarning, type SameWallet } from './SameWalletWarning.tsx';
 import { rescueBlockers, type RescueBlocker } from './wizard.ts';
 
 type KeysStepProps = {
@@ -17,6 +18,8 @@ type KeysStepProps = {
   choices: readonly Address[];
   /** The second key of this run: the chosen (or only) one, or the second key slot's when nothing is locked. */
   secondKey: Address | null;
+  /** The new wallet's wallet app also holds these keys, or null (SECURITY-CHECK П5): a key connected here counts too. */
+  sameWallet: SameWallet | null;
   mainMode: SignMode;
   secondMode: SignMode;
   onChoose: (secondKey: Address) => void;
@@ -40,9 +43,10 @@ function blockerText(blocker: RescueBlocker): string {
 /**
  * Step 3 (F4 steps 4-5): which second key co-signs this run, and where the main key and the second key sign: in this
  * browser, or on another device by link. The new wallet always signs here: it pays and owns the link-signing account.
+ * A second key connected here from the new wallet's wallet app gets the same-wallet warning.
  */
 export function KeysStep(props: KeysStepProps) {
-  const { headingRef, mainKey, newWallet, choices, secondKey, mainMode, secondMode } = props;
+  const { headingRef, mainKey, newWallet, choices, secondKey, sameWallet, mainMode, secondMode } = props;
   const headingId = useId();
   const legendId = useId();
   const blockers = rescueBlockers('keys', {
@@ -97,6 +101,7 @@ export function KeysStep(props: KeysStepProps) {
           </RadioGroup>
         </fieldset>
       )}
+      {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="continue" />}
       <SignWhere role="main" value={mainMode} onChange={props.onMainMode} />
       <SignWhere
         role="second"

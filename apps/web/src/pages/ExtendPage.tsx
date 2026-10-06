@@ -6,7 +6,7 @@ import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount } from '@/pages/account/AccountView';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
-import { usePorts } from '@/ports';
+import { useDeviceClock, usePorts } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
 import type { JobView, SigningState } from '@/signing/machine';
 import { choiceText, ExtendChoose } from './extend/ExtendChoose.tsx';
@@ -36,8 +36,10 @@ export function ExtendPage({ signing }: ExtendPageProps) {
   const ports = usePorts();
   const { chain } = ports;
   const removeParam = new URLSearchParams(useSearch()).has('remove');
+  const deviceClock = useDeviceClock();
   const [attempt, setAttempt] = useState(0);
-  const load = useAccountState(chain, account, attempt);
+  // The read's time on this device: ExtendChoose checks the cluster clock against it (SECURITY-CHECK П12).
+  const load = useAccountState(chain, account, attempt, deviceClock);
   const loaded = loadedAccount(load);
   const rent0 = useLoad('rent0', () => chain.getMinimumBalanceForRentExemption(0));
   const [selected, setSelected] = useState<string | null>(null);
@@ -123,6 +125,7 @@ export function ExtendPage({ signing }: ExtendPageProps) {
               removeParam={removeParam}
               selected={selected}
               onSelect={setSelected}
+              onReread={reread}
               onContinue={(choice) => {
                 start({
                   lockUntil: choiceLockUntil(choice),

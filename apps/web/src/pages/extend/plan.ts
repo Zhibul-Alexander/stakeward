@@ -26,9 +26,11 @@ const REFUSALS: readonly ExtendRefusal[] = [
 
 /**
  * F5: SetLockup signed by the second key K: a new lock end `lockUntil`, or `0n` to remove the lock now. K pays when it
- * can (core canPayFee with one signature's fee); otherwise the main key pays and signs too, and the engine's fee check
- * then checks the main key. Every round reads the account, the clock, K's balance and the minimum balance again. The
- * first matching rule decides:
+ * can (core canPayFee with one signature's fee). Otherwise the main key pays and signs too, but only when its own
+ * balance covers both signatures: a main key that may be stolen is never the reason to send SOL anywhere (SECURITY-CHECK
+ * П16). When neither can pay, K stays the payer, so the engine's fee check names the second key as the one to fund.
+ * Every round reads the account, the clock, the balances and the minimum balance again. The first matching rule
+ * decides:
  * 1. no account -> not-found; 2. not a stake account -> not-stake-account; 3. an epoch holds the lock -> epoch-locked;
  * 4. removing, and no lock in force -> done; 5. extending, and K already holds the lock until `lockUntil` -> done;
  * 6. no lock in force, or one held by the main key itself or by no key -> not-locked; 7. another key holds it ->
@@ -46,19 +48,30 @@ export function extendPlan(input: { secondKey: Address; lockUntil: bigint }): Si
         chain.getBalance(secondKey),
         chain.getMinimumBalanceForRentExemption(0),
       ]);
+      const decoded = accounts.map((raw) => (raw === null ? null : decodeStakeAccount(raw)));
+      // The fallback payer's balance, read only when the second key cannot pay.
+      const secondPays = canPayFee(balance, networkFeeFor(1), rent0);
+      const mainKeys = secondPays ? [] : [...new Set(decoded.flatMap((result) => (result?.ok === true ? [result.account.withdrawer] : [])))];
+      const mainBalances = new Map(
+        await Promise.all(mainKeys.map(async (mainKey) => [mainKey, await chain.getBalance(mainKey)] as const)),
+      );
+      const feePayerFor = (mainKey: Address): Address => {
+        if (secondPays) return secondKey;
+        const mainBalance = mainBalances.get(mainKey);
+        return mainBalance !== undefined && canPayFee(mainBalance, networkFeeFor(2), rent0) ? mainKey : secondKey;
+      };
       const jobs: Record<string, JobPlan> = {};
       ids.forEach((id, index) => {
-        const raw = accounts[index] ?? null;
-        if (raw === null) {
+        const result = decoded[index] ?? null;
+        if (result === null) {
           jobs[id] = { kind: 'refused', reason: 'not-found', before: null };
           return;
         }
-        const decoded = decodeStakeAccount(raw);
-        if (!decoded.ok) {
+        if (!result.ok) {
           jobs[id] = { kind: 'refused', reason: 'not-stake-account', before: null };
           return;
         }
-        const { account } = decoded;
+        const { account } = result;
         const { lockup } = account;
         const inForce = isLockupInForce(lockup, clock);
         const refuse = (reason: ExtendRefusal) => {
@@ -85,7 +98,7 @@ export function extendPlan(input: { secondKey: Address; lockUntil: bigint }): Si
               ? { kind: 'unlock', stakeAccount: account.address, secondKey }
               : { kind: 'extend', stakeAccount: account.address, secondKey, lockUntil },
             // F5: the second key pays when it can; a phone wallet then signs alone (UX rule 10).
-            feePayer: canPayFee(balance, networkFeeFor(1), rent0) ? secondKey : account.withdrawer,
+            feePayer: feePayerFor(account.withdrawer),
             before: account,
           };
         }

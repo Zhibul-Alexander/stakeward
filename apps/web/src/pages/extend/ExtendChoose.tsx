@@ -13,6 +13,8 @@ import { CLUSTER } from '@/config';
 import { t } from '@/i18n';
 import type { LoadedAccount } from '@/pages/account/AccountView';
 import { appLinks } from '@/pages/app/view';
+import { clockSkew } from '@/pages/protect/clock';
+import { ClockSkewError } from '@/pages/protect/ClockSkewError';
 import { choiceValue, defaultChoice, extendOptions, extendStage, type ExtendChoice } from './options.ts';
 
 /** The words of a choice: its period and end date, or removing the lock. */
@@ -32,18 +34,24 @@ type ExtendChooseProps = {
   /** The radio value the user picked; null: the default. */
   selected: string | null;
   onSelect: (value: string) => void;
+  /** Read the account and the clocks again (after a clock that did not match this device). */
+  onReread: () => void;
   onContinue: (choice: ExtendChoice) => void;
 };
 
 /**
  * What /extend/:account offers for the lock as just read (F5): a later end, or removing the lock now, each with its
- * risk said before the action (UX rule 6); or why there is nothing to change here.
+ * risk said before the action (UX rule 6); or why there is nothing to change here. Nothing is offered when the cluster
+ * clock was more than a day off this device's clock at the read: the new ends are computed from it (SECURITY-CHECK
+ * П12).
  */
-export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSelect, onContinue }: ExtendChooseProps) {
+export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSelect, onReread, onContinue }: ExtendChooseProps) {
   const headingId = useId();
   const removeHintId = useId();
   const { account, clock } = loaded;
   const { lockup } = account;
+  const skew = clockSkew(clock.unixTimestamp, loaded.readAt);
+  if (skew !== null) return <ClockSkewError skew={skew} onRetry={onReread} />;
   switch (extendStage(account, clock)) {
     case 'epoch-locked':
       return (

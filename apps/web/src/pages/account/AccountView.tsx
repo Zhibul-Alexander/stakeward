@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import type { Load } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import { appLinks } from '@/pages/app/view';
 import { useKnownSecondKeys } from '@/ports';
 import type { AccountState } from './load.ts';
 
@@ -108,6 +109,7 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
           activation={stakeActivationStatus(account.delegation, clock.epoch)}
           protection={view.status}
           managedByService={view.managedByService}
+          rescueHref={appLinks.rescue(account.withdrawer)}
         />
       );
     }

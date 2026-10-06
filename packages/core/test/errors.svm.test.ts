@@ -21,7 +21,14 @@ import {
   type KeyPairSigner,
   type SolanaError,
 } from '@solana/kit';
-import { getAuthorizeCheckedInstruction, getMergeInstruction, StakeAuthorize } from '@solana-program/stake';
+import {
+  getAuthorizeCheckedInstruction,
+  getAuthorizeInstruction,
+  getMergeInstruction,
+  getSetLockupInstruction,
+  getWithdrawInstruction,
+  StakeAuthorize,
+} from '@solana-program/stake';
 import { getAdvanceNonceAccountInstruction } from '@solana-program/system';
 import { FailedTransactionMetadata } from 'litesvm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -31,8 +38,11 @@ import {
   expectedFeePayer,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
+  SYSVAR_CLOCK_ADDRESS,
+  toLegacyLayout,
   translateError,
   type Lifetime,
+  type StakeIx,
   type TransactionAction,
 } from '../src/index.ts';
 import { TestChain } from './svm.ts';
@@ -181,6 +191,103 @@ describe('stake program errors from LiteSVM', () => {
       code: 'insufficient-funds',
       title: expect.stringMatching(/paying the network fee/) as unknown,
     });
+  });
+});
+
+// The SwissBorg vector (SECURITY-CHECK П7): a hidden, unchecked Authorize(Withdrawer -> X). Stakeward never builds it
+// (the inspector refuses it), but a phishing site or a hacked staking API can; the lock must refuse it on the chain.
+// Both account layouts: the generated one (no sysvar) and the legacy one with Clock at index 1, as older SDKs build it.
+describe('an unchecked Authorize(Withdrawer) on a locked account', () => {
+  const layouts: [string, (instruction: StakeIx) => StakeIx][] = [
+    ['generated layout', (instruction) => instruction],
+    ['legacy layout (Clock at index 1)', (instruction) => toLegacyLayout(instruction, { at: 1, sysvars: [SYSVAR_CLOCK_ADDRESS] })],
+  ];
+
+  it.each(layouts)('%s: signed by the main key alone -> CustodianMissing, nothing changes', async (_name, layout) => {
+    const { stakeAccount } = await lockedAccount();
+    const before = chain.stakeAccount(stakeAccount);
+    const authorize = layout(
+      getAuthorizeInstruction({
+        stake: stakeAccount,
+        authority: createNoopSigner(A.address),
+        arg0: X.address,
+        arg1: StakeAuthorize.Withdrawer,
+      }),
+    );
+    const bytes = message([authorize], A.address);
+    expect(translateError(await failure(bytes, [A]), { transaction: bytes }).code).toBe('custodian-missing');
+    expect(chain.stakeAccount(stakeAccount)).toEqual(before);
+  });
+
+  it.each(layouts)('%s: with a wrong key signing as the lock key -> LockupInForce, nothing changes', async (_name, layout) => {
+    const { stakeAccount } = await lockedAccount();
+    const before = chain.stakeAccount(stakeAccount);
+    const authorize = layout(
+      getAuthorizeInstruction({
+        stake: stakeAccount,
+        authority: createNoopSigner(A.address),
+        lockupAuthority: createNoopSigner(X.address),
+        arg0: X.address,
+        arg1: StakeAuthorize.Withdrawer,
+      }),
+    );
+    const bytes = message([authorize], A.address);
+    expect(translateError(await failure(bytes, [A, X]), { transaction: bytes }).code).toBe('lockup-in-force');
+    expect(chain.stakeAccount(stakeAccount)).toEqual(before);
+  });
+});
+
+// "The second key alone cannot take the stake" (SECURITY-CHECK П9, CLAUDE.md section 1): K is only the lock's key. It
+// can move the lock, or hand it to another key, but withdrawing and changing the main key always need the main key.
+describe('what the second key alone cannot do', () => {
+  it('withdraw: the second key signing as both the withdraw key and the lock key -> MissingRequiredSignature', async () => {
+    const { stakeAccount } = await lockedAccount();
+    const balance = chain.balance(stakeAccount);
+    const withdraw = getWithdrawInstruction({
+      stake: stakeAccount,
+      recipient: K.address,
+      withdrawAuthority: createNoopSigner(K.address),
+      lockupAuthority: createNoopSigner(K.address),
+      args: 1n,
+    });
+    const bytes = message([withdraw], K.address);
+    expect(translateError(await failure(bytes, [K]), { transaction: bytes }).code).toBe('missing-signature');
+    expect(chain.balance(stakeAccount)).toBe(balance);
+  });
+
+  it('change the main key: AuthorizeChecked(Withdrawer -> X) signed by the second key and X -> MissingRequiredSignature', async () => {
+    const { stakeAccount } = await lockedAccount();
+    const before = chain.stakeAccount(stakeAccount);
+    const authorize = getAuthorizeCheckedInstruction({
+      stake: stakeAccount,
+      authority: createNoopSigner(K.address),
+      newAuthority: createNoopSigner(X.address),
+      lockupAuthority: createNoopSigner(K.address),
+      stakeAuthorize: StakeAuthorize.Withdrawer,
+    });
+    const bytes = message([authorize], K.address);
+    expect(translateError(await failure(bytes, [K, X]), { transaction: bytes }).code).toBe('missing-signature');
+    expect(chain.stakeAccount(stakeAccount)).toEqual(before);
+  });
+
+  it('after the second key hands the lock to X, a withdrawal signed by the main key and the old second key -> LockupInForce', async () => {
+    const { stakeAccount, lockUntil } = await lockedAccount();
+    // The second key alone may hand its lock to another key (a stolen second key does exactly this).
+    const handOver = getSetLockupInstruction({
+      stake: stakeAccount,
+      authority: createNoopSigner(K.address),
+      unixTimestamp: null,
+      epoch: null,
+      custodian: X.address,
+    });
+    expect((await chain.send(message([handOver], K.address), [K])).ok).toBe(true);
+    expect(chain.stakeAccount(stakeAccount)?.lockup).toEqual({ unixTimestamp: lockUntil, epoch: 0n, custodian: X.address });
+
+    const balance = chain.balance(stakeAccount);
+    const bytes = build({ kind: 'withdraw', stakeAccount, mainKey: A.address, secondKey: K.address, recipient: A.address, lamports: 1n });
+    expect(translateError(await failure(bytes, [A, K]), { transaction: bytes, lockUntil }).code).toBe('lockup-in-force');
+    expect(chain.balance(stakeAccount)).toBe(balance);
+    expect(chain.stakeAccount(stakeAccount)?.withdrawer).toBe(A.address);
   });
 });
 

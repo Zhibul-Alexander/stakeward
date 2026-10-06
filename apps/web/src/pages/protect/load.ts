@@ -1,7 +1,8 @@
 import type { Address } from '@solana/kit';
 import { translateError, type ChainClock, type ChainPort, type FriendlyError, type StakeAccount } from '@stakeward/core';
 import { useEffect, useState } from 'react';
-import { refreshStakeAccounts } from '@/ports';
+import { refreshStakeAccounts, type DeviceClock } from '@/ports';
+import { clockSkew, type ClockSkew } from './clock.ts';
 
 export type MainKeyAccountsState =
   /** No main key to read for: nothing is read. */
@@ -53,16 +54,23 @@ export function useMainKeyAccounts(chain: ChainPort, mainKey: Address | null, at
 export type ClusterClockState =
   | { status: 'loading' }
   | { status: 'error'; error: FriendlyError }
+  /** More than a day off this device's clock when it arrived: no lock end is computed from it (SECURITY-CHECK П12). */
+  | { status: 'skewed'; skew: ClockSkew }
   | { status: 'ready'; clock: ChainClock };
 
-/** The cluster clock (the lock end is computed from it), read again whenever `attempt` changes. */
-export function useClusterClock(chain: ChainPort, attempt: number): ClusterClockState {
+/**
+ * The cluster clock (the lock end is computed from it), read again whenever `attempt` changes, and checked against
+ * `deviceClock` when it arrives.
+ */
+export function useClusterClock(chain: ChainPort, attempt: number, deviceClock: DeviceClock): ClusterClockState {
   const [result, setResult] = useState<{ attempt: number; state: ClusterClockState } | null>(null);
   useEffect(() => {
     let current = true;
     chain.getClock().then(
       (clock) => {
-        if (current) setResult({ attempt, state: { status: 'ready', clock } });
+        if (!current) return;
+        const skew = clockSkew(clock.unixTimestamp, deviceClock());
+        setResult({ attempt, state: skew === null ? { status: 'ready', clock } : { status: 'skewed', skew } });
       },
       (error: unknown) => {
         if (current) setResult({ attempt, state: { status: 'error', error: translateError(error) } });
@@ -71,6 +79,6 @@ export function useClusterClock(chain: ChainPort, attempt: number): ClusterClock
     return () => {
       current = false;
     };
-  }, [chain, attempt]);
+  }, [chain, attempt, deviceClock]);
   return result !== null && result.attempt === attempt ? result.state : { status: 'loading' };
 }

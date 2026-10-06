@@ -3,6 +3,7 @@
 // from src.
 import { getSignatureFromTransaction, getTransactionDecoder, type Signature } from '@solana/kit';
 import type { ChainPort } from '@stakeward/core';
+import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import type { TestWalletPort } from '@stakeward/core/test/test-wallet-port';
 import { render, screen, waitFor, within, type BoundFunctions, type queries } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
@@ -20,9 +21,11 @@ import {
   createSlotStore,
   PortsProvider,
   StaticWalletRegistry,
+  type DeviceClock,
   type Ports,
 } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
+import { CountingChain } from './counting-chain.ts';
 import { createFakeApi } from './fake-api.ts';
 
 export const SCENARIO_TIMEOUT = 60_000;
@@ -36,7 +39,18 @@ export type Scope = BoundFunctions<typeof queries>;
 
 export type StakePage = { ports: Ports; location: ReturnType<typeof memoryLocation>; user: UserEvent; view: Scope };
 
-/** Fresh ports for one browser: these wallets, no key slot filled, nothing remembered. */
+/**
+ * A device clock that reads the LiteSVM chain's clock (directly, or under a CountingChain), so the pages' check of the
+ * cluster clock against the device (SECURITY-CHECK П12) sees the two agree, as on a real device. Undefined for any
+ * other chain: the pages then use the system clock.
+ */
+export function chainDeviceClock(chain: ChainPort): DeviceClock | undefined {
+  const inner = chain instanceof CountingChain ? chain.inner : chain;
+  if (!(inner instanceof LiteSvmChain)) return undefined;
+  return () => inner.testChain.clock().unixTimestamp;
+}
+
+/** Fresh ports for one browser: these wallets, no key slot filled, nothing remembered, a clock that follows the chain. */
 export function testPorts(chain: ChainPort, wallets: readonly TestWalletPort[], ports: Partial<Ports> = {}): Ports {
   return {
     chain,
@@ -45,6 +59,7 @@ export function testPorts(chain: ChainPort, wallets: readonly TestWalletPort[], 
     secondKeys: createSecondKeyMemory(null),
     protectedAccounts: createProtectedAccountMemory(null),
     api: createFakeApi(chain),
+    deviceClock: chainDeviceClock(chain),
     ...ports,
   };
 }

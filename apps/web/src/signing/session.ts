@@ -402,7 +402,14 @@ export class SigningSession {
         }
         const context: TranslateContext = { transaction: item.bytes };
         if (item.before !== null) context.lockUntil = item.before.lockup.unixTimestamp;
-        jobs[item.id] = jobView(item.id, { kind: 'sim-failed', error: translateError(simulation.error, context) }, item);
+        const error = translateError(simulation.error, context);
+        if (error.code === 'insufficient-funds') {
+          // A fee payer that cannot pay this one fails its simulation before the round's fee check: name the key to
+          // fund (fee-balance) instead of a failure that names none (SECURITY-CHECK П16). A short stake account passes.
+          await this.checkFees(work, [item], roleHints([item.summary.action]));
+          if (this.stale(work)) return;
+        }
+        jobs[item.id] = jobView(item.id, { kind: 'sim-failed', error }, item);
       }
 
       const hints = roleHints(remaining.map((item) => item.summary.action));
@@ -642,6 +649,16 @@ export class SigningSession {
       if (this.stale(work)) return;
       if (!inspected.ok) {
         this.stop(work, index, { kind: 'inspect', walletName: wallet.name, error: inspected.error });
+        return;
+      }
+      // The wallet must have added its own valid signature: unchanged bytes pass checkSigningStep, and the step would
+      // read as signed while the last check (or the other device, by link) asks for this key again.
+      if (!inspected.summary.presentSignatures.includes(step.address)) {
+        this.stop(work, index, {
+          kind: 'verify',
+          code: 'missing-signatures',
+          detail: `${wallet.name} returned transaction ${tx.id} without a valid signature of ${step.address}`,
+        });
         return;
       }
       signed.set(tx.id, { ...tx, bytes, summary: inspected.summary });

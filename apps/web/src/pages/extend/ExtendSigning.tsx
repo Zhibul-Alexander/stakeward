@@ -38,8 +38,9 @@ type ExtendSigningProps = {
 
 /**
  * The signing section of /extend/:account (F5, live only): one SetLockup for this stake account, signed by the second
- * key. When the second key has too little SOL for the fee the main key pays and signs too; the page says so and how
- * much to send the second key so that it signs alone next time. Removing the lock needs a ticked confirmation first.
+ * key. When the second key has too little SOL for the fee the main key pays and signs too (only when it holds enough
+ * itself, extendPlan); the page says so, how much to send the second key so that it signs alone next time, and not to
+ * rely on a main key that may be stolen. Removing the lock needs a ticked confirmation first.
  */
 export function ExtendSigning({
   headingRef,
@@ -78,6 +79,7 @@ export function ExtendSigning({
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="flex flex-col gap-3 text-foreground">
             <p>{t('extend.mainPays', { amount: formatSol(networkFeeFor(1) + rent0.value) })}</p>
+            <p className="font-medium">{t('extend.mainPaysStolen')}</p>
             <div>
               <Button variant="outline" size="sm" onClick={onCheckAgain}>
                 <RefreshCwIcon aria-hidden="true" />

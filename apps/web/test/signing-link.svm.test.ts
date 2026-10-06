@@ -499,6 +499,53 @@ describe('SigningSession on a durable nonce', { timeout: 60_000 }, () => {
       s.dispose();
     });
 
+    it('a wallet here that returns the transaction unsigned before the link: stopped(verify), no link shown', async () => {
+      // A rescue paid by the new wallet D on its nonce: D and the main key sign here, the second key by link.
+      const newWallet = await testChain.fundedKey();
+      const D = newWallet.address;
+      const nonceD = await createNonce(newWallet);
+      const locked = await testChain.createStakeAccount({ staker: A, withdrawer: A, lockup: { unixTimestamp: T, epoch: 0n, custodian: K } });
+      const fresh = await createTestWalletPort({ name: 'New Wallet', signers: [newWallet], connected: true });
+      wallets = new StaticWalletRegistry([main, second, fresh]);
+      slots.assign('new', { walletId: fresh.id, address: D });
+      const rescue: SigningPlan = {
+        nonce: { nonceAccount: nonceD, nonceAuthority: D },
+        remote: [K],
+        async prepare(port, ids) {
+          const [{ accounts }, clock] = await Promise.all([port.getAccounts(ids as Address[]), port.getClock()]);
+          const raw = accounts[0] ?? null;
+          const decoded = raw === null ? null : decodeStakeAccount(raw);
+          if (decoded === null || !decoded.ok) throw new Error('no stake account');
+          const job: JobPlan = {
+            kind: 'build',
+            action: { kind: 'rescue', stakeAccount: locked, mainKey: A, secondKey: K, newWallet: D },
+            feePayer: D,
+            before: decoded.account,
+          };
+          return { clock, jobs: { [locked]: job } };
+        },
+      };
+      const s = session({ plan: rescue, ids: [locked], resolveSigner: slotSignerResolver({ slots, wallets }) });
+      s.start();
+      const ready = await until(s, phaseIs('ready', 0));
+      expect(ready.round?.steps.map((step) => [step.address, step.local])).toEqual([
+        [D, true],
+        [A, true],
+        [K, false],
+      ]);
+      s.sign();
+      await until(s, phaseIs('ready', 1));
+      main.once({ skipSignature: true });
+      s.sign();
+      const stopped = await until(s, (st) => st.phase.kind === 'stopped' || st.phase.kind === 'link');
+      expect(stopped.phase).toMatchObject({ kind: 'stopped', step: 1, reason: { kind: 'verify', code: 'missing-signatures' } });
+      // No link was ever shown: the transaction id the link would carry was never given out.
+      expect(stopped.jobs[locked]?.signature ?? null).toBeNull();
+      expect(otherDevice.requests).toHaveLength(0);
+      expect(chain.count('send')).toBe(0);
+      s.dispose();
+    });
+
     it('done once the other device signs and sends; found from the chain, then the next round', async () => {
       const { s, state } = await openLink({ ids: [S1, S2] });
       const signature = await completeElsewhere(state.jobs[S1]?.bytes);

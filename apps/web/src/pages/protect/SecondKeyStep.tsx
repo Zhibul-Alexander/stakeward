@@ -1,6 +1,6 @@
 import type { Address } from '@solana/kit';
 import { shortAddress } from '@stakeward/core';
-import { InfoIcon, TriangleAlertIcon } from 'lucide-react';
+import { TriangleAlertIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { RiskNote } from '@/components/product/risk-note';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -35,9 +35,11 @@ type SecondKeyStepProps = {
 
 /**
  * Step 2 (F1 step 2): where the second key signs, then connect it in this browser or paste its address for signing by
- * link (step 7 spec 10.1). The risks come before the signature (UX rule 6): the second key can freeze the stake, and
- * both keys from one seed phrase protect nothing, which the user confirms. By link a wrong address simply cannot sign:
- * the joint signature on the chain stays the only proof (F1.4).
+ * link (step 7 spec 10.1). The risks come before the signature (UX rule 6): the second key can freeze the stake, both
+ * keys from one seed phrase protect nothing (the user confirms it; two accounts of one wallet app get a warning), and
+ * a second key used on other sites can be tricked into handing the lock away. By link the joint signature on the chain
+ * stays the only proof (F1.4), but it proves only that whoever holds the pasted address signed: the hint says to paste
+ * only a wallet the user or someone they trust made (SECURITY-CHECK П5, П8, П14).
  */
 export function SecondKeyStep(props: SecondKeyStepProps) {
   const { headingRef, mainKey, sameWallet, problems, mode, linkKey } = props;
@@ -74,12 +76,16 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
         </>
       )}
       {mode === 'link' || sameWallet === null ? null : (
-        <Alert tone="info" role="note">
-          <InfoIcon aria-hidden="true" />
-          <AlertDescription className="text-foreground">{t('protect.second.sameWallet', { wallet: sameWallet })}</AlertDescription>
+        <Alert tone="warning" role="note">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="flex flex-col gap-1 text-foreground">
+            <p className="font-medium">{t('protect.second.sameWallet', { wallet: sameWallet })}</p>
+            <p>{t('protect.second.sameWalletSwitch', { wallet: sameWallet })}</p>
+          </AlertDescription>
         </Alert>
       )}
       <RiskNote risk="second-key-can-freeze" />
+      <p className="max-w-prose text-sm">{t('protect.second.onlyStakeward')}</p>
       {problems.length === 0 ? null : (
         <Alert tone="danger" role="note" data-slot="second-key-problems">
           <TriangleAlertIcon aria-hidden="true" />

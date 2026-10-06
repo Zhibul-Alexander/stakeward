@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
-import { MAIN, mockApi, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
+import { MAIN, mockApi, NOW, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
 import { text } from './texts.ts';
 
 /**
@@ -32,6 +32,12 @@ type SmokeRoute = {
   after?: ((page: Page) => Promise<void>) | undefined;
   /** The route reads nothing from the API (a page that needs no wallet and no chain read to say what it says). */
   noApi?: boolean | undefined;
+  /**
+   * The page checks the cluster clock against this device's clock (extend, SECURITY-CHECK П12): the browser's clock is
+   * fixed at the mocked cluster time (NOW) first, as a real device's would roughly agree. It stays fixed for the routes
+   * after it.
+   */
+  clusterTime?: boolean | undefined;
   screen?: string | undefined;
 };
 
@@ -166,7 +172,13 @@ const ROUTES: readonly SmokeRoute[] = [
     ready: text('withdraw.ready.title', { amount: '1,250.5 SOL' }),
     screen: 'withdraw',
   },
-  { path: `/extend/${SMOKE_STAKE}`, heading: text('common.pages.extend'), ready: text('extend.legend'), screen: 'extend' },
+  {
+    path: `/extend/${SMOKE_STAKE}`,
+    heading: text('common.pages.extend'),
+    ready: text('extend.legend'),
+    clusterTime: true,
+    screen: 'extend',
+  },
   {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
@@ -236,6 +248,7 @@ test('every route renders under the production headers, without console errors o
     await test.step(route.path, async () => {
       await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
       apiRequests.length = 0;
+      if (route.clusterTime === true) await page.clock.setFixedTime(new Date(Number(NOW) * 1000));
       const response = await page.goto(route.path);
       expect(response?.status()).toBe(200);
       const headers = response?.headers() ?? {};

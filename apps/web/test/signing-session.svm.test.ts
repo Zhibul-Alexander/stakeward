@@ -409,6 +409,44 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
     s.dispose();
   });
 
+  it('a wallet that returns its transactions unsigned at a step that is not the last: stopped there by verify, the next key never asked', async () => {
+    const send = vi.spyOn(chain, 'send');
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    expect(s.getSnapshot().round?.steps.map((step) => step.address)).toEqual([A, K]);
+    main.once({ skipSignature: true });
+    s.sign();
+    const stopped = await until(s, phaseIs('stopped', 0));
+    expect(stopped.phase).toMatchObject({ reason: { kind: 'verify', code: 'missing-signatures' } });
+    // The step is not marked signed, and the summaries still list no signature of the main key.
+    expect(stopped.round?.steps[0]?.status).not.toBe('signed');
+    for (const tx of stopped.round?.txs ?? []) expect(tx.summary.presentSignatures).not.toContain(A);
+    expect(main.requests).toHaveLength(1);
+    expect(second.requests).toHaveLength(0);
+    expect(send).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it('a wallet that signs only some of the transactions it was asked for: stopped by verify at that step', async () => {
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    // Signs the first transaction and returns the second as it came.
+    const sign = main.signTransactions.bind(main);
+    vi.spyOn(main, 'signTransactions').mockImplementationOnce(async (address, transactions, options) => {
+      const [first, ...rest] = transactions;
+      if (first === undefined) return [];
+      const [signed] = await sign(address, [first], options);
+      return [signed ?? Uint8Array.from(first), ...rest.map((bytes) => Uint8Array.from(bytes))];
+    });
+    s.sign();
+    const stopped = await until(s, phaseIs('stopped', 0));
+    expect(stopped.phase).toMatchObject({ reason: { kind: 'verify', code: 'missing-signatures' } });
+    expect(second.requests).toHaveLength(0);
+    s.dispose();
+  });
+
   it('fewer than 60 blocks left before the first signature: builds and simulates again, asks no wallet', async () => {
     const simulate = vi.spyOn(chain, 'simulate');
     const s = session();
@@ -554,6 +592,41 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
     if (problem.kind !== 'fee-balance') throw new Error(problem.kind);
     expect(problem.needed).toBeGreaterThan(problem.balance);
     expect(poor.requests).toHaveLength(0);
+    s.dispose();
+  });
+
+  // SECURITY-CHECK П16: an empty fee payer fails the simulation before the fee check; the page must still say which key
+  // to fund (the generic "not enough SOL" sim failure named no key).
+  it('a fee payer that never held SOL: prepare-failed fee-balance naming that key, not a sim failure', async () => {
+    const emptyKey = await generateKeyPairSigner();
+    const empty = await createTestWalletPort({ name: 'Empty Wallet', signers: [emptyKey], connected: true });
+    wallets.add(empty);
+    slots.clear('main');
+    slots.assign('main', { walletId: empty.id, address: emptyKey.address });
+    const P1 = await testChain.createStakeAccount({ staker: emptyKey.address, withdrawer: emptyKey.address });
+    const s = session({ ids: [P1], plan: protectPlan(emptyKey.address, K, T) });
+    s.start();
+    const failed = await until(s, (state) => state.phase.kind === 'prepare-failed' || state.phase.kind === 'finished');
+    expect(failed.phase).toMatchObject({
+      kind: 'prepare-failed',
+      problem: { kind: 'fee-balance', payer: emptyKey.address, role: 'main', balance: 0n },
+    });
+    expect(empty.requests).toHaveLength(0);
+    s.dispose();
+  });
+
+  it('a simulation that fails for lack of SOL in the stake account, with a payer that can pay: still a sim failure', async () => {
+    // A withdrawal of more than the account holds: the payer is fine, the stake account is short.
+    const plan = planOf((id, account) => ({
+      kind: 'build',
+      action: { kind: 'withdraw', stakeAccount: id, mainKey: A, secondKey: null, recipient: A, lamports: account.lamports + 1n },
+      feePayer: A,
+      before: account,
+    }));
+    const s = session({ ids: [S1], plan });
+    s.start();
+    const end = await until(s, phaseIs('finished'));
+    expect(end.jobs[S1]?.state).toMatchObject({ kind: 'sim-failed', error: { code: 'insufficient-funds' } });
     s.dispose();
   });
 
