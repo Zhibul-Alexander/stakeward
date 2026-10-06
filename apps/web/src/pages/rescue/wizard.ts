@@ -6,6 +6,7 @@ import {
   type ChainClock,
   type ClockView,
   type StakeAccount,
+  type WalletSlots,
 } from '@stakeward/core';
 import { retryableOutcomes } from '@/pages/account/check';
 import type { JobState, JobView } from '@/signing/machine';
@@ -117,6 +118,17 @@ export function newWalletProblems(
   if (secondKeys.includes(d)) problems.push('second-key');
   if (accounts.some((account) => account.address === d)) problems.push('stake-account');
   return problems;
+}
+
+/**
+ * The key roles whose slot is in the same wallet app as the new wallet's slot (SECURITY-CHECK П5). Accounts of one
+ * wallet app, and every account of one Ledger, usually come from one seed phrase: next to the main key the "new" wallet
+ * is the thief's too; next to the second key one phrase would make both keys. Empty without a new wallet.
+ */
+export function newWalletSharesWallet(slots: WalletSlots): ('main' | 'second')[] {
+  const fresh = slots.new;
+  if (fresh === null) return [];
+  return (['main', 'second'] as const).filter((role) => slots[role]?.walletId === fresh.walletId);
 }
 
 export type RescueBlocker =

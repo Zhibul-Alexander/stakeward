@@ -22,6 +22,7 @@ import {
   MAX_RESCUE_ACCOUNTS,
   movedIds,
   newWalletProblems,
+  newWalletSharesWallet,
   RESCUE_STEPS,
   rescueBlockers,
   rescueGroups,
@@ -97,6 +98,10 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const groups = A === null || clock === null ? EMPTY_GROUPS : rescueGroups(accounts, A, K, clock);
   const runIds = groups.movable.slice(0, MAX_RESCUE_ACCOUNTS).map((account) => account.address);
   const D = newSlot?.ready === true ? (slots.new?.address ?? null) : null;
+  // The new wallet sits in the same wallet app as a key: probably the same seed phrase (SECURITY-CHECK П5).
+  const sharedWith = newWalletSharesWallet(slots);
+  const newWalletName = newSlot?.wallet?.name ?? null;
+  const sameWallet = D === null || newWalletName === null || sharedWith.length === 0 ? null : { wallet: newWalletName, roles: sharedWith };
   // Where each key signs: the user's choice, else here when its slot holds it and its wallet offers it.
   const mainMode: SignMode = state.mainMode ?? (A !== null && slots.main?.address === A && mainSlot?.ready === true ? 'here' : 'link');
   const secondMode: SignMode =
@@ -217,6 +222,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           headingRef={headingRef}
           mainKey={A}
           newWallet={D}
+          sameWallet={sameWallet}
           problems={D === null ? [] : newWalletProblems(D, A, secondSlotKey === null ? choices : [...choices, secondSlotKey], accounts)}
           count={runIds.length}
           seedConfirmed={state.seedConfirmed}

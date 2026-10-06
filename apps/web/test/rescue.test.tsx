@@ -18,6 +18,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import en from '@/i18n/en.json';
+import { createSlotStore } from '@/ports';
 import {
   click,
   connect,
@@ -210,6 +211,45 @@ describe('/rescue: the first step never states a date a lock does not have', () 
       }, WAIT);
       expect(screen.queryByText(/1 January 1970/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Finish the move before then/)).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
+// SECURITY-CHECK П5: in a panic the "new wallet" is often one more account next to the stolen main key, in the same
+// wallet app, from the same seed phrase. The step says so before the seed box.
+describe('/rescue: a new wallet in the same wallet app as a key', () => {
+  it(
+    'warns when the new wallet is an account of the main key\'s wallet app; not when it has a wallet app of its own',
+    async () => {
+      const w = await world();
+      await stake(w, { custodian: w.K.address });
+      // One wallet app holds the main key and the account the user is about to call the new wallet.
+      const shared = await createTestWalletPort({ name: 'Shared Wallet', signers: [w.A, w.D], connected: true });
+      const slots = createSlotStore(null);
+      slots.assign('main', { walletId: shared.id, address: w.A.address });
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.newWallet, w.second], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      await connect(user, 'New wallet', 'Shared Wallet');
+      expect(slots.getSnapshot().new?.address).toBe(w.D.address);
+      const line = await screen.findByText('Your new wallet and your main key are both in Shared Wallet.', undefined, WAIT);
+      const alert = line.closest('[data-slot="alert"]') as HTMLElement;
+      expect(alert).toHaveAttribute('data-tone', 'warning');
+      expect(alert).toHaveTextContent(
+        'Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you made this account from a new seed phrase.',
+      );
+
+      // Another wallet app for the new wallet: no warning.
+      slots.clear('new');
+      await connect(user, 'New wallet', 'New Wallet');
+      expect(slots.getSnapshot().new?.address).toBe(w.D.address);
+      await waitFor(() => {
+        expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
+      });
     },
     SCENARIO_TIMEOUT,
   );

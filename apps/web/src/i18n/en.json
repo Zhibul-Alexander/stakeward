@@ -851,9 +851,11 @@
       "body": "Use a wallet made from a different seed phrase. It signs once now to show it works. Later it is needed to withdraw this stake or to move it to a new wallet.",
       "slotDescription": "Your second key. Connecting signs nothing.",
       "linkAddress": "Second key address",
-      "linkHint": "Paste the address of the wallet that will be your second key. It signs on the other device; a wrong address simply cannot sign, and nothing changes.",
+      "linkHint": "Paste only the address of a wallet you or a person you trust created. Stakeward never gives you a second key address; whoever holds it can freeze this stake.",
       "oneBrowser": "Both keys must be connected in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
-      "sameWallet": "Both keys are in {wallet}. While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
+      "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you imported this account from a different seed phrase.",
+      "sameWalletSwitch": "While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
+      "onlyStakeward": "Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.",
       "problem": {
         "zero-key": "This is the empty address, not a wallet. Choose another wallet as your second key.",
         "main-key": "This is your main key. Choose a wallet from a different seed phrase.",
@@ -1360,6 +1362,11 @@
       "heading": "Connect a new wallet",
       "body": "Create a new wallet with a NEW seed phrase in your wallet app, on a device you trust. A new account under your current seed phrase is not safe: whoever has that phrase has the account too. Your stake moves to this wallet.",
       "slot": "Your new wallet. It signs, pays the network fees and owns the link-signing account. Connecting signs nothing.",
+      "sameWallet": {
+        "main": "Your new wallet and your main key are both in {wallet}.",
+        "second": "Your new wallet and your second key are both in {wallet}.",
+        "seed": "Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you made this account from a new seed phrase."
+      },
       "seedCheck": "My new wallet comes from a new seed phrase that no one else has seen",
       "needSeedCheck": "Confirm that your new wallet has a new seed phrase.",
       "needNew": "Connect your new wallet to continue.",

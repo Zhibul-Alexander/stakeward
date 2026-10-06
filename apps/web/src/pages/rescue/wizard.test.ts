@@ -8,6 +8,7 @@ import {
   lockEndDate,
   movedIds,
   newWalletProblems,
+  newWalletSharesWallet,
   rescueBlockers,
   rescueGroups,
   rescueMinimum,
@@ -103,6 +104,24 @@ describe('newWalletProblems', () => {
     expect(newWalletProblems(A, A, [K], [stake])).toEqual(['main-key']);
     expect(newWalletProblems(K, A, [K2, K], [stake])).toEqual(['second-key']);
     expect(newWalletProblems(stake.address, A, [K], [stake])).toEqual(['stake-account']);
+  });
+});
+
+// SECURITY-CHECK П5: accounts of one wallet app usually share one seed phrase. A new wallet added as another account
+// next to the (stolen) main key is no new wallet at all; next to the second key, one phrase would make both keys.
+describe('newWalletSharesWallet', () => {
+  const slot = (walletId: string, address: Address) => ({ walletId, address });
+
+  it('names the roles whose slot is in the same wallet app as the new wallet', () => {
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Phantom', D) })).toEqual(['main']);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Solflare', D) })).toEqual(['second']);
+    expect(newWalletSharesWallet({ main: slot('Ledger', A), second: slot('Ledger', K), new: slot('Ledger', D) })).toEqual(['main', 'second']);
+  });
+
+  it('nothing without a new wallet, or when every key is in its own wallet app', () => {
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Phantom', K), new: null })).toEqual([]);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Backpack', D) })).toEqual([]);
+    expect(newWalletSharesWallet({ main: null, second: null, new: slot('Backpack', D) })).toEqual([]);
   });
 });
 

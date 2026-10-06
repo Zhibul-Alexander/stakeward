@@ -29,6 +29,8 @@ type NewWalletStepProps = {
   mainKey: Address;
   /** The new wallet slot's address, once it is ready here. */
   newWallet: Address | null;
+  /** The new wallet's wallet app (its name) also holds these keys' slots, or null (SECURITY-CHECK П5). */
+  sameWallet: { wallet: string; roles: readonly ('main' | 'second')[] } | null;
   problems: readonly NewWalletProblem[];
   /** Stake accounts this run moves (each one's fees count). */
   count: number;
@@ -62,9 +64,10 @@ function blockerText(blocker: RescueBlocker): string {
 /**
  * Step 2 (F4 step 1): the new wallet D, from a NEW seed phrase. It signs, pays every fee and owns the link-signing
  * account, so its balance is checked before the move, with where to send SOL from (never from the stolen main key).
+ * A new wallet in the same wallet app as the main key or the second key gets a warning before the seed box.
  */
 export function NewWalletStep(props: NewWalletStepProps) {
-  const { headingRef, mainKey, newWallet, problems, count, seedConfirmed } = props;
+  const { headingRef, mainKey, newWallet, sameWallet, problems, count, seedConfirmed } = props;
   const chain = useChain();
   const headingId = useId();
   const seedId = useId();
@@ -105,6 +108,19 @@ export function NewWalletStep(props: NewWalletStepProps) {
         <p className="max-w-prose text-muted">{t('rescue.newWallet.body')}</p>
       </div>
       <KeySlot role="new" mainKey={mainKey} description={t('rescue.newWallet.slot')} />
+      {sameWallet === null ? null : (
+        <Alert tone="warning" role="note">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="flex flex-col gap-1 text-foreground">
+            {sameWallet.roles.map((role) => (
+              <p key={role} className="font-medium">
+                {t(`rescue.newWallet.sameWallet.${role}`, { wallet: sameWallet.wallet })}
+              </p>
+            ))}
+            <p>{t('rescue.newWallet.sameWallet.seed')}</p>
+          </AlertDescription>
+        </Alert>
+      )}
       {problems.length === 0 ? null : (
         <Alert tone="danger" role="note" data-slot="new-wallet-problems">
           <TriangleAlertIcon aria-hidden="true" />

@@ -175,7 +175,11 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       await user.click(continueButton());
 
       await screen.findByRole('heading', { name: 'Connect your second key' });
+      // SECURITY-CHECK П8: a second key that signs elsewhere can be phished into handing the lock away.
+      expect(screen.getByText('Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.')).toBeInTheDocument();
       await connect(user, 'Second key', 'Second Wallet');
+      // Two wallet apps: no same-wallet warning.
+      expect(screen.queryByText(/^Both keys are in /)).toBeNull();
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
 
@@ -489,6 +493,12 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
       expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
       const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
+      // SECURITY-CHECK П14: a pasted address that signs is a second key, whoever holds it; never one someone gave you.
+      expect(field).toHaveAccessibleDescription(
+        'Paste only the address of a wallet you or a person you trust created. Stakeward never gives you a second key address; whoever holds it can freeze this stake.',
+      );
+      // SECURITY-CHECK П8: the second key is for Stakeward only, by link too.
+      expect(screen.getByText('Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.')).toBeInTheDocument();
       await user.click(continueButton());
       expect(await screen.findByText(en.components.addressField.empty)).toBeInTheDocument();
       await user.type(field, 'not-an-address');
@@ -828,7 +838,14 @@ describe('/protect step gates', () => {
       await screen.findByRole('heading', { name: 'Connect your second key' });
       await connect(user, 'Second key', 'Both Wallet');
       expect(page.ports.slots.getSnapshot().second?.address).toBe(w.K.address);
-      expect(screen.getByText(/^Both keys are in Both Wallet\./)).toBeInTheDocument();
+      // SECURITY-CHECK П5: one wallet app usually means one seed phrase, so this is a warning before the seed box.
+      const same = screen.getByText(/^Both keys are in Both Wallet\./);
+      const sameAlert = same.closest('[data-slot="alert"]') as HTMLElement;
+      expect(sameAlert).toHaveAttribute('data-tone', 'warning');
+      expect(sameAlert).toHaveTextContent(
+        'Both keys are in Both Wallet. Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you imported this account from a different seed phrase.',
+      );
+      expect(sameAlert).toHaveTextContent('While signing you will switch accounts in Both Wallet between the two signatures.');
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
       await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
