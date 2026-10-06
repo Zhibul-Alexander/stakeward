@@ -210,8 +210,9 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
 
 /**
  * The second key of the run: the second key slot's address when it signs here, the typed address when it signs by link
- * (null until that is a valid address). A wrong typed address simply cannot sign; the joint signature on the chain is
- * the only proof (F1.4).
+ * (null until that is a valid address). The joint signature on the chain proves only that the typed address signed,
+ * not whose it is: a scammer's address signs too (SECURITY-CHECK П14), so the field's hint says to paste only a wallet
+ * the owner or someone they trust created (F1.4).
  */
 export function chosenSecondKey(state: Pick<WizardState, 'secondMode' | 'linkKey'>, slotAddress: Address | null): Address | null {
   if (state.secondMode === 'here') return slotAddress;
