@@ -644,6 +644,16 @@ export class SigningSession {
         this.stop(work, index, { kind: 'inspect', walletName: wallet.name, error: inspected.error });
         return;
       }
+      // The wallet must have added its own valid signature: unchanged bytes pass checkSigningStep, and the step would
+      // read as signed while the last check (or the other device, by link) asks for this key again.
+      if (!inspected.summary.presentSignatures.includes(step.address)) {
+        this.stop(work, index, {
+          kind: 'verify',
+          code: 'missing-signatures',
+          detail: `${wallet.name} returned transaction ${tx.id} without a valid signature of ${step.address}`,
+        });
+        return;
+      }
       signed.set(tx.id, { ...tx, bytes, summary: inspected.summary });
     }
     const txs = round.txs.map((tx) => signed.get(tx.id) ?? tx);

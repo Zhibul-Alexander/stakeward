@@ -409,6 +409,44 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
     s.dispose();
   });
 
+  it('a wallet that returns its transactions unsigned at a step that is not the last: stopped there by verify, the next key never asked', async () => {
+    const send = vi.spyOn(chain, 'send');
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    expect(s.getSnapshot().round?.steps.map((step) => step.address)).toEqual([A, K]);
+    main.once({ skipSignature: true });
+    s.sign();
+    const stopped = await until(s, phaseIs('stopped', 0));
+    expect(stopped.phase).toMatchObject({ reason: { kind: 'verify', code: 'missing-signatures' } });
+    // The step is not marked signed, and the summaries still list no signature of the main key.
+    expect(stopped.round?.steps[0]?.status).not.toBe('signed');
+    for (const tx of stopped.round?.txs ?? []) expect(tx.summary.presentSignatures).not.toContain(A);
+    expect(main.requests).toHaveLength(1);
+    expect(second.requests).toHaveLength(0);
+    expect(send).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it('a wallet that signs only some of the transactions it was asked for: stopped by verify at that step', async () => {
+    const s = session();
+    s.start();
+    await until(s, phaseIs('ready', 0));
+    // Signs the first transaction and returns the second as it came.
+    const sign = main.signTransactions.bind(main);
+    vi.spyOn(main, 'signTransactions').mockImplementationOnce(async (address, transactions, options) => {
+      const [first, ...rest] = transactions;
+      if (first === undefined) return [];
+      const [signed] = await sign(address, [first], options);
+      return [signed ?? Uint8Array.from(first), ...rest.map((bytes) => Uint8Array.from(bytes))];
+    });
+    s.sign();
+    const stopped = await until(s, phaseIs('stopped', 0));
+    expect(stopped.phase).toMatchObject({ reason: { kind: 'verify', code: 'missing-signatures' } });
+    expect(second.requests).toHaveLength(0);
+    s.dispose();
+  });
+
   it('fewer than 60 blocks left before the first signature: builds and simulates again, asks no wallet', async () => {
     const simulate = vi.spyOn(chain, 'simulate');
     const s = session();
