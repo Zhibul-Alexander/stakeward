@@ -1,9 +1,10 @@
 import type { Address } from '@solana/kit';
-import { scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
+import { scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
 import {
   CircleAlertIcon,
   CircleCheckIcon,
   CircleXIcon,
+  FileTextIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
   SearchIcon,
@@ -24,6 +25,7 @@ import type { WatchState } from '@/api/watch';
 import { t } from '@/i18n';
 import type { SigningTestOptions } from '@/signing/create';
 import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
+import { appLinks } from '@/pages/app/view';
 import type { JobView } from '@/signing/machine';
 import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { defaultJobReason, jobStatus } from '@/signing/view';
@@ -126,6 +128,7 @@ export function ProtectDoneView({
     const after = protectedAccountOf(job);
     return after === undefined ? [] : [{ job, after }];
   });
+  const [firstProtected] = protectedJobs;
   const others = outcomes.filter((job) => protectedAccountOf(job) === undefined);
   const total = outcomes.length;
   const done = protectedJobs.length;
@@ -223,15 +226,17 @@ export function ProtectDoneView({
             </Button>
           </div>
         </DoneCard>
-        {done === 0 ? null : (
+        {firstProtected === undefined ? null : (
+          // One card for the pair of keys covers every account they lock (DECISIONS.md D74).
           <DoneCard title={t('protect.done.recovery.title')} description={t('protect.done.recovery.body')}>
-            <ul className="flex flex-col gap-1">
-              {protectedJobs.map(({ job }) => (
-                <li key={job.id}>
-                  <RecoveryLink account={job.id as Address} />
-                </li>
-              ))}
-            </ul>
+            <div>
+              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                <Link href={appLinks.recovery(firstProtected.job.id as Address)}>
+                  <FileTextIcon aria-hidden="true" />
+                  {t('protect.done.recovery.open')}
+                </Link>
+              </Button>
+            </div>
           </DoneCard>
         )}
       </div>
@@ -275,23 +280,19 @@ function ProtectedRow({
   secondKey: Address | null;
 }) {
   const account = job.id as Address;
-  const links = (
-    <>
-      {job.signature === null ? null : (
-        <span className="flex flex-wrap items-center gap-x-2 text-sm">
-          <span className="text-muted">{t('protect.done.transaction')}</span>
-          <AddressText address={job.signature} kind="tx" />
-        </span>
-      )}
-      <RecoveryLink account={account} />
-    </>
-  );
+  const transaction =
+    job.signature === null ? undefined : (
+      <span className="flex flex-wrap items-center gap-x-2 text-sm">
+        <span className="text-muted">{t('protect.done.transaction')}</span>
+        <AddressText address={job.signature} kind="tx" />
+      </span>
+    );
   if (after === null) {
     // Applied on the chain but not readable as a stake account now: the outcome without the row.
     return (
       <div className="flex flex-col gap-2">
         <JobStatusList items={[{ address: account, status: 'done', signature: job.signature }]} label={t('protect.done.protectedList')} />
-        {links}
+        {transaction}
       </div>
     );
   }
@@ -302,19 +303,8 @@ function ProtectedRow({
       activation={stakeActivationStatus(after.delegation, clock.epoch)}
       protection={view.status}
       managedByService={view.managedByService}
-      actions={links}
+      actions={transaction}
     />
-  );
-}
-
-function RecoveryLink({ account }: { account: Address }) {
-  return (
-    <Link
-      href={`/recovery/${account}`}
-      className="rounded-sm text-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-    >
-      {t('protect.done.recovery.link', { address: shortAddress(account) })}
-    </Link>
   );
 }
 

@@ -4,7 +4,8 @@
  * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
  * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
  *
- * Light theme values live in @theme; the dark theme overrides the same variables under prefers-color-scheme: dark.
+ * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
+ * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
  * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
  * exist at all.
  *
@@ -140,7 +141,7 @@
   --focus-ring-offset: 2px;
 }
 
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   :root {
     --color-background: #0d1017;
     --color-surface: #151922;
@@ -184,6 +185,13 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
     --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
     --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
   }
 }
 

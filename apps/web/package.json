@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && tsc -p e2e/tsconfig.json",
     "test": "vitest run",
-    "e2e": "pnpm build:devnet && playwright test"
+    "e2e": "pnpm build:devnet && playwright test",
+    "e2e:mainnet": "pnpm build:mainnet && E2E_CLUSTER=mainnet playwright test"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

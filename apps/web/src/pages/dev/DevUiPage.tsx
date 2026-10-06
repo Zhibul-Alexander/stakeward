@@ -24,6 +24,8 @@ const SECTIONS = [
   ['signing', 'devUi.signing'],
   ['link', 'devUi.link'],
   ['protect-result', 'devUi.protectResult'],
+  ['recovery', 'devUi.flows.recovery'],
+  ['landing-wallets', 'devUi.flows.landingWallets'],
 ] as const;
 
 function Loading() {

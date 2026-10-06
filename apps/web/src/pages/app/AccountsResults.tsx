@@ -1,6 +1,6 @@
 import type { Address } from '@solana/kit';
 import { formatSol, shortAddress } from '@stakeward/core';
-import { CalendarPlusIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
+import { CalendarPlusIcon, FileTextIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
@@ -278,22 +278,40 @@ function ownedActions(row: AccountView): ReactNode {
             account={account}
           />
           <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
+          <RecoveryCardLink account={account} />
         </>
       );
     case 'locked-by-other':
+      // Whose key holds this lock is not known here, so no card speaks for it (D35).
       return null;
   }
 }
 
-/** Second-key list: the second key can extend (or remove) the lock it holds. */
+/** Second-key list: the second key can extend (or remove) the lock it holds, and keep the card of that lock. */
 function secondKeyActions(row: AccountView): ReactNode {
   return (
+    <>
+      <ActionLink
+        href={appLinks.extend(row.account.address)}
+        label={t('app.actions.extend')}
+        icon={<CalendarPlusIcon aria-hidden="true" />}
+        variant={row.protection === 'expiring' ? 'primary' : 'outline'}
+        account={row.account.address}
+      />
+      <RecoveryCardLink account={row.account.address} />
+    </>
+  );
+}
+
+/** The printable recovery card of the keys that lock this account (DECISIONS.md D74). */
+function RecoveryCardLink({ account }: { account: Address }) {
+  return (
     <ActionLink
-      href={appLinks.extend(row.account.address)}
-      label={t('app.actions.extend')}
-      icon={<CalendarPlusIcon aria-hidden="true" />}
-      variant={row.protection === 'expiring' ? 'primary' : 'outline'}
-      account={row.account.address}
+      href={appLinks.recovery(account)}
+      label={t('app.actions.recovery')}
+      icon={<FileTextIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
     />
   );
 }

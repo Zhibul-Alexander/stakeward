@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import en from '@/i18n/en.json';
 import { FlowsSection } from './FlowsSection.tsx';
 import { SAMPLE } from './samples.ts';
 
-// /dev/ui shows the signing panel in each phase and the protect Done screen (step 4 spec section 7, DW7). The page is
+// /dev/ui shows the signing panel in each phase, the protect Done screen (step 4 spec section 7, DW7) and the recovery
+// card (step 8 spec 4.7). The page is
 // large, so the checks use selectors and text rather than role queries over the whole tree.
 describe('/dev/ui flows', () => {
-  it('renders the signing panel in every phase, signing by link and the Done screen in three outcomes', async () => {
+  it('renders the signing panel in every phase, signing by link, the Done screen in three outcomes and the recovery card', async () => {
     render(<FlowsSection />);
     const panels = () => [...document.querySelectorAll('#signing [data-slot="signing-panel"]')];
     await waitFor(
@@ -81,5 +83,22 @@ describe('/dev/ui flows', () => {
     const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > h2')].map((heading) => heading.textContent);
     expect(titles).toEqual(['2 stake accounts are protected', '1 of 4 stake accounts are protected', 'No stake account was protected']);
     expect(document.querySelectorAll(`#protect-result a[href="/api/telegram/link?wallet=${SAMPLE.mainKey}"]`)).toHaveLength(3);
+
+    // The recovery card of the sample keys (spec 4.7): two accounts, one managed by another key; the first lock ends
+    // within 30 days, so the card names its time; one more account of the main key is not on the card.
+    expect(document.querySelectorAll('#recovery [data-slot="recovery-card"]')).toHaveLength(1);
+    expect(document.querySelectorAll('#recovery [data-slot="recovery-account"]')).toHaveLength(2);
+    expect(document.querySelectorAll('#recovery [data-slot="managed-by"]')).toHaveLength(1);
+    expect(document.querySelector('#recovery [data-risk="lock-ends"]')).toHaveTextContent(/, 14:30 UTC the lock ends/);
+    expect(screen.getByText(/^This main key has 1 more stake account that this card does not cover/)).toBeInTheDocument();
+
+    // The landing's wallet table as a matrix run would fill it (spec 4.7): every verdict and every note at least once.
+    const wallets = document.getElementById('landing-wallets') as HTMLElement;
+    expect(wallets.querySelectorAll('[data-pair]')).toHaveLength(6);
+    expect(new Set([...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict')))).toEqual(
+      new Set(['not-verified', 'works', 'works-with-warning', 'blind-signing', 'does-not-work']),
+    );
+    expect(wallets).toHaveTextContent('Tested on Solana devnet on 6 October 2026.');
+    for (const note of Object.values(en.landing.wallets.notes)) expect(wallets).toHaveTextContent(note);
   }, 30_000);
 });

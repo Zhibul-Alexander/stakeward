@@ -112,5 +112,6 @@ describe('appLinks', () => {
     expect(appLinks.extend(locked.address)).toBe(`/extend/${locked.address}`);
     expect(appLinks.withdraw(locked.address)).toBe(`/withdraw/${locked.address}`);
     expect(appLinks.rescue(A)).toBe(`/rescue?address=${A}`);
+    expect(appLinks.recovery(locked.address)).toBe(`/recovery/${locked.address}`);
   });
 });

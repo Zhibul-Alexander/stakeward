@@ -37,6 +37,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#signing figure')).toHaveCount(14);
   await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
   await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
+  // The recovery card of the sample keys: two accounts, its commands wrap at 360 (the overflow check below).
+  await expect(page.locator('#recovery [data-slot="recovery-account"]')).toHaveCount(2);
+  await expect(page.locator('#recovery [data-slot="command-block"]')).toHaveCount(13);
 
   // Signing by link: the link card's QR code is one SVG path, drawn under the production CSP (no style attribute, no
   // <style> element, no data: URI; a refused inline style would also fail the fixture's console check). The components
@@ -77,6 +80,20 @@ test('/dev/ui shows every token and component without console errors, axe violat
   expect(swatches.filter((s) => s.colour === 'rgba(0, 0, 0, 0)' || s.colour === 'transparent')).toEqual([]);
   expect(light.map((s) => s.colour)).not.toEqual(dark.map((s) => s.colour));
 
+  // The recovery card's pieces: three command blocks (idle, copied, copy failed), every support verdict, and a
+  // FAQ item that the browser opens and closes from the keyboard (a native <details>, DECISIONS.md D3; jsdom cannot
+  // check this).
+  await expect(page.locator('#components [data-slot="command-block"]')).toHaveCount(3);
+  await expect(page.locator('#components [data-verdict]')).toHaveCount(5);
+  await expect(page.locator('#components details[data-slot="faq-item"]')).toHaveCount(2);
+  const faq = page.locator('#dev-ui-faq-lock-ends');
+  await expect(faq).not.toHaveAttribute('open');
+  await faq.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(faq).toHaveAttribute('open', '');
+  await page.keyboard.press('Space');
+  await expect(faq).not.toHaveAttribute('open');
+
   // Keyboard: the wallet list opens from its button.
   const connect = page.getByRole('button', { name: 'Connect a wallet as Main key' });
   await connect.focus();
@@ -109,9 +126,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
     });
     mkdirSync(SCREENS_DIR, { recursive: true });
     await page.screenshot({ path: `${SCREENS_DIR}dev-ui-${String(width)}.png`, fullPage: true, animations: 'disabled' });
-    // The flows on their own, for review against the mockups: the signing panel phases, signing by link and the
-    // protect Done screen.
-    for (const section of ['signing', 'link', 'protect-result']) {
+    // The flows on their own, for review against the mockups: the signing panel phases, signing by link, the
+    // protect Done screen and the recovery card.
+    for (const section of ['signing', 'link', 'protect-result', 'recovery']) {
       await page
         .locator(`#${section}`)
         .screenshot({ path: `${SCREENS_DIR}dev-ui-${section}-${String(width)}.png`, animations: 'disabled' });

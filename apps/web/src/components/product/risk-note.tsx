@@ -1,4 +1,4 @@
-import { formatUtcDate } from '@stakeward/core';
+import { formatUtcDate, formatUtcDateTime } from '@stakeward/core';
 import { TriangleAlertIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -23,10 +23,17 @@ const TEXT: Record<RiskKind, { key: MessageKey; needsDate: boolean }> = {
   'lock-ends': { key: 'components.risk.lockEnds', needsDate: true },
 };
 
+export type DateStyle = 'date' | 'date-time';
+
 type RiskNoteProps = {
   risk: RiskKind;
   /** Unix seconds; required by `lose-second-key` and `lock-ends`. */
   date?: bigint | undefined;
+  /**
+   * `date` (default): "12 April 2027". `date-time`: "12 April 2027, 00:00 UTC", for the recovery card, whose reader
+   * may live in any time zone (DECISIONS.md D74).
+   */
+  dateStyle?: DateStyle | undefined;
   /** `danger` when the action is about to remove protection; `warning` otherwise. */
   tone?: 'warning' | 'danger' | undefined;
   /** Extra sentences after the risk. */
@@ -35,15 +42,16 @@ type RiskNoteProps = {
 };
 
 /** The risk text for `risk`, or null when it needs a date that is missing or out of range. */
-export function riskText(risk: RiskKind, date?: bigint): string | null {
+export function riskText(risk: RiskKind, date?: bigint, dateStyle: DateStyle = 'date'): string | null {
   const { key, needsDate } = TEXT[risk];
   if (!needsDate) return t(key);
-  const formatted = date === undefined ? null : formatUtcDate(date);
+  const format = dateStyle === 'date-time' ? formatUtcDateTime : formatUtcDate;
+  const formatted = date === undefined ? null : format(date);
   return formatted === null ? null : t(key, { date: formatted });
 }
 
-export function RiskNote({ risk, date, tone = 'warning', children, className }: RiskNoteProps) {
-  const text = riskText(risk, date);
+export function RiskNote({ risk, date, dateStyle = 'date', tone = 'warning', children, className }: RiskNoteProps) {
+  const text = riskText(risk, date, dateStyle);
   if (text === null) return null;
   return (
     <Alert tone={tone} role="note" data-risk={risk} className={className}>

@@ -33,7 +33,11 @@ export function CosignPage({ fragment: given, signing }: CosignPageProps) {
         <p className="text-muted">{t('cosign.intro')}</p>
         <p className="text-sm font-medium">{t('common.neverSeedPhrase')}</p>
         <p className="text-sm">
-          <Link href="/" className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover">
+          {/* Opens the landing on its card for someone who was sent a link to co-sign. */}
+          <Link
+            href="/#for-second-key"
+            className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+          >
             {t('cosign.whatIs')}
           </Link>
         </p>

@@ -130,4 +130,6 @@ export const appLinks = {
   extend: (account: Address) => `/extend/${account}`,
   withdraw: (account: Address) => `/withdraw/${account}`,
   rescue: (mainKey: Address) => `/rescue?${new URLSearchParams({ address: mainKey }).toString()}`,
+  /** The recovery card of the pair of keys that locks this account (DECISIONS.md D74). */
+  recovery: (account: Address) => `/recovery/${account}`,
 };

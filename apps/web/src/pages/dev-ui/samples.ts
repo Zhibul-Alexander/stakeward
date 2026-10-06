@@ -32,6 +32,8 @@ import type { StatusBadgeStatus } from '@/components/product/status-badge';
 import type { SummaryBatch } from '@/components/product/transaction-summary';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import type { PairSupport } from '@/pages/landing/wallet-support';
+import { buildRecoveryCard, type RecoveryCard } from '@/pages/recovery/view';
 import { cosignUrl } from '@/signing/link';
 import walletSampleA from './wallet-sample-a.svg';
 import walletSampleB from './wallet-sample-b.svg';
@@ -195,6 +197,26 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       wasProtected: row.wasProtected ?? false,
     };
   });
+}
+
+/**
+ * The recovery card of the sample keys (spec 4.7), built by the page's own rules: the route's lock ends in 20 days at
+ * 14:30 UTC, so the time shows and the "lock ends" note appears; a second account has another stake authority; one
+ * more account of the main key has no lock (`others: 1`).
+ */
+export function sampleRecoveryCard(clock: ClockView): RecoveryCard {
+  const lock = (unixTimestamp: bigint): Lockup => ({ unixTimestamp, epoch: 0n, custodian: SAMPLE.secondKey });
+  const soon = clock.unixTimestamp - (clock.unixTimestamp % DAY) + 20n * DAY + 14n * 3_600n + 30n * 60n;
+  const route = stakeAccount({ address: SAMPLE.stakeA, sol: 1_250n, lamportsExtra: 500_000_000n, activation: 'active', lockup: lock(soon) });
+  const managed = stakeAccount({
+    address: SAMPLE.stakeG,
+    sol: 64n,
+    activation: 'active',
+    staker: SAMPLE.serviceStaker,
+    lockup: lock(midnightAfter(clock, 200n)),
+  });
+  const open = stakeAccount({ address: SAMPLE.stakeC, sol: 3n, lamportsExtra: 200_000_000n, activation: 'activating' });
+  return buildRecoveryCard(route, [managed, open], clock);
 }
 
 export type SampleSummary =
@@ -374,3 +396,26 @@ export function sampleJobs(): JobStatusItem[] {
     { address: SAMPLE.stakeJ, status: 'left-out' },
   ];
 }
+
+/**
+ * The landing's wallet table as a matrix run might fill it (wallet-support.ts filling rules): every verdict and every
+ * note at least once, so the /dev/ui 360 px check covers the longest of them. Made up; the landing shows the real data.
+ */
+export const SAMPLE_WALLET_PAIRS: readonly PairSupport[] = [
+  { id: 'phantom+solflare', main: 'phantom', second: 'solflare', here: 'works', link: 'works-with-warning', note: 'new-site-warning' },
+  { id: 'phantom+backpack', main: 'phantom', second: 'backpack', here: 'works-with-warning', link: 'works', note: 'phantom-first' },
+  { id: 'solflare+backpack', main: 'solflare', second: 'backpack', here: 'works', link: 'not-verified', note: 'link-same-browser' },
+  {
+    id: 'phantom+phantom-imported',
+    main: 'phantom',
+    second: 'phantom-imported',
+    here: 'works',
+    link: 'works',
+    note: 'switch-account',
+  },
+  { id: 'ledger-phantom+any', main: 'ledger-phantom', second: 'any', here: 'blind-signing', link: 'blind-signing', note: 'ledger-blind' },
+  { id: 'ledger-solflare+any', main: 'ledger-solflare', second: 'any', here: 'does-not-work', link: 'not-verified', note: null },
+];
+
+/** The matrix date of the sample wallet table. */
+export const SAMPLE_MATRIX_DATE = '2026-10-06';
