@@ -277,5 +277,5 @@ Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, 
 - [ ] В5. Preview-адреса prod: выключить Preview URLs в настройках воркера stakeward-prod в панели Cloudflare или дождаться деплоя prod с `preview_urls: false`; проверить, что старый адрес не открывается.
 - [ ] В6. BotFather `/setjoingroups` → Disable у обоих ботов.
 - [x] 06.10.2026, В7: main перемотан до `build/product` (ссылки сайта на README и docs/gate.md и суточный аудит CI идут по main). Перед деплоем prod догонять снова.
-- [ ] В8. Второй ключ Helius (или платный план) только для монитора.
+- [ ] В8, по возможности: второй аккаунт Helius (другая почта; на Free у аккаунта один ключ) или другой провайдер только для монитора; URL положить в секрет `MONITOR_RPC_URL` командой `wrangler secret put MONITOR_RPC_URL --env prod` (и `--env dev` с ключом devnet) в подоболочке с двумя ключами Cloudflare, как миграции (DECISIONS D96, D101). Без него всё работает, просто монитор делит квоту с сайтом.
 - [ ] В9. Решение: разрешить ли спасение пачкой по блокхэшу, когда все три ключа в одном браузере (сейчас всегда nonce, по аккаунту за раз).
