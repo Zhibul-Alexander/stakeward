@@ -168,3 +168,36 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Отменить ссылку и открыть её снова: «already used or cancelled».
 - [ ] Защита по ссылке с вставленным адресом второго ключа.
 - [ ] Строки матрицы кошельков: меняет ли Phantom (Solflare, Backpack) байты, которые уже подписал другой кошелёк; предупреждения на nonce-транзакциях; что показывает Ledger.
+
+## Шаг 8. Тексты
+
+Читать на https://stakeward-dev.zhibul-alexander.workers.dev, на 1280 и на 360 (DevTools → Toggle device toolbar → 360), сверху вниз. Состояния без кошельков — в `docs/screens/*.png` и на `/dev/ui`. Правки писать в чат: экран, текст сейчас, как должно быть; я вношу их одним коммитом и переснимаю экраны.
+
+Правила:
+- Один главный шаг: на экране одна залитая кнопка.
+- Риск до действия, простыми словами и с датой.
+- Перед подписью: было → станет, кто подписывает, сколько стоит, чего транзакция не может, «Stakeward never asks for your seed phrase».
+- Роли только Main key, Second key, New wallet; слов custodian, withdrawer, staker нет нигде, кроме FAQ и карточки восстановления.
+- Статус виден словом, цветом и значком; каждое ожидание объяснено и имеет выход; ошибка говорит, что делать, исходный текст под Details.
+- На 360 всё читается без горизонтальной прокрутки. Нет «2FA» и обещаний сверх проверенного.
+
+Экраны:
+- [ ] Шапка и подвал: Source code, What Stakeward cannot do, Stats, No warranty.
+- [ ] `/`: заголовок, схема в три шага, What Stakeward cannot do, таблица кошельков, FAQ целиком (открыть каждый вопрос), особенно «What will my Ledger show?», «My main key was stolen», «What do custodian, withdrawer and staker mean?».
+- [ ] `/app` без адреса; загрузка, ошибка (DevTools → Network → Offline), пусто.
+- [ ] `/app?address=<Main key>`: статусы, красный баннер, «You are the second key for», Last checked, Get alerts in Telegram, Rescue, Recovery card.
+- [ ] `/protect` шаги 1–5, `/withdraw/<аккаунт>`, `/extend/<аккаунт>`, `/rescue?address=<Main key>`, `/cosign` (битая ссылка и живая).
+- [ ] `/recovery/<аккаунт>`: экран и печать (Ctrl+P → предпросмотр). Особенно: предупреждение «Check the second key first» вверху, время «00:00 UTC», шаги «Your main key is stolen», «If a command fails», «What no one can undo».
+- [ ] `/stats` и `/no-such-page`.
+- [ ] Telegram в dev-боте: /start, /status, /stop, тревога каждого типа, напоминания.
+- [ ] Факты в вопросе FAQ «Has staked SOL really been stolen like this?» верны, называть компании можно.
+
+## Шаг 8. Выкатка новой версии в prod
+
+Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
+
+- [ ] Решение владельца: выкатить текущую `build/product` в prod (по-моему, сразу после проверки шагов 4–7 в dev).
+- [ ] `cd apps/worker && pnpm exec wrangler d1 migrations list DB --remote --env prod`: новых миграций нет (0001–0003 уже применены).
+- [ ] Из корня: `set -a; . ~/.config/stakeward/secrets.env; set +a; pnpm deploy:prod`. Я могу сделать это сам по вашему слову.
+- [ ] `curl -s https://stakeward-prod.zhibul-alexander.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet.
+- [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
