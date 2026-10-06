@@ -2,6 +2,14 @@ import { defineConfig, devices } from '@playwright/test';
 
 const CI = Boolean(process.env['CI']);
 const MAINNET = process.env['E2E_CLUSTER'] === 'mainnet';
+/**
+ * Port of `vite preview`. Locally Playwright reuses a server already listening on it, so two checkouts (parallel
+ * worktrees) on one machine would test each other's build: give each its own with E2E_PORT. Unset or empty means 4173.
+ */
+const RAW_PORT = process.env['E2E_PORT'];
+const PORT = Number(RAW_PORT === undefined || RAW_PORT === '' ? '4173' : RAW_PORT);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65_535) throw new Error('E2E_PORT must be a TCP port number.');
+const BASE_URL = `http://localhost:${String(PORT)}`;
 
 /**
  * Browser tests on the built site (CLAUDE.md section 13, layer 4). `pnpm e2e` builds for devnet first and runs every
@@ -16,7 +24,7 @@ export default defineConfig({
   retries: CI ? 1 : 0,
   reporter: CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: BASE_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -25,8 +33,9 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 740 } } },
   ],
   webServer: {
-    command: 'pnpm exec vite preview',
-    url: 'http://localhost:4173',
+    // strictPort comes from vite.config.ts: a taken port fails instead of moving the server elsewhere.
+    command: `pnpm exec vite preview --port ${String(PORT)}`,
+    url: BASE_URL,
     reuseExistingServer: !CI,
     timeout: 30_000,
   },
