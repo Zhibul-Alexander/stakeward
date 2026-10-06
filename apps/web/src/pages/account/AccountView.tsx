@@ -109,6 +109,7 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
           activation={stakeActivationStatus(account.delegation, clock.epoch)}
           protection={view.status}
           managedByService={view.managedByService}
+          secondKeyKnown={knownSecondKeys.length > 0}
           rescueHref={appLinks.rescue(account.withdrawer)}
         />
       );

@@ -78,6 +78,17 @@ describe('buildAccountsView', () => {
     expect(view.confirmedProtected).toEqual([]);
   });
 
+  // D35: the row words a lock none of the known keys holds by whether this browser knows any (the fake-site case).
+  it('marks each row with whether this browser knows a second key for the main key', () => {
+    const accounts = [locked, foreign, open, asSecondKey];
+    const known = buildAccountsView({ ...base, accounts });
+    expect(known.owned.map((row) => row.secondKeyKnown)).toEqual([true, true, true]);
+    const none = buildAccountsView({ ...base, knownSecondKeys: [], accounts });
+    expect(none.owned.map((row) => row.secondKeyKnown)).toEqual([false, false, false]);
+    // The address holds these locks itself.
+    expect([...known.secondKeyFor, ...none.secondKeyFor].map((row) => row.secondKeyKnown)).toEqual([true, true]);
+  });
+
   it('asks for the second key when a lock is someone else’s, not when all locks are confirmed', () => {
     expect(buildAccountsView({ ...base, accounts: [locked, foreign] }).unconfirmedLock).toBe(true);
     expect(buildAccountsView({ ...base, accounts: [locked, expiring, open] }).unconfirmedLock).toBe(false);

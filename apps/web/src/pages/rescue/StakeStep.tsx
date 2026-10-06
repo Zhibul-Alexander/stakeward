@@ -143,6 +143,7 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
         activation={stakeActivationStatus(account.delegation, clock.epoch)}
         protection={view.status}
         managedByService={view.managedByService}
+        secondKeyKnown={knownSecondKeys.length > 0}
         actions={actions}
       />
     );

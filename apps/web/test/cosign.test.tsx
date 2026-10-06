@@ -10,6 +10,7 @@ import {
   type Instruction,
   type KeyPairSigner,
   type Nonce,
+  type SignatureBytes,
 } from '@solana/kit';
 import {
   buildTransaction,
@@ -25,7 +26,7 @@ import {
   type NonceLifetime,
   type TransactionAction,
 } from '@stakeward/core';
-import { craft, craftV0, instructionsOf, key, lighthouseInstruction } from '@stakeward/core/test/craft';
+import { craft, craftV0, editMessage, instructionsOf, key, lighthouseInstruction } from '@stakeward/core/test/craft';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -168,8 +169,11 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
   );
 });
 
-/** Inputs that are not a link Stakeward makes, and the screen /cosign shows for each (DW7-3). */
-type BadCase = { name: string; fragment: () => Promise<string>; expected: () => Promise<string> };
+/**
+ * Inputs that are not a link Stakeward makes, and the screen /cosign shows for each (DW7-3). `detail`: the inspector's
+ * own words, under Details of a "Do not sign" screen (UX rule 8).
+ */
+type BadCase = { name: string; fragment: () => Promise<string>; expected: () => Promise<string>; detail?: string };
 
 describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
   let testChain: TestChain;
@@ -232,6 +236,56 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
       name: 'more bytes than a transaction can hold',
       fragment: () => Promise.resolve(`#tx=${encodeBase64Url(new Uint8Array(1233).fill(1))}`),
       expected: broken,
+    },
+    // A real link cut off by a messenger or a copy: the bytes that are left are no whole transaction. The page says the
+    // link is broken and asks for the whole link; it never calls the owner's own link hostile.
+    ...(
+      [
+        ['all but its last byte', (length: number) => length - 1],
+        ['half of it', (length: number) => Math.floor(length / 2)],
+        ['its first 10 bytes', () => 10],
+      ] as const
+    ).map(([left, keep]) => ({
+      name: `a link cut off to ${left}`,
+      fragment: async () => {
+        const bytes = await sign(built(protect(), A.address, nonceA), [A]);
+        return fragmentOf(bytes.slice(0, keep(bytes.length)));
+      },
+      expected: broken,
+    })),
+    // Altered bytes that still read as a whole transaction were made, not cut: "do not sign", never "broken".
+    {
+      name: 'a protect whose stake instruction has one byte more data, signed by the main key',
+      fragment: async () => {
+        const instructions = instructionsOf(built(protect(), A.address, nonceA));
+        const tampered = instructions.map((ix, i) =>
+          i === instructions.length - 1 ? { ...ix, data: Uint8Array.from([...(ix.data ?? []), 0]) } : ix,
+        );
+        return fragment(craft(tampered, A.address, nonceA.nonceValue), [A]);
+      },
+      expected: rejected('malformed'),
+      detail: 'Instruction 4: instruction data is not canonically encoded',
+    },
+    {
+      name: 'a protect signed by the main key, with one signature slot fewer than its signers',
+      fragment: async () => {
+        const { messageBytes } = getTransactionDecoder().decode(await sign(built(protect(), A.address, nonceA), [A]));
+        const signatures: Record<Address, SignatureBytes | null> = { [A.address]: null };
+        return fragmentOf(new Uint8Array(getTransactionEncoder().encode({ messageBytes, signatures })));
+      },
+      expected: rejected('malformed'),
+    },
+    {
+      name: 'a protect that lists an account twice',
+      fragment: () =>
+        fragment(
+          editMessage(built(protect(), A.address, nonceA), (message) => {
+            const last = message.staticAccounts.length - 1;
+            return { ...message, staticAccounts: message.staticAccounts.map((a, i) => (i === last ? S : a)) };
+          }),
+        ),
+      expected: rejected('malformed'),
+      detail: 'The message lists an account twice',
     },
     {
       name: 'a System transfer with the nonce prefix, signed by its payer',
@@ -316,13 +370,18 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
     },
   ];
 
-  it.each(cases)('$name', async ({ fragment: make, expected }) => {
+  it.each(cases)('$name', async ({ fragment: make, expected, detail }) => {
     const chain = new CountingChain(lite);
     const wallet = await createTestWalletPort({ name: 'Second Wallet', signers: [K], connected: true });
     const [link, text] = await Promise.all([make(), expected()]);
     const { view, unmount } = renderCosignPage(chain, link, [wallet]);
     try {
       await view.findByText(text, undefined, WAIT);
+      if (detail !== undefined) {
+        const refusal = view.getByText(text).closest('[data-slot="transaction-summary"]');
+        expect(refusal).toHaveTextContent(en.components.tx.rejectedTitle);
+        expect(refusal).toHaveTextContent(detail);
+      }
       // Refused before any chain read: no summary to sign, no signing panel, nothing asked.
       expect(view.queryByRole('button', { name: /^Sign in / })).not.toBeInTheDocument();
       expect(document.querySelector('[data-slot="signing-panel"]')).toBeNull();

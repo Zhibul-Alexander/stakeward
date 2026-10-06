@@ -255,7 +255,8 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
   }
   const after = state.kind === 'done' ? state.after : null;
   const secondKey = job.action !== null ? actionRoles(job.action).second : undefined;
-  const view = after === null || clock === null ? null : scannerStatus(after, secondKey === undefined ? knownSecondKeys : [...knownSecondKeys, secondKey], clock);
+  const secondKeys = secondKey === undefined ? knownSecondKeys : [...knownSecondKeys, secondKey];
+  const view = after === null || clock === null ? null : scannerStatus(after, secondKeys, clock);
   return (
     <section aria-labelledby={headingId} data-slot="cosign-done" data-outcome="done" className="flex flex-col gap-4">
       <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold">
@@ -270,6 +271,7 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
           activation={stakeActivationStatus(after.delegation, clock.epoch)}
           protection={view.status}
           managedByService={view.managedByService}
+          secondKeyKnown={secondKeys.length > 0}
         />
       )}
     </section>

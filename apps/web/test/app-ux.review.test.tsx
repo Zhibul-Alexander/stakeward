@@ -206,7 +206,7 @@ describe('/app "Is this lock yours?" by address (CLAUDE.md section 6, F1: K must
     await waitFor(() => {
       expect(ports.slots.getSnapshot().second?.address).not.toBe(A);
     });
-    // The slot says why and how to go on (CLAUDE.md section 6). The row stays Locked by another key: with no second key
+    // The slot says why and how to go on (CLAUDE.md section 6). The row stays Locked by a second key: with no second key
     // known, no lock is called the viewer's (D14, fix round of step 3), but never because A became the second key.
     expect(within(confirm).getByText('This account is already your Main key.')).toBeInTheDocument();
     expect(within(confirm).getByText('Switch to your second account in the wallet, then press Continue.')).toBeInTheDocument();
@@ -225,6 +225,7 @@ describe('AccountRow lock date', () => {
         activation="active"
         protection="locked-by-other"
         managedByService={false}
+        secondKeyKnown={false}
       />,
     );
     // Fails today: "Locked by another key  until 13 September 2020".

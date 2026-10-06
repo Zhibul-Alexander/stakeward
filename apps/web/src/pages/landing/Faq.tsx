@@ -2,7 +2,7 @@ import { FaqItem } from '@/components/product/faq-item';
 import { GATE_RESULTS_URL } from '@/config';
 import { t } from '@/i18n';
 import { FAQ_EXTRAS, FAQ_GROUPS, type FaqId } from './faq.ts';
-import { ExternalLink, HashLink, Section } from './Section.tsx';
+import { ExternalLink, HashLink, PageLink, Section } from './Section.tsx';
 import { LEDGER_CHECKED_ON, LEDGER_SCREENS, matrixDateText } from './wallet-support.ts';
 
 /** An FAQ answer: one paragraph per blank-line-separated block of its en.json text. */
@@ -55,6 +55,14 @@ function Extra({ item }: { item: FaqId }) {
     return (
       <p>
         <ExternalLink href={GATE_RESULTS_URL} label={t('faq.gateLink')} />
+      </p>
+    );
+  }
+  if (extra === 'rescue-link') {
+    // Rescue asks for the main key on its first step, so the link carries no address.
+    return (
+      <p>
+        <PageLink href="/rescue">{t('faq.rescueLink')}</PageLink>
       </p>
     );
   }

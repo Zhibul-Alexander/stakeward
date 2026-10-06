@@ -1,6 +1,7 @@
 import {
   cosignLinkProblem,
   inspectTransaction,
+  isTruncatedTransaction,
   parseCosignFragment,
   type CosignLinkProblem,
   type InspectError,
@@ -10,8 +11,10 @@ import { useSyncExternalStore } from 'react';
 
 /**
  * What a /cosign link holds, read from its fragment alone (CLAUDE.md section 6), before any chain read:
- * - `bad`: no transaction Stakeward can read (not `#tx=`, not base64url, empty or too long);
- * - `rejected`: the inspector refuses the bytes (another program, an unknown instruction, a lookup table, ...);
+ * - `bad`: no transaction Stakeward can read (not `#tx=`, not base64url, empty or too long, or bytes that end before
+ *   the transaction does, as when a messenger cut the link off: core `isTruncatedTransaction`);
+ * - `rejected`: the inspector refuses bytes that read as a whole transaction (another program, an unknown instruction,
+ *   a lookup table, altered bytes such as other instruction data or a wrong signature count, ...), with its reason;
  * - `problem`: the bytes are a Stakeward transaction, but not a link Stakeward makes (core `cosignLinkProblem`);
  * - `ok`: a link Stakeward makes; the chain decides the rest (plan.ts).
  */
@@ -26,7 +29,12 @@ export async function readLink(fragment: string): Promise<LinkRead> {
   const bytes = parseCosignFragment(fragment);
   if (bytes === null) return { kind: 'bad' };
   const inspected = await inspectTransaction(bytes);
-  if (!inspected.ok) return { kind: 'rejected', error: inspected.error };
+  if (!inspected.ok) {
+    // A cut-off link is broken, not hostile: ask for the whole link, never "do not sign" the owner's own transaction.
+    // Anything else the inspector refuses, altered bytes included, may be crafted: "do not sign", its reason under Details.
+    const cut = inspected.error.code === 'malformed' && isTruncatedTransaction(bytes);
+    return cut ? { kind: 'bad' } : { kind: 'rejected', error: inspected.error };
+  }
   const problem = cosignLinkProblem(inspected.summary);
   if (problem !== null) return { kind: 'problem', problem, summary: inspected.summary };
   return { kind: 'ok', bytes, summary: inspected.summary };

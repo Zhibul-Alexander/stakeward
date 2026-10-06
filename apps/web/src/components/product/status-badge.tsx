@@ -15,8 +15,10 @@ import { t, type MessageKey } from '@/i18n';
 
 /**
  * Everything a stake account's protection can show (CLAUDE.md section 5, D14):
- * - the four scanner statuses of core `scannerStatus` (a lock held by a key the viewer is not known to hold is
- *   Locked by another key, never Protected: the chain cannot say whose key it is);
+ * - the four scanner statuses of core `scannerStatus`. A lock held by a key the viewer is not known to hold is never
+ *   Protected: the chain cannot say whose key it is. It reads Locked by a second key while this browser knows no second
+ *   key (on a new device it is the viewer's own lock as often as someone else's), and Locked by another key once it
+ *   knows one that does not hold it (what a fake site leaves, D35);
  * - `was-protected`: F6, the account was protected and now stands without a lock (red);
  * - `unknown`: the account could not be read (error state).
  */
@@ -34,18 +36,30 @@ const LOOKS: Record<StatusBadgeStatus, Look> = {
   unknown: { tone: 'outline', icon: CircleQuestionMarkIcon, label: 'components.status.unknown' },
 };
 
-export function statusLabel(status: StatusBadgeStatus): string {
-  return t(LOOKS[status].label);
+/** `locked-by-other` once this browser knows a second key, none of which holds the lock: the same tone and icon. */
+const LOCKED_BY_ANOTHER: MessageKey = 'status.lockedByAnother';
+
+function labelOf(status: StatusBadgeStatus, secondKeyKnown: boolean): MessageKey {
+  return status === 'locked-by-other' && secondKeyKnown ? LOCKED_BY_ANOTHER : LOOKS[status].label;
 }
 
-type StatusBadgeProps = { status: StatusBadgeStatus; className?: string | undefined };
+export function statusLabel(status: StatusBadgeStatus, secondKeyKnown = false): string {
+  return t(labelOf(status, secondKeyKnown));
+}
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const { tone, icon: Icon, label } = LOOKS[status];
+type StatusBadgeProps = {
+  status: StatusBadgeStatus;
+  /** This browser knows a second key for the account's main key (only `locked-by-other` reads differently). */
+  secondKeyKnown?: boolean | undefined;
+  className?: string | undefined;
+};
+
+export function StatusBadge({ status, secondKeyKnown = false, className }: StatusBadgeProps) {
+  const { tone, icon: Icon } = LOOKS[status];
   return (
     <Badge tone={tone} data-status={status} className={cn('text-sm', className)}>
       <Icon aria-hidden="true" />
-      {t(label)}
+      {t(labelOf(status, secondKeyKnown))}
     </Badge>
   );
 }

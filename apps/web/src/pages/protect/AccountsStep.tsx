@@ -125,6 +125,7 @@ function Choices({
                     activation={stakeActivationStatus(account.delegation, clock.epoch)}
                     protection={view.status}
                     managedByService={view.managedByService}
+                    secondKeyKnown={knownSecondKeys.length > 0}
                     actions={
                       <Selector
                         address={account.address}

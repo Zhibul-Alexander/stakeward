@@ -87,6 +87,7 @@ export function AccountSection({ mainKey, secondKey, data, selected, onSelect, o
               activation={stakeActivationStatus(account.delegation, clock.epoch)}
               protection={view.status}
               managedByService={view.managedByService}
+              secondKeyKnown={secondKeys.length > 0}
               className={selected === account.address ? 'border-primary' : undefined}
               actions={
                 <div className="flex items-center gap-2">

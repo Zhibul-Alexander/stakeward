@@ -1,4 +1,14 @@
-import { getBase64Decoder, getBase64Encoder, type Address, type ReadonlyUint8Array } from '@solana/kit';
+import {
+  fixDecoderSize,
+  getArrayDecoder,
+  getBase64Decoder,
+  getBase64Encoder,
+  getBytesDecoder,
+  getCompiledTransactionMessageDecoder,
+  getShortU16Decoder,
+  type Address,
+  type ReadonlyUint8Array,
+} from '@solana/kit';
 import { expectedFeePayer } from './actions.ts';
 import type { TransactionSummary } from './inspect.ts';
 
@@ -47,6 +57,33 @@ export function parseCosignFragment(fragment: string): Uint8Array | null {
   const bytes = decodeBase64Url(body.slice('tx='.length));
   if (bytes === null || bytes.length === 0 || bytes.length > MAX_TRANSACTION_BYTES) return null;
   return bytes;
+}
+
+// Built once: building a kit codec costs more than running it. The wire layout: a compact-u16 count of 64-byte
+// signatures, then the message.
+const signaturesDecoder = /* @__PURE__ */ getArrayDecoder(fixDecoderSize(getBytesDecoder(), 64), { size: getShortU16Decoder() });
+const messageDecoder = /* @__PURE__ */ getCompiledTransactionMessageDecoder();
+
+/**
+ * Whether `bytes` end before the transaction they begin does: kit's decoders run out of bytes in the signatures or in
+ * the message, or the message ends where its instruction count should be (kit reads that as no instructions, see
+ * `canonicalLegacyMessageSize`). Every shorter start of a transaction is such bytes, so this is what a link cut off by
+ * a messenger or a copy leaves: /cosign calls it broken and asks for the whole link. Bytes that are no transaction at
+ * all mostly read so too, and a message without instructions (Stakeward never builds one) always does.
+ *
+ * Bytes that read as a whole transaction but were altered are not truncated: trailing bytes, other instruction data,
+ * an account listed twice, a signature count that does not match the signers. The message is read on its own, after
+ * the signatures, so that last one counts as altered too. The inspector refuses all of them; /cosign says "do not sign".
+ */
+export function isTruncatedTransaction(bytes: ReadonlyUint8Array): boolean {
+  try {
+    const [, messageStart] = signaturesDecoder.read(bytes, 0);
+    const message = messageDecoder.decode(bytes, messageStart);
+    // A start of a legacy message is a legacy message (its first byte stays below 0x80); kit's v1 message has no such list.
+    return 'instructions' in message && message.instructions.length === 0;
+  } catch {
+    return true;
+  }
 }
 
 /**

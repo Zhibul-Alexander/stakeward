@@ -1,6 +1,8 @@
 import {
   generateKeyPairSigner,
   getTransactionDecoder,
+  type Address,
+  type SignatureBytes,
   getTransactionEncoder,
   partiallySignTransaction,
   type KeyPairSigner,
@@ -13,7 +15,7 @@ import {
   type NonceLifetime,
   type TransactionAction,
 } from '@stakeward/core';
-import { craft, instructionsOf, key } from '@stakeward/core/test/craft';
+import { craft, editMessage, instructionsOf, key } from '@stakeward/core/test/craft';
 import { act, renderHook } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readLink, useLocationHash } from './read.ts';
@@ -55,6 +57,57 @@ describe('readLink', () => {
     const foreign = { programAddress: key(9), accounts: [], data: Uint8Array.of(1) };
     const read = await readLink(`#${cosignFragment(craft([advance, limit, price, foreign], A.address, NONCE_VALUE))}`);
     expect(read).toMatchObject({ kind: 'rejected', error: { code: 'unknown-program' } });
+  });
+
+  it('bad, not rejected: a whole link cut off at any point, as a messenger or a copy may leave it', async () => {
+    const bytes = await signed(buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA }).bytes, [A]);
+    const whole = `#${cosignFragment(bytes)}`;
+    expect(await readLink(whole)).toMatchObject({ kind: 'ok' });
+    // Every shorter text of the link: still base64url (or not), never a whole transaction, never "do not sign".
+    for (let cut = 1; cut < whole.length; cut += 1) {
+      expect(await readLink(whole.slice(0, cut)), `cut at ${String(cut)}`).toEqual({ kind: 'bad' });
+    }
+  });
+
+  // Bytes that read as a whole transaction but were altered are not a cut: the inspector's reason, under Details, and
+  // "do not sign". A crafted /cosign link (CLAUDE.md section 11) must never be told apart as merely broken.
+  describe('rejected, not bad: a whole transaction with altered bytes', () => {
+    const built = () => buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA }).bytes;
+
+    it('stake instruction data with one byte more', async () => {
+      const instructions = instructionsOf(built());
+      const tampered = instructions.map((ix, i) =>
+        i === instructions.length - 1 ? { ...ix, data: Uint8Array.from([...(ix.data ?? []), 0]) } : ix,
+      );
+      const bytes = await signed(craft(tampered, A.address, NONCE_VALUE), [A]);
+      expect(await readLink(`#${cosignFragment(bytes)}`)).toEqual({
+        kind: 'rejected',
+        error: { code: 'malformed', message: 'Instruction 4: instruction data is not canonically encoded' },
+      });
+    });
+
+    it('one signature slot fewer than the message has signers', async () => {
+      const { messageBytes } = getTransactionDecoder().decode(await signed(built(), [A]));
+      const signatures: Record<Address, SignatureBytes | null> = { [A.address]: null };
+      const bytes = new Uint8Array(getTransactionEncoder().encode({ messageBytes, signatures }));
+      expect(await readLink(`#${cosignFragment(bytes)}`)).toMatchObject({ kind: 'rejected', error: { code: 'malformed' } });
+    });
+
+    it('an account listed twice', async () => {
+      const bytes = editMessage(built(), (message) => {
+        const last = message.staticAccounts.length - 1;
+        return { ...message, staticAccounts: message.staticAccounts.map((a, i) => (i === last ? S : a)) };
+      });
+      expect(await readLink(`#${cosignFragment(bytes)}`)).toEqual({
+        kind: 'rejected',
+        error: { code: 'malformed', message: 'The message lists an account twice' },
+      });
+    });
+
+    it('a byte after the end of the transaction', async () => {
+      const bytes = Uint8Array.from([...(await signed(built(), [A])), 0]);
+      expect(await readLink(`#${cosignFragment(bytes)}`)).toMatchObject({ kind: 'rejected', error: { code: 'malformed' } });
+    });
   });
 
   it('problem: a Stakeward transaction that is not a link Stakeward makes (the fee payer has not signed)', async () => {
