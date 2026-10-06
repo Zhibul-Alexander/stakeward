@@ -89,7 +89,35 @@ const ROUTES: readonly SmokeRoute[] = [
   },
   { path: '/protect', heading: 'Protect your stake', ready: null, screen: 'protect-start' },
   { path: `/withdraw/${SMOKE_STAKE}`, heading: 'Withdraw', ready: 'Withdraw 1,250.5 SOL to your main key', screen: 'withdraw' },
-  { path: `/extend/${SMOKE_STAKE}`, heading: 'Extend the lock', ready: 'New end of the lock', screen: 'extend' },
+  {
+    path: `/extend/${SMOKE_STAKE}`,
+    heading: 'Extend the lock',
+    ready: 'New end of the lock',
+    shows: async (page) => {
+      // The way to F7, one step aside from extending.
+      await expect(page.getByRole('link', { name: 'Hand the lock to a new second key' })).toHaveAttribute(
+        'href',
+        `/second-key/${SMOKE_STAKE}`,
+      );
+    },
+    screen: 'extend',
+  },
+  {
+    // F7: the second key hands the lock to a new one. The page reads the account with no wallet; the new key is a
+    // wallet connected in the slot named for it here.
+    path: `/second-key/${SMOKE_STAKE}`,
+    heading: 'Change the second key',
+    ready: 'Connect your new second key',
+    shows: async (page) => {
+      await expect(page.locator('[data-slot="current-second-key"]').getByText(SECOND, { exact: true })).toBeVisible();
+      await expect(page.getByRole('group', { name: 'New second key' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Connect a wallet as New second key' })).toBeVisible();
+      await expect(page.locator('[data-risk="second-key-can-freeze"]')).toContainText('This change keeps the end of the lock');
+      await expect(page.locator('[data-risk="lose-second-key"]')).toBeVisible();
+      await expect(page.getByRole('checkbox', { name: 'My new second key comes from a different seed phrase than my main key' })).toBeVisible();
+    },
+    screen: 'second-key',
+  },
   {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
@@ -118,6 +146,10 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(steps).toHaveCount(5);
       for (const step of await steps.all()) await expect(step).toHaveCSS('display', 'list-item');
       await expect(page.locator('[data-slot="command-block"]').first()).toContainText(MAIN);
+      // A stolen second key: the page that hands the lock to a new one, by its full address (it prints).
+      await expect(
+        page.getByRole('region', { name: 'If your second key is stolen' }).getByRole('link', { name: new RegExp(`/second-key/${SMOKE_STAKE}$`) }),
+      ).toHaveAttribute('href', `/second-key/${SMOKE_STAKE}`);
       // On paper: no site frame and no buttons, and the light theme even when the screen is dark.
       await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
       await expect(page.getByRole('banner')).toBeHidden();
