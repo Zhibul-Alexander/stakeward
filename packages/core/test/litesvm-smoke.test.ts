@@ -1,4 +1,4 @@
-import { address, getAddressDecoder } from '@solana/kit';
+import { address, getAddressDecoder, type KeyPairSigner } from '@solana/kit';
 import { createRpcFromSvm } from '@solana/kit-plugin-litesvm';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -41,5 +41,42 @@ describe('LiteSVM harness', () => {
       })
       .send();
     expect(accounts.map((account) => account.pubkey)).toEqual([stake]);
+  });
+
+  it('a setup transaction survives a blockhash that moves while it is being signed', async () => {
+    // Tests prepare accounts concurrently (Promise.all of fundedKey and createVoteAccount), and only LiteSVM's latest
+    // blockhash is valid: an airdrop or another setup during the async signing used to fail it with BlockhashNotFound.
+    const chain = await TestChain.create();
+    const [owner, vote] = await Promise.all([chain.fundedKey(), chain.createVoteAccount()]);
+    let moved = 0;
+    const slowSigner: KeyPairSigner = {
+      ...owner,
+      signTransactions: (transactions, config) => {
+        if (moved < 2) {
+          moved += 1;
+          chain.blockhashLifetime();
+        }
+        return owner.signTransactions(transactions, config);
+      },
+    };
+    const stake = await chain.createStakeAccount({
+      staker: owner.address,
+      withdrawer: owner.address,
+      delegateTo: { voteAccount: vote, stakerKey: slowSigner },
+    });
+    expect(moved).toBe(2);
+    expect(chain.stakeAccount(stake)?.delegation?.voter).toBe(vote);
+  });
+
+  it('two setup transactions signed at the same time both land', async () => {
+    // A retry that took a fresh blockhash again would void the other setup's signature, and the two would keep
+    // undoing each other until the last attempt.
+    const chain = await TestChain.create();
+    const [a, b] = await Promise.all([chain.fundedKey(), chain.fundedKey()]);
+    const stakes = await Promise.all([
+      chain.createStakeAccount({ staker: a.address, withdrawer: a.address }),
+      chain.createStakeAccount({ staker: b.address, withdrawer: b.address }),
+    ]);
+    expect(stakes.map((stake) => chain.stakeAccount(stake)?.withdrawer)).toEqual([a.address, b.address]);
   });
 });

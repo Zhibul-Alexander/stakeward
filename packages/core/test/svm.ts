@@ -67,6 +67,8 @@ const VOTE_PROGRAM_ADDRESS = 'Vote111111111111111111111111111111111111111' as Ad
 const SYSVAR_RENT_ADDRESS = 'SysvarRent111111111111111111111111111111111' as Address;
 /** Serialized VoteState size the vote program expects. */
 const VOTE_ACCOUNT_SIZE = 3_762n;
+/** A setup transaction is signed at most this many times; the last signing is sent even on a moved blockhash. */
+const SETUP_ATTEMPTS = 10;
 
 /** Why a transaction failed (see ChainError in support.ts). */
 export type SvmError = ChainError;
@@ -278,18 +280,32 @@ export class TestChain {
     return { ok: false, signature, error: toSvmError(result), logs: result.meta().logs() };
   }
 
-  /** Setup transactions (not product transactions): kit signers, fresh blockhash, must succeed. */
+  /**
+   * Setup transactions (not product transactions): kit signers, fresh blockhash, must succeed. Signing is async, and
+   * tests prepare accounts concurrently (Promise.all of fundedKey and createVoteAccount): an airdrop or another setup
+   * in that window moves the only blockhash LiteSVM accepts. The transaction is then signed again on the blockhash that
+   * is latest now, without expiring it, so two setups in flight do not keep voiding each other's signatures.
+   */
   private async setup(instructions: Instruction[]): Promise<void> {
-    const lifetime = this.blockhashLifetime();
-    const message = pipe(
-      createTransactionMessage({ version: 0 }),
-      (m) => setTransactionMessageFeePayerSigner(this.bank, m),
-      (m) => setTransactionMessageLifetimeUsingBlockhash(lifetime, m),
-      (m) => appendTransactionMessageInstructions(instructions, m),
-    );
-    const result = this.svm.sendTransaction(await signTransactionMessageWithSigners(message));
-    if (result instanceof FailedTransactionMetadata) {
-      throw new Error(`Setup transaction failed: ${JSON.stringify(toSvmError(result))}\n${result.meta().logs().join('\n')}`);
+    let lifetime = this.blockhashLifetime();
+    for (let attempt = 1; ; attempt += 1) {
+      const message = pipe(
+        createTransactionMessage({ version: 0 }),
+        (m) => setTransactionMessageFeePayerSigner(this.bank, m),
+        (m) => setTransactionMessageLifetimeUsingBlockhash(lifetime, m),
+        (m) => appendTransactionMessageInstructions(instructions, m),
+      );
+      const signed = await signTransactionMessageWithSigners(message);
+      const latest = this.svm.latestBlockhash();
+      if (latest !== lifetime.blockhash && attempt < SETUP_ATTEMPTS) {
+        lifetime = { kind: 'blockhash', blockhash: latest, lastValidBlockHeight: 0n };
+        continue;
+      }
+      const result = this.svm.sendTransaction(signed);
+      if (result instanceof FailedTransactionMetadata) {
+        throw new Error(`Setup transaction failed: ${JSON.stringify(toSvmError(result))}\n${result.meta().logs().join('\n')}`);
+      }
+      return;
     }
   }
 }
