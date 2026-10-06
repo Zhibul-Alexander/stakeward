@@ -1444,6 +1444,7 @@
   },
   "recovery": {
     "title": "Stakeward recovery card",
+    "documentTitle": "Stakeward recovery card {account}",
     "intro": "Print this card and keep it with your second key. It holds no secrets, only public addresses, and says what to do if a key is lost or stolen.",
     "print": "Print this card",
     "printHint": "To keep a file, choose Save as PDF in the print dialog.",

@@ -1,7 +1,15 @@
 // Matcher types for this tsconfig (src/test/setup.ts registers them at run time).
 import '@testing-library/jest-dom/vitest';
 import { generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
-import { buildTransaction, cliUrl, commandLine, formatUtcDateTime, recoveryCommands, type TransactionAction } from '@stakeward/core';
+import {
+  buildTransaction,
+  cliUrl,
+  commandLine,
+  formatUtcDateTime,
+  recoveryCommands,
+  shortAddress,
+  type TransactionAction,
+} from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -190,6 +198,13 @@ describe('/recovery/:account on LiteSvmChain', () => {
       // Risk before action: the unlock warning comes before the remove-lock command.
       const unlockRisk = document.querySelector('[data-risk="unlock-opens-window"]') as HTMLElement;
       expect(follows(unlockRisk, block('Remove the lock'))).toBe(true);
+      // On paper, what leads into a command stays on its sheet (break-after: avoid, as the headings, D77): a command
+      // torn from the sentence that says when to run it is worse than a page break before both.
+      for (const group of document.querySelectorAll('[data-slot="recovery-card"] [data-slot="command-block"]')) {
+        const lead = group.previousElementSibling;
+        if (lead === null || lead.getAttribute('data-slot') === 'command-block') continue;
+        expect(lead, group.getAttribute('aria-label') ?? '').toHaveClass('print:break-after-avoid');
+      }
 
       // Copy gives the one-line command; Print opens the print dialog.
       const write = vi.spyOn(navigator.clipboard, 'writeText');
@@ -239,6 +254,19 @@ describe('/recovery/:account on LiteSvmChain', () => {
       renderRecovery(`/recovery/${w.epochLocked}`);
       expect(await screen.findByText('Stakeward cannot write a card for this lock', undefined, WAIT)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Print this card' })).toBeNull();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'R5: the tab title names the stake account, so a card saved as PDF is named after it; leaving the page restores it',
+    async () => {
+      const before = document.title;
+      renderRecovery(`/recovery/${w.S1}`);
+      await screen.findByRole('heading', { level: 2, name: 'Keys' }, WAIT);
+      expect(document.title).toBe(`Stakeward recovery card ${shortAddress(w.S1)}`);
+      cleanup();
+      expect(document.title).toBe(before);
     },
     SCENARIO_TIMEOUT,
   );
