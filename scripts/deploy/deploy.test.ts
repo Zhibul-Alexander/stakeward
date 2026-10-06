@@ -258,12 +258,13 @@ describe('sanitised environments', () => {
 });
 
 describe('git checks', () => {
-  it('lists every changed and untracked path of git status --porcelain', () => {
+  it('lists every changed and untracked path of git status --porcelain -z (git.test.ts reads a real repository)', () => {
     expect(dirtyFiles('')).toEqual([]);
-    expect(dirtyFiles(' M package.json\n?? apps/web/public/new.svg\nR  a.ts -> b.ts\n')).toEqual([
+    expect(dirtyFiles(' M package.json\0?? apps/web/public/new file.svg\0R  b.ts\0a.ts\0 D gone.ts\0')).toEqual([
       'package.json',
-      'apps/web/public/new.svg',
+      'apps/web/public/new file.svg',
       'a.ts -> b.ts',
+      'gone.ts',
     ]);
   });
 

@@ -20,7 +20,7 @@ import {
   SecretsFileError,
   secretsFileKeyNames,
 } from './deploy/env.ts';
-import { dirtyFiles, headProblem } from './deploy/git.ts';
+import { dirtyFilesIn, headProblem } from './deploy/git.ts';
 import {
   appendDeploySection,
   DEPLOYS_DOC,
@@ -61,7 +61,7 @@ function run(command: string, args: readonly string[], options: { cwd: string; e
 }
 
 function ensureCleanTree(when: string): void {
-  const dirty = dirtyFiles(git(['status', '--porcelain=v1', '--untracked-files=all']));
+  const dirty = dirtyFilesIn(ROOT);
   if (dirty.length > 0) {
     throw new Refusal(`The working tree is not clean ${when}:\n  ${dirty.join('\n  ')}\nCommit or stash first.`);
   }
