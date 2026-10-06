@@ -247,9 +247,27 @@ WHERE type NOT LIKE 'REMINDER%'
   AND stake_account IN (SELECT stake_account FROM accounts WHERE withdrawer = ?1 OR custodian = ?1)
 ORDER BY id DESC LIMIT 50`,
 
-  // ?1 = now s. The sum is a decimal string: SQLite sums INTEGER exactly (all SOL is below 2^63 lamports).
-  STATS: `SELECT COUNT(*) AS accounts, CAST(COALESCE(SUM(CAST(lamports AS INTEGER)), 0) AS TEXT) AS lamports
-FROM accounts WHERE state != 'closed' AND lock_until > ?1`,
+  // /api/stats (public-api.ts) keeps its count in meta.stats_cache: {"at": unix ms, "accounts": n, "lamports":
+  // "decimal"}. The sum is a decimal string: SQLite sums INTEGER exactly (all SOL is below 2^63 lamports).
+  // ?1 = now ms, ?2 = now s, ?3 = how long a count stands (ms). STATS_COUNT counts only when the stored count is not
+  // from the last ?3 ms (missing, unreadable or from the future count too). `stale` has one row then, none otherwise;
+  // as the left side of a LEFT JOIN it is the outer loop, so while the count stands no accounts row is read, and
+  // HAVING drops the one row an aggregate gives over nothing. A batch is one transaction and D1 runs them one at a
+  // time, so requests that arrive together count once.
+  STATS_COUNT: `INSERT INTO meta (key, value)
+SELECT 'stats_cache', json_object('at', CAST(?1 AS INTEGER), 'accounts', COUNT(a.stake_account),
+                                  'lamports', CAST(COALESCE(SUM(CAST(a.lamports AS INTEGER)), 0) AS TEXT))
+FROM (SELECT 1 AS one WHERE NOT EXISTS (
+  SELECT 1 FROM meta WHERE key = 'stats_cache' AND CASE WHEN json_valid(value) THEN
+    json_type(value, '$.at') = 'integer' AND value ->> '$.at' BETWEEN ?1 - ?3 + 1 AND ?1
+    AND json_type(value, '$.accounts') = 'integer' AND json_type(value, '$.lamports') = 'text' END)) AS stale
+LEFT JOIN accounts AS a ON a.state != 'closed' AND a.lock_until > ?2
+WHERE true HAVING COUNT(stale.one) > 0
+ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+
+  // After STATS_COUNT in the same batch: the count that stands.
+  STATS_CACHE: `SELECT value ->> '$.at' AS at, value ->> '$.accounts' AS accounts, value ->> '$.lamports' AS lamports
+FROM meta WHERE key = 'stats_cache'`,
 
   ALERTS_SENT: `SELECT value FROM meta WHERE key = 'alerts_sent'`,
 } as const;
