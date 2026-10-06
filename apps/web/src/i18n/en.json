@@ -1015,7 +1015,8 @@
     "done": {
       "extended": "The lock now ends on {date}",
       "removed": "The lock is removed",
-      "withdraw": "Withdraw now"
+      "withdraw": "Withdraw now",
+      "protect": "Protect it again"
     },
     "refused": {
       "not-found": "This stake account no longer exists.",

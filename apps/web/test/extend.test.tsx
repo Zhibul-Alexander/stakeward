@@ -266,6 +266,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       expect(document.querySelector('[data-slot="extend-done"] [data-risk="unlock-opens-window"]')).toHaveAttribute('data-tone', 'danger');
       const withdrawNow = screen.getByRole('link', { name: 'Withdraw now' });
       expect(withdrawNow).toHaveAttribute('href', `/withdraw/${S}`);
+      // The way on after a removal from a "second key may be stolen" alert (SECURITY-CHECK П9): a new second key.
+      expect(screen.getByRole('link', { name: 'Protect it again' })).toHaveAttribute('href', `/protect?account=${S}`);
 
       await user.click(withdrawNow);
       expect(location.history.at(-1)).toBe(`/withdraw/${S}`);
