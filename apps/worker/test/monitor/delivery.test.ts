@@ -57,8 +57,13 @@ function alertsIn(text: string): string[] {
   return text.slice('Devnet: '.length).split('\n\n');
 }
 
-function alertText(event: MonitorEventDetails, stake: Address = STAKE, withdrawer: Address = MAIN): string {
-  return formatAlert({ ...event, stakeAccount: stake }, { withdrawer, lockUntil: LOCK_UNTIL, now: 0n }).text;
+function alertText(
+  event: MonitorEventDetails,
+  stake: Address = STAKE,
+  withdrawer: Address = MAIN,
+  custodian: Address = SECOND,
+): string {
+  return formatAlert({ ...event, stakeAccount: stake }, { withdrawer, custodian, lockUntil: LOCK_UNTIL, now: 0n }).text;
 }
 
 const deactivatedText = (stake: Address = STAKE) =>
@@ -155,6 +160,76 @@ describe('messages', () => {
     }
     expect((await h.readEvents()).every((e) => e.notified_at !== null)).toBe(true);
     expect((await h.readMeta()).alerts_sent).toBe('7');
+  });
+
+  const EXTENDED = LOCK_UNTIL + 30n * 86_400n;
+  const extendedBy = (custodian: Address) =>
+    alertText(
+      {
+        type: 'LOCKUP_CHANGED',
+        details: {
+          changes: ['extended'],
+          fromLockUntil: LOCK_UNTIL.toString(),
+          toLockUntil: EXTENDED.toString(),
+          fromCustodian: SECOND,
+          toCustodian: SECOND,
+        },
+      },
+      STAKE,
+      MAIN,
+      custodian,
+    );
+
+  it('the second key moved the lock date: both keys get the removal advice, the button opens the lock page on the site', async () => {
+    const h = await watched();
+    await h.linkChat(MAIN, CHAT_A);
+    await h.linkChat(SECOND, CHAT_B);
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: EXTENDED });
+    expect(await next(h)).toMatchObject({ events: 1, messages: 2 });
+    const text = extendedBy(SECOND);
+    expect(text).toContain(
+      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a new second key;',
+    );
+    for (const chat of [CHAT_A, CHAT_B]) {
+      const [message] = h.telegram.delivered(chat);
+      expect(message?.text).toBe(`Devnet: ${text}`);
+      // A routine renewal looks the same: the lock page offers a new end and the removal, not the removal alone.
+      expect(message?.button).toEqual({ label: 'Review the lock', url: `${SITE}/extend/${STAKE}` });
+      expect(new URL(message?.button?.url ?? '').origin).toBe(SITE);
+    }
+  });
+
+  it('a date move delivered only after the lock passed to another key: no removal advice for the old key', async () => {
+    const h = await watched();
+    await h.linkChat(MAIN, CHAT_A);
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: EXTENDED });
+    h.telegram.replyTo(CHAT_A, 500);
+    expect(await next(h)).toMatchObject({ events: 1 });
+    expect(h.telegram.delivered(CHAT_A)).toEqual([]);
+    // Before the retry, the next pass stores another second key: the old one can no longer remove this lock.
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: EXTENDED, custodian: OTHER_SECOND });
+    expect(await next(h)).toMatchObject({ events: 1, messages: 1 });
+    const [message] = h.telegram.delivered(CHAT_A);
+    const [moved, handedOver] = alertsIn(message?.text ?? '');
+    expect(moved).toBe(extendedBy(OTHER_SECOND));
+    expect(moved).not.toContain('remove the lock');
+    expect(moved).toContain('If this was not you, your second key may be stolen.');
+    expect(handedOver).toContain('The second key of stake');
+    expect(message?.button).toEqual({ label: 'Open Stakeward', url: `${SITE}/app?address=${MAIN}` });
+  });
+
+  it('a date-move alert and a rescue alert in one message: the button opens Rescue (D73)', async () => {
+    const stakes = [key(10), key(11)].sort();
+    const h = await watched(stakes);
+    await h.linkChat(MAIN, CHAT_A);
+    const [moved = STAKE, deactivated = STAKE] = stakes;
+    h.chain.putStake(moved, { ...SPEC, unixTimestamp: LOCK_UNTIL + 86_400n });
+    h.chain.putStake(deactivated, DEACTIVATED);
+    expect(await next(h)).toMatchObject({ events: 2, messages: 1 });
+    const [message] = h.telegram.delivered(CHAT_A);
+    expect(alertsIn(message?.text ?? '')).toHaveLength(2);
+    expect(alertsIn(message?.text ?? '')[0]).toContain('remove the lock with it now');
+    expect(message?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` });
   });
 
   it('a chat that follows both keys of an account gets each alert once', async () => {

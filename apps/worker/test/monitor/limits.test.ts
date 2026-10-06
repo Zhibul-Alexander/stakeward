@@ -60,7 +60,7 @@ async function seedDeliveries(nowMs: number): Promise<Map<string, number>> {
     );
     const alert = formatAlert(
       { type: 'BALANCE_DECREASED', details: alertDetails(i), stakeAccount: stake },
-      { withdrawer: alertWallet(i), lockUntil: 0n, now: 0n },
+      { withdrawer: alertWallet(i), custodian: key(3), lockUntil: 0n, now: 0n },
     );
     indexOf.set(alert.text, i);
   }

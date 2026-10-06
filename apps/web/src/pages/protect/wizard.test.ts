@@ -12,6 +12,7 @@ import {
   leftOut,
   MAX_ACCOUNTS_PER_RUN,
   parseAccountParams,
+  previouslyHeldBy,
   protectedIds,
   retryableIds,
   secondKeyProblems,
@@ -116,6 +117,18 @@ describe('secondKeyProblems', () => {
     expect(secondKeyProblems(A, A, [stake(S1)])).toEqual([{ account: S1, violations: ['main-key', 'staker'] }]);
     expect(secondKeyProblems(ZERO_ADDRESS, A, [stake(S1)])).toEqual([{ account: S1, violations: ['zero-key'] }]);
     expect(secondKeyProblems(K, A, [])).toEqual([]);
+  });
+});
+
+describe('previouslyHeldBy', () => {
+  it('the chosen accounts whose lock this key held before: a removed or ended lock keeps naming its second key', () => {
+    const removed = lockedBy(K, 0n);
+    const accounts = [stake(S1, removed), stake(S2), stake(S3, lockedBy(OTHER, NOW - 86_400n)), stake(S4, removed)];
+    expect(previouslyHeldBy(K, accounts)).toEqual([S1, S4]);
+    expect(previouslyHeldBy(OTHER, accounts)).toEqual([S3]);
+    expect(previouslyHeldBy(A, accounts)).toEqual([]);
+    // An account that never had a lock names the empty address: never a reason to warn.
+    expect(previouslyHeldBy(ZERO_ADDRESS, accounts)).toEqual([]);
   });
 });
 

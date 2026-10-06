@@ -178,8 +178,9 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       // SECURITY-CHECK П8: a second key that signs elsewhere can be phished into handing the lock away.
       expect(screen.getByText('Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.')).toBeInTheDocument();
       await connect(user, 'Second key', 'Second Wallet');
-      // Two wallet apps: no same-wallet warning.
+      // Two wallet apps: no same-wallet warning. Accounts that never had a lock: no warning about a former second key.
       expect(screen.queryByText(/^Both keys are in /)).toBeNull();
+      expect(document.querySelector('[data-slot="former-second-key"]')).toBeNull();
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
 
@@ -761,6 +762,42 @@ describe('/protect step gates', () => {
       await user.click(screen.getByRole('button', { name: `Leave ${shortAddress(S3)} out` }));
       expect(location.history.at(-1)).toBe(`/protect?account=${S1}`);
       expect(screen.queryByText(/This wallet manages staking/)).toBeNull();
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'How long should the lock hold?' });
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'SECURITY-CHECK П9: a second key that held a chosen account\'s lock before gets a warning to use a new one, not a refusal',
+    async () => {
+      const w = await world();
+      // S1's lock was removed by K (the removal keeps K in the lockup); S2 never had a lock.
+      const S1 = await w.testChain.createStakeAccount({
+        staker: w.A.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: 0n, epoch: 0n, custodian: w.K.address },
+      });
+      const S2 = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
+      const [main, second] = await twoWallets(w);
+      const { user } = renderProtect(w, [S1, S2], [main, second]);
+
+      await connect(user, 'Main key', 'Main Wallet');
+      await waitFor(() => {
+        expect(selectBox(S1)).toBeChecked();
+      }, WAIT);
+      expect(selectBox(S2)).toBeChecked();
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      expect(document.querySelector('[data-slot="former-second-key"]')).toBeNull();
+      await connect(user, 'Second key', 'Second Wallet');
+      const warning = document.querySelector('[data-slot="former-second-key"]');
+      expect(warning).toHaveAttribute('data-tone', 'warning');
+      expect(warning).toHaveTextContent(
+        `This second key held the lock on stake account ${shortAddress(S1)} before. If it may be stolen, use a new second key from a new seed phrase.`,
+      );
+      // A lock that ended normally may be renewed with the same key: Continue goes on.
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'How long should the lock hold?' });
     },

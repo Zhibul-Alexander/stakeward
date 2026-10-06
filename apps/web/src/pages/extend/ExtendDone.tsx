@@ -28,8 +28,8 @@ type ExtendDoneProps = {
 };
 
 /**
- * The end of a run on /extend/:account: the lock's new end, or that the lock is gone with its risk and the way to
- * withdraw now, or what did not happen and the way forward.
+ * The end of a run on /extend/:account: the lock's new end, or that the lock is gone with its risk, the way to
+ * withdraw now and the way to protect it again, or what did not happen and the way forward.
  */
 export function ExtendDone({ headingRef, account, lockUntil, job, checking, checkFailed, onRetry, onCheckAgain, onBack }: ExtendDoneProps) {
   const headingId = useId();
@@ -67,9 +67,15 @@ export function ExtendDone({ headingRef, account, lockUntil, job, checking, chec
       {lockUntil === 0n ? (
         <>
           <RiskNote risk="unlock-opens-window" tone="danger" />
-          <div>
+          {/* The way on after a "second key may be stolen" alert: a lock under a new second key (SECURITY-CHECK П9). The
+              wizard warns again while the old second key is still the one connected. */}
+          <p className="max-w-prose text-sm">{t('extend.done.protectNewKey')}</p>
+          <div className="flex flex-wrap gap-3">
             <Button asChild>
               <Link href={appLinks.withdraw(account)}>{t('extend.done.withdraw')}</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={appLinks.protect([account])}>{t('extend.done.protect')}</Link>
             </Button>
           </div>
         </>

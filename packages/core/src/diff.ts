@@ -254,8 +254,8 @@ export function needsWithdrawerRescan(events: readonly { type: MonitorEventType 
 
 /**
  * A Telegram alert: plain text without markup, and one link button. `path` is a site path such as
- * `/rescue?address=...` or `/app?address=...`; the worker prefixes the Stakeward domain (alerts link only there,
- * CLAUDE.md section 11).
+ * `/rescue?address=...`, `/app?address=...` or `/extend/<stake account>`; the worker prefixes the Stakeward domain
+ * (alerts link only there, CLAUDE.md section 11).
  */
 export type Alert = { text: string; buttonLabel: string; path: string };
 
@@ -265,6 +265,11 @@ export type AlertContext = {
    * address.
    */
   withdrawer: Address;
+  /**
+   * Second key (lockup custodian) of the account as stored after this pass. Advice for the second key of an event is
+   * given only while it still holds the lock: an alert delivered late may follow a newer second key.
+   */
+  custodian: Address;
   /**
    * Lockup end of the account as stored after this pass (unix seconds, 0 = none). The texts call the lock in force
    * while `lockUntil > now`; a lock its epoch holds past that is not modelled (Stakeward never sets the epoch, D19).
@@ -332,7 +337,8 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
       if (changes.includes('extended')) sentences.push(`${lockOf} was extended to ${until}.`);
       else if (changes.includes('shortened')) sentences.push(`${lockOf} was shortened to ${until}.`);
       else if (removed) sentences.push(`${lockOf} was removed.`);
-      if (changes.includes('custodian-changed')) {
+      const secondKeyChanged = changes.includes('custodian-changed');
+      if (secondKeyChanged) {
         sentences.push(
           sentences.length === 0
             ? `The second key of ${stakeName} changed to ${shortAddress(toCustodian)}.`
@@ -340,12 +346,31 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
         );
       }
       // While the old lock was in force only the second key could change it; after it ended the main key could.
+      const bySecondKey = BigInt(fromLockUntil) > context.now;
       sentences.push(
-        BigInt(fromLockUntil) > context.now
-          ? 'Only the second key can do this. If this was not you, your second key may be stolen.'
-          : mainKeyStolen,
+        bySecondKey ? 'Only the second key can do this. If this was not you, your second key may be stolen.' : mainKeyStolen,
       );
+      // The second key moved the end of a lock that still holds, and still holds it (SECURITY-CHECK П9). If that key
+      // is in other hands, an owner who still has it removes the lock and protects again with a new key; nothing is
+      // promised to one who lost it. A new second key (in this event, or stored by a later pass before this alert
+      // goes out) or a lock that has ended leaves nothing for the old key to remove. A routine renewal (the answer
+      // to a reminder) reads the same, so the button opens the lock's page, which offers a new end and the removal.
+      const sameSecondKey = !secondKeyChanged && context.custodian === toCustodian;
+      if (bySecondKey && !removed && sameSecondKey && context.lockUntil > context.now) {
+        sentences.push(
+          'In that case, if you still have the second key, remove the lock with it now, then protect this stake again ' +
+            'with a new second key; until then the main key alone can withdraw this SOL.',
+          'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.',
+        );
+        return { text: sentences.join(' '), buttonLabel: 'Review the lock', path: `/extend/${event.stakeAccount}` };
+      }
       if (removed) sentences.push('The main key alone can now withdraw this SOL.');
+      // Without the second key's lock, the main key and a new second key can lock it again at once; the owner may also
+      // have removed it on purpose (the F3 fallback), so it is advice for the other case. No advice once a later pass
+      // has seen a new lock.
+      if (removed && bySecondKey && context.lockUntil <= context.now) {
+        sentences.push('If you did not remove it, protect this stake again now with your main key and a new second key.');
+      }
       return { text: sentences.join(' '), buttonLabel: 'Open Stakeward', path: accountsPage };
     }
     case 'BALANCE_DECREASED': {

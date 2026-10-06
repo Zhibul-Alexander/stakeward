@@ -394,7 +394,7 @@ describe('landing words and numbers', () => {
     const decode = (byte: number) => getAddressDecoder().decode(new Uint8Array(32).fill(byte));
     const alert = formatAlert(
       { type: 'DEACTIVATED', details: { deactivationEpoch: '0' }, stakeAccount: decode(7) },
-      { withdrawer: decode(8), lockUntil: 1n, now: 0n },
+      { withdrawer: decode(8), custodian: decode(9), lockUntil: 1n, now: 0n },
     );
     const figure = section('alerts').querySelector('figure') as HTMLElement;
     expect(figure.querySelector('figcaption')).toHaveTextContent('An alert looks like this');

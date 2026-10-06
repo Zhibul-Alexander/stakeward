@@ -20,6 +20,8 @@ type SecondKeyStepProps = {
   /** Both keys are accounts of this wallet (its name), or null. */
   sameWallet: string | null;
   problems: readonly SecondKeyProblem[];
+  /** Chosen accounts whose lock this second key held before (a removed or ended lock): a warning, not a refusal. */
+  heldBefore: readonly Address[];
   seedConfirmed: boolean;
   /** Where the second key signs: connected here, or on another device by link (its address typed in `linkKey`). */
   mode: SignMode;
@@ -42,7 +44,7 @@ type SecondKeyStepProps = {
  * only a wallet the user or someone they trust made (SECURITY-CHECK П5, П8, П14).
  */
 export function SecondKeyStep(props: SecondKeyStepProps) {
-  const { headingRef, mainKey, sameWallet, problems, mode, linkKey } = props;
+  const { headingRef, mainKey, sameWallet, problems, heldBefore, mode, linkKey } = props;
   const headingId = useId();
   const seedId = useId();
   const hintId = useId();
@@ -81,6 +83,20 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           <AlertDescription className="flex flex-col gap-1 text-foreground">
             <p className="font-medium">{t('protect.second.sameWallet', { wallet: sameWallet })}</p>
             <p>{t('protect.second.sameWalletSwitch', { wallet: sameWallet })}</p>
+          </AlertDescription>
+        </Alert>
+      )}
+      {heldBefore.length === 0 ? null : (
+        // After a "second key may be stolen" alert the owner removes the lock and comes here with the old key still
+        // connected (SECURITY-CHECK П9).
+        <Alert tone="warning" role="note" data-slot="former-second-key">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="text-foreground">
+            <p>
+              {heldBefore.length === 1
+                ? t('protect.second.heldBeforeOne', { address: shortAddress(heldBefore[0] as Address) })
+                : t('protect.second.heldBeforeOther', { count: heldBefore.length })}
+            </p>
           </AlertDescription>
         </Alert>
       )}

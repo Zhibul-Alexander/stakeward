@@ -99,7 +99,7 @@ export function alertOf(e: PendingEvent, nowSec: bigint): Alert | null {
     stakeAccount: Address;
   };
   try {
-    return formatAlert(event, { withdrawer: e.withdrawer, lockUntil: e.lockUntil, now: nowSec });
+    return formatAlert(event, { withdrawer: e.withdrawer, custodian: e.custodian, lockUntil: e.lockUntil, now: nowSec });
   } catch {
     return null;
   }

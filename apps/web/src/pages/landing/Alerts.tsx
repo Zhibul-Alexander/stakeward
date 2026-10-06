@@ -12,6 +12,7 @@ const EVENTS: readonly AlertEvent[] = ['deactivated', 'delegation', 'manager', '
 /** Made-up public addresses for the example: 32 bytes of 7 and of 8. */
 const SAMPLE_STAKE = getAddressDecoder().decode(new Uint8Array(32).fill(7));
 const SAMPLE_MAIN = getAddressDecoder().decode(new Uint8Array(32).fill(8));
+const SAMPLE_SECOND = getAddressDecoder().decode(new Uint8Array(32).fill(9));
 
 /**
  * The example quotes the bot word for word: core formatAlert writes the alert text (the one place where landing copy
@@ -19,7 +20,7 @@ const SAMPLE_MAIN = getAddressDecoder().decode(new Uint8Array(32).fill(8));
  */
 const SAMPLE_ALERT = formatAlert(
   { type: 'DEACTIVATED', details: { deactivationEpoch: '0' }, stakeAccount: SAMPLE_STAKE },
-  { withdrawer: SAMPLE_MAIN, lockUntil: 1n, now: 0n },
+  { withdrawer: SAMPLE_MAIN, custodian: SAMPLE_SECOND, lockUntil: 1n, now: 0n },
 );
 
 /** Alerts in Telegram (CLAUDE.md section 8): what triggers one, what one looks like, and what they can and cannot do. */
