@@ -9,6 +9,7 @@ import {
   chunkUpdateStatement,
   insertWatchedStatements,
   leaseAcquireStatement,
+  linkCounterKey,
   linkStateStatement,
   linkWalletStatements,
   putMetaStatement,
@@ -530,23 +531,54 @@ describe('delivery statements', () => {
 
 describe('webhook statements', () => {
   const TODAY = '2026-10-05';
+  const SECRET = 'test-webhook-secret';
   const LIMITS: LinkLimits = { linksPerChat: 20, writesPerDay: 1000, writesPerChatPerDay: 50 };
+  /** The key meta.link_writes counts `chat` under on `day`. */
+  const keyOf = (chat: string, day = TODAY) => linkCounterKey(SECRET, chat, day);
   /** The /start batch: [LINK_COUNT, LINK_WALLET, LINK_STATE], each call with a fresh token. */
-  const linkWallet = (wallet: string, chat: string, opts: { nowMs?: number; today?: string; limits?: LinkLimits } = {}) =>
+  const linkWallet = async (wallet: string, chat: string, opts: { nowMs?: number; today?: string; limits?: LinkLimits } = {}) =>
     db.batch(
       linkWalletStatements(db, {
         wallet,
         chatId: chat,
         today: opts.today ?? TODAY,
+        counterKey: await keyOf(chat, opts.today ?? TODAY),
         nowMs: opts.nowMs ?? NOW_MS,
         token: crypto.randomUUID(),
         limits: opts.limits ?? LIMITS,
       }),
     );
-  const linkWrites = async () =>
-    JSON.parse((await db.prepare("SELECT value FROM meta WHERE key = 'link_writes'").first<{ value: string }>())?.value ?? 'null') as unknown;
+  const linkWritesText = async () =>
+    (await db.prepare("SELECT value FROM meta WHERE key = 'link_writes'").first<{ value: string }>())?.value ?? 'null';
+  const linkWrites = async () => JSON.parse(await linkWritesText()) as unknown;
   const state = async (wallet: string, chat: string, today = TODAY) =>
-    (await linkStateStatement(db, wallet, chat, today).all()).results;
+    (await linkStateStatement(db, wallet, chat, today, await keyOf(chat, today)).all()).results;
+
+  it('linkCounterKey: 32 hex characters of an HMAC of the day and the chat id, keyed by the webhook secret', async () => {
+    const key42 = await keyOf('42');
+    expect(key42).toMatch(/^[0-9a-f]{32}$/);
+    expect(await keyOf('42')).toBe(key42);
+    const others = [
+      await keyOf('43'),
+      await keyOf('42', '2026-10-06'),
+      await linkCounterKey('another-secret', '42', TODAY),
+      await keyOf('-1001234567890'),
+    ];
+    expect(new Set([key42, ...others]).size).toBe(5);
+  });
+
+  it('meta.link_writes holds no chat id: a chat that sent /stop leaves no trace of its id in meta', async () => {
+    await linkWallet(MAIN, '1234567890');
+    await linkWallet(SECOND, '-1001234567890');
+    await db.prepare(SQL.STOP).bind('1234567890').run();
+    await db.prepare(SQL.UNLINK_CHATS).bind(JSON.stringify(['-1001234567890'])).run();
+    expect(await links()).toEqual([]);
+    const { results } = await db.prepare('SELECT key, value FROM meta').all<{ key: string; value: string }>();
+    expect(results.map((row) => row.key)).toEqual(['link_writes']);
+    for (const chat of ['1234567890', '1001234567890']) expect(JSON.stringify(results)).not.toContain(chat);
+    // The count itself stays: churn does not reopen the chat's budget.
+    expect(await linkWrites()).toMatchObject({ n: 2, chats: { [await keyOf('1234567890')]: 1 } });
+  });
 
   it('LINK_WALLET starts at the newest event id and is idempotent; LINK_STATE counts live accounts of the wallet', async () => {
     await seed(watchRow(10), watchRow(11, { withdrawer: OTHER }), watchRow(12));
@@ -586,15 +618,16 @@ describe('webhook statements', () => {
     await linkWallet(MAIN, '42');
     await linkWallet(SECOND, '42');
     await linkWallet(MAIN, '-1001234567890');
-    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 3, chats: { '42': 2, '-1001234567890': 1 } });
+    const [k42, kGroup] = [await keyOf('42'), await keyOf('-1001234567890')];
+    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 3, chats: { [k42]: 2, [kGroup]: 1 } });
     // A /stop deletes links, not the count: the same wallet linked again counts again.
     await db.prepare(SQL.STOP).bind('42').run();
     await linkWallet(MAIN, '42');
-    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 4, chats: { '42': 3, '-1001234567890': 1 } });
+    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 4, chats: { [k42]: 3, [kGroup]: 1 } });
     expect(await state(OTHER, '42')).toEqual([{ linked: 0, watched: 0, links: 1, day_writes: 4, chat_writes: 3 }]);
     // A new day starts from 0, and its count holds only the chats that linked that day.
     await linkWallet(OTHER, '43', { today: '2026-10-06' });
-    expect(await linkWrites()).toMatchObject({ day: '2026-10-06', n: 1, chats: { '43': 1 } });
+    expect(await linkWrites()).toMatchObject({ day: '2026-10-06', n: 1, chats: { [await keyOf('43', '2026-10-06')]: 1 } });
     expect(await state(OTHER, '42', '2026-10-06')).toMatchObject([{ day_writes: 1, chat_writes: 0 }]);
   });
 
@@ -612,7 +645,7 @@ describe('webhook statements', () => {
     expect(dayFull?.meta.changes).toBe(0);
     expect(afterDay?.results).toMatchObject([{ linked: 0, day_writes: 3, chat_writes: 1 }]);
     expect(await links()).toHaveLength(3);
-    expect(await linkWrites()).toMatchObject({ n: 3, chats: { '42': 2, '43': 1 } });
+    expect(await linkWrites()).toMatchObject({ n: 3, chats: { [await keyOf('42')]: 2, [await keyOf('43')]: 1 } });
   });
 
   it('LINK_WALLET adds nothing without the token of the LINK_COUNT before it', async () => {
@@ -622,6 +655,7 @@ describe('webhook statements', () => {
       wallet: SECOND,
       chatId: '42',
       today: TODAY,
+      counterKey: await keyOf('42'),
       nowMs: NOW_MS,
       token: 'not-the-last-token',
       limits: LIMITS,

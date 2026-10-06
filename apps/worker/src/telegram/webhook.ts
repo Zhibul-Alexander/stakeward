@@ -3,7 +3,15 @@ import type { Context, MiddlewareHandler } from 'hono';
 import * as z from 'zod';
 import { isAddressText } from '../address.ts';
 import { botUsernameOf, siteOriginOf, webhookSecretOf } from '../monitor/config.ts';
-import { lastPassAtOf, linkStateOf, linkStateStatement, linkWalletStatements, SQL, type LinkState } from '../monitor/store.ts';
+import {
+  lastPassAtOf,
+  linkCounterKey,
+  linkStateOf,
+  linkStateStatement,
+  linkWalletStatements,
+  SQL,
+  type LinkState,
+} from '../monitor/store.ts';
 import { allowRequest } from '../rate-limit.ts';
 import type { AppEnv } from '../app.ts';
 import {
@@ -30,7 +38,8 @@ import {
  * 6. /start <address>, /status, /stop, /help. The reply goes in the response body (a sendMessage the Bot API runs
  *    for us): no outgoing request and no token needed. Only a /start that adds a link counts against
  *    MAX_LINK_WRITES_PER_DAY and MAX_LINK_WRITES_PER_CHAT_PER_DAY; a wallet the chat already follows is confirmed
- *    without a write.
+ *    without a write. The per-chat count is kept under an HMAC of the day and the chat id (linkCounterKey), so the
+ *    chat id lives only in alert_links and /stop forgets it, while the count survives /stop.
  * A D1 failure is thrown to app.onError -> 500, and Telegram retries; every command is idempotent.
  * Logged: the kind of update only. Never the body, the chat id, the wallet or the headers.
  */
@@ -188,7 +197,11 @@ export function telegramWebhookHandler(now: () => number) {
         if (wallet === null) return reply(c, chatId, helpText(origin));
         if (!isAddressText(wallet) || wallet === ZERO_ADDRESS) return reply(c, chatId, notAnAddressText(origin));
         const today = new Date(now()).toISOString().slice(0, 10);
-        const before = linkStateOf(await linkStateStatement(db, wallet, chatId, today).all());
+        const secret = webhookSecretOf(c.env);
+        // telegramSecret() answers 503 before this handler runs without one.
+        if (secret === null) throw new Error('TELEGRAM_WEBHOOK_SECRET is not set');
+        const counterKey = await linkCounterKey(secret, chatId, today);
+        const before = linkStateOf(await linkStateStatement(db, wallet, chatId, today, counterKey).all());
         if (before?.linked === true) return reply(c, chatId, linkedText(wallet, before.watched, origin));
         const refused = before === null ? null : linkRefusal(before);
         if (refused !== null) return reply(c, chatId, refused);
@@ -196,6 +209,7 @@ export function telegramWebhookHandler(now: () => number) {
           wallet,
           chatId,
           today,
+          counterKey,
           nowMs: now(),
           token: crypto.randomUUID(),
           limits: LINK_LIMITS,

@@ -4,6 +4,7 @@
 import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { linkCounterKey } from '../../src/monitor/store.ts';
 import { MAX_LINK_WRITES_PER_CHAT_PER_DAY } from '../../src/telegram/texts.ts';
 import {
   MAX_LINK_WRITES_PER_DAY,
@@ -299,9 +300,15 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
   const today = new Date(NOW).toISOString().slice(0, 10);
   const linkWrites = async () =>
     JSON.parse((await env.DB.prepare("SELECT value FROM meta WHERE key = 'link_writes'").first<{ value: string }>())?.value ?? 'null') as unknown;
-  const setLinkWrites = async (n: number, chats: Record<string, number> = {}) => {
+  /** The key meta.link_writes counts `chat` under on `day` (an HMAC: the chat id itself is not kept there). */
+  const keyOf = (chat: number, day = today) => linkCounterKey(SECRET, String(chat), day);
+  /** meta.link_writes of today: `n` links in all, `chats` per chat id (stored under keyOf). */
+  const setLinkWrites = async (n: number, chats: Record<number, number> = {}) => {
+    const keyed = Object.fromEntries(
+      await Promise.all(Object.entries(chats).map(async ([chat, count]) => [await keyOf(Number(chat)), count] as const)),
+    );
     await env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('link_writes', ?1)")
-      .bind(JSON.stringify({ day: today, n, chats }))
+      .bind(JSON.stringify({ day: today, n, chats: keyed }))
       .run();
   };
   const CHAT_BUDGET_TEXT =
@@ -316,7 +323,7 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
       await replyOf(await bot().send(message(chat, `/start ${key(100)}`)));
       await replyOf(await bot().send(message(chat, '/stop')));
     }
-    expect(await linkWrites()).toMatchObject({ day: today, n: 10, chats: { [String(chat)]: 10 } });
+    expect(await linkWrites()).toMatchObject({ day: today, n: 10, chats: { [await keyOf(chat)]: 10 } });
   });
 
   it('a refused /start counts nothing: the 21st wallet of a chat', async () => {
@@ -331,19 +338,23 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
   it('a wallet the chat already follows is confirmed past every budget, without a write', async () => {
     const chat = freshChat();
     await addLink(WALLET, chat);
-    await setLinkWrites(MAX_LINK_WRITES_PER_DAY, { [String(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY });
+    await setLinkWrites(MAX_LINK_WRITES_PER_DAY, { [chat]: MAX_LINK_WRITES_PER_CHAT_PER_DAY });
     const b = bot();
     expect((await replyOf(await b.send(message(chat, `/start ${WALLET}`)))).text).toMatch(/^Alerts are on for /);
     expect(b.db.journal.map((e) => e.name)).toEqual(['LINK_STATE']);
-    expect(await linkWrites()).toEqual({ day: today, n: MAX_LINK_WRITES_PER_DAY, chats: { [String(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY } });
+    expect(await linkWrites()).toEqual({
+      day: today,
+      n: MAX_LINK_WRITES_PER_DAY,
+      chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY },
+    });
   });
 
   it(`a chat adds at most ${String(MAX_LINK_WRITES_PER_CHAT_PER_DAY)} links a day; other chats still link; the next UTC day it links again`, async () => {
     const chat = freshChat();
-    await setLinkWrites(10, { [String(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY - 1 });
+    await setLinkWrites(10, { [chat]: MAX_LINK_WRITES_PER_CHAT_PER_DAY - 1 });
     await replyOf(await bot().send(message(chat, `/start ${WALLET}`)));
     expect(await links()).toHaveLength(1);
-    expect(await linkWrites()).toMatchObject({ n: 11, chats: { [String(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY } });
+    expect(await linkWrites()).toMatchObject({ n: 11, chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY } });
 
     const full = bot();
     expect((await replyOf(await full.send(message(chat, `/start ${key(5)}`)))).text).toBe(CHAT_BUDGET_TEXT);
@@ -356,15 +367,15 @@ describe('the daily budget of link writes (the D1 write quota is shared by dev a
 
     const other = freshChat();
     expect((await replyOf(await bot().send(message(other, `/start ${key(5)}`)))).text).toMatch(/^Alerts are on for /);
-    expect(await linkWrites()).toMatchObject({ n: 12, chats: { [String(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY, [String(other)]: 1 } });
+    expect(await linkWrites()).toMatchObject({
+      n: 12,
+      chats: { [await keyOf(chat)]: MAX_LINK_WRITES_PER_CHAT_PER_DAY, [await keyOf(other)]: 1 },
+    });
 
     const tomorrow = bot({ now: () => NOW + 86_400_000 });
     expect((await replyOf(await tomorrow.send(message(chat, `/start ${key(5)}`)))).text).toMatch(/^Alerts are on for /);
-    expect(await linkWrites()).toMatchObject({
-      day: new Date(NOW + 86_400_000).toISOString().slice(0, 10),
-      n: 1,
-      chats: { [String(chat)]: 1 },
-    });
+    const tomorrowDay = new Date(NOW + 86_400_000).toISOString().slice(0, 10);
+    expect(await linkWrites()).toMatchObject({ day: tomorrowDay, n: 1, chats: { [await keyOf(chat, tomorrowDay)]: 1 } });
   });
 
   it('past the budget /start writes nothing and says so; /status and /stop still work; the next UTC day it links again', async () => {
@@ -440,6 +451,21 @@ describe('/status, /stop, /help and other text', () => {
     // Idempotent.
     await replyOf(await bot().send(message(chat, '/stop')));
     expect(await links()).toHaveLength(1);
+  });
+
+  it.each(['/stop', 'kicked', 'left'])('after /start and then %s the chat id is nowhere in D1', async (how) => {
+    const chat = freshChat();
+    const everything = async () => {
+      const tables = ['meta', 'alert_links', 'accounts', 'events'];
+      const rows = await Promise.all(tables.map((table) => env.DB.prepare(`SELECT * FROM ${table}`).all()));
+      return JSON.stringify(rows.map((result) => result.results));
+    };
+    await replyOf(await bot().send(message(chat, `/start ${WALLET}`)));
+    await replyOf(await bot().send(message(chat, `/start ${key(2)}`)));
+    expect(await everything()).toContain(String(chat));
+    if (how === '/stop') await replyOf(await bot().send(message(chat, '/stop')));
+    else await expectNoReply(await bot().send(memberUpdate(chat, how)));
+    expect(await everything()).not.toContain(String(chat));
   });
 
   it('/help, /start without an address and any other private text get the help, without D1', async () => {
