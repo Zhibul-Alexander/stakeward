@@ -234,7 +234,7 @@
         "browser": "Your browser builds every transaction, and your own wallets sign it. Stakeward's server never signs anything and never sees a key.",
         "summary": "Before each signature you see what the transaction does and what it cannot do. That summary is read from the exact transaction your wallet receives.",
         "programs": "Transactions use only Solana's own stake program, its system program for signing by link, and fee settings. Stakeward has no program of its own and no token.",
-        "server": "Stakeward's server passes only Stakeward transactions to the network. If it is hacked or down, you lose alerts, not SOL.",
+        "server": "Stakeward's server passes only Stakeward transactions to the network. If it is down, you lose alerts, not SOL. The same server delivers this website, so a hacked server means a hacked website: see the next point.",
         "site": "If this website were ever hacked, it could ask you to sign something harmful. So read your wallet or Ledger before you approve: wherever it shows the second key or the new wallet, that address must be yours.",
         "data": "Stakeward keeps only public network data and, if you turn on alerts, your Telegram chat id. No accounts, no logins, no email, no cookies, no analytics.",
         "open": "The code is open source under the MIT license, with no warranty. Anyone can read it."

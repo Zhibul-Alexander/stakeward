@@ -23,6 +23,11 @@ export type MonitorPlan = {
    * test/monitor-cpu.test.ts); on Free 120 000 still allows three small answers, or one large one.
    */
   rescanParseChars: number;
+  /**
+   * Rows of locks whose reminder is due, per daily page (one page per pass). More due rows than this keep the daily
+   * stage open: the next pass goes on after the last row of the page (DECISIONS.md D58).
+   */
+  reminderPageRows: number;
 };
 
 export const MONITOR_PLANS = {
@@ -37,6 +42,9 @@ export const MONITOR_PLANS = {
     maxRescans: 3,
     rescanMaxBodyChars: 100_000,
     rescanParseChars: 120_000,
+    // CPU: a page is read, checked and written in one pass. 250 keeps it a small part of the 10 ms; a crowd of 1000 due
+    // reminders takes four passes, eight minutes.
+    reminderPageRows: 250,
   },
   paid: {
     name: 'paid',
@@ -46,6 +54,7 @@ export const MONITOR_PLANS = {
     maxRescans: 10,
     rescanMaxBodyChars: 2_000_000,
     rescanParseChars: 20_000_000,
+    reminderPageRows: 1_000,
   },
 } as const satisfies Record<string, MonitorPlan>;
 
@@ -61,7 +70,6 @@ export const MONITOR_LIMITS = {
   leaseTtlMs: 110_000, // > max pass (~90 s), < cron interval (120 s)
   dailyHourUtc: 6,
   rescanQueueMax: 1_000,
-  reminderRowsLimit: 1_000,
   adminThrottleMs: 3_600_000,
   rpcDownPasses: 3,
   telegramTimeoutMs: 8_000,

@@ -21,8 +21,11 @@ export const COST = {
   chunk: 9,
   /** Kept while reading chunks: the delivery load (2) + 10 sends + the delivery commit (4). */
   sendFloor: 16,
-  /** DAILY_PAIRS + DAILY_REMINDER_ROWS, then the reminder events + REMINDER_DAYS. */
-  daily: 4,
+  /**
+   * DAILY_PAIRS + DAILY_REMINDER_ROWS, then the reminder events + REMINDER_DAYS + (a full page: more may be due) the
+   * open stage in meta.
+   */
+  daily: 5,
   sendLoad: 2,
   sendCommit: 4,
   /** One rescan call and its post-processing. */

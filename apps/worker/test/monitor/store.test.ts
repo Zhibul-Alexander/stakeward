@@ -1,6 +1,6 @@
 // Every SQL statement of src/monitor/store.ts on the local D1 of workerd (migrations applied before each test).
 import { getAddressDecoder } from '@solana/kit';
-import { I64_MAX, U64_MAX } from '@stakeward/core';
+import { I64_MAX, REMINDER_DAYS, reminderDue, U64_MAX } from '@stakeward/core';
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import type { RowUpdate, StoredEvent } from '../../src/monitor/classify.ts';
@@ -371,23 +371,56 @@ describe('daily statements', () => {
     expect(results).toEqual(expected);
   });
 
-  it('DAILY_REMINDER_ROWS: live locks ending within 30 days, soonest first', async () => {
+  it('DAILY_REMINDER_ROWS: live locks ending within 30 days whose reminder is due, by address after the cursor', async () => {
     const day = 86_400;
     await seed(
+      // Its 14-day reminder was sent: not due, so it takes no place in the page.
       watchRow(10, { lockUntil: String(NOW_S + 10 * day), lastReminderDays: 14 }),
       watchRow(11, { lockUntil: String(NOW_S + 30 * day) }),
       watchRow(12, { lockUntil: String(NOW_S + 30 * day + 1) }),
       watchRow(13, { lockUntil: String(NOW_S) }),
       watchRow(14, { lockUntil: String(NOW_S + 1) }),
       watchRow(15, { lockUntil: String(NOW_S + 2 * day) }),
+      // Only the 30-day reminder was sent: the 14-day one is due.
+      watchRow(16, { lockUntil: String(NOW_S + 10 * day), lastReminderDays: 30 }),
     );
     await closeRow(key(15));
-    const { results } = await db.prepare(SQL.DAILY_REMINDER_ROWS).bind(NOW_S).all();
-    expect(results).toEqual([
-      { stake_account: key(14), lock_until: String(NOW_S + 1), last_reminder_days: null, slot: 1000, checked_at: NOW_MS - 120_000 },
-      { stake_account: key(10), lock_until: String(NOW_S + 10 * day), last_reminder_days: 14, slot: 1000, checked_at: NOW_MS - 120_000 },
-      { stake_account: key(11), lock_until: String(NOW_S + 30 * day), last_reminder_days: null, slot: 1000, checked_at: NOW_MS - 120_000 },
-    ]);
+    const select = async (after: string, limit: number) =>
+      (await db.prepare(SQL.DAILY_REMINDER_ROWS).bind(NOW_S, after, limit).all()).results;
+    const version = { slot: 1000, checked_at: NOW_MS - 120_000 };
+    const expected = [
+      { stake_account: key(14), lock_until: String(NOW_S + 1), last_reminder_days: null, ...version },
+      { stake_account: key(11), lock_until: String(NOW_S + 30 * day), last_reminder_days: null, ...version },
+      { stake_account: key(16), lock_until: String(NOW_S + 10 * day), last_reminder_days: 30, ...version },
+    ].sort((a, b) => (a.stake_account < b.stake_account ? -1 : 1));
+    expect(await select('', 1000)).toEqual(expected);
+    // Keyset paging: strictly after the cursor, at most `limit` rows.
+    expect(await select(expected[0]?.stake_account ?? '', 1)).toEqual([expected[1]]);
+    expect(await select(expected[1]?.stake_account ?? '', 1000)).toEqual([expected[2]]);
+    expect(await select(expected[2]?.stake_account ?? '', 1000)).toEqual([]);
+  });
+
+  it('DAILY_REMINDER_ROWS selects a row exactly when core reminderDue has a reminder for it', async () => {
+    const day = 86_400;
+    const offsets = [-1, 0, 1, ...REMINDER_DAYS.flatMap((d) => [d * day - 1, d * day, d * day + 1])];
+    const lasts = [null, ...REMINDER_DAYS];
+    const rows: WatchRow[] = [];
+    const due: string[] = [];
+    offsets.forEach((offset, i) => {
+      lasts.forEach((last, j) => {
+        const bytes = new Uint8Array(32).fill(0x33);
+        bytes[0] = i;
+        bytes[1] = j;
+        const stakeAccount = getAddressDecoder().decode(bytes);
+        rows.push(watchRow(0, { stakeAccount, lockUntil: String(NOW_S + offset), lastReminderDays: last }));
+        if (reminderDue(BigInt(NOW_S + offset), BigInt(NOW_S), last) !== null) due.push(stakeAccount);
+      });
+    });
+    await seed(...rows);
+    const { results } = await db.prepare(SQL.DAILY_REMINDER_ROWS).bind(NOW_S, '', 1000).all<{ stake_account: string }>();
+    expect(results.map((r) => r.stake_account)).toEqual(due.sort());
+    expect(due.length).toBeGreaterThan(30);
+    expect(due.length).toBeLessThan(rows.length);
   });
 
   it('REMINDER_DAYS records the threshold on the row version it was decided on', async () => {

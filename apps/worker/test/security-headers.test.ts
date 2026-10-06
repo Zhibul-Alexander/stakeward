@@ -27,10 +27,15 @@ describe('static _headers and API headers', () => {
     const fileHeaders = parseHeadersFile(env.TEST_STATIC_HEADERS_FILE);
     expect([...fileHeaders.keys()].sort()).toEqual([
       'content-security-policy',
+      'cross-origin-opener-policy',
       'referrer-policy',
       'strict-transport-security',
       'x-content-type-options',
     ]);
+    // The pages need it, not the JSON: a page that opened Stakeward with window.open must not be able to swap the
+    // tab for a copy after the user checked the address bar (reverse tabnabbing). Opener-free links and the wallet
+    // extensions (Wallet Standard) do not depend on it.
+    expect(fileHeaders.get('cross-origin-opener-policy')).toBe('same-origin');
 
     const res = await exports.default.fetch('https://stakeward.test/api/health');
     for (const [name, value] of fileHeaders) {

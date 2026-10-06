@@ -21,5 +21,7 @@ export const securityHeaders = () =>
     referrerPolicy: 'no-referrer',
     xContentTypeOptions: 'nosniff',
     strictTransportSecurity: 'max-age=63072000; includeSubDomains',
+    // Hono's default too; named because _headers sets it for the pages (reverse tabnabbing) and the test compares.
+    crossOriginOpenerPolicy: 'same-origin',
     xFrameOptions: 'DENY',
   });

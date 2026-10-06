@@ -126,10 +126,20 @@ ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
   // ?1 = now s. Closed rows included: a rescan can reopen a row closed by a bad answer.
   DAILY_PAIRS: `SELECT DISTINCT withdrawer, custodian FROM accounts WHERE lock_until > ?1 ORDER BY withdrawer, custodian`,
 
-  // ?1 = now s. Locks ending within 30 days.
+  // ?1 = now s, ?2 = the last stake account of the previous page ('' = from the start), ?3 = page size. Live locks
+  // ending within 30 days whose reminder is due: the CASE is core reminderDue (1, 3, 7, 14 or 30 days left; a test
+  // holds them equal), and a threshold already recorded in last_reminder_days takes no place in the page. Keyset by
+  // address: a page that comes back full is followed by the next one after its last row, so every row of the window
+  // is reached however many locks end before it (anyone can have locks watched, D49).
   DAILY_REMINDER_ROWS: `SELECT stake_account, CAST(lock_until AS TEXT) AS lock_until, last_reminder_days, slot, checked_at
-FROM accounts WHERE state != 'closed' AND lock_until > ?1 AND lock_until <= ?1 + 2592000
-ORDER BY lock_until LIMIT 1000`,
+FROM accounts
+WHERE stake_account > ?2 AND state != 'closed' AND lock_until > ?1 AND lock_until <= ?1 + 2592000
+  AND last_reminder_days IS NOT (CASE WHEN lock_until <= ?1 + 86400 THEN 1
+                                      WHEN lock_until <= ?1 + 259200 THEN 3
+                                      WHEN lock_until <= ?1 + 604800 THEN 7
+                                      WHEN lock_until <= ?1 + 1209600 THEN 14
+                                      ELSE 30 END)
+ORDER BY stake_account LIMIT ?3`,
 
   // Reminder events go through CHUNK_EVENTS (t = 'REMINDER_<d>', s = ps = row slot, pc = row checked_at).
   // ?1 = [{a, days, ps, pc}]

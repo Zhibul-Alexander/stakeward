@@ -317,6 +317,18 @@ describe('landing words and numbers', () => {
     expect(document.body.textContent).not.toMatch(ROLE_SYNONYMS);
   });
 
+  it('promises "alerts, not SOL" only for a server that is down: the same server delivers this website', async () => {
+    renderLanding();
+    const security = section('security');
+    // A server taken over (Cloudflare account, deploy token) is a website taken over: it can ask for harmful
+    // signatures, as the next point says. Only a server that is down costs nothing but alerts.
+    expect(security.textContent).not.toMatch(/hacked or down|down or hacked/i);
+    const server = within(security).getByText(/you lose alerts, not SOL/);
+    expect(server.textContent).toMatch(/If it is down, you lose alerts, not SOL\./);
+    expect(server.textContent).toMatch(/The same server delivers this website/);
+    await depositShown();
+  });
+
   it('quotes the bot: the example alert is core formatAlert word for word, with its button', async () => {
     renderLanding();
     const decode = (byte: number) => getAddressDecoder().decode(new Uint8Array(32).fill(byte));

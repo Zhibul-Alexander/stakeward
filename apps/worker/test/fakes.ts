@@ -151,6 +151,7 @@ export const SECURITY_HEADERS = {
   'Referrer-Policy': 'no-referrer',
   'X-Content-Type-Options': 'nosniff',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+  'Cross-Origin-Opener-Policy': 'same-origin',
 } as const;
 
 export function securityHeadersOf(response: Response): Record<string, string | null> {
