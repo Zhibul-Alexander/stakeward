@@ -47,11 +47,17 @@ function newEndDateExample(earliestEnd: bigint): string {
   return rfc3339Utc(lockupEndForPeriod(base, 6)) ?? '';
 }
 
+/*
+ * On paper, sections and cases may break across sheets: several are taller than a sheet, and keeping them whole pushes
+ * them to a new sheet that splits them anyway, leaving a sheet nearly empty or a heading alone on one. Only their
+ * heading stays with what follows it; the small blocks inside (commands, rows, notes) do not break.
+ */
+
 function CardSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-4 print:break-inside-avoid">
-      <h2 id={id} className="text-2xl font-semibold">
+    <section aria-labelledby={id} className="flex flex-col gap-4">
+      <h2 id={id} className="text-2xl font-semibold print:break-after-avoid">
         {title}
       </h2>
       {children}
@@ -62,8 +68,8 @@ function CardSection({ title, children }: { title: string; children: ReactNode }
 function Case({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3 print:break-inside-avoid">
-      <h3 id={id} className="text-lg font-semibold">
+    <section aria-labelledby={id} className="flex flex-col gap-3">
+      <h3 id={id} className="text-lg font-semibold print:break-after-avoid">
         {title}
       </h3>
       {children}

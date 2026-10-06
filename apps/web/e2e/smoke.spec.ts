@@ -81,9 +81,43 @@ async function landingDeepLinks(page: Page) {
   await expect(ledger).toBeInViewport();
 }
 
+/** The printable part of an A4 sheet inside the card's @page margin of 14 mm (src/index.css), in CSS px. */
+const A4_PRINTABLE = { width: Math.floor(((210 - 2 * 14) / 25.4) * 96), height: Math.floor(((297 - 2 * 14) / 25.4) * 96) };
+
+/**
+ * The recovery card printed on A4 by Chromium. A block that must not break (break-inside: avoid) but is taller than a
+ * sheet is pushed to a new sheet and split anyway, which leaves a sheet nearly empty or a heading alone on one. So:
+ * every such block fits a sheet, no heading may end a sheet, and the PDF has at most one sheet more than the card's
+ * height needs.
+ */
+async function recoveryOnA4(page: Page) {
+  const viewport = page.viewportSize();
+  await page.setViewportSize(A4_PRINTABLE);
+  await page.emulateMedia({ media: 'print', colorScheme: 'light' });
+  const layout = await page.evaluate((sheet) => {
+    const card = document.querySelector('[data-slot="recovery-card"]');
+    if (card === null) throw new Error('no recovery card');
+    const name = (element: Element) => `${element.tagName.toLowerCase()}: ${element.textContent.trim().slice(0, 50)}`;
+    return {
+      tooTall: [card, ...card.querySelectorAll('*')]
+        .filter((element) => getComputedStyle(element).breakInside === 'avoid' && element.getBoundingClientRect().height > sheet)
+        .map(name),
+      headingsThatMayEndASheet: [...card.querySelectorAll('h2, h3')].filter((heading) => getComputedStyle(heading).breakAfter !== 'avoid').map(name),
+      height: document.documentElement.scrollHeight,
+    };
+  }, A4_PRINTABLE.height);
+  expect(layout.tooTall).toEqual([]);
+  expect(layout.headingsThatMayEndASheet).toEqual([]);
+  // Each sheet is one `/Type /Page` object in the PDF (the page tree is `/Type /Pages`).
+  const sheets = (await page.pdf({ format: 'A4' })).toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+  expect(sheets).toBeGreaterThan(0);
+  expect(sheets).toBeLessThanOrEqual(Math.ceil(layout.height / A4_PRINTABLE.height) + 1);
+  if (viewport !== null) await page.setViewportSize(viewport);
+}
+
 /**
  * The recovery card on paper: light whatever the reader's theme, without the site's header, footer and Print button,
- * with the commands.
+ * with the commands, and on A4 sheets with no sheet wasted.
  */
 async function recoveryPrint(page: Page) {
   await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
@@ -100,6 +134,7 @@ async function recoveryPrint(page: Page) {
   expect(await bodyColours(page)).toEqual(light);
   await expect(page.locator('[data-slot="command-block"]').first()).toBeVisible();
   await screenshot(page, 'recovery-print');
+  await recoveryOnA4(page);
   await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
 }
 
