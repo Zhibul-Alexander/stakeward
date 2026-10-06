@@ -67,7 +67,8 @@ export function ExtendSigning({
   // Its Check again starts a new run: only while nothing may be in flight (the panel offers Back then, view backKind).
   // Once a wallet is asked or the transaction is sent, a new run could build and send a second SetLockup.
   const restartable = snapshot !== null && backKind(snapshot) !== null;
-  const mainPays = feePayer !== undefined && feePayer !== secondKey && rent0.status === 'ready' && restartable;
+  // Said whenever the main key pays, also when the rent read failed: then without the amount (the plan already chose).
+  const mainPays = feePayer !== undefined && feePayer !== secondKey && restartable;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
@@ -77,7 +78,11 @@ export function ExtendSigning({
         <Alert tone="info" role="note">
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <p>{t('extend.mainPays', { amount: formatSol(networkFeeFor(1) + rent0.value) })}</p>
+            <p>
+              {rent0.status === 'ready'
+                ? t('extend.mainPays', { amount: formatSol(networkFeeFor(1) + rent0.value) })
+                : t('extend.mainPaysNoAmount')}
+            </p>
             <div>
               <Button variant="outline" size="sm" onClick={onCheckAgain}>
                 <RefreshCwIcon aria-hidden="true" />

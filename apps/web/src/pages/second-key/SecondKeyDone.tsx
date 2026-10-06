@@ -1,15 +1,19 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate } from '@stakeward/core';
-import { CircleCheckIcon } from 'lucide-react';
+import { formatUtcDate, shortAddress } from '@stakeward/core';
+import { CircleCheckIcon, LoaderCircleIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AddressText } from '@/components/product/address-text';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { isLanded } from '@/pages/account/check';
 import { JobOutcome } from '@/pages/account/JobOutcome';
 import type { JobView } from '@/signing/machine';
 import { secondKeyRefusalText } from './plan.ts';
+
+/** Whether the old second key still holds other locks of this main key (SecondKeyPage, memory.ts). */
+export type OthersCheck = { kind: 'checking' } | { kind: 'found'; accounts: readonly Address[] } | { kind: 'failed' };
 
 type SecondKeyDoneProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -18,6 +22,10 @@ type SecondKeyDoneProps = {
   secondKey: Address;
   /** The second key the run handed the lock to. */
   newSecondKey: Address;
+  /** The main key, for the way back to its accounts. */
+  mainKey: Address;
+  /** The old key's other locks of this main key. */
+  others: OthersCheck;
   /** The run's outcome for this stake account. */
   job: JobView;
   checking: boolean;
@@ -37,6 +45,8 @@ export function SecondKeyDone({
   account,
   secondKey,
   newSecondKey,
+  mainKey,
+  others,
   job,
   checking,
   checkFailed,
@@ -84,6 +94,7 @@ export function SecondKeyDone({
           <AddressText address={job.signature} kind="tx" />
         </p>
       )}
+      <OtherLocks others={others} mainKey={mainKey} />
       <p className="max-w-prose">{t('secondKey.done.card')}</p>
       <div>
         <Button asChild>
@@ -92,4 +103,59 @@ export function SecondKeyDone({
       </div>
     </section>
   );
+}
+
+/**
+ * The old second key's other locks of this main key: if it was stolen, those are exactly the stake accounts the thief
+ * can still freeze, so each gets its way to the same hand-over. Said while checking, and when the check failed.
+ */
+function OtherLocks({ others, mainKey }: { others: OthersCheck; mainKey: Address }) {
+  switch (others.kind) {
+    case 'checking':
+      return (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted">
+          <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
+          {t('secondKey.done.others.checking')}
+        </p>
+      );
+    case 'failed':
+      return (
+        <Alert tone="warning" role="note" data-slot="other-locks">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="flex flex-col gap-2 text-foreground">
+            <p>{t('secondKey.done.others.failed')}</p>
+            <div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/app?${new URLSearchParams({ address: mainKey }).toString()}`}>{t('secondKey.done.others.accounts')}</Link>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    case 'found':
+      if (others.accounts.length === 0) return null;
+      return (
+        <Alert tone="warning" data-slot="other-locks">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertTitle>{t('secondKey.done.others.title')}</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2 text-foreground">
+            <p>{t('secondKey.done.others.body')}</p>
+            <ul className="flex flex-col gap-1">
+              {others.accounts.map((other) => (
+                <li key={other} className="flex flex-wrap items-center gap-x-3">
+                  <AddressText address={other} />
+                  <Link
+                    href={`/second-key/${other}`}
+                    aria-label={t('secondKey.done.others.handOverLabel', { address: shortAddress(other) })}
+                    className="rounded-sm text-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+                  >
+                    {t('secondKey.done.others.handOver')}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      );
+  }
 }

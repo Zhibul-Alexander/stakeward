@@ -1048,7 +1048,8 @@
       "other-second-key": "Another key holds this lock now. Only that key can change it.",
       "not-later": "The lock already ends later than this. Choose again.",
       "lock-end-passed": "The chosen end is too close or has passed. Choose again."
-    }
+    },
+    "mainPaysNoAmount": "Your second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your second key a little SOL from another wallet, then press Check again."
   },
   "secondKey": {
     "intro": "Your second key hands the lock to a new second key, which signs too. The lock keeps its end date, and your SOL stays where it is.",
@@ -1063,10 +1064,10 @@
       "oneBrowser": "Both second keys sign in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
       "newKey": "Your new second key:",
       "endStays": "This change keeps the end of the lock: {date}.",
-      "seedCheck": "My new second key comes from a different seed phrase than my main key",
+      "seedCheck": "My new second key comes from a new seed phrase: not my main key's, and not my old second key's",
       "seedHint": "If both keys come from one seed phrase, whoever gets that phrase has both keys and the lock stops nothing.",
       "needNewKey": "Connect your new second key to continue.",
-      "needSeedCheck": "Confirm that your new second key comes from a different seed phrase than your main key.",
+      "needSeedCheck": "Confirm that your new second key comes from a new seed phrase, not your main key's or your old second key's.",
       "fixProblem": "Choose another wallet as your new second key.",
       "problem": {
         "zero-key": "This is the empty address, not a wallet. Choose another wallet as your new second key.",
@@ -1074,21 +1075,33 @@
         "staker": "This wallet manages staking for this stake account. Choose another wallet as your new second key.",
         "stake-account": "This is the stake account, not a wallet. Choose another wallet as your new second key.",
         "current-second-key": "This is the second key that holds the lock now. Choose a wallet from a new seed phrase."
-      }
+      },
+      "holder": "The key that holds this lock",
+      "unknownHolder": "This browser does not know this key. If it is your second key, it signs next. If it is not yours, the lock was taken: only that key can hand it over, and your recovery card says what you can still do."
     },
     "sign": {
       "heading": "Hand the lock to your new second key",
       "ledger": "On a Ledger, check that the new authority it shows is your new second key's address before you approve.",
-      "mainPays": "Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key at least {amount} from another wallet, then press Check again."
+      "mainPays": "Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key at least {amount} from another wallet, then press Check again.",
+      "mainPaysNoAmount": "Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key a little SOL from another wallet, then press Check again."
     },
     "result": "Second key change",
     "done": {
       "heading": "Your new second key holds the lock",
       "newKey": "Now held by your new second key:",
-      "oldKey": "Your old second key can no longer change the lock or co-sign a withdrawal:",
+      "oldKey": "Your old second key can no longer change this stake account's lock or co-sign its withdrawal:",
       "end": "The lock still ends on {date}.",
       "card": "Your recovery card names the old second key. Open the new card and print it again.",
-      "openCard": "Open the recovery card"
+      "openCard": "Open the recovery card",
+      "others": {
+        "checking": "Checking whether your old second key holds other locks of yours",
+        "title": "Your old second key still holds these locks",
+        "body": "It can still freeze these stake accounts. Hand each lock to your new second key too: both keys are still connected here.",
+        "handOver": "Hand over",
+        "handOverLabel": "Hand over the lock of {address}",
+        "failed": "Could not check whether your old second key holds other locks of yours. If it does, hand them over too, from each stake account's Extend page.",
+        "accounts": "Check your accounts"
+      }
     },
     "refused": {
       "not-found": "This stake account no longer exists.",

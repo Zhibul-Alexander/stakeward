@@ -37,11 +37,12 @@ import {
 
 // /second-key/:account (F7, live signing) end to end on the real stake program: the second key K hands the lock to a new
 // second key K2 that the user connects, both sign, the lock keeps its end. K2 pays when it holds enough SOL; otherwise
-// the main key pays and signs too; K never pays. Afterwards this device knows K2 as a second key and no longer K.
+// the main key pays and signs too; K never pays. Afterwards this device knows K2 as a second key, and no longer K once K
+// holds no other lock of this main key.
 
-const SEED_CHECK = 'My new second key comes from a different seed phrase than my main key';
+const SEED_CHECK = "My new second key comes from a new seed phrase: not my main key's, and not my old second key's";
 const NEED_NEW_KEY = 'Connect your new second key to continue.';
-const NEED_SEED = 'Confirm that your new second key comes from a different seed phrase than your main key.';
+const NEED_SEED = "Confirm that your new second key comes from a new seed phrase, not your main key's or your old second key's.";
 const DAY = 86_400n;
 /** The lock now: a protect of 6 months from the chain's start. */
 const T = lockupEndForPeriod(START_UNIX_TIMESTAMP, 6);
@@ -85,8 +86,6 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
     async () => {
       const w = await world(LAMPORTS_PER_SOL / 100n);
       const S = await stake(w);
-      // A second account the old key still holds: after the change this device no longer counts K as a second key.
-      const S2 = await stake(w);
       const [second, newKey] = await Promise.all([wallet('Second Wallet', w.K), wallet('New Key Wallet', w.K2)]);
       const { user, ports } = renderStakePage(w.chain, `/second-key/${S}`, [second, newKey]);
       ports.secondKeys.remember(w.K.address);
@@ -176,19 +175,115 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       // Nothing else is written on this device (D37).
       expect(ports.protectedAccounts.getSnapshot()).toEqual([]);
 
-      // /app on this device: the account is Protected with K2; the other account K still holds is no longer.
+      // The old key holds no other lock of this main key: nothing more to hand over.
+      expect(document.querySelector('[data-slot="other-locks"]')).toBeNull();
+
+      // /app on this device: the account is Protected with K2, only because K2 is a known second key now (D35).
       cleanup();
       await renderApp(ports, `/app?address=${w.A.address}`);
       const row = await screen.findByRole('article', { name: `Stake account ${shortAddress(S)}` }, WAIT);
       await waitFor(() => {
         expect(row).toHaveAttribute('data-status', 'protected');
       }, WAIT);
-      // Protected only because K2 is a known second key now (D35: the chain cannot say whose key holds a lock)...
       expect(w.testChain.stakeAccount(S)?.lockup.custodian).toBe(w.K2.address);
-      // ...and the account the old key still holds is someone else's lock to this device, shown with that key.
-      const other = screen.getByRole('article', { name: `Stake account ${shortAddress(S2)}` });
-      expect(other).toHaveAttribute('data-status', 'locked-by-other');
-      expect(other.querySelector('[data-slot="lock-holder"]')).toHaveTextContent(shortAddress(w.K.address));
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'S1b: the old key holds two locks: the first hand-over lists the other one and keeps both keys; the second forgets the old key',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const [S, S2] = [await stake(w), await stake(w)];
+      const [second, newKey] = await Promise.all([wallet('Second Wallet', w.K), wallet('New Key Wallet', w.K2)]);
+      const first = renderStakePage(w.chain, `/second-key/${S}`, [second, newKey]);
+      const { ports } = first;
+      ports.secondKeys.remember(w.K.address);
+
+      await connectNewKey(first.user, 'New Key Wallet');
+      await first.user.click(screen.getByRole('checkbox', { name: SEED_CHECK }));
+      await click(first.user, 'Continue');
+      await click(first.user, 'Sign in New Key Wallet as New second key');
+      await connectAndContinue(first.user, 'Second key', 'Second Wallet');
+      await click(first.user, 'Sign in Second Wallet as Second key');
+      await heading('Your new second key holds the lock');
+
+      // The other lock the old key still holds: named, with its way to the same hand-over.
+      const others = await waitFor(() => {
+        const found = document.querySelector<HTMLElement>('[data-slot="other-locks"]');
+        expect(found).not.toBeNull();
+        return found as HTMLElement;
+      }, WAIT);
+      expect(others).toHaveTextContent('Your old second key still holds these locks');
+      expect(within(others).getByRole('link', { name: `Hand over the lock of ${shortAddress(S2)}` })).toHaveAttribute(
+        'href',
+        `/second-key/${S2}`,
+      );
+      expect(within(others).queryByRole('link', { name: `Hand over the lock of ${shortAddress(S)}` })).toBeNull();
+      // Until then the old key stays known and both keys stay connected where they were.
+      expect([...ports.secondKeys.getSnapshot()].sort()).toEqual([w.K.address, w.K2.address].sort());
+      expect(ports.slots.getSnapshot().second?.address).toBe(w.K.address);
+      expect(ports.slots.getSnapshot().new?.address).toBe(w.K2.address);
+
+      // The second hand-over: both keys are already connected; afterwards the old key holds nothing and is forgotten.
+      cleanup();
+      const next = renderStakePage(w.chain, `/second-key/${S2}`, [second, newKey], ports);
+      await heading('Connect your new second key');
+      await next.user.click(await screen.findByRole('checkbox', { name: SEED_CHECK }, WAIT));
+      await click(next.user, 'Continue');
+      await click(next.user, 'Sign in New Key Wallet as New second key');
+      await click(next.user, 'Sign in Second Wallet as Second key');
+      await heading('Your new second key holds the lock');
+      await waitFor(() => {
+        expect(ports.secondKeys.getSnapshot()).toEqual([w.K2.address]);
+      }, WAIT);
+      expect(document.querySelector('[data-slot="other-locks"]')).toBeNull();
+      expect(ports.slots.getSnapshot().second?.address).toBe(w.K2.address);
+      expect(ports.slots.getSnapshot().new).toBeNull();
+      expect(w.testChain.stakeAccount(S2)?.lockup.custodian).toBe(w.K2.address);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'S1c: a lock holder this device does not know is named neutrally, with what it means if it is not yours',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w);
+      renderStakePage(w.chain, `/second-key/${S}`, []);
+      await heading('Connect your new second key');
+      const current = document.querySelector('[data-slot="current-second-key"]') as HTMLElement;
+      expect(within(current).getByText('The key that holds this lock')).toBeInTheDocument();
+      expect(within(current).queryByText('Second key')).toBeNull();
+      expect(within(current).getByText(/^This browser does not know this key\./)).toBeInTheDocument();
+      expect(within(current).getByRole('link', { name: 'Recovery card' })).toHaveAttribute('href', `/recovery/${S}`);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'S2b: the main key pays and the page could not read the rent: the warning is said all the same, without the amount',
+    async () => {
+      const w = await world(0n);
+      const S = await stake(w);
+      const [main, second, newKey] = await Promise.all([
+        wallet('Main Wallet', w.A),
+        wallet('Second Wallet', w.K),
+        wallet('New Key Wallet', w.K2),
+      ]);
+      // The page's own rent read (twice: StrictMode); the plan reads it again later and decides the payer.
+      w.chain.failNext('getMinimumBalanceForRentExemption', new TypeError('Failed to fetch'), 2);
+      const { user } = renderStakePage(w.chain, `/second-key/${S}`, [main, second, newKey]);
+
+      await connectNewKey(user, 'New Key Wallet');
+      await user.click(screen.getByRole('checkbox', { name: SEED_CHECK }));
+      await click(user, 'Continue');
+      await screen.findByText(
+        'Your new second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your new second key a little SOL from another wallet, then press Check again.',
+        undefined,
+        WAIT,
+      );
+      expect(summarySigners(await theSummary())[0]).toBe('main');
     },
     SCENARIO_TIMEOUT,
   );

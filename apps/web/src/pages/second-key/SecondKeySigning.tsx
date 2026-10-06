@@ -63,7 +63,8 @@ export function SecondKeySigning({
   const feePayer = snapshot?.round?.txs[0]?.summary.feePayer;
   // Its Check again starts a new run: only while nothing may be in flight (as on /extend).
   const restartable = snapshot !== null && backKind(snapshot) !== null;
-  const mainPays = feePayer !== undefined && feePayer !== newSecondKey && rent0.status === 'ready' && restartable;
+  // Said whenever the main key pays, also when the rent read failed: then without the amount (the plan already chose).
+  const mainPays = feePayer !== undefined && feePayer !== newSecondKey && restartable;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -77,7 +78,11 @@ export function SecondKeySigning({
         <Alert tone="info" role="note">
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <p>{t('secondKey.sign.mainPays', { amount: formatSol(networkFeeFor(2) + rent0.value) })}</p>
+            <p>
+              {rent0.status === 'ready'
+                ? t('secondKey.sign.mainPays', { amount: formatSol(networkFeeFor(2) + rent0.value) })
+                : t('secondKey.sign.mainPaysNoAmount')}
+            </p>
             <div>
               <Button variant="outline" size="sm" onClick={onCheckAgain}>
                 <RefreshCwIcon aria-hidden="true" />

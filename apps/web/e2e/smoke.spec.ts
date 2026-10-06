@@ -114,7 +114,7 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(page.getByRole('button', { name: 'Connect a wallet as New second key' })).toBeVisible();
       await expect(page.locator('[data-risk="second-key-can-freeze"]')).toContainText('This change keeps the end of the lock');
       await expect(page.locator('[data-risk="lose-second-key"]')).toBeVisible();
-      await expect(page.getByRole('checkbox', { name: 'My new second key comes from a different seed phrase than my main key' })).toBeVisible();
+      await expect(page.getByRole('checkbox', { name: "My new second key comes from a new seed phrase: not my main key's, and not my old second key's" })).toBeVisible();
     },
     screen: 'second-key',
   },

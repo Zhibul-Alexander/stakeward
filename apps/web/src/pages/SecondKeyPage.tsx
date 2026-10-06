@@ -7,12 +7,14 @@ import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount } from '@/pages/account/AccountView';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
-import { usePorts, type Ports } from '@/ports';
+import { usePorts } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
 import type { JobView, SigningState } from '@/signing/machine';
 import { SecondKeyChoose } from './second-key/SecondKeyChoose.tsx';
 import { SecondKeyDone } from './second-key/SecondKeyDone.tsx';
+import { otherLocksOf, settle } from './second-key/memory.ts';
 import { SecondKeySigning } from './second-key/SecondKeySigning.tsx';
+import type { OthersCheck } from './second-key/SecondKeyDone.tsx';
 
 type SecondKeyPageProps = {
   /** Tests poll and re-read faster; the product uses the engine's defaults. */
@@ -20,7 +22,7 @@ type SecondKeyPageProps = {
 };
 
 /** A run, fixed when it starts: the keys it signs with (the same on every retry). */
-type Run = { key: number; mainKey: Address; secondKey: Address; newSecondKey: Address };
+type Run = { key: number; account: Address; mainKey: Address; secondKey: Address; newSecondKey: Address };
 
 type PageState = { kind: 'choose' } | { kind: 'sign'; run: Run } | { kind: 'done'; run: Run; job: JobView };
 
@@ -53,6 +55,9 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
   const [checkFailed, setCheckFailed] = useState(false);
   const runKey = useRef(0);
   const checkOp = useRef(0);
+  // The old key's other locks of this main key, checked once per landed run (memory.ts).
+  const [others, setOthers] = useState<{ runKey: number; check: OthersCheck } | null>(null);
+  const settledRun = useRef<number | null>(null);
 
   // Focus follows the page (UX rule 2): the heading of what is shown now, never on the first render.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -76,7 +81,7 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
   function onFinished(run: Run, state: SigningState) {
     const job = account === null ? undefined : state.jobs[account];
     if (job === undefined) return;
-    if (isLanded(job)) settle(ports, run);
+    if (isLanded(job)) void afterLanded(run);
     setPage({ kind: 'done', run, job });
     setAttempt((value) => value + 1);
   }
@@ -89,7 +94,7 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
     try {
       const next = await checkJobAgain(chain, job);
       if (op !== checkOp.current) return;
-      if (isLanded(next)) settle(ports, run);
+      if (isLanded(next)) void afterLanded(run);
       setPage((current) => (current.kind === 'done' && current.run.key === run.key ? { ...current, job: next } : current));
       setAttempt((value) => value + 1);
     } catch {
@@ -97,6 +102,25 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
     } finally {
       if (op === checkOp.current) setChecking(false);
     }
+  }
+
+  /**
+   * Once per landed run: read whether the old key still holds other locks of this main key, then write this device's
+   * memory (memory.ts `settle`) and tell the Done screen.
+   */
+  async function afterLanded(run: Run) {
+    if (settledRun.current === run.key) return;
+    settledRun.current = run.key;
+    const handOver = { account: run.account, mainKey: run.mainKey, secondKey: run.secondKey, newSecondKey: run.newSecondKey };
+    setOthers({ runKey: run.key, check: { kind: 'checking' } });
+    let held: Address[] | null;
+    try {
+      held = await otherLocksOf(chain, handOver);
+    } catch {
+      held = null;
+    }
+    settle(ports, handOver, held);
+    setOthers({ runKey: run.key, check: held === null ? { kind: 'failed' } : { kind: 'found', accounts: held } });
   }
 
   function back() {
@@ -127,6 +151,7 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
                 onSeed={setSeedConfirmed}
                 onContinue={(newSecondKey) => {
                   start({
+                    account: loaded.account.address,
                     mainKey: loaded.account.withdrawer,
                     secondKey: loaded.account.lockup.custodian,
                     newSecondKey,
@@ -159,6 +184,8 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
                 account={account}
                 secondKey={page.run.secondKey}
                 newSecondKey={page.run.newSecondKey}
+                mainKey={page.run.mainKey}
+                others={others !== null && others.runKey === page.run.key ? others.check : { kind: 'checking' }}
                 job={page.job}
                 checking={checking}
                 checkFailed={checkFailed}
@@ -174,23 +201,4 @@ export function SecondKeyPage({ signing }: SecondKeyPageProps) {
       </div>
     </RoleNamesProvider>
   );
-}
-
-/**
- * The only writes, once the chain shows the new second key holding the lock: this device knows it as a second key, and
- * no longer the old one (it may be stolen; /app then never shows a lock it holds as Protected). The slots follow: the
- * old key leaves the Second key slot, and the new key moves there from the New wallet slot it was connected in, so
- * /extend and /withdraw find it under its role and /rescue finds the New wallet slot free.
- */
-function settle(ports: Pick<Ports, 'secondKeys' | 'slots'>, run: Run): void {
-  ports.secondKeys.forget(run.secondKey);
-  ports.secondKeys.remember(run.newSecondKey);
-  const { slots } = ports;
-  const before = slots.getSnapshot();
-  if (before.second?.address === run.secondKey) slots.clear('second');
-  const moved = before.new;
-  if (moved?.address === run.newSecondKey) {
-    slots.clear('new');
-    if (slots.getSnapshot().second === null) slots.assign('second', moved);
-  }
 }

@@ -15,7 +15,7 @@ import { KeySlot } from '@/pages/app/KeySlot';
 import { appLinks } from '@/pages/app/view';
 import { extendStage } from '@/pages/extend/options';
 import { ContinueButtons } from '@/pages/protect/StepButtons';
-import { useSlot } from '@/ports';
+import { useKnownSecondKeys, useSlot } from '@/ports';
 import { newKeyProblemText } from './plan.ts';
 
 type SecondKeyChooseProps = {
@@ -39,6 +39,7 @@ export function SecondKeyChoose({ headingRef, loaded, seedConfirmed, onSeed, onC
   const { account, clock } = loaded;
   const { lockup } = account;
   const slot = useSlot('new');
+  const knownSecondKeys = useKnownSecondKeys();
   const newKey = slot?.ready === true ? slot.slot.address : null;
 
   switch (extendStage(account, clock)) {
@@ -92,9 +93,23 @@ export function SecondKeyChoose({ headingRef, loaded, seedConfirmed, onSeed, onC
             <p className="max-w-prose text-muted">{t('secondKey.choose.body')}</p>
           </div>
           <div className="flex flex-col gap-1" data-slot="current-second-key">
-            <p className="text-sm font-medium">{t('common.roles.second')}</p>
+            {/* A holder this device does not know is named neutrally (D14, D95): it may be the thief's key. */}
+            <p className="text-sm font-medium">
+              {knownSecondKeys.includes(current) ? t('common.roles.second') : t('secondKey.choose.holder')}
+            </p>
             <AddressText address={current} variant="full" />
             <p className="max-w-prose text-sm text-muted">{t('secondKey.choose.current')}</p>
+            {knownSecondKeys.includes(current) ? null : (
+              <p className="max-w-prose text-sm" data-slot="unknown-holder">
+                {t('secondKey.choose.unknownHolder')}{' '}
+                <Link
+                  href={`/recovery/${account.address}`}
+                  className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+                >
+                  {t('common.pages.recovery')}
+                </Link>
+              </p>
+            )}
           </div>
           <KeySlot role="new" mainKey={account.withdrawer} description={t('secondKey.choose.slotDescription')} />
           <p className="max-w-prose text-sm text-muted">{t('secondKey.choose.oneBrowser')}</p>

@@ -106,6 +106,28 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
   );
 
   it(
+    'E2a2: the main key pays and the page could not read the rent: the warning is said all the same, without the amount',
+    async () => {
+      const w = await world(0n);
+      const S = await stake(w);
+      const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
+      // The page's own rent read (twice: StrictMode); the plan reads it again later and decides the payer.
+      w.chain.failNext('getMinimumBalanceForRentExemption', new TypeError('Failed to fetch'), 2);
+      const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
+
+      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await click(user, 'Review and sign');
+      await screen.findByText(
+        'Your second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your second key a little SOL from another wallet, then press Check again.',
+        undefined,
+        WAIT,
+      );
+      expect(summarySigners(await theSummary())).toEqual(['main', 'second']);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'E2a: a second key without SOL: the page says the main key pays; after funding it, Check again lets it sign alone',
     async () => {
       const w = await world(0n);
