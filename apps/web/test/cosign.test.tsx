@@ -233,6 +233,22 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
       fragment: () => Promise.resolve(`#tx=${encodeBase64Url(new Uint8Array(1233).fill(1))}`),
       expected: broken,
     },
+    // A real link cut off by a messenger or a copy: the bytes that are left are no whole transaction. The page says the
+    // link is broken and asks for the whole link; it never calls the owner's own link hostile.
+    ...(
+      [
+        ['all but its last byte', (length: number) => length - 1],
+        ['half of it', (length: number) => Math.floor(length / 2)],
+        ['its first 10 bytes', () => 10],
+      ] as const
+    ).map(([left, keep]) => ({
+      name: `a link cut off to ${left}`,
+      fragment: async () => {
+        const bytes = await sign(built(protect(), A.address, nonceA), [A]);
+        return fragmentOf(bytes.slice(0, keep(bytes.length)));
+      },
+      expected: broken,
+    })),
     {
       name: 'a System transfer with the nonce prefix, signed by its payer',
       fragment: () => fragment(craft([...prefix(), transfer()], A.address, nonceA.nonceValue), [A]),

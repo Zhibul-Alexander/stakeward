@@ -57,6 +57,16 @@ describe('readLink', () => {
     expect(read).toMatchObject({ kind: 'rejected', error: { code: 'unknown-program' } });
   });
 
+  it('bad, not rejected: a whole link cut off at any point, as a messenger or a copy may leave it', async () => {
+    const bytes = await signed(buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA }).bytes, [A]);
+    const whole = `#${cosignFragment(bytes)}`;
+    expect(await readLink(whole)).toMatchObject({ kind: 'ok' });
+    // Every shorter text of the link: still base64url (or not), never a whole transaction, never "do not sign".
+    for (let cut = 1; cut < whole.length; cut += 1) {
+      expect(await readLink(whole.slice(0, cut)), `cut at ${String(cut)}`).toEqual({ kind: 'bad' });
+    }
+  });
+
   it('problem: a Stakeward transaction that is not a link Stakeward makes (the fee payer has not signed)', async () => {
     const { bytes } = buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA });
     const read = await readLink(`#${cosignFragment(bytes)}`);
