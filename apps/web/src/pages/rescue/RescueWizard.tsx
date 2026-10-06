@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { t, type MessageKey } from '@/i18n';
 import { parseAccountParam } from '@/pages/account/load';
 import { useMainKeyAccounts } from '@/pages/protect/load';
-import { useKnownSecondKeys, usePorts, useSlot, useWalletSlots } from '@/ports';
+import { useKnownSecondKeys, usePorts, useSlot, useWallets, useWalletSlots } from '@/ports';
 import { checkLanded, type LandedItem } from '@/signing/check';
 import type { SigningTestOptions } from '@/signing/create';
 import type { SigningState } from '@/signing/machine';
@@ -17,7 +17,9 @@ import { KeysStep } from './KeysStep.tsx';
 import { MoveStep } from './MoveStep.tsx';
 import { NewWalletStep } from './NewWalletStep.tsx';
 import { StakeStep } from './StakeStep.tsx';
+import type { SameWallet } from './SameWalletWarning.tsx';
 import {
+  addOfferedAccounts,
   initialRescueState,
   MAX_RESCUE_ACCOUNTS,
   movedIds,
@@ -30,6 +32,7 @@ import {
   retryableRescueIds,
   secondKeyChoices,
   uncertainRescueIds,
+  type OfferedAccounts,
   type RescueAction,
   type RescueBlocker,
   type RescueState,
@@ -45,6 +48,7 @@ const STEP_LABEL: Record<RescueStep, MessageKey> = {
 };
 
 const EMPTY_GROUPS = { movable: [], otherKey: [], unsupported: [] };
+const NOTHING_OFFERED: OfferedAccounts = new Map();
 
 /** What the first step says when Continue cannot go on yet. */
 function stakeBlockerText(blocker: RescueBlocker): string {
@@ -63,6 +67,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const search = useSearch();
   const paramA = parseAccountParam(new URLSearchParams(search).get('address') ?? undefined);
   const slots = useWalletSlots();
+  const wallets = useWallets();
   const mainSlot = useSlot('main');
   const secondSlot = useSlot('second');
   const newSlot = useSlot('new');
@@ -70,6 +75,12 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const [state, dispatchState] = useReducer(rescueReducer, paramA, initialRescueState);
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
+  // Every account each wallet app has offered since the page opened (SECURITY-CHECK П5): an app switched from the main
+  // key to an "Add account" new wallet still holds the main key. Kept like derived state: set while rendering, only
+  // when a wallet offers something new.
+  const [offeredSeen, setOfferedSeen] = useState(NOTHING_OFFERED);
+  const offered = addOfferedAccounts(offeredSeen, wallets);
+  if (offered !== offeredSeen) setOfferedSeen(offered);
 
   // The wizard state as of the last commit, for handlers that run from async code (onFinished, Check again).
   const stateRef = useRef(state);
@@ -98,10 +109,24 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const groups = A === null || clock === null ? EMPTY_GROUPS : rescueGroups(accounts, A, K, clock);
   const runIds = groups.movable.slice(0, MAX_RESCUE_ACCOUNTS).map((account) => account.address);
   const D = newSlot?.ready === true ? (slots.new?.address ?? null) : null;
-  // The new wallet sits in the same wallet app as a key: probably the same seed phrase (SECURITY-CHECK П5).
-  const sharedWith = newWalletSharesWallet(slots);
+  // The new wallet sits in the same wallet app as a key: probably the same seed phrase (SECURITY-CHECK П5). Checked on
+  // every step that connects a key: the main key and the second key are often connected only at the keys or move step.
+  // The keys: the main key; the second keys that lock this stake (any slot's key when none does) and the run's.
+  const sharedWith = newWalletSharesWallet(
+    slots,
+    {
+      newWallet: state.step === 'move' && state.run !== null ? state.run.newWallet : (slots.new?.address ?? null),
+      main: A,
+      second: [
+        ...(choices.length === 0 ? (slots.second === null ? [] : [slots.second.address]) : choices),
+        ...(state.run === null ? [] : [state.run.secondKey]),
+      ],
+    },
+    offered,
+  );
   const newWalletName = newSlot?.wallet?.name ?? null;
-  const sameWallet = D === null || newWalletName === null || sharedWith.length === 0 ? null : { wallet: newWalletName, roles: sharedWith };
+  const sameWallet: SameWallet | null =
+    newWalletName === null || sharedWith.length === 0 ? null : { wallet: newWalletName, roles: sharedWith };
   // Where each key signs: the user's choice, else here when its slot holds it and its wallet offers it.
   const mainMode: SignMode = state.mainMode ?? (A !== null && slots.main?.address === A && mainSlot?.ready === true ? 'here' : 'link');
   const secondMode: SignMode =
@@ -243,6 +268,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           newWallet={D}
           choices={choices}
           secondKey={K}
+          sameWallet={sameWallet}
           mainMode={mainMode}
           secondMode={secondMode}
           onChoose={(address) => {
@@ -272,6 +298,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           mainKey={A}
           mainMode={state.mainMode ?? mainMode}
           secondMode={state.secondMode ?? secondMode}
+          sameWallet={sameWallet}
           signing={signing}
           onFinished={onFinished}
           onBack={() => {

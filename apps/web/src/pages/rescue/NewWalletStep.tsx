@@ -16,6 +16,7 @@ import { KeySlot } from '@/pages/app/KeySlot';
 import { ContinueButtons } from '@/pages/protect/StepButtons';
 import { useChain } from '@/ports';
 import { readNonceInfo } from '@/signing/nonce';
+import { SameWalletWarning, type SameWallet } from './SameWalletWarning.tsx';
 import {
   rescueBlockers,
   rescueMinimum,
@@ -29,8 +30,8 @@ type NewWalletStepProps = {
   mainKey: Address;
   /** The new wallet slot's address, once it is ready here. */
   newWallet: Address | null;
-  /** The new wallet's wallet app (its name) also holds these keys' slots, or null (SECURITY-CHECK П5). */
-  sameWallet: { wallet: string; roles: readonly ('main' | 'second')[] } | null;
+  /** The new wallet's wallet app (its name) also holds these keys, or null (SECURITY-CHECK П5). */
+  sameWallet: SameWallet | null;
   problems: readonly NewWalletProblem[];
   /** Stake accounts this run moves (each one's fees count). */
   count: number;
@@ -108,19 +109,7 @@ export function NewWalletStep(props: NewWalletStepProps) {
         <p className="max-w-prose text-muted">{t('rescue.newWallet.body')}</p>
       </div>
       <KeySlot role="new" mainKey={mainKey} description={t('rescue.newWallet.slot')} />
-      {sameWallet === null ? null : (
-        <Alert tone="warning" role="note">
-          <TriangleAlertIcon aria-hidden="true" />
-          <AlertDescription className="flex flex-col gap-1 text-foreground">
-            {sameWallet.roles.map((role) => (
-              <p key={role} className="font-medium">
-                {t(`rescue.newWallet.sameWallet.${role}`, { wallet: sameWallet.wallet })}
-              </p>
-            ))}
-            <p>{t('rescue.newWallet.sameWallet.seed')}</p>
-          </AlertDescription>
-        </Alert>
-      )}
+      {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="continue" />}
       {problems.length === 0 ? null : (
         <Alert tone="danger" role="note" data-slot="new-wallet-problems">
           <TriangleAlertIcon aria-hidden="true" />

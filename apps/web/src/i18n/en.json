@@ -1366,7 +1366,8 @@
       "sameWallet": {
         "main": "Your new wallet and your main key are both in {wallet}.",
         "second": "Your new wallet and your second key are both in {wallet}.",
-        "seed": "Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you made this account from a new seed phrase."
+        "seed": "Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you made your new wallet from a new seed phrase.",
+        "seedSign": "Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Sign only if you made your new wallet from a new seed phrase. If not, go back and connect a wallet made from a new seed phrase as your new wallet."
       },
       "seedCheck": "My new wallet comes from a new seed phrase that no one else has seen",
       "needSeedCheck": "Confirm that your new wallet has a new seed phrase.",

@@ -14,6 +14,7 @@ import { PageSigningPanel } from '@/signing/SigningPanel';
 import type { SignMode } from '@/signing/SignWhere';
 import { useSigningSession } from '@/signing/use-signing-session';
 import { rescuePlan } from './plan.ts';
+import { SameWalletWarning, type SameWallet } from './SameWalletWarning.tsx';
 import type { RescueRun } from './wizard.ts';
 
 type MoveStepProps = {
@@ -22,6 +23,11 @@ type MoveStepProps = {
   mainKey: Address;
   mainMode: SignMode;
   secondMode: SignMode;
+  /**
+   * The new wallet's wallet app also holds these keys, or null (SECURITY-CHECK П5). The main key and the second key are
+   * often first connected here, when the run asks for them; the warning then shows before they sign.
+   */
+  sameWallet: SameWallet | null;
   signing?: SigningTestOptions | undefined;
   onFinished: (state: SigningState) => void;
   onBack: () => void;
@@ -32,7 +38,7 @@ type MoveStepProps = {
  * transaction per stake account, one after another: the new wallet signs here, the main key and the second key here
  * or by link. The new owner is shown in full before anything is signed.
  */
-export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, signing, onFinished, onBack }: MoveStepProps) {
+export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, sameWallet, signing, onFinished, onBack }: MoveStepProps) {
   const headingId = useId();
   const count = run.ids.length;
   return (
@@ -43,6 +49,7 @@ export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, signi
         </h2>
         <p className="text-sm font-medium">{t('rescue.move.newOwner')}</p>
         <AddressText address={run.newWallet} variant="full" />
+        {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="sign" />}
         <p className="max-w-prose text-muted">{count === 1 ? t('rescue.move.countOne') : t('rescue.move.countOther', { count })}</p>
         <p className="max-w-prose text-sm text-muted">{t('rescue.move.ledger')}</p>
       </div>

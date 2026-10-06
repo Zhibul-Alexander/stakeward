@@ -4,6 +4,7 @@ import { key } from '@stakeward/core/test/craft';
 import { describe, expect, it } from 'vitest';
 import type { JobView } from '@/signing/machine';
 import {
+  addOfferedAccounts,
   initialRescueState,
   lockEndDate,
   movedIds,
@@ -16,6 +17,7 @@ import {
   retryableRescueIds,
   secondKeyChoices,
   uncertainRescueIds,
+  type OfferedAccounts,
   type RescueBlockerInput,
 } from './wizard.ts';
 
@@ -111,17 +113,75 @@ describe('newWalletProblems', () => {
 // next to the (stolen) main key is no new wallet at all; next to the second key, one phrase would make both keys.
 describe('newWalletSharesWallet', () => {
   const slot = (walletId: string, address: Address) => ({ walletId, address });
+  const keys = { newWallet: D, main: A, second: [K] };
+  const none: OfferedAccounts = new Map();
 
   it('names the roles whose slot is in the same wallet app as the new wallet', () => {
-    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Phantom', D) })).toEqual(['main']);
-    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Solflare', D) })).toEqual(['second']);
-    expect(newWalletSharesWallet({ main: slot('Ledger', A), second: slot('Ledger', K), new: slot('Ledger', D) })).toEqual(['main', 'second']);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Phantom', D) }, keys, none)).toEqual([
+      'main',
+    ]);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Solflare', D) }, keys, none)).toEqual([
+      'second',
+    ]);
+    expect(newWalletSharesWallet({ main: slot('Ledger', A), second: slot('Ledger', K), new: slot('Ledger', D) }, keys, none)).toEqual([
+      'main',
+      'second',
+    ]);
   });
 
   it('nothing without a new wallet, or when every key is in its own wallet app', () => {
-    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Phantom', K), new: null })).toEqual([]);
-    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Backpack', D) })).toEqual([]);
-    expect(newWalletSharesWallet({ main: null, second: null, new: slot('Backpack', D) })).toEqual([]);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Phantom', K), new: null }, keys, none)).toEqual([]);
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: slot('Solflare', K), new: slot('Backpack', D) }, keys, none)).toEqual(
+      [],
+    );
+    expect(newWalletSharesWallet({ main: null, second: null, new: slot('Backpack', D) }, keys, none)).toEqual([]);
+  });
+
+  // The Telegram path: the main key is the page address and no key slot is filled when the new wallet connects. A
+  // wallet app that offered the main key (or a second key) on this page holds it, even after the user switched it to
+  // another account ("Add account" in the same app is the panic move this warning is for).
+  it('names a key the new wallet\'s wallet app has offered on this page, with no key slot filled', () => {
+    const empty = { main: null, second: null, new: slot('Phantom', D) };
+    expect(newWalletSharesWallet(empty, keys, new Map([['Phantom', [A, D]]]))).toEqual(['main']);
+    expect(newWalletSharesWallet(empty, keys, new Map([['Phantom', [K, D]]]))).toEqual(['second']);
+    expect(newWalletSharesWallet(empty, { ...keys, second: [K2, K] }, new Map([['Phantom', [K]]]))).toEqual(['second']);
+    // Another wallet app offered them: not the new wallet's.
+    expect(newWalletSharesWallet(empty, keys, new Map([['Solflare', [A, K]]]))).toEqual([]);
+  });
+
+  it('names only this rescue\'s keys: a slot left from another stake is not "your main key" or "your second key"', () => {
+    const other = key(9);
+    const leftover = { main: slot('Phantom', other), second: slot('Phantom', K2), new: slot('Phantom', D) };
+    expect(newWalletSharesWallet(leftover, keys, none)).toEqual([]);
+    const empty = { main: null, second: null, new: slot('Phantom', D) };
+    expect(newWalletSharesWallet(empty, keys, new Map([['Phantom', [other, K2, D]]]))).toEqual([]);
+  });
+
+  it('speaks of the new wallet of the run: a new slot that holds another address names nothing', () => {
+    expect(newWalletSharesWallet({ main: slot('Phantom', A), second: null, new: slot('Phantom', key(8)) }, keys, none)).toEqual([]);
+    const both = { main: slot('Phantom', A), second: null, new: slot('Phantom', D) };
+    expect(newWalletSharesWallet(both, { ...keys, newWallet: null }, none)).toEqual([]);
+  });
+});
+
+describe('addOfferedAccounts', () => {
+  const wallet = (id: string, accounts: readonly Address[]) => ({ id, accounts });
+
+  it('keeps every account each wallet app has offered, by wallet id, after the app switched away from it', () => {
+    const first = addOfferedAccounts(new Map(), [wallet('Phantom', [A]), wallet('Solflare', [])]);
+    expect([...first.entries()]).toEqual([['Phantom', [A]]]);
+    const second = addOfferedAccounts(first, [wallet('Phantom', [D]), wallet('Solflare', [K])]);
+    expect([...second.entries()]).toEqual([
+      ['Phantom', [A, D]],
+      ['Solflare', [K]],
+    ]);
+    // The map it was given is never changed.
+    expect([...first.entries()]).toEqual([['Phantom', [A]]]);
+  });
+
+  it('returns the same map when nothing is new, so a page can store it without a render loop', () => {
+    const seen = addOfferedAccounts(new Map(), [wallet('Phantom', [A, D])]);
+    expect(addOfferedAccounts(seen, [wallet('Phantom', [D]), wallet('Solflare', [])])).toBe(seen);
   });
 });
 

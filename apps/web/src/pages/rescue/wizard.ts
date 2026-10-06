@@ -120,15 +120,50 @@ export function newWalletProblems(
   return problems;
 }
 
+/** Every account each wallet app has offered this page so far, by wallet id (SECURITY-CHECK П5). */
+export type OfferedAccounts = ReadonlyMap<string, readonly Address[]>;
+
 /**
- * The key roles whose slot is in the same wallet app as the new wallet's slot (SECURITY-CHECK П5). Accounts of one
- * wallet app, and every account of one Ledger, usually come from one seed phrase: next to the main key the "new" wallet
- * is the thief's too; next to the second key one phrase would make both keys. Empty without a new wallet.
+ * `seen` plus every account `wallets` offer now. A wallet app that shows one account at a time keeps what it showed
+ * before the user switched it to another account. Never changes `seen`; returns it as is when nothing is new.
  */
-export function newWalletSharesWallet(slots: WalletSlots): ('main' | 'second')[] {
+export function addOfferedAccounts(
+  seen: OfferedAccounts,
+  wallets: readonly { readonly id: string; readonly accounts: readonly Address[] }[],
+): OfferedAccounts {
+  let next: Map<string, readonly Address[]> | null = null;
+  for (const wallet of wallets) {
+    const known = (next ?? seen).get(wallet.id) ?? [];
+    const added = wallet.accounts.filter((address) => !known.includes(address));
+    if (added.length === 0) continue;
+    next ??= new Map(seen);
+    next.set(wallet.id, [...known, ...added]);
+  }
+  return next ?? seen;
+}
+
+/** The keys of this rescue: the new wallet it moves to, the main key and the second keys that may co-sign. */
+export type RescueKeys = { newWallet: Address | null; main: Address | null; second: readonly Address[] };
+
+/**
+ * The key roles that share a wallet app with the new wallet (SECURITY-CHECK П5): that key's slot is in the new wallet's
+ * wallet app, or that app has offered the key on this page (`offered`), even if the user has switched it away since
+ * (adding an account next to the stolen main key is the panic move). Accounts of one wallet app, and every account of
+ * one Ledger, usually come from one seed phrase: next to the main key the "new" wallet is the thief's too; next to the
+ * second key one phrase would make both keys. Only this rescue's keys count (`keys`), and only while the new wallet slot
+ * holds `keys.newWallet`; empty without a new wallet.
+ */
+export function newWalletSharesWallet(slots: WalletSlots, keys: RescueKeys, offered: OfferedAccounts): ('main' | 'second')[] {
   const fresh = slots.new;
-  if (fresh === null) return [];
-  return (['main', 'second'] as const).filter((role) => slots[role]?.walletId === fresh.walletId);
+  if (fresh === null || keys.newWallet === null || fresh.address !== keys.newWallet) return [];
+  const inApp = offered.get(fresh.walletId) ?? [];
+  const shares = (role: 'main' | 'second', key: Address) => {
+    const slot = slots[role];
+    return inApp.includes(key) || (slot !== null && slot.walletId === fresh.walletId && slot.address === key);
+  };
+  return (['main', 'second'] as const).filter((role) =>
+    (role === 'main' ? (keys.main === null ? [] : [keys.main]) : keys.second).some((key) => shares(role, key)),
+  );
 }
 
 export type RescueBlocker =
