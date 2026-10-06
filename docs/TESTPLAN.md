@@ -255,9 +255,9 @@ curl -sS "$API/getWebhookInfo"
 
 ## Шаг 8. Карточка восстановления (команды CLI)
 
-- [ ] Пополнить спонсора devnet `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` ещё на 1,13 SOL (или на 0,13 SOL для прогона с `--skip-delegated`). Вернётся всё, кроме комиссий (около 0,0004 SOL).
-- [ ] Поставить Solana CLI 4.3.0: `sh -c "$(curl -sSfL https://release.anza.xyz/v4.3.0/install)"` (или попросить меня: я запускаю его из своей среды).
-- [ ] `pnpm recovery-cli --url devnet --dry-run` печатает план и сумму, ничего не отправляя. Затем `pnpm recovery-cli --url devnet`: все проверки зелёные, раздел devnet в `docs/recovery-cli.md` заполнен ссылками на эксплорер.
+- [x] 06.10.2026: спонсор devnet `D8LAb6…` пополнять не пришлось (8,6 SOL).
+- [x] 06.10.2026: Solana CLI 4.3.0 стоит на VPS.
+- [x] 06.10.2026: `pnpm recovery-cli --url devnet --dry-run` напечатал план (1,12435492 SOL), затем `pnpm recovery-cli --url devnet` — 26 из 26 проверок, спонсор потратил 0,000375 SOL; раздел devnet в `docs/recovery-cli.md` со ссылками на эксплорер.
 - [ ] Прочитать раздел README «Recover without Stakeward» глазами человека, у которого украли ключ.
 
 ## Шаг 6. Вывод, продление, снятие замка

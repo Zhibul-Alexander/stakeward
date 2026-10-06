@@ -329,7 +329,7 @@ Sources found on 6 October 2026; open each link before recording and before subm
 | Programs in transactions | Stake, System (durable nonce), Compute Budget; Lighthouse assertions only if Phantom appends them at the end | `inspect.ts`, D23, D24 |
 | Message format | legacy messages, no address lookup tables, one stake account per transaction | D17, D23 |
 | Mechanism checks | LiteSVM 24/24 (2 Oct), devnet 21/21 (5 Oct), mainnet 8/8 (5 Oct), stake program v5.1.0 | docs/gate.md, D4 |
-| Recovery card commands | 26/26 on `solana-test-validator` 4.3.0; devnet run pending | docs/recovery-cli.md, D78 |
+| Recovery card commands | 26/26 on `solana-test-validator` 4.3.0 (5 Oct) and 26/26 on devnet (6 Oct), Solana CLI 4.3.0 | docs/recovery-cli.md, D78 |
 | Automated tests | core 790, web 786, worker 598, scripts 130 (6 Oct 2026); Playwright on every route at 1280 and 360 px | docs/PROGRESS.md |
 | Server data | public stake account data and, with alerts on, the Telegram chat id. No accounts, logins, cookies or analytics | CLAUDE.md section 2, FAQ "What does Stakeward know about me?" |
 | Not built yet | changing the second key inside Stakeward (the CLI does it in one command), Squads vault as second key, Mobile Wallet Adapter | CLAUDE.md step 10, FAQ |

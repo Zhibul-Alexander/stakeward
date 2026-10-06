@@ -131,7 +131,7 @@ A fake Stakeward site is the same danger. Type the address yourself or use a boo
 
 ## Recover without Stakeward
 
-The lock lives in the Solana stake program, not in Stakeward. If Stakeward is down or gone, nothing changes for your stake; only the Telegram alerts stop. The commands below talk to the network directly with the Solana command line. The stake commands were run with Solana CLI 4.3.0 against a test cluster: [docs/recovery-cli.md](docs/recovery-cli.md) lists every run and its results. The recovery card that Stakeward prints for your stake accounts has the same commands.
+The lock lives in the Solana stake program, not in Stakeward. If Stakeward is down or gone, nothing changes for your stake; only the Telegram alerts stop. The commands below talk to the network directly with the Solana command line. The stake commands were run with Solana CLI 4.3.0 against a local test validator and against devnet: [docs/recovery-cli.md](docs/recovery-cli.md) lists every run and its results. The recovery card that Stakeward prints for your stake accounts has the same commands.
 
 The commands use `--url mainnet-beta`. On devnet, write `--url devnet` instead.
 
