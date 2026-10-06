@@ -13,7 +13,6 @@
     "types": "wrangler types",
     "types:check": "wrangler types --check",
     "deploy:dev": "pnpm --filter @stakeward/web build:devnet && wrangler deploy --env dev",
-    "deploy:prod": "pnpm --filter @stakeward/web build:mainnet && wrangler deploy --env prod",
     "db:migrate:dev": "wrangler d1 migrations apply DB --remote --env dev",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote --env prod"
   },

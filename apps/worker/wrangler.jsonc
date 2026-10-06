@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // One Worker per environment: it serves the built site (apps/web/dist) as static assets and the API under /api/*.
-  // Always pass --env: `dev` = Solana devnet, `prod` = mainnet (scripts deploy:dev / deploy:prod).
+  // Always pass --env: `dev` = Solana devnet, `prod` = mainnet. Deploy with the root `pnpm deploy:dev` /
+  // `pnpm deploy:prod --prod-confirm` (scripts/deploy.ts); the worker package has no prod deploy script of its own.
   "name": "stakeward",
   "main": "src/index.ts",
   // Must stay <= the newest date supported by the workerd that @cloudflare/vitest-pool-workers 0.22.0 pins (2026-08-22).
