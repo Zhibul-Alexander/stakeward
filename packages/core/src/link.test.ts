@@ -1,6 +1,6 @@
-import { blockhash, type Address, type Nonce } from '@solana/kit';
+import { blockhash, getTransactionDecoder, getTransactionEncoder, type Address, type Nonce, type SignatureBytes } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
-import { build, key } from '../test/craft.ts';
+import { build, craft, editMessage, instructionsOf, key } from '../test/craft.ts';
 import { newTestWallet, type TestWallet } from '../test/wallet.ts';
 import type { Lifetime, TransactionAction, TransactionKind } from './actions.ts';
 import { deriveNonceAccountAddress } from './builders.ts';
@@ -11,6 +11,7 @@ import {
   cosignLinkProblem,
   decodeBase64Url,
   encodeBase64Url,
+  isTruncatedTransaction,
   LINK_KINDS,
   MAX_TRANSACTION_BYTES,
   missingSignatures,
@@ -160,5 +161,52 @@ describe('cosign link rules', () => {
       (await summaryOf(rescue, nonceOf(D), [])).requiredSigners.filter((signer) => signer !== D),
     );
     expect(missingSignatures(await summaryOf(protect, nonceOf(A), [mainKey, secondKey]))).toEqual([]);
+  });
+});
+
+describe('isTruncatedTransaction: what a cut-off link leaves', () => {
+  const A = mainKey.address;
+  const VALUE = key(21) as string as Nonce;
+  const nonce: Lifetime = { kind: 'nonce', nonceAccount: key(6), nonceAuthority: A, nonceValue: VALUE };
+  const protect: TransactionAction = { kind: 'protect', stakeAccount: key(4), mainKey: A, secondKey: secondKey.address, lockUntil: 1_825_545_600n };
+  const rescue: TransactionAction = { kind: 'rescue', stakeAccount: key(4), mainKey: A, secondKey: secondKey.address, newWallet: newWallet.address };
+  const signedBy = async (wallet: TestWallet, bytes: Uint8Array) => (await wallet.signTransactions([bytes]))[0] ?? bytes;
+
+  it('every shorter start of a signed transaction, and nothing else of it', async () => {
+    for (const [action, payer] of [[protect, mainKey], [rescue, newWallet]] as const) {
+      const lifetime: Lifetime = { ...nonce, nonceAuthority: payer.address };
+      const whole = await signedBy(payer, build(action, lifetime, payer.address).bytes);
+      expect(isTruncatedTransaction(whole)).toBe(false);
+      for (let length = 0; length < whole.length; length += 1) {
+        expect(isTruncatedTransaction(whole.slice(0, length)), `${action.kind}, ${String(length)} bytes`).toBe(true);
+      }
+    }
+  });
+
+  it('not bytes that read as a whole transaction but were altered: the inspector refuses those', async () => {
+    const built = build(protect, nonce).bytes;
+    const instructions = instructionsOf(built);
+    const longerData = craft(
+      instructions.map((ix, i) => (i === instructions.length - 1 ? { ...ix, data: Uint8Array.from([...(ix.data ?? []), 0]) } : ix)),
+      A,
+      VALUE,
+    );
+    const { messageBytes } = getTransactionDecoder().decode(built);
+    const signatures: Record<Address, SignatureBytes | null> = { [A]: null };
+    const oneSlotShort = new Uint8Array(getTransactionEncoder().encode({ messageBytes, signatures }));
+    const listedTwice = editMessage(built, (message) => ({
+      ...message,
+      staticAccounts: message.staticAccounts.map((a, i) => (i === message.staticAccounts.length - 1 ? key(4) : a)),
+    }));
+    const trailing = Uint8Array.from([...built, 0]);
+    for (const altered of [longerData, oneSlotShort, listedTwice, trailing]) {
+      expect((await inspectTransaction(altered)).ok).toBe(false);
+      expect(isTruncatedTransaction(altered)).toBe(false);
+    }
+  });
+
+  it('bytes that are no transaction at all', () => {
+    expect(isTruncatedTransaction(new Uint8Array())).toBe(true);
+    expect(isTruncatedTransaction(new Uint8Array(300).fill(0xff))).toBe(true);
   });
 });
