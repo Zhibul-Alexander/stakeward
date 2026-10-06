@@ -349,7 +349,7 @@
       "controlledBy": "Controlled by",
       "staking": "Staking",
       "delegated": "Delegated",
-      "deactivating": "Deactivating: stops earning at the end of this epoch",
+      "deactivating": "Stops at the end of this epoch, or at once if it has not started earning yet",
       "validator": "Validator",
       "signingAccount": "Link-signing account",
       "created": "Created",
@@ -805,6 +805,7 @@
     "noLongerProtected": {
       "titleOne": "1 stake account is no longer protected",
       "titleOther": "{count} stake accounts are no longer protected",
+      "bodyOne": "This device saw it protected, but its lock has ended. Anyone with your main key can withdraw it now.",
       "body": "This device saw them protected, but their lock has ended. Anyone with your main key can withdraw them now.",
       "action": "Protect again"
     },
@@ -970,7 +971,7 @@
       "title": "Withdraw {amount} to your main key",
       "mainKey": "Your main key receives it and pays the network fee:",
       "secondSigns": "{lock}. Your second key co-signs:",
-      "mainAlone": "The lock has ended, so your main key signs alone.",
+      "mainAlone": "{lock}, so your main key signs alone.",
       "action": "Review and sign"
     },
     "desktop": "While the lock holds, withdrawing needs both keys. A phone wallet's own browser offers only that wallet: use a desktop browser with both keys, sign by link, or remove the lock first.",

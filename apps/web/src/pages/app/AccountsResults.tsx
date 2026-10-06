@@ -330,7 +330,7 @@ function NoLongerProtectedBanner({ accounts }: { accounts: readonly Address[] })
           : t('app.noLongerProtected.titleOther', { count: accounts.length })}
       </AlertTitle>
       <AlertDescription className="flex flex-col gap-3 text-foreground">
-        <p>{t('app.noLongerProtected.body')}</p>
+        <p>{accounts.length === 1 ? t('app.noLongerProtected.bodyOne') : t('app.noLongerProtected.body')}</p>
         <div>
           <Button asChild variant="danger" size="sm">
             <Link href={appLinks.protect(accounts)}>
