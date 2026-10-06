@@ -1664,7 +1664,7 @@
       },
       "thefts": {
         "q": "Has staked SOL really been stolen like this?",
-        "a": "Yes. In September 2025, 192,600 SOL left SwissBorg's staking after a hacked staking service slipped a hidden change of the withdrawal key into its transactions. With a lock on, such a change fails unless the second key signs too.\n\nIn January 2026, 261,854 SOL were taken from Step Finance."
+        "a": "Yes. In September 2025, about 192,600 SOL left SwissBorg's staking: a hacked staking partner hid a change of the withdrawal key inside a routine unstaking transaction, and SwissBorg's own signers approved it. With a lock on, such a change fails unless the second key signs too.\n\nIn January 2026, 261,854 staked SOL were unstaked and taken from Step Finance after attackers got into its executives' devices."
       },
       "good-second-key": {
         "q": "What makes a good second key?",
