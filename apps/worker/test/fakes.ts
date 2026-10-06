@@ -85,6 +85,19 @@ export function freshIp(): string {
   return `10.${String(a)}.${String(b)}.${String(c)}`;
 }
 
+/**
+ * Waits, when needed, so that a burst against a rate limiter of the test environment starts with at least `needMs`
+ * left in the limiter's window. Miniflare counts in fixed windows aligned to the wall clock (floor(Date.now() / period),
+ * the same for every key) and starts every count again when the window rolls over: a burst that crosses that instant
+ * never reaches its limit, and the request past the limit is let through. Without this, a burst of 21 requests that
+ * takes 1.5 s fails on about one run in 40, more under load. A test that calls it needs a timeout above period + burst.
+ */
+export async function atFreshWindow(periodSeconds: number, needMs: number): Promise<void> {
+  const periodMs = periodSeconds * 1000;
+  const left = periodMs - (Date.now() % periodMs);
+  if (left < needMs) await new Promise((resolve) => setTimeout(resolve, left + 50));
+}
+
 export type TestApp = ReturnType<typeof testApp>;
 
 /**

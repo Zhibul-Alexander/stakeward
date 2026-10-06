@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { insertWatchedStatements, type WatchRow } from '../src/monitor/store.ts';
 import { STATS_CLOCK_SKEW_MS } from '../src/public-api.ts';
-import { fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
+import { atFreshWindow, fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
 import { countingDb } from './monitor/harness.ts';
 import { key } from './transactions.ts';
 
@@ -389,9 +389,11 @@ describe('GET /api/stats', () => {
   });
 });
 
-describe('LOOKUP_RATE_LIMIT on /api/accounts and /api/stats', () => {
+// atFreshWindow: the requests past the limit must land in the window of the first 20 (it may wait up to 20 s).
+describe('LOOKUP_RATE_LIMIT on /api/accounts and /api/stats', { timeout: 90_000 }, () => {
   it('20 requests per 60 s per client IP, shared with /api/stake-accounts, then 429 with Retry-After', async () => {
     const ip = freshIp();
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < 10; i++) expect((await api({ ip }).request(`/api/accounts?wallet=${WALLET}`)).status).toBe(200);
     for (let i = 0; i < 9; i++) expect((await api({ ip }).request('/api/stats')).status).toBe(200);
     expect((await api({ ip }).request('/api/stake-accounts')).status).toBe(400);

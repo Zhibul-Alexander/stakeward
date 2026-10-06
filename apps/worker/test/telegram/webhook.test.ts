@@ -12,7 +12,7 @@ import {
   parseCommand,
   TELEGRAM_WEBHOOK_PATH,
 } from '../../src/telegram/webhook.ts';
-import { fakeUpstream, SECURITY_HEADERS, securityHeadersOf, testApp } from '../fakes.ts';
+import { atFreshWindow, fakeUpstream, SECURITY_HEADERS, securityHeadersOf, testApp } from '../fakes.ts';
 import { countingDb, type CountingDb } from '../monitor/harness.ts';
 import { key } from '../transactions.ts';
 
@@ -541,10 +541,12 @@ describe('garbage, size and rate limits', () => {
     expect(await links()).toEqual([]);
   });
 
-  it('20 updates per chat in 60 s; then silence without D1, other chats unaffected', async () => {
+  // atFreshWindow: the 21st update must land in the window of the first 20 (it may wait up to 20 s for a new one).
+  it('20 updates per chat in 60 s; then silence without D1, other chats unaffected', { timeout: 90_000 }, async () => {
     const chat = freshChat();
     await addLink(WALLET, chat);
     const b = bot();
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < 20; i++) await replyOf(await b.send(message(chat, '/status')));
     const statements = b.db.stats.statements;
     await expectNoReply(await b.send(message(chat, '/status')));
