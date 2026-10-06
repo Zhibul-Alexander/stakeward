@@ -402,7 +402,14 @@ export class SigningSession {
         }
         const context: TranslateContext = { transaction: item.bytes };
         if (item.before !== null) context.lockUntil = item.before.lockup.unixTimestamp;
-        jobs[item.id] = jobView(item.id, { kind: 'sim-failed', error: translateError(simulation.error, context) }, item);
+        const error = translateError(simulation.error, context);
+        if (error.code === 'insufficient-funds') {
+          // A fee payer that cannot pay this one fails its simulation before the round's fee check: name the key to
+          // fund (fee-balance) instead of a failure that names none (SECURITY-CHECK П16). A short stake account passes.
+          await this.checkFees(work, [item], roleHints([item.summary.action]));
+          if (this.stale(work)) return;
+        }
+        jobs[item.id] = jobView(item.id, { kind: 'sim-failed', error }, item);
       }
 
       const hints = roleHints(remaining.map((item) => item.summary.action));

@@ -998,6 +998,7 @@
     "phone": "In a phone wallet's own browser this works when your second key holds a little SOL for the fee.",
     "removeConfirm": "I understand that after this, anyone with my main key can withdraw this stake right away",
     "mainPays": "Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least {amount}, then press Check again.",
+    "mainPaysStolen": "If your main key may be stolen, send SOL to the second key instead.",
     "result": "Lock change",
     "done": {
       "extended": "The lock now ends on {date}",

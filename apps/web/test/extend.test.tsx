@@ -30,10 +30,11 @@ const ONE_SIGNER_FEE = networkFeeFor(1);
 
 type World = { testChain: TestChain; chain: LiteSvmChain; A: KeyPairSigner; K: KeyPairSigner };
 
-/** A funded main key A; the second key K holds `secondSol` lamports. */
-async function world(secondLamports: bigint): Promise<World> {
+/** The second key K holds `secondLamports`; the main key A holds 10 SOL, or `mainLamports` when given. */
+async function world(secondLamports: bigint, mainLamports?: bigint): Promise<World> {
   const testChain = await TestChain.create();
-  const [A, K] = await Promise.all([testChain.fundedKey(), generateKeyPairSigner()]);
+  const [A, K] = await Promise.all([mainLamports === undefined ? testChain.fundedKey() : generateKeyPairSigner(), generateKeyPairSigner()]);
+  if (mainLamports !== undefined && mainLamports > 0n) testChain.airdrop(A.address, mainLamports);
   if (secondLamports > 0n) testChain.airdrop(K.address, secondLamports);
   return { testChain, chain: new LiteSvmChain(testChain), A, K };
 }
@@ -121,6 +122,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
         undefined,
         WAIT,
       );
+      // SECURITY-CHECK П16: never a reason to fund a main key that may be stolen.
+      expect(screen.getByText('If your main key may be stolen, send SOL to the second key instead.')).toBeInTheDocument();
       expect(summarySigners(await theSummary())).toEqual(['main', 'second']);
 
       w.testChain.airdrop(w.K.address, LAMPORTS_PER_SOL / 100n);
@@ -165,6 +168,26 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await heading(`The lock now ends on ${formatUtcDate(SIX_MONTHS) ?? ''}`);
       expect(main.requests).toHaveLength(1);
       expect(second.requests).toHaveLength(1);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'E2d: neither key holds SOL for the fee: the error names the second key, and the main key is never asked to pay',
+    async () => {
+      const w = await world(0n, 0n);
+      const S = await stake(w);
+      const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
+      const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
+
+      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await click(user, 'Review and sign');
+      const error = await screen.findByText(/^Your Second key has 0 SOL\. It needs at least .* Add a little SOL to it, then press Try again\.$/, undefined, WAIT);
+      expect(error.closest('[role="alert"]') ?? error.parentElement).toHaveTextContent(w.K.address);
+      expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Your Main key has/)).not.toBeInTheDocument();
+      expect(main.requests).toHaveLength(0);
+      expect(second.requests).toHaveLength(0);
     },
     SCENARIO_TIMEOUT,
   );

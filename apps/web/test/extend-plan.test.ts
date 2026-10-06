@@ -1,5 +1,5 @@
 import { generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana/kit';
-import { lockupEnd, ZERO_ADDRESS, type Lockup } from '@stakeward/core';
+import { lockupEnd, networkFeeFor, ZERO_ADDRESS, type Lockup } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { LAMPORTS_PER_SOL, START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { describe, expect, it } from 'vitest';
@@ -97,6 +97,27 @@ describe('extendPlan', () => {
     w.testChain.airdrop(w.K.address, LAMPORTS_PER_SOL / 100n);
     expect(await decide(w, { lockUntil: T2 }, S)).toMatchObject({ kind: 'build', feePayer: w.K.address });
     expect(await decide(w, { lockUntil: 0n }, S)).toMatchObject({ kind: 'build', action: { kind: 'unlock' }, feePayer: w.K.address });
+  });
+
+  // SECURITY-CHECK П16: falling back to the main key must not ask anyone to fund it (it may be stolen and swept).
+  it('keeps the second key as the payer when neither key can pay, so the fee error names the second key', async () => {
+    const testChain = await TestChain.create();
+    const [A, K] = await Promise.all([generateKeyPairSigner(), generateKeyPairSigner()]);
+    const w: World = { testChain, chain: new LiteSvmChain(testChain), A, K };
+    const S = await stakeWith(w, { unixTimestamp: T, epoch: 0n, custodian: K.address });
+    expect(testChain.balance(A.address)).toBe(0n);
+    expect(testChain.balance(K.address)).toBe(0n);
+
+    expect(await decide(w, { lockUntil: T2 }, S)).toMatchObject({ kind: 'build', action: { kind: 'extend' }, feePayer: K.address });
+    expect(await decide(w, { lockUntil: 0n }, S)).toMatchObject({ kind: 'build', action: { kind: 'unlock' }, feePayer: K.address });
+
+    // The main key holds a little, but not enough for both signatures and its minimum balance: still the second key.
+    const rent0 = await w.chain.getMinimumBalanceForRentExemption(0);
+    testChain.airdrop(A.address, rent0 + networkFeeFor(2) - 1n);
+    expect(await decide(w, { lockUntil: T2 }, S)).toMatchObject({ kind: 'build', feePayer: K.address });
+    // Enough for two signatures: the main key pays.
+    testChain.airdrop(A.address, 1n);
+    expect(await decide(w, { lockUntil: T2 }, S)).toMatchObject({ kind: 'build', feePayer: A.address });
   });
 });
 

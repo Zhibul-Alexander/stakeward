@@ -595,6 +595,41 @@ describe('SigningSession on LiteSvmChain', { timeout: 60_000 }, () => {
     s.dispose();
   });
 
+  // SECURITY-CHECK П16: an empty fee payer fails the simulation before the fee check; the page must still say which key
+  // to fund (the generic "not enough SOL" sim failure named no key).
+  it('a fee payer that never held SOL: prepare-failed fee-balance naming that key, not a sim failure', async () => {
+    const emptyKey = await generateKeyPairSigner();
+    const empty = await createTestWalletPort({ name: 'Empty Wallet', signers: [emptyKey], connected: true });
+    wallets.add(empty);
+    slots.clear('main');
+    slots.assign('main', { walletId: empty.id, address: emptyKey.address });
+    const P1 = await testChain.createStakeAccount({ staker: emptyKey.address, withdrawer: emptyKey.address });
+    const s = session({ ids: [P1], plan: protectPlan(emptyKey.address, K, T) });
+    s.start();
+    const failed = await until(s, (state) => state.phase.kind === 'prepare-failed' || state.phase.kind === 'finished');
+    expect(failed.phase).toMatchObject({
+      kind: 'prepare-failed',
+      problem: { kind: 'fee-balance', payer: emptyKey.address, role: 'main', balance: 0n },
+    });
+    expect(empty.requests).toHaveLength(0);
+    s.dispose();
+  });
+
+  it('a simulation that fails for lack of SOL in the stake account, with a payer that can pay: still a sim failure', async () => {
+    // A withdrawal of more than the account holds: the payer is fine, the stake account is short.
+    const plan = planOf((id, account) => ({
+      kind: 'build',
+      action: { kind: 'withdraw', stakeAccount: id, mainKey: A, secondKey: null, recipient: A, lamports: account.lamports + 1n },
+      feePayer: A,
+      before: account,
+    }));
+    const s = session({ ids: [S1], plan });
+    s.start();
+    const end = await until(s, phaseIs('finished'));
+    expect(end.jobs[S1]?.state).toMatchObject({ kind: 'sim-failed', error: { code: 'insufficient-funds' } });
+    s.dispose();
+  });
+
   it('a plan that finds the change already on the chain: no transaction, no wallet request', async () => {
     const lockup = { unixTimestamp: T, epoch: 0n, custodian: K };
     const done1 = await testChain.createStakeAccount({ staker: A, withdrawer: A, lockup });
