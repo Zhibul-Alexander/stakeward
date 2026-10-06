@@ -28,6 +28,9 @@ export default defineConfig(({ command }) => ({
   // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
   resolve: { tsconfigPaths: true },
   define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(clusterFor(command)) },
+  // No .env files (SECURITY-CHECK P18): they are gitignored, so the deploy wrapper's clean-tree check cannot see them,
+  // and NODE_ENV=development in one would ship development React. The build takes VITE_CLUSTER from the environment.
+  envDir: false,
   // Same headers as production (public/_headers), so e2e tests run under the real CSP.
   preview: { port: 4173, strictPort: true, headers: readStaticHeaders() },
   test: {
