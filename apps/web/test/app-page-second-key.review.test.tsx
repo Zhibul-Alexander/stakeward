@@ -2,7 +2,7 @@
 // fills another slot. On /app?address=A (UX rule 1: look first, no main key connected) the viewed main key A is in no
 // slot, so a wallet that offers A takes the Second key slot with A. Worse, KeySlot picks the wallet's FIRST free
 // account, so a wallet that shares both of the user's accounts (main A first, second K) always fills the slot with A.
-// Then A is the only known second key and the user's own lock (held by K) turns "Locked by another key", view only.
+// Then A is the only known second key and the user's own lock (held by K) turns "Locked by a second key", view only.
 import '@testing-library/jest-dom/vitest';
 import { generateKeyPairSigner } from '@solana/kit';
 import { shortAddress } from '@stakeward/core';

@@ -50,6 +50,7 @@ export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, signi
         authority={run.newWallet}
         role="new"
         blockedHint={t('nonce.blockedRescue')}
+        variant="rescue"
         signing={signing}
         actions={
           <Button variant="ghost" onClick={onBack}>

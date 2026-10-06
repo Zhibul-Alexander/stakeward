@@ -54,6 +54,7 @@ export function SignStep(props: SignStepProps) {
           {t('protect.sign.heading')}
         </h2>
         <p className="max-w-prose text-muted">{countText}</p>
+        <p className="max-w-prose text-sm text-muted">{t('protect.sign.ledger')}</p>
       </div>
       <RiskNote risk="lose-second-key" date={props.lockUntil} />
       {byLink ? (

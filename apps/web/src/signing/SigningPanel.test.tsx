@@ -459,7 +459,7 @@ describe('SigningView: signing by link', () => {
   it('link (watching): the card with the link, the key that signs by link and the transaction; Stop waiting here', async () => {
     const user = userEvent.setup();
     const { spy, onBack } = showLink(watching);
-    expect(screen.getByRole('heading', { level: 3, name: 'Send this link to your Second key' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Send this link to the device with your Second key' })).toBeInTheDocument();
     const url = screen.getByLabelText('Signing link');
     expect(url).toHaveAttribute('readonly');
     const link = new URL((url as HTMLInputElement).value);

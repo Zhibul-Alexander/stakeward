@@ -18,6 +18,8 @@ type NonceGateProps = {
   role: WalletRole;
   /** What to do instead when the account's address is taken (e.g. sign in this browser). */
   blockedHint: string;
+  /** `rescue`: the setup texts of a rescue, which always uses the account (NonceStep); signing by link otherwise. */
+  variant?: 'rescue' | undefined;
   /** What needs the account, once it is ready (the signing session on that nonce). */
   children: (nonceAccount: Address) => ReactNode;
   /** The page's way out while the account is not ready (e.g. Back), shown below the gate; never next to `children`. */
@@ -31,7 +33,7 @@ type NonceGateProps = {
  * wait is explained and an error has Try again (UX rules 7 and 8). An address taken by another account cannot be
  * used: the gate says so with the page's way around it.
  */
-export function NonceGate({ authority, role, blockedHint, children, actions, signing }: NonceGateProps) {
+export function NonceGate({ authority, role, blockedHint, variant, children, actions, signing }: NonceGateProps) {
   const chain = useChain();
   const [attempt, setAttempt] = useState(0);
   const nonce = useNonceAccount(chain, authority, attempt);
@@ -39,7 +41,17 @@ export function NonceGate({ authority, role, blockedHint, children, actions, sig
     setAttempt((value) => value + 1);
   };
   if (nonce.status === 'ready' && nonce.value.state.kind === 'ready') return children(nonce.value.address);
-  const gate = <GateState nonce={nonce} authority={authority} role={role} blockedHint={blockedHint} again={again} signing={signing} />;
+  const gate = (
+    <GateState
+      nonce={nonce}
+      authority={authority}
+      role={role}
+      blockedHint={blockedHint}
+      variant={variant}
+      again={again}
+      signing={signing}
+    />
+  );
   if (actions === undefined) return gate;
   return (
     <div className="flex flex-col gap-4">
@@ -55,7 +67,7 @@ type GateStateProps = Omit<NonceGateProps, 'children' | 'actions'> & {
 };
 
 /** The gate while the account is not ready to use: reading it, a read error, setting it up, or its address taken. */
-function GateState({ nonce, authority, role, blockedHint, again, signing }: GateStateProps) {
+function GateState({ nonce, authority, role, blockedHint, variant, again, signing }: GateStateProps) {
   switch (nonce.status) {
     case 'idle':
     case 'loading':
@@ -80,6 +92,7 @@ function GateState({ nonce, authority, role, blockedHint, again, signing }: Gate
               nonceAccount={address}
               role={role}
               mode="setup"
+              variant={variant === 'rescue' ? 'rescue' : 'close'}
               amount={deposit}
               onDone={again}
               signing={signing}

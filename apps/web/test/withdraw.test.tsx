@@ -210,7 +210,7 @@ describe('/withdraw/:account: an uncertain outcome', () => {
       const lamports = w.testChain.account(S)?.lamports ?? 0n;
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main]);
 
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock holds this stake now, so your main key signs alone.', undefined, WAIT);
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await waitFor(() => {
@@ -337,7 +337,7 @@ describe('/withdraw/:account: gates', () => {
       const S = await w.testChain.createStakeAccount({ staker: w.A.address, withdrawer: w.A.address });
       const [main, second] = await wallets(w);
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main, second]);
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock holds this stake now, so your main key signs alone.', undefined, WAIT);
 
       const { bytes } = buildTransaction(
         { kind: 'delegate', stakeAccount: S, staker: w.A.address, voteAccount: w.vote },

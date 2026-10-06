@@ -51,7 +51,7 @@ describe('ProtectDoneView with a link still open', () => {
 // UX rule 5: a status is shown by word, colour and icon at once, never by text alone.
 describe('ProtectDoneView statuses', () => {
   it.each<[string, WatchState, string, string]>([
-    ['on', { kind: 'on' }, 'Monitoring is on: Stakeward checks these stake accounts every few minutes.', 'text-success'],
+    ['on', { kind: 'on' }, 'Monitoring is on: Stakeward checks these stake accounts every few minutes. To hear about a change, turn on Telegram alerts below.', 'text-success'],
     [
       'partial',
       { kind: 'partial', rejected: [{ account: S1, reason: 'not-locked' }] },

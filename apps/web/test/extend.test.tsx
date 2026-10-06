@@ -91,7 +91,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       expect(summary).toHaveAttribute('data-kind', 'extend');
       expect(summarySigners(summary)).toEqual(['second']);
       expect(within(summary.querySelector('[data-signer="second"]') as HTMLElement).getByText('Pays the network fee')).toBeInTheDocument();
-      expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/so your main key would pay and sign too/)).not.toBeInTheDocument();
 
       await click(user, 'Sign in Second Wallet as Second key');
       await heading(`The lock now ends on ${formatUtcDate(TWELVE_MONTHS) ?? ''}`);
@@ -117,7 +117,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await radio(period('6 months (recommended)', SIX_MONTHS));
       await click(user, 'Review and sign');
       await screen.findByText(
-        `Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least ${formatSol(ONE_SIGNER_FEE + rent0)}, then press Check again.`,
+        `Your second key has too little SOL for the network fee, so your main key would pay and sign too. If your main key may be stolen, do not use it: send your second key at least ${formatSol(ONE_SIGNER_FEE + rent0)} from another wallet, then press Check again.`,
         undefined,
         WAIT,
       );
@@ -128,7 +128,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await screen.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT);
       expect(summarySigners(await theSummary())).toEqual(['second']);
-      expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/so your main key would pay and sign too/)).not.toBeInTheDocument();
       await click(user, 'Sign in Second Wallet as Second key');
 
       await heading(`The lock now ends on ${formatUtcDate(SIX_MONTHS) ?? ''}`);
@@ -150,7 +150,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await radio(period('6 months (recommended)', SIX_MONTHS));
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
-      await screen.findByText(/so your main key pays and signs too/, undefined, WAIT);
+      await screen.findByText(/so your main key would pay and sign too/, undefined, WAIT);
       expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
       await click(user, 'Sign in Main Wallet as Main key');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
@@ -222,7 +222,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await user.click(sign);
       expect(await screen.findByText('Tick the box above to continue.')).toBeInTheDocument();
       const box = screen.getByRole('checkbox', {
-        name: 'I understand that after this, anyone with my main key can withdraw this stake right away',
+        name: 'I understand that after this, anyone with the main key can withdraw this stake right away',
       });
       expect(box).toHaveFocus();
       expect(second.requests).toHaveLength(0);
@@ -239,7 +239,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
 
       await user.click(withdrawNow);
       expect(location.history.at(-1)).toBe(`/withdraw/${S}`);
-      await screen.findByText('The lock has ended, so your main key signs alone.', undefined, WAIT);
+      await screen.findByText('No lock holds this stake now, so your main key signs alone.', undefined, WAIT);
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       expect(summarySigners(await theSummary())).toEqual(['main']);

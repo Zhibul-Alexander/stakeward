@@ -121,6 +121,9 @@ async function throughKeys(
 
 /** The new wallet's link-signing account, set up from the move step (one request to the new wallet). */
 async function setUpNonce(user: UserEvent) {
+  // Rescue always uses the account, also with every key here: the step says so, not "signing on another device".
+  await screen.findByRole('heading', { name: 'Set up the link-signing account' }, WAIT);
+  expect(screen.queryByText(/^Signing on another device needs/)).not.toBeInTheDocument();
   await click(user, 'Create the link-signing account');
   await click(user, 'Sign in New Wallet as New wallet');
 }

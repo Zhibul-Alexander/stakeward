@@ -35,14 +35,14 @@ describe('AccountRow', () => {
 
   it('locked by another key names that key, with copy and explorer, so the viewer can connect it if it is theirs', () => {
     render(<AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} />);
-    expect(screen.getByText('Locked by another key')).toBeInTheDocument();
+    expect(screen.getByText('Locked by a second key')).toBeInTheDocument();
     const holder = screen.getByRole('article').querySelector('[data-slot="lock-holder"]');
     if (!(holder instanceof HTMLElement)) throw new Error('no lock holder');
     expect(holder).toHaveTextContent('Second key');
     expect(within(holder).getByText('57M...3Sz')).toBeInTheDocument();
     expect(within(holder).getByRole('button', { name: 'Copy address 57M...3Sz' })).toBeInTheDocument();
     expect(within(holder).getByRole('link', { name: /^View 57M...3Sz on Solana Explorer/ })).toHaveAttribute('href', expect.stringContaining(OTHER));
-    expect(screen.getByText('If this second key is yours, connect it to manage the lock.')).toBeInTheDocument();
+    expect(screen.getByText('This browser does not know this key yet. If it is your second key, connect it to manage the lock; if not, only that key can change it.')).toBeInTheDocument();
   });
 
   it('F6: a stake that was protected and lost its lock shows red', () => {

@@ -223,6 +223,15 @@ describe('landing page', () => {
     expect(document.body.textContent).not.toMatch(/0\.0015/);
   });
 
+  it('the thief answer leads to Rescue, a page of this site, in this tab', async () => {
+    renderLanding();
+    const user = userEvent.setup();
+    await user.click(summaryOf(faqItem('thief')));
+    const rescue = within(answerOf(faqItem('thief'))).getByRole('link', { name: 'Rescue your stake' });
+    expect(rescue).toHaveAttribute('href', '/rescue');
+    expect(rescue).not.toHaveAttribute('target');
+  });
+
   it('opens the recovery guide on GitHub in a new tab that gets neither this page nor its address', async () => {
     renderLanding();
     const user = userEvent.setup();
