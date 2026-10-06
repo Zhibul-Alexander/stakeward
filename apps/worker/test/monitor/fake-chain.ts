@@ -16,7 +16,7 @@ export type ChainAccount = { data: Uint8Array; lamports: bigint; owner?: Address
 export type ChainFailure = 503 | 'hang' | 'network-error' | { rpcError: number } | 'short';
 
 export type ChainCall = {
-  endpoint: 'primary' | 'fallback';
+  endpoint: 'primary' | 'fallback' | 'monitor';
   method: string;
   params: unknown[];
   /** Keys of a getMultipleAccounts call. */
@@ -84,7 +84,7 @@ export class FakeChain {
     return this.calls.filter((call) => call.method === method);
   }
 
-  async handle(endpoint: 'primary' | 'fallback', body: string, signal: AbortSignal | null | undefined): Promise<Response> {
+  async handle(endpoint: ChainCall['endpoint'], body: string, signal: AbortSignal | null | undefined): Promise<Response> {
     const json = JSON.parse(body) as { id: unknown; method: string; params: unknown[] };
     const { id, method, params } = json;
     const keys = method === 'getMultipleAccounts' ? ((params[0] ?? []) as Address[]) : [];

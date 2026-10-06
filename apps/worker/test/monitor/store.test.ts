@@ -709,7 +709,16 @@ describe('public API statements', () => {
     expect(results[0]).toEqual({ stake_account: key(10), type: 'STAKER_CHANGED', details_json: '{}', slot: 4, detected_at: NOW_MS });
   });
 
-  it('STATS: live locks not ended; the lamport sum is exact above 2^53', async () => {
+  it('STATS_COUNT and STATS_CACHE: live locks not ended; the lamport sum is exact above 2^53; a count stands ?3 ms, from up to ?4 ms ahead', async () => {
+    const TTL = 600_000;
+    const SKEW = 60_000;
+    const count = async (ms: number) => {
+      const [, cache] = await db.batch([
+        db.prepare(SQL.STATS_COUNT).bind(ms, Math.floor(ms / 1000), TTL, SKEW),
+        db.prepare(SQL.STATS_CACHE),
+      ]);
+      return cache?.results;
+    };
     await seed(
       watchRow(10, { lamports: '9007199254740993' }),
       watchRow(11, { lamports: '1' }),
@@ -717,8 +726,17 @@ describe('public API statements', () => {
       watchRow(13, { lamports: '7' }),
     );
     await closeRow(key(13));
-    expect(await db.prepare(SQL.STATS).bind(NOW_S).first()).toEqual({ accounts: 2, lamports: '9007199254740994' });
+    expect(await count(NOW_MS)).toEqual([{ at: NOW_MS, accounts: 2, lamports: '9007199254740994' }]);
+    // The stored value is the JSON object the comment of SQL.STATS_COUNT names, `at` an integer.
+    expect(await db.prepare("SELECT value FROM meta WHERE key = 'stats_cache'").first()).toEqual({
+      value: `{"at":${String(NOW_MS)},"accounts":2,"lamports":"9007199254740994"}`,
+    });
     await db.prepare('DELETE FROM accounts').run();
-    expect(await db.prepare(SQL.STATS).bind(NOW_S).first()).toEqual({ accounts: 0, lamports: '0' });
+    expect(await count(NOW_MS + TTL - 1)).toEqual([{ at: NOW_MS, accounts: 2, lamports: '9007199254740994' }]);
+    expect(await count(NOW_MS + TTL)).toEqual([{ at: NOW_MS + TTL, accounts: 0, lamports: '0' }]);
+    // A count up to ?4 ms from the future stands (clocks differ); further ahead it does not.
+    await seed(watchRow(14, { lamports: '3' }));
+    expect(await count(NOW_MS + TTL - SKEW)).toEqual([{ at: NOW_MS + TTL, accounts: 0, lamports: '0' }]);
+    expect(await count(NOW_MS + TTL - SKEW - 1)).toEqual([{ at: NOW_MS + TTL - SKEW - 1, accounts: 1, lamports: '3' }]);
   });
 });

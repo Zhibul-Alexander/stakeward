@@ -429,7 +429,10 @@ async function readChunks(pass: LoadedPass): Promise<void> {
       if (genesis !== 'ok') {
         report.chunksFailed += 1;
         pass.readFailed = true;
-        if (genesis === 'mismatch') pass.adminDue.add('wrong-cluster');
+        if (genesis === 'mismatch') {
+          pass.adminDue.add('wrong-cluster');
+          pass.adminCounts.rpc = config.rpcSecrets[endpoint];
+        }
         return;
       }
       verified.add(endpoint);

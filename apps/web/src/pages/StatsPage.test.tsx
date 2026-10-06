@@ -30,7 +30,14 @@ describe('StatsPage', () => {
       'Telegram alerts sent',
     ]);
     expect(definitions()).toEqual(['12', '1,234 SOL', '7']);
-    expect(screen.getByText(/^Counted from watched stake accounts whose lock is in force right now\./)).toBeInTheDocument();
+    // The server counts the locks at most every 10 minutes (DECISIONS.md D82), so no "right now" and no promise that a
+    // reload gives fresh numbers.
+    expect(
+      screen.getByText(/^Locked accounts and SOL are counted at most every 10 minutes, from watched stake accounts whose lock is in force\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('From the Stakeward monitor: the locked stake accounts it watches and the alerts it has sent.'),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 

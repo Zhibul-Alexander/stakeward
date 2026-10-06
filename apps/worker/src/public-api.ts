@@ -150,25 +150,43 @@ function parseDetails(text: string): unknown {
 }
 
 /**
- * GET /api/stats: watched accounts whose lock is in force now, the lamports in them (a decimal string: SQLite sums
- * integers exactly and all SOL is below 2^63 lamports) and the alerts delivered so far (meta.alerts_sent).
+ * How long a count of /api/stats stands. Counting reads every watched row, and the D1 Free plan allows 5 million rows
+ * read a day for everything, the monitor included: counted on every request (20 a minute per IP), 1,000 watched rows
+ * would let one client read 28.8 million a day and stop the alerts. Stored, it is at most 144 counts a day, whoever
+ * asks.
+ */
+export const STATS_TTL_MS = 10 * 60_000;
+
+/**
+ * How far from the future a stored count of /api/stats still stands. Requests run on different Cloudflare machines
+ * whose clocks differ: without this, a request whose clock is a few ms behind the one that counted would count again
+ * (and say an earlier `now`). A count further ahead is not a clock that differs, and is counted again.
+ */
+export const STATS_CLOCK_SKEW_MS = 60_000;
+
+/**
+ * GET /api/stats: watched accounts whose lock is in force, the lamports in them (a decimal string: SQLite sums integers
+ * exactly and all SOL is below 2^63 lamports) and the alerts delivered so far (meta.alerts_sent, read on every
+ * request). The two counts are stored in meta.stats_cache and counted again after STATS_TTL_MS (SQL.STATS_COUNT);
+ * `now` is when they were counted (up to STATS_CLOCK_SKEW_MS ahead of this request's clock). One batch per request.
  */
 export function statsHandler(now: () => number) {
   return async (c: Context<AppEnv>): Promise<Response> => {
     const db = c.env.DB;
     const nowMs = now();
-    const [stats, sent] = await db.batch([
-      db.prepare(SQL.STATS).bind(Math.floor(nowMs / 1000)),
+    const [, stats, sent] = await db.batch([
+      db.prepare(SQL.STATS_COUNT).bind(nowMs, Math.floor(nowMs / 1000), STATS_TTL_MS, STATS_CLOCK_SKEW_MS),
+      db.prepare(SQL.STATS_CACHE),
       db.prepare(SQL.ALERTS_SENT),
     ]);
-    const row = stats?.results[0] as { accounts: unknown; lamports: unknown } | undefined;
+    const row = stats?.results[0] as { at: unknown; accounts: unknown; lamports: unknown } | undefined;
     const sentValue = (sent?.results[0] as { value: unknown } | undefined)?.value;
     const alertsSent = typeof sentValue === 'string' && /^[0-9]{1,15}$/.test(sentValue) ? Number(sentValue) : 0;
     return c.json({
       accountsLocked: Number(row?.accounts ?? 0),
       lamportsLocked: typeof row?.lamports === 'string' ? row.lamports : '0',
       alertsSent,
-      now: isoOf(nowMs),
+      now: isoOf(typeof row?.at === 'number' ? row.at : nowMs),
     });
   };
 }

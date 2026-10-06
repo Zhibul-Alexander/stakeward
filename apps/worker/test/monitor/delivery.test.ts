@@ -434,7 +434,8 @@ describe('a busy chat does not hold back the others', () => {
     return texts;
   }
 
-  it('150 events of one chat, then one of another chat: the other chat gets it on the second pass', async () => {
+  // 14 passes over 151 events: about 1.5 s alone, past the default 5 s under a parallel suite on a loaded machine.
+  it('150 events of one chat, then one of another chat: the other chat gets it on the second pass', { timeout: 30_000 }, async () => {
     const h = createHarness();
     h.at('2026-10-05T01:00:00Z');
     const busyTexts = await seedEvents(busyWallet, 150, 0, h.clock.ms);

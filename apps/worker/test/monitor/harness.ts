@@ -16,10 +16,10 @@ export const ADMIN_CHAT = '700000001';
 export type NetworkCall = { host: string; path: string };
 
 /**
- * Routes the worker's fetch by host: the RPC hosts to the chain (the fallback host to `fallback` when given: a node
- * of its own), api.telegram.org to Telegram.
+ * Routes the worker's fetch by host: the RPC hosts to the chain (the fallback host to `fallback` and the
+ * MONITOR_RPC_URL host to `monitor` when given: nodes of their own), api.telegram.org to Telegram.
  */
-export function network(chain: FakeChain, telegram: FakeTelegram, fallback?: FakeChain) {
+export function network(chain: FakeChain, telegram: FakeTelegram, fallback?: FakeChain, monitor?: FakeChain) {
   const calls: NetworkCall[] = [];
   const unexpected: string[] = [];
   const fetchFn: typeof fetch = async (input, init) => {
@@ -31,6 +31,8 @@ export function network(chain: FakeChain, telegram: FakeTelegram, fallback?: Fak
         return chain.handle('primary', body, init?.signal);
       case 'fallback.rpc.test':
         return (fallback ?? chain).handle('fallback', body, init?.signal);
+      case 'monitor.rpc.test':
+        return (monitor ?? chain).handle('monitor', body, init?.signal);
       case 'api.telegram.org':
         return telegram.handle(url, body, init?.signal);
       default:
@@ -147,8 +149,9 @@ export function makeDeps(options: {
   env?: Record<string, string | undefined>;
   db?: CountingDb;
   fallback?: FakeChain;
+  monitor?: FakeChain;
 }) {
-  const net = network(options.chain, options.telegram, options.fallback);
+  const net = network(options.chain, options.telegram, options.fallback, options.monitor);
   const db = options.db ?? countingDb(env.DB);
   const logs: Record<string, unknown>[] = [];
   let passes = 0;
@@ -177,9 +180,12 @@ export type Harness = ReturnType<typeof createHarness>;
 
 /**
  * A fake chain, a fake Telegram, the counting D1 and deps over them, plus seed and read helpers. With `fallback`, the
- * fallback RPC host is that chain (set RPC_FALLBACK_URL in `env`); its slot and clock are the test's to set.
+ * fallback RPC host is that chain (set RPC_FALLBACK_URL in `env`), and with `monitor` the MONITOR_RPC_URL host (set it
+ * to MONITOR_URL in `env`); their slot and clock are the test's to set.
  */
-export function createHarness(options: { env?: Record<string, string | undefined>; fallback?: FakeChain } = {}) {
+export function createHarness(
+  options: { env?: Record<string, string | undefined>; fallback?: FakeChain; monitor?: FakeChain } = {},
+) {
   const clock: TestClock = { ms: Date.UTC(2026, 9, 5, 12) };
   const chain = new FakeChain();
   const telegram = new FakeTelegram();
@@ -189,6 +195,7 @@ export function createHarness(options: { env?: Record<string, string | undefined
     telegram,
     ...(options.env === undefined ? {} : { env: options.env }),
     ...(options.fallback === undefined ? {} : { fallback: options.fallback }),
+    ...(options.monitor === undefined ? {} : { monitor: options.monitor }),
   });
   const { deps, net, db, logs } = made;
 

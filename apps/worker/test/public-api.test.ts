@@ -4,13 +4,15 @@ import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { insertWatchedStatements, type WatchRow } from '../src/monitor/store.ts';
-import { fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
+import { STATS_CLOCK_SKEW_MS } from '../src/public-api.ts';
+import { atFreshWindow, fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
 import { countingDb } from './monitor/harness.ts';
 import { key } from './transactions.ts';
 
 const NOW = Date.UTC(2026, 9, 5, 12);
 const NOW_S = BigInt(NOW / 1000);
 const DAY = 86_400n;
+const MINUTE = 60_000;
 const WALLET = key(1);
 const OTHER = key(2);
 const ZERO = '11111111111111111111111111111111';
@@ -49,6 +51,25 @@ function row(
 
 async function seed(rows: readonly WatchRow[]): Promise<void> {
   await env.DB.batch(insertWatchedStatements(env.DB, rows, NOW - 86_400_000));
+}
+
+/** `db` adding up D1's meta.rows_read (what the Free plan's daily read quota counts) over its batch() calls. */
+function rowsReadDb(db: D1Database): { db: D1Database; rowsRead: () => number } {
+  let rows = 0;
+  const wrapped = new Proxy(db, {
+    get(target, prop) {
+      if (prop === 'batch') {
+        return async (statements: D1PreparedStatement[]) => {
+          const results = await target.batch(statements);
+          for (const result of results) rows += result.meta.rows_read;
+          return results;
+        };
+      }
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+  return { db: wrapped, rowsRead: () => rows };
 }
 
 async function close(stakeAccount: Address): Promise<void> {
@@ -243,6 +264,122 @@ describe('GET /api/stats', () => {
     });
   });
 
+  it('counts at most once per 10 minutes, whoever asks, and says when it counted; alerts are read every time', async () => {
+    const at = (ms: number) => testApp(noUpstream(), { now: () => ms }).request('/api/stats');
+    await seed([row(key(40), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '5' })]);
+    expect(await (await at(NOW)).json()).toEqual({
+      accountsLocked: 1,
+      lamportsLocked: '5',
+      alertsSent: 0,
+      now: '2026-10-05T12:00:00.000Z',
+    });
+
+    // A new lock and a delivered alert 9 minutes later: the stored count answers, with the time it was counted.
+    await seed([row(key(41), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '7' })]);
+    await env.DB.prepare("INSERT INTO meta (key, value) VALUES ('alerts_sent', '3')").run();
+    expect(await (await at(NOW + 9 * MINUTE)).json()).toEqual({
+      accountsLocked: 1,
+      lamportsLocked: '5',
+      alertsSent: 3,
+      now: '2026-10-05T12:00:00.000Z',
+    });
+
+    // From 10 minutes on it counts again, and that count stands for the next 10 minutes.
+    expect(await (await at(NOW + 10 * MINUTE)).json()).toEqual({
+      accountsLocked: 2,
+      lamportsLocked: '12',
+      alertsSent: 3,
+      now: '2026-10-05T12:10:00.000Z',
+    });
+    expect(await (await at(NOW + 10 * MINUTE + 1)).json()).toMatchObject({ accountsLocked: 2, now: '2026-10-05T12:10:00.000Z' });
+  });
+
+  it('a stored count costs D1 a few rows read, not one per watched account (the Free plan: 5 million a day)', async () => {
+    await seed(Array.from({ length: 40 }, (_, i) => row(key(100 + i), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY })));
+    const rowsReadAt = async (ms: number) => {
+      const counting = countingDb(env.DB);
+      const reads = rowsReadDb(counting);
+      const res = await testApp(noUpstream(), { now: () => ms, env: { DB: reads.db } }).request('/api/stats');
+      expect(res.status).toBe(200);
+      // One batch, so rowsReadDb saw every statement.
+      expect(counting.journal.map((entry) => entry.via)).toEqual(counting.journal.map(() => 'batch'));
+      expect(counting.stats.calls).toBe(1);
+      return reads.rowsRead();
+    };
+    expect(await rowsReadAt(NOW)).toBeGreaterThanOrEqual(40);
+    expect(await rowsReadAt(NOW + 1)).toBeLessThanOrEqual(5);
+    expect(await rowsReadAt(NOW + 10 * MINUTE - 1)).toBeLessThanOrEqual(5);
+    expect(await rowsReadAt(NOW + 10 * MINUTE)).toBeGreaterThanOrEqual(40);
+  });
+
+  // Clocks of the machines that run the requests differ by a few ms: a request may run after one whose clock is ahead.
+  it.each([
+    ['in clock order', [0, 1, 2, 3, 4]],
+    ['each clock a little behind the one before', [4, 3, 2, 1, 0]],
+  ])('requests that arrive together, the first ones included, count once: %s', async (_order, offsets) => {
+    await seed(Array.from({ length: 40 }, (_, i) => row(key(100 + i), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY })));
+    const reads = rowsReadDb(env.DB);
+    const answers = await Promise.all(
+      offsets.map(async (ms) => {
+        const res = await testApp(noUpstream(), { now: () => NOW + ms, env: { DB: reads.db } }).request('/api/stats');
+        return res.json();
+      }),
+    );
+    expect(answers).toEqual(answers.map(() => answers[0]));
+    expect(answers[0]).toMatchObject({ accountsLocked: 40 });
+    // One count of the 40 rows, not one per request.
+    expect(reads.rowsRead()).toBeLessThan(80);
+  });
+
+  it('counts again when the stored count is unreadable or from the future', async () => {
+    await seed([row(key(42), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '9' })]);
+    for (const bad of [
+      'not json',
+      '[1]',
+      JSON.stringify({ accounts: 3, lamports: '3' }),
+      JSON.stringify({ at: String(NOW), accounts: 3, lamports: '3' }),
+      JSON.stringify({ at: NOW, accounts: '3', lamports: '3' }),
+      JSON.stringify({ at: NOW, accounts: 3, lamports: 3 }),
+      // More than STATS_CLOCK_SKEW_MS from the future: not a clock that differs, a count that cannot be trusted.
+      JSON.stringify({ at: NOW + STATS_CLOCK_SKEW_MS + 1, accounts: 99, lamports: '99' }),
+    ]) {
+      await env.DB.prepare(
+        "INSERT INTO meta (key, value) VALUES ('stats_cache', ?1) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      )
+        .bind(bad)
+        .run();
+      expect(await (await api().request('/api/stats')).json(), bad).toEqual({
+        accountsLocked: 1,
+        lamportsLocked: '9',
+        alertsSent: 0,
+        now: '2026-10-05T12:00:00.000Z',
+      });
+    }
+  });
+
+  it('a count up to 60 s from the future stands (the clocks of the machines differ); further ahead it counts again', async () => {
+    expect(STATS_CLOCK_SKEW_MS).toBe(MINUTE);
+    const at = (ms: number) => testApp(noUpstream(), { now: () => ms }).request('/api/stats');
+    await seed([row(key(43), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '5' })]);
+    // Counted by a request whose clock is a minute ahead.
+    expect(await (await at(NOW + MINUTE)).json()).toMatchObject({ accountsLocked: 1, now: '2026-10-05T12:01:00.000Z' });
+    await seed([row(key(44), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '7' })]);
+    // A request a minute behind it uses that count.
+    expect(await (await at(NOW)).json()).toEqual({
+      accountsLocked: 1,
+      lamportsLocked: '5',
+      alertsSent: 0,
+      now: '2026-10-05T12:01:00.000Z',
+    });
+    // One more millisecond behind, it counts again.
+    expect(await (await at(NOW - 1)).json()).toEqual({
+      accountsLocked: 2,
+      lamportsLocked: '12',
+      alertsSent: 0,
+      now: '2026-10-05T11:59:59.999Z',
+    });
+  });
+
   it('500 when D1 fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await env.DB.exec('DROP TABLE accounts');
@@ -252,9 +389,11 @@ describe('GET /api/stats', () => {
   });
 });
 
-describe('LOOKUP_RATE_LIMIT on /api/accounts and /api/stats', () => {
+// atFreshWindow: the requests past the limit must land in the window of the first 20 (it may wait up to 20 s).
+describe('LOOKUP_RATE_LIMIT on /api/accounts and /api/stats', { timeout: 90_000 }, () => {
   it('20 requests per 60 s per client IP, shared with /api/stake-accounts, then 429 with Retry-After', async () => {
     const ip = freshIp();
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < 10; i++) expect((await api({ ip }).request(`/api/accounts?wallet=${WALLET}`)).status).toBe(200);
     for (let i = 0; i < 9; i++) expect((await api({ ip }).request('/api/stats')).status).toBe(200);
     expect((await api({ ip }).request('/api/stake-accounts')).status).toBe(400);

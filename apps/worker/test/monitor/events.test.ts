@@ -3,7 +3,7 @@
 import type { Address } from '@solana/kit';
 import { GENESIS_HASH, I64_MAX, type MonitorEventType } from '@stakeward/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FALLBACK_URL } from '../fakes.ts';
+import { FALLBACK_URL, MONITOR_URL } from '../fakes.ts';
 import type { StakeAccountSpec } from '../transactions.ts';
 import { key, LOCK_UNTIL } from '../transactions.ts';
 import { FakeChain } from './fake-chain.ts';
@@ -386,8 +386,9 @@ describe('accounts gone and the genesis check', () => {
     expect(h.chain.callsOf('getGenesisHash')).toEqual([]);
     expect(await h.readEvents()).toEqual([]);
     expect((await h.readAccounts()).every((a) => a.state === 'delegated')).toBe(true);
+    // The admin is sent to the secret that answered, not to RPC_URL.
     expect(h.adminMessages()).toEqual([
-      'Stakeward devnet monitor: RPC_URL answers for another cluster. Account closures were not recorded.',
+      'Stakeward devnet monitor: RPC_FALLBACK_URL answers for another cluster. Account closures were not recorded.',
     ]);
   });
 
@@ -425,6 +426,81 @@ describe('accounts gone and the genesis check', () => {
       h.at('2026-10-05T01:04:00Z');
       expect(await h.pass()).toMatchObject({ outcome: 'ok', closed: watchedRows, events: watchedRows });
       expect(h.chain.callsOf('getGenesisHash')).toHaveLength(2);
+    });
+  }
+});
+
+describe("MONITOR_RPC_URL: the monitor's own RPC URL", () => {
+  const STAKES = [10, 11, 12, 13].map((n) => key(n));
+  const rpcHosts = (h: Harness) => h.net.calls.map((call) => call.host).filter((host) => host.endsWith('.rpc.test'));
+
+  /** STAKE watched and then deactivated, with MONITOR_RPC_URL (and `env`) set: the next pass has an event to find. */
+  async function deactivated(env: Record<string, string> = {}): Promise<Harness> {
+    const h = createHarness({ env: { MONITOR_RPC_URL: MONITOR_URL, ...env } });
+    h.at('2026-10-05T01:00:00Z');
+    h.chain.putStake(STAKE, SPEC);
+    await h.seedWatched([STAKE]);
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    h.at('2026-10-05T01:02:00Z');
+    return h;
+  }
+
+  it('the pass reads the chain through it, rescans included, never through the site RPC_URL', async () => {
+    const h = await deactivated();
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1 });
+    expect(h.chain.callsOf('getProgramAccounts').length).toBeGreaterThan(0);
+    expect(rpcHosts(h).length).toBeGreaterThan(1);
+    expect(new Set(rpcHosts(h))).toEqual(new Set(['monitor.rpc.test']));
+  });
+
+  for (const [env, second] of [
+    [{}, 'primary'],
+    [{ RPC_FALLBACK_URL: FALLBACK_URL }, 'fallback'],
+  ] as const) {
+    it(`when it fails, ${second === 'primary' ? 'the site RPC_URL reads (no RPC_FALLBACK_URL)' : 'RPC_FALLBACK_URL reads'}`, async () => {
+      quiet();
+      const h = await deactivated(env);
+      h.chain.failNext('getMultipleAccounts', [503]);
+      expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1 });
+      const reads = h.chain.callsOf('getMultipleAccounts').map((call) => [call.endpoint, call.outcome]);
+      expect(reads).toEqual([
+        ['monitor', 503],
+        [second, 'answer'],
+      ]);
+    });
+  }
+
+  for (const wrong of ['MONITOR_RPC_URL', 'RPC_URL'] as const) {
+    it(`${wrong} on another cluster answers the chunk: its genesis is checked, nothing closed, the admin is told ${wrong}`, async () => {
+      quiet();
+      // The site's RPC_URL (h.chain) is the monitor's fallback here; the accounts are gone on the wrong node only.
+      const monitor = new FakeChain();
+      const h = createHarness({ env: { MONITOR_RPC_URL: MONITOR_URL }, monitor });
+      h.at('2026-10-05T01:00:00Z');
+      for (const address of STAKES) h.chain.putStake(address, SPEC);
+      await h.seedWatched(STAKES);
+      h.at('2026-10-05T01:02:00Z');
+      monitor.slot = h.chain.slot;
+      monitor.clock = { ...h.chain.clock };
+      if (wrong === 'MONITOR_RPC_URL') {
+        monitor.genesis(GENESIS_HASH.mainnet);
+      } else {
+        for (const address of STAKES) {
+          const account = h.chain.accounts.get(address);
+          if (account !== undefined) monitor.set(address, account);
+          h.chain.remove(address);
+        }
+        h.chain.genesis(GENESIS_HASH.mainnet);
+        monitor.failNext('getMultipleAccounts', [503]);
+      }
+      expect(await h.pass()).toMatchObject({ outcome: 'read-failed', closed: 0, events: 0 });
+      expect(await h.readEvents()).toEqual([]);
+      expect((await h.readAccounts()).every((a) => a.state === 'delegated')).toBe(true);
+      expect(monitor.callsOf('getGenesisHash')).toHaveLength(wrong === 'MONITOR_RPC_URL' ? 1 : 0);
+      expect(h.chain.callsOf('getGenesisHash')).toHaveLength(wrong === 'MONITOR_RPC_URL' ? 0 : 1);
+      expect(h.adminMessages()).toEqual([
+        `Stakeward devnet monitor: ${wrong} answers for another cluster. Account closures were not recorded.`,
+      ]);
     });
   }
 });

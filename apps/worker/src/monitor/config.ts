@@ -1,5 +1,5 @@
 import type { Cluster } from '@stakeward/core';
-import type { UpstreamEndpoints } from '../upstream.ts';
+import type { EndpointName, UpstreamEndpoints } from '../upstream.ts';
 
 /**
  * Settings of the monitor pass (CLAUDE.md section 8, DECISIONS.md D47, D48). The preset follows the Cloudflare Workers
@@ -100,7 +100,12 @@ export type MonitorConfig = {
   /** Null unless a Telegram chat id (an optionally negative integer). */
   adminChatId: string | null;
   rpc: UpstreamEndpoints;
+  /** The secret behind each endpoint of `rpc`: the admin's wrong-cluster text names it, never the URL. */
+  rpcSecrets: Record<EndpointName, RpcSecret>;
 };
+
+/** The secrets an RPC URL of the monitor comes from (wrangler.jsonc). */
+export type RpcSecret = 'MONITOR_RPC_URL' | 'RPC_URL' | 'RPC_FALLBACK_URL';
 
 /** A deploy bug (wrong CLUSTER or MONITOR_PLAN): the pass fails with this name and the admin is alerted. */
 export class MonitorConfigError extends Error {
@@ -121,8 +126,30 @@ export function monitorConfig(env: Env): MonitorConfig {
     siteOrigin: siteOriginOf(env),
     telegramToken: admin.token,
     adminChatId: admin.chatId,
-    rpc: { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL },
+    ...monitorRpcOf(env),
   };
+}
+
+/**
+ * The monitor's RPC (SECURITY-CHECK П22, В8). With MONITOR_RPC_URL set, the monitor reads through it, so visitors'
+ * searches through the site's RPC_URL cannot use up the quota the alerts need. That holds only when the URL comes from
+ * a quota of its own: another Helius account or project, or another provider. Helius counts credits and requests per
+ * second per project, and every API key of a project shares them, so a second key next to RPC_URL's protects nothing.
+ * When it fails, RPC_FALLBACK_URL reads, or RPC_URL without a fallback. Unset or empty: RPC_URL, then
+ * RPC_FALLBACK_URL, as on the site.
+ */
+function monitorRpcOf(env: Env): Pick<MonitorConfig, 'rpc' | 'rpcSecrets'> {
+  const own = textOf(env.MONITOR_RPC_URL);
+  if (own === '') {
+    return {
+      rpc: { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL },
+      rpcSecrets: { primary: 'RPC_URL', fallback: 'RPC_FALLBACK_URL' },
+    };
+  }
+  const fallback = textOf(env.RPC_FALLBACK_URL);
+  return fallback === ''
+    ? { rpc: { primary: own, fallback: env.RPC_URL }, rpcSecrets: { primary: 'MONITOR_RPC_URL', fallback: 'RPC_URL' } }
+    : { rpc: { primary: own, fallback }, rpcSecrets: { primary: 'MONITOR_RPC_URL', fallback: 'RPC_FALLBACK_URL' } };
 }
 
 /**

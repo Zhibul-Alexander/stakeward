@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { allowRequest } from '../src/rate-limit.ts';
 import { MAX_RPC_BODY_BYTES } from '../src/rpc.ts';
 import {
+  atFreshWindow,
   fakeUpstream,
   freshIp,
   ORIGIN,
@@ -24,17 +25,6 @@ const EPOCH_INFO = { jsonrpc: '2.0', id: 1, method: 'getEpochInfo', params: [] }
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-/**
- * The rate limiter counts in windows aligned to the wall clock (miniflare: floor(now / period)). A burst that crosses a
- * window boundary starts counting again, so the limit would not be reached. Start the burst at the beginning of a
- * window when less than `needMs` of the current one is left.
- */
-async function atFreshWindow(periodSeconds: number, needMs: number): Promise<void> {
-  const periodMs = periodSeconds * 1000;
-  const left = periodMs - (Date.now() % periodMs);
-  if (left < needMs) await new Promise((resolve) => setTimeout(resolve, left + 50));
-}
 
 describe('rate limits per client IP', { timeout: 90_000 }, () => {
   it(`POST /api/rpc: ${String(RPC_LIMIT)} requests per 10 s, then HTTP 429 with Retry-After`, async () => {

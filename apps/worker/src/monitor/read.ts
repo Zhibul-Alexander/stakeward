@@ -117,8 +117,8 @@ export function parseGenesisHash(text: string): string | null {
 
 /**
  * True when any account is missing or no longer a stake account: before such a chunk can turn into ACCOUNT_CLOSED
- * events, the pass checks that the node that answered serves the right cluster (a wrong RPC_URL or RPC_FALLBACK_URL
- * reads as every account gone, and with one or two rows watched that is one or two accounts).
+ * events, the pass checks that the node that answered serves the right cluster (a wrong MONITOR_RPC_URL, RPC_URL or
+ * RPC_FALLBACK_URL reads as every account gone, and with one or two rows watched that is one or two accounts).
  */
 export function anyGone(items: readonly (RawItem | null)[]): boolean {
   return items.some((item) => item === null || item.owner !== STAKE_PROGRAM_ADDRESS);
