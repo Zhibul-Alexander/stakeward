@@ -3,107 +3,83 @@
 Пункты «Проверяю я» из шагов сборки. Перед подачей весь список проходится на prod.
 Отметка: `- [x]` и дата, или заметка, что пошло не так.
 
-## Порядок действий владельца (06.10.2026)
+## Порядок действий владельца (06.10.2026, уточнено после проверки)
 
-Всё по порядку, каждый этап опирается на предыдущий. Адрес dev: https://stakeward-dev.stakeward.workers.dev (devnet, SOL там ничего не стоят). Подробные клики по отдельным проверкам — в разделах ниже. Если что-то не совпадает с описанием или непонятно — пишите в чат.
+Всё по порядку. Адрес dev: https://stakeward-dev.stakeward.workers.dev, prod: https://stakeward-prod.stakeward.workers.dev (старые адреса `*.zhibul-alexander.workers.dev` больше не работают, D106). Этапы 0–8 заменяют полный проход этого файла на prod (D107). Подписи кнопок ниже — дословно как на экране. Если что-то не совпадает или непонятно — пишите в чат.
 
-### Переезд на stakeward.workers.dev (06.10.2026, D106) — 10 минут
+**Главное правило Phantom.** Main key (Phantom 1, `KGEtV7…`), Second key (Phantom 2, `2Fz9TU…`) и New wallet — аккаунты одного Phantom, а сайт видит только тот, что сейчас выбран в Phantom. Перед каждым «Connect a wallet» и перед каждой подписью переключайте в Phantom аккаунт, который называет кнопка («… as Main key», «… as Second key», «… as New wallet»). Если страница пишет, что кошелёк сейчас не отдаёт этот аккаунт, — переключитесь и нажмите Continue. Когда два ключа подписывают на месте, транзакция живёт около минуты: вторую подпись не откладывайте; если истекла — «Sign again».
 
-1. Cloudflare → Workers & Pages → справа «Your subdomain» (сейчас `zhibul-alexander.workers.dev`) → Change → `stakeward` → подтвердить. Если имя занято — остановиться и написать в чат.
-2. Новый терминал на сервере, вставить целиком (обновляет `SITE_ORIGIN` обоих воркеров, вебхуки и описания обоих ботов и строку `SITE_ORIGIN` в `dev.vars` и `prod.vars`):
-   ```sh
-   cd ~/workspace/stakeward/apps/worker
-   for env in dev prod; do
-     ( set -a; . ~/.config/stakeward/secrets.env; . ~/.config/stakeward/$env.vars; set +a
-       NEW="https://stakeward-$env.stakeward.workers.dev"
-       printf '%s' "$NEW" | env -i PATH="$PATH" HOME="$HOME" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
-         CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm exec wrangler secret put SITE_ORIGIN --env "$env"
-       sed -i "s|^SITE_ORIGIN=.*|SITE_ORIGIN=$NEW|" ~/.config/stakeward/$env.vars
-       API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
-       PREFIX=""; [ "$env" = dev ] && PREFIX="Devnet test bot. "
-       curl -sS "$API/setWebhook" --data-urlencode "url=$NEW/api/telegram/webhook" \
-         --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
-         --data-urlencode 'allowed_updates=["message","my_chat_member"]'; echo
-       curl -sS "$API/setMyDescription" --data-urlencode "description=${PREFIX}Stakeward alerts for natively staked SOL. Send /start followed by a wallet address to get a message when one of its stake accounts changes and before a lock ends. Alerts only link to $NEW. Stakeward never asks for your seed phrase."; echo
-       curl -sS "$API/setMyShortDescription" --data-urlencode "short_description=${PREFIX}Alerts for SOL stake protected by Stakeward. Site: $NEW"; echo
-     )
-   done
-   ```
-   В выводе по каждому окружению: `Success! Uploaded secret SITE_ORIGIN`, `"Webhook was set"`, два `{"ok":true,"result":true}`. Если `dev.vars` или `prod.vars` уже удалены — написать в чат, будет вариант с вводом токена.
-3. Написать в чат «переехали». Claude проверяет новые адреса, старые, `verify-deploy` и мониторинг. Одна тревога bot-mismatch в админском чате в эти минуты ожидаема; повтор через час — нет.
+### Сделано 06.10.2026
 
-### Этап 0. Посмотреть интерфейс — сейчас, без кошелька, 5 минут
+- [x] Деплой dev 27af77c (version 4cc35690), миграция 0004, `verify-deploy` PASS.
+- [x] Переезд на `stakeward.workers.dev`: поддомен сменил владелец, `SITE_ORIGIN`, вебхуки и описания обоих ботов обновил Claude по просьбе владельца; вебхуки без ошибок, проход монитора dev после переезда — `botCheck: ok`. Одна тревога bot-mismatch пришла в минуту переключения — ожидаемо.
+- [x] Devnet SOL: на спонсоре 8,7 SOL, на Second key 0,05 SOL — пополнять ничего не нужно.
 
-На dev уже работает сборка 06.10 утра (8beb55d) со всеми экранами; сегодняшние правки появятся после этапа 2.
-- адрес dev — лендинг и FAQ;
-- `<адрес dev>/app?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` — ваши два тестовых стейк-аккаунта (Not protected);
-- `<адрес dev>/dev/ui` — все компоненты во всех состояниях; `<адрес dev>/stats`.
+### Этап 1. Доступы — 15 минут
 
-### Этап 1. Доступы — 10 минут
+1. Двухфакторная защита: Cloudflare (My Profile → Authentication), GitHub (Settings → Password and authentication → Two-factor authentication), Telegram аккаунта ботов (Настройки → Конфиденциальность → Облачный пароль).
+2. BotFather: `/setjoingroups` → `@stakeward_dev_bot` → Disable; то же для `@stakeward_bot`.
+3. Если ещё не нажимали: Start в `@stakeward_dev_bot` и `@stakeward_bot` — боты присылают вам служебные сообщения о сбоях монитора. Сообщение без кнопки, начинающееся с «Stakeward devnet monitor:» или «Stakeward mainnet monitor:», пересылайте Claude.
+4. Cloudflare → Workers & Pages → `stakeward-prod` → настройки → Preview URLs → выключить (В5).
+5. Phantom, проверка домена: открыть https://stakeward-prod.stakeward.workers.dev в браузере с Phantom и подключить кошелёк. Если Phantom пишет «This domain is new or has not been reviewed yet», сегодня же отправить форму (ссылка и поля — «Шаг 3, д» ниже, адрес — новый prod). Проверка идёт до недели, адрес больше не меняется.
+6. Написать «доступы сделал».
 
-1. Cloudflare: двухфакторная аутентификация в профиле (My Profile → Authentication).
-2. GitHub: Settings → Password and authentication → Two-factor authentication.
-3. Telegram, аккаунт, которому принадлежат боты: Настройки → Конфиденциальность → Облачный пароль.
-4. BotFather: `/setjoingroups` → выбрать `@stakeward_dev_bot` → Disable; то же для `@stakeward_bot`.
+### Этап 2. Кошельки — 15 минут
 
-### Этап 2. Выкатить свежую сборку на dev — 5 минут
+1. Phantom на компьютере: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet.
+2. New wallet из новой seed-фразы. В Chrome создать отдельный профиль, поставить в нём Phantom → Create a New Wallet → Create a Recovery Phrase Wallet (не вход через почту, Google или Apple: у такого кошелька нет фразы) → записать 12 слов на бумагу. Затем в основном Phantom: Add Account → Import Recovery Phrase → эти 12 слов. «Create New Account» в основном Phantom не подходит: он из той же фразы.
+3. Прислать адрес New wallet — Claude переведёт на него 0,05 devnet SOL.
+4. Телефон: Phantom с фразой Phantom 2 (тестовый Second key), тот же Testnet Mode.
+5. Предупреждения «Both keys are in Phantom…» на /protect и «Your new wallet and your main key are both in Phantom.» на /rescue будут — так и должно быть: у Phantom 2 и New wallet свои фразы.
 
-Из сессии Claude деплой запрещён, команды запускаете вы, на сервере.
-1. Новый терминал на сервере, `cd ~/workspace/stakeward`.
-2. `pnpm deploy:dev` (3–5 минут). Успех — строка `Deployed build/product @ <коммит> to dev: version <id>.` Если обёртка отказала — прислать её текст.
-3. Миграция базы, вставить целиком:
+### Этап 3. Проход на компьютере — около часа
+
+1. Матрица подписи (15–20 минут): `/dev/cosign`, четыре прогона по «Шаг 3, в» ниже. После **каждого** прогона, и после четвёртого тоже, — «5. Reset» → «Remove the lock with the Second key» → подписать; готово, когда видно «This stake account has no lock in force: nothing to reset.». В конце «Copy all (N)» → в чат, дописав в каждом отчёте «Wallet warnings shown:», «Ledger showed fields (yes/no):» (`no Ledger`) и «Notes:». Если хоть один прогон остановился (в строке Check не «Accepted.»), дальше не идти — ждать ответа Claude.
+2. Telegram: Phantom на Main key → `/app` → в блоке «Or connect your main key» нажать «Connect a wallet» → Phantom. Проверить: адрес начинается с `KGE`, видны два аккаунта — 9SV…ph2 (1 SOL, Active) и 6Gq…kv3 (0,1 SOL). Если адрес другой — Disconnect, переключить Phantom, подключить снова. «Get alerts in Telegram» → в боте Start. Ответ начинается с «Alerts are on for KGEtV7…»; строка «watches 0 of its stake accounts» — нормально.
+3. Защита: Protect у любого аккаунта → на шаге Accounts отметить и второй → Continue. Шаг Second key: «Where does your Second key sign?» — «In this browser»; переключить Phantom на Phantom 2 → «Connect a wallet»; предупреждения ожидаемы; галочка «My second key comes from a different seed phrase» → Continue. Срок «1 hour (devnet test)» → Continue. «Sign 2 transactions in Phantom as Main key» (Phantom на Main key) → одобрить → сразу Phantom на Phantom 2 → «Sign 2 transactions in Phantom as Second key» → одобрить. Экран «2 stake accounts are protected». На `/app` оба — Expiring soon.
+4. Тревога о снятии со стейкинга: Phantom на Main key → открыть `/withdraw/9SV2x3NahSEWTbAizM26q8z5AGdAPCVwtiPtULCmrph2` → «First, stop staking» → «Review and sign» → подписать Main key. Через 2–4 минуты в боте «Stake 9SV...ph2 was deactivated …» с кнопкой Open Rescue. Дождаться её.
+5. Продление: на `/app` у 6Gq…kv3 → Extend → выбрать более поздний срок → «Review and sign» → подписать Second key (у него теперь есть SOL на комиссию). Экран «The lock now ends on …». Дождаться в боте «The lock on stake 6Gq...kv3 was extended to …» с кнопкой «Review the lock» и только потом п. 6.
+6. Вывод: у 6Gq…kv3 → Withdraw → «Review and sign» → подписать Main key, затем Second key → «… went to your main key». В боте придёт «Stake 6Gq...kv3 was closed …» — это ваш вывод.
+7. Спасение: Phantom на New wallet → `/rescue?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` (или Open Rescue из тревоги) → «Your stake» → Continue → «Connect a wallet» → проверить адрес New wallet → галочка «My new wallet comes from a new seed phrase that no one else has seen» → Continue. Шаг Keys: в «Where does your Main key sign?» и «Where does your Second key sign?» выбрать **«In this browser»** (страница может сама поставить «On another device, by link») → Continue. Шаг Move: адрес под «New owner of your stake» = адрес New wallet → «Create the link-signing account» → подписать New wallet → дальше подписывать в порядке, который просит страница, переключая Phantom перед каждой подписью (спешить не нужно: тут транзакция не истекает). Экран «Your stake account is safe» → «Close the link-signing account» → «Close it». В боте придёт «The main key of stake 9SV...ph2 changed to …» — это ваше спасение.
+8. Написать «этап 3 готов» — Claude создаст на Main key два новых тестовых аккаунта (раньше нельзя: спасение забирает все стейк-аккаунты Main key).
+
+### Этап 4. Телефон и баннер — 30 минут (после адресов новых аккаунтов от Claude)
+
+1. Защита по ссылке: Phantom на Main key → `/app` → Protect у нового неделегированного аккаунта → Continue. Шаг Second key: «On another device, by link», в поле «Second key address» вставить `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK`, галочка про другую seed-фразу → Continue. Срок «1 hour (devnet test)». Если появится «Set up signing by link» — «Create the link-signing account» и подписать Main key. Затем «Sign in Phantom as Main key» → появятся QR-код и «Copy link». «Close it» сейчас не нажимать: link-signing account нужен в п. 3.
+2. Телефон (Phantom на Second key): открыть ссылку в браузере внутри Phantom (если камера открыла обычный браузер — отправить ссылку себе в Telegram и вставить в адресную строку браузера Phantom) → «Connect a wallet» → «Sign in Phantom as Second key». Галочки здесь нет. Компьютер сам покажет «Your stake account is protected».
+3. Вывод по ссылке: на компьютере Withdraw этого аккаунта → «Where does your Second key sign?» — **«On another device, by link»** → «Review and sign» → подписать Main key → ссылка → на телефоне галочка «I started this withdrawal myself, or the owner told me by voice or in person that they want it» → «Sign in Phantom as Second key». На компьютере «… went to your main key» → «Close the link-signing account» → «Close it».
+4. Снятие замка с телефона и баннер: второй новый аккаунт защитить на компьютере («1 hour (devnet test)», оба ключа в браузере) → на `/app` у него Extend → адрес открывшейся страницы отправить себе и открыть в браузере Phantom на телефоне (Second key) → «Remove the lock now» → галочка «I understand that after this, anyone with my main key can withdraw this stake right away» → «Review and sign» → подписать. В боте «The lock on stake … was removed …». На компьютере обновить `/app`: красный баннер «… no longer protected» с кнопкой «Protect again».
+
+### Этап 5. Отчёт Claude
+
+- что пришло в Telegram, что было непонятно или выглядело не так;
+- «экраны утверждаю» или список правок: экран, текст сейчас, как надо (вместо макетов, D100);
+- через сутки (07.10): Cloudflare → Workers & Pages → stakeward-dev → Observability → Logs, вызовы cron: максимум CPU time за 24 часа, были ли исходы Exceeded CPU, приходили ли от бота «… the previous pass did not finish …».
+Claude правит найденное и пишет «готово к prod».
+
+### Этап 6. Mainnet — по слову Claude, начать не позже 09.10
+
+0. Выключить Testnet Mode в Phantom на компьютере и на телефоне.
+1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd /home/dev/workspace/stakeward` → `pnpm deploy:prod --prod-confirm`. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
    ```sh
    ( set -a; . ~/.config/stakeward/secrets.env; set +a
      exec env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
-       CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm --filter @stakeward/worker db:migrate:dev )
+       CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm --filter @stakeward/worker db:migrate:prod )
    ```
-   Wrangler покажет миграцию `0004_link_writes_without_chat_ids.sql` и спросит подтверждение — ответить `y`.
-4. Написать в чат «задеплоил». `docs/deploys.md` после деплоя изменён — не трогать, его коммитит Claude.
+   и `y` (или «No migrations to apply!» — тоже успех). Написать «задеплоил prod» и дождаться «мониторинг prod работает».
+2. SOL: на Main key (Phantom 1; на нём сейчас 0,02 SOL и нет стейк-аккаунтов — другой кошелёк не брать: спасение забирает все стейк-аккаунты основного ключа) перевести около 1,05 SOL с биржи. С Main key отправить 0,02 SOL на New wallet и 0,005 SOL на Second key.
+3. Стейк: в расширении Phantom на компьютере — Stake SOL → **Native Staking** (не Liquid Staking: там токен, а не стейк-аккаунт) → любой валидатор → 1,01 SOL (меньше 1 SOL сеть не делегирует).
+4. В тот же день, пока стейк в статусе Activating: prod `/app` → подключить Main key → «Get alerts in Telegram» → Start в `@stakeward_bot` → Protect (срок 1 month) → Extend (более поздний срок, подписывает Second key) → Withdraw → «First, stop staking» (страница напишет «Stop it now and you can withdraw right away») → тревога в боте → спасение на New wallet, как в этапе 3, п. 7 («Earn rewards again» не нажимать; link-signing account закрыть) → Withdraw: подписывают New wallet (теперь он основной ключ) и Second key → SOL на New wallet. Фразу New wallet хранить: на нём настоящие SOL. Если страница вывода пишет «Waiting for the epoch to end» — эпоха успела смениться, ждать её конца (на mainnet около 32 часов; отсчёт на странице показывает примерно в 1,5 раза больше).
+5. Первые пользователи: попросить одного-двух человек (валидаторы, Superteam Georgia) защитить свой стейк; спросить разрешения назвать их и привести одну фразу.
+6. Написать «mainnet пройден».
 
-### Этап 3. Devnet SOL и кошельки — 15 минут
+### Этап 7. Подача — до 12.10 23:59 PT (13.10 10:59 по Тбилиси)
 
-1. https://faucet.solana.com → Devnet → адрес спонсора `D8LAb6uPB8bBiPWbbb53nr15qd9CLvNX4qHoJr1yySTL` → 3–5 SOL (можно двумя запросами). Написать «SOL на спонсоре».
-2. Phantom на компьютере: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet.
-3. Третий аккаунт, New wallet, из новой seed-фразы: создать фразу так же, как для Phantom 2 (например, Phantom в отдельном профиле браузера → Create new wallet → записать фразу), затем в основном Phantom: Add account → Import Recovery Phrase. «Create new account» не подходит: он из той же фразы. Прислать адрес New wallet — Claude переведёт на него SOL.
-4. Для этапа 5: Phantom на телефоне с фразой Phantom 2 (Second key, тестовый кошелёк) и тот же Testnet Mode.
-
-### Этап 4. Проход на компьютере — около часа
-
-Main key — Phantom 1, Second key — Phantom 2, New wallet — третий аккаунт. Подписывать в Phantom тем аккаунтом, который называет страница.
-1. Матрица, 15–20 минут: `<адрес dev>/dev/cosign`, четыре прогона по «Шаг 3, в» ниже. После каждого прогона — «Remove the lock with the Second key», иначе аккаунт останется запертым на 10 минут. В конце «Copy all (N)» → в чат, дописав в каждом отчёте «Wallet warnings shown:» и «Notes:».
-2. Telegram: `<адрес dev>/app`, подключить Main key, «Get alerts in Telegram», в боте Start.
-3. Защита: Protect у любого аккаунта → на шаге Accounts отметить оба → Second key: подключить Phantom 2, галочка «My second key comes from a different seed phrase» → срок «1 hour (devnet test)» → «Review and sign» → подписать оба раза → экран Done. На `/app` оба — Expiring soon.
-4. Тревога: у делегированного аккаунта Withdraw → «First, stop staking» → «Review and sign» → подписать Main key. Через 2–4 минуты в боте «… was deactivated …» с кнопкой Open Rescue.
-5. Продление: у неделегированного аккаунта Extend → более поздний срок → подписать. В боте тревога о продлении с кнопкой «Review the lock».
-6. Вывод: у неделегированного аккаунта Withdraw → «Review and sign» → подписывают Main key и Second key. Аккаунт исчезает, SOL — на Main key.
-7. Спасение: `<адрес dev>/rescue?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` → подключить New wallet → подтвердить новую фразу → подключить Main key и Second key → проверить, что новый владелец — адрес New wallet целиком → создать link-signing account → подписать по очереди → Done. Там же закрыть link-signing account (залог вернётся).
-8. Написать «этап 4 готов» — Claude создаст на Main key два новых тестовых аккаунта (раньше нельзя: спасение забрало бы и их).
-
-### Этап 5. Телефон и баннер — 30 минут
-
-1. Защита по ссылке: Protect у нового неделегированного аккаунта → Second key по ссылке, вставить адрес Phantom 2 → подписать Main key → появятся QR и ссылка.
-2. Открыть ссылку в браузере внутри Phantom на телефоне (если камера открывает обычный браузер — отправить ссылку себе в Telegram и вставить в адресную строку браузера Phantom) → прочитать экран → галочка → подписать. Компьютер сам покажет Done.
-3. Вывод по ссылке: Withdraw этого аккаунта на компьютере, подписывает Main key → ссылка → на телефоне подписать Second key → на компьютере Done.
-4. Баннер F6: второй новый аккаунт защитить на «10 minutes (devnet test)», через 10 минут обновить `/app` — красный баннер «no longer protected» с кнопкой Protect again.
-
-### Этап 6. Отчёт Claude
-
-- отчёты `/dev/cosign`, что пришло в Telegram, что было непонятно или выглядело не так;
-- через сутки после этапа 2: Cloudflare → Workers & Pages → stakeward-dev → Observability → Logs, вызовы cron, максимум CPU time за сутки (решение Free или Paid, «Шаг 5, г»).
-Claude правит найденное и пишет «готово к prod».
-
-### Этап 7. Mainnet — по слову Claude, начать не позже 09.10
-
-1. `pnpm deploy:prod --prod-confirm`, затем миграция из этапа 2 с `db:migrate:prod`. Написать «задеплоил prod».
-2. В тот же день — форма проверки домена в Phantom для адреса prod («Шаг 3, д» ниже).
-3. Свой стейк: в Phantom на mainnet застейкать чуть больше 1 SOL (минимум делегирования); на New wallet — около 0,02 SOL. На prod: защита (1 month) → продление → Unstake (тревога) → спасение на New wallet → снять замок вторым ключом → через конец эпохи (до ~2 дней) вывести на New wallet. Вернётся всё, кроме комиссий.
-4. Первые пользователи: попросить одного-двух человек (валидаторы, Superteam Georgia) защитить свой стейк; записать, кому писали и что ответили.
-
-### Этап 8. Подача — до 12.10 23:59 PT (13.10 10:59 по Тбилиси)
-
-1. Раздел бизнеса в `docs/SUBMISSION.md` — ваш текст.
-2. Питч-видео 2–3 минуты и демо до 3 минут по сценариям из `docs/SUBMISSION.md`; цифры с `/stats`.
-3. Заявка на Colosseum: название, описание, логотип из `docs/brand/`, ссылки на репозиторий и видео.
+1. Раздел бизнеса в `docs/SUBMISSION.md`.
+2. Источники (SwissBorg 08.09.2025, Step Finance 31.01.2026, фишинг у владельцев Ledger в августе 2026, цифра SOL в нативном стейкинге): найдёт Claude, проверяете вы. Без источника факт в видео не упоминаем.
+3. Демо — только на отдельных демо-кошельках: по сценарию фраза Main key вводится в терминал «вора», Phantom 1 для этого брать нельзя. Создать три новые фразы и до 10.10 прислать адреса — Claude подготовит стейк-аккаунты. На компьютере записи поставить Solana CLI 4.3.0: `sh -c "$(curl -sSfL https://release.anza.xyz/v4.3.0/install)"`, один раз прорепетировать.
+4. Питч-видео 2–3 минуты и демо до 3 минут по разделам 6 и 7; цифры со страницы `/stats` на prod.
+5. Заявка на Colosseum: логотип из `docs/brand/`, ссылки на репозиторий и видео.
 
 ## Шаг 0. Подготовка
 
