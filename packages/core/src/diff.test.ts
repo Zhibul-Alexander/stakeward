@@ -379,23 +379,80 @@ describe('formatAlert', () => {
     expect(alert.path).toBe(`/app?address=${D}`);
   });
 
-  it('gives the new date of an extended lock', () => {
-    const event = alertFor(change({ lockup: { unixTimestamp: T + 30n * DAY, epoch: 0n, custodian: K } }));
-    expect(formatAlert(event, { ...lockedNow, lockUntil: T + 30n * DAY })).toEqual({
-      text:
-        'The lock on stake 7xK...9fQ was extended to 12 May 2027. ' +
-        'Only the second key can do this. If this was not you, your second key may be stolen.',
-      buttonLabel: 'Open Stakeward',
-      path: `/app?address=${A}`,
-    });
-  });
+  describe('a lock change', () => {
+    const lockMoved = (unixTimestamp: bigint, custodian: Address = K) =>
+      alertFor(change({ lockup: { unixTimestamp, epoch: 0n, custodian } }));
+    const secondKeyStolen = 'Only the second key can do this. If this was not you, your second key may be stolen.';
+    // SECURITY-CHECK П9: the way out for an owner who still has the second key, and no promise to one who lost it.
+    const removeAndProtect =
+      'Only the second key can do this. If this was not you, your second key may be stolen: if you still have it, ' +
+      'remove the lock with it now, then protect this stake again with a new second key. ' +
+      'In between, the main key alone can withdraw this SOL. ' +
+      'If you no longer have it, you cannot undo this, but your SOL still cannot leave without the main key.';
+    const accountsButton = { buttonLabel: 'Open Stakeward', path: `/app?address=${A}` };
+    const removeButton = { buttonLabel: 'Remove lock', path: `/extend/${STAKE}?remove` };
+    const short = (address: Address) => `${address.slice(0, 3)}...${address.slice(-3)}`;
 
-  it('warns that a removed lock leaves the main key alone in control', () => {
-    const event = alertFor(change({ lockup: { unixTimestamp: 0n, epoch: 0n, custodian: K } }));
-    expect(formatAlert(event, { ...lockedNow, lockUntil: 0n }).text).toBe(
-      'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
-        'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL.',
-    );
+    it('the second key extended a lock in force: remove it now and protect again; the button opens the removal', () => {
+      expect(formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY })).toEqual({
+        text: `The lock on stake 7xK...9fQ was extended to 12 May 2027. ${removeAndProtect}`,
+        ...removeButton,
+      });
+    });
+
+    it('shortened and still in force: the same advice and button', () => {
+      expect(formatAlert(lockMoved(NOW + 10n * DAY), { ...lockedNow, lockUntil: NOW + 10n * DAY })).toEqual({
+        text: `The lock on stake 7xK...9fQ was shortened to 11 October 2026. ${removeAndProtect}`,
+        ...removeButton,
+      });
+    });
+
+    it('the moved lock has ended by the time the alert goes out: nothing to remove, the accounts page', () => {
+      const event = lockMoved(NOW + DAY);
+      expect(formatAlert(event, { ...lockedNow, lockUntil: NOW + DAY, now: NOW + 2n * DAY })).toEqual({
+        text: `The lock on stake 7xK...9fQ was shortened to 2 October 2026. ${secondKeyStolen}`,
+        ...accountsButton,
+      });
+    });
+
+    it('a new second key: it may be stolen; the accounts page, since only that key can change the lock now', () => {
+      expect(formatAlert(lockMoved(T, K2), lockedNow)).toEqual({
+        text: `The second key of stake 7xK...9fQ changed to ${short(K2)}. ${secondKeyStolen}`,
+        ...accountsButton,
+      });
+    });
+
+    it('a new second key and a new end at once (F7): the accounts page', () => {
+      expect(formatAlert(lockMoved(T + DAY, K2), { ...lockedNow, lockUntil: T + DAY })).toEqual({
+        text: `The lock on stake 7xK...9fQ was extended to 13 April 2027. Its second key is now ${short(K2)}. ${secondKeyStolen}`,
+        ...accountsButton,
+      });
+    });
+
+    it('warns that a removed lock leaves the main key alone in control', () => {
+      expect(formatAlert(lockMoved(0n), { ...lockedNow, lockUntil: 0n })).toEqual({
+        text:
+          'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
+          'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL.',
+        ...accountsButton,
+      });
+    });
+
+    it('a new lock after the old one ended: the main key could set it, so the main key may be stolen', () => {
+      const ended = snapshotOf(change({ lockup: { unixTimestamp: NOW - DAY, epoch: 0n, custodian: K } }), 1n, CHECKED_AT);
+      const [event] = diffSnapshots(ended, locked, context());
+      if (event === undefined) throw new Error('no event');
+      expect(formatAlert(event, lockedNow)).toEqual({
+        text: 'The lock on stake 7xK...9fQ was extended to 12 April 2027. If this was not you, your main key may be stolen.',
+        ...accountsButton,
+      });
+    });
+
+    it('the removal advice stays plain text in the UI vocabulary and links to the site', () => {
+      const alert = formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY });
+      expect(alert.text).not.toMatch(/custodian|withdrawer|staker|<|>|\*|_|`|\[/i);
+      expect(alert.path).toMatch(/^\/extend\/[1-9A-HJ-NP-Za-km-z]+\?remove$/);
+    });
   });
 
   it('reports the amount that left the stake', () => {

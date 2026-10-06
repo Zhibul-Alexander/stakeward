@@ -254,8 +254,8 @@ export function needsWithdrawerRescan(events: readonly { type: MonitorEventType 
 
 /**
  * A Telegram alert: plain text without markup, and one link button. `path` is a site path such as
- * `/rescue?address=...` or `/app?address=...`; the worker prefixes the Stakeward domain (alerts link only there,
- * CLAUDE.md section 11).
+ * `/rescue?address=...`, `/app?address=...` or `/extend/<stake account>?remove`; the worker prefixes the Stakeward
+ * domain (alerts link only there, CLAUDE.md section 11).
  */
 export type Alert = { text: string; buttonLabel: string; path: string };
 
@@ -332,7 +332,8 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
       if (changes.includes('extended')) sentences.push(`${lockOf} was extended to ${until}.`);
       else if (changes.includes('shortened')) sentences.push(`${lockOf} was shortened to ${until}.`);
       else if (removed) sentences.push(`${lockOf} was removed.`);
-      if (changes.includes('custodian-changed')) {
+      const secondKeyChanged = changes.includes('custodian-changed');
+      if (secondKeyChanged) {
         sentences.push(
           sentences.length === 0
             ? `The second key of ${stakeName} changed to ${shortAddress(toCustodian)}.`
@@ -340,10 +341,21 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
         );
       }
       // While the old lock was in force only the second key could change it; after it ended the main key could.
+      const bySecondKey = BigInt(fromLockUntil) > context.now;
+      // The second key moved the end of a lock that still holds (SECURITY-CHECK П9). If that key is in other hands, an
+      // owner who still has it removes the lock and protects again with a new key; nothing is promised to one who lost
+      // it. A new second key, or a lock that has ended, leaves nothing for the old key to remove.
+      if (bySecondKey && !removed && !secondKeyChanged && context.lockUntil > context.now) {
+        sentences.push(
+          'Only the second key can do this. If this was not you, your second key may be stolen: if you still have it, ' +
+            'remove the lock with it now, then protect this stake again with a new second key.',
+          'In between, the main key alone can withdraw this SOL.',
+          'If you no longer have it, you cannot undo this, but your SOL still cannot leave without the main key.',
+        );
+        return { text: sentences.join(' '), buttonLabel: 'Remove lock', path: `/extend/${event.stakeAccount}?remove` };
+      }
       sentences.push(
-        BigInt(fromLockUntil) > context.now
-          ? 'Only the second key can do this. If this was not you, your second key may be stolen.'
-          : mainKeyStolen,
+        bySecondKey ? 'Only the second key can do this. If this was not you, your second key may be stolen.' : mainKeyStolen,
       );
       if (removed) sentences.push('The main key alone can now withdraw this SOL.');
       return { text: sentences.join(' '), buttonLabel: 'Open Stakeward', path: accountsPage };

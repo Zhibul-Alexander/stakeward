@@ -157,6 +157,46 @@ describe('messages', () => {
     expect((await h.readMeta()).alerts_sent).toBe('7');
   });
 
+  it('the second key moved the lock date: both keys get the removal advice, the button opens the removal on the site', async () => {
+    const h = await watched();
+    await h.linkChat(MAIN, CHAT_A);
+    await h.linkChat(SECOND, CHAT_B);
+    const extended = LOCK_UNTIL + 30n * 86_400n;
+    h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: extended });
+    expect(await next(h)).toMatchObject({ events: 1, messages: 2 });
+    const text = alertText({
+      type: 'LOCKUP_CHANGED',
+      details: {
+        changes: ['extended'],
+        fromLockUntil: LOCK_UNTIL.toString(),
+        toLockUntil: extended.toString(),
+        fromCustodian: SECOND,
+        toCustodian: SECOND,
+      },
+    });
+    expect(text).toContain('remove the lock with it now, then protect this stake again with a new second key.');
+    for (const chat of [CHAT_A, CHAT_B]) {
+      const [message] = h.telegram.delivered(chat);
+      expect(message?.text).toBe(`Devnet: ${text}`);
+      expect(message?.button).toEqual({ label: 'Remove lock', url: `${SITE}/extend/${STAKE}?remove` });
+      expect(new URL(message?.button?.url ?? '').origin).toBe(SITE);
+    }
+  });
+
+  it('a removal alert and a rescue alert in one message: the button opens Rescue (D73)', async () => {
+    const stakes = [key(10), key(11)].sort();
+    const h = await watched(stakes);
+    await h.linkChat(MAIN, CHAT_A);
+    const [moved = STAKE, deactivated = STAKE] = stakes;
+    h.chain.putStake(moved, { ...SPEC, unixTimestamp: LOCK_UNTIL + 86_400n });
+    h.chain.putStake(deactivated, DEACTIVATED);
+    expect(await next(h)).toMatchObject({ events: 2, messages: 1 });
+    const [message] = h.telegram.delivered(CHAT_A);
+    expect(alertsIn(message?.text ?? '')).toHaveLength(2);
+    expect(alertsIn(message?.text ?? '')[0]).toContain('remove the lock with it now');
+    expect(message?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` });
+  });
+
   it('a chat that follows both keys of an account gets each alert once', async () => {
     const h = await watched();
     await h.linkChat(MAIN, CHAT_A);
