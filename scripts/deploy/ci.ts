@@ -1,7 +1,8 @@
 // A prod deploy ships only a commit whose CI passed (SECURITY-CHECK P18). The wrapper itself runs only the build
 // guards; the `check` job of .github/workflows/ci.yml runs the rest: audit, wrangler types, typecheck, lint, every core,
 // worker, web and scripts test, both site builds and the prod config dry run. The `e2e` job is not required: it is
-// flaky at 360 px (TESTPLAN), and a red e2e must not block a fix from reaching prod.
+// flaky at 360 px (TESTPLAN), and a red e2e must not block a fix from reaching prod. The daily scheduled `audit` job is
+// not required either: `check` ran `pnpm audit` when the commit was pushed.
 // GitHub's check runs are public for a public repository: read without a token, so no credential is involved.
 
 /** The CI job (a GitHub Actions check run of this name) a prod deploy waits for. */
@@ -26,7 +27,10 @@ export function githubRepo(remoteUrl: string): GitHubRepo | null {
   return { owner, repo };
 }
 
-/** The latest check run of each job for the commit (one page is plenty: ci.yml has three jobs). */
+/**
+ * The latest check run of each job in each check suite of the commit. A push makes one suite of three jobs; every daily
+ * scheduled run on an unchanged default-branch HEAD adds another, so a commit can outgrow this page (readCiProblem).
+ */
 export function checkRunsUrl(repo: GitHubRepo, sha: string): string {
   return `https://api.github.com/repos/${repo.owner}/${repo.repo}/commits/${sha}/check-runs?filter=latest&per_page=100`;
 }
@@ -49,12 +53,18 @@ export function parseCheckRuns(body: unknown): CheckRun[] {
   });
 }
 
-/** Why CI does not let `sha` go to prod, or null when every `check` run of GitHub Actions for it succeeded. */
+/** Why CI does not let `sha` go to prod, or null when every `check` run of GitHub Actions that ran on it succeeded. */
 export function ciProblem(runs: readonly CheckRun[], sha: string): string | null {
   const short = sha.slice(0, 12);
-  const jobs = runs.filter((run) => run.name === REQUIRED_CI_JOB && run.app === ACTIONS_APP);
-  if (jobs.length === 0) {
+  const all = runs.filter((run) => run.name === REQUIRED_CI_JOB && run.app === ACTIONS_APP);
+  if (all.length === 0) {
     return `CI has not started the "${REQUIRED_CI_JOB}" job for ${short}: wait for the CI run of this commit, then deploy again`;
+  }
+  // The daily scheduled run of ci.yml runs only the audit job and skips check on the HEAD of the default branch,
+  // next to that commit's push run. A skipped run checked nothing: it neither passes nor blocks the others.
+  const jobs = all.filter((run) => run.conclusion !== 'skipped');
+  if (jobs.length === 0) {
+    return `CI skipped the "${REQUIRED_CI_JOB}" job for ${short}, so nothing checked this commit (a re-run of a scheduled run skips it again): push a new commit, or this one to another branch, then deploy again`;
   }
   const running = jobs.find((run) => run.status !== 'completed');
   if (running !== undefined) {
@@ -99,7 +109,12 @@ export async function readCiProblem(
     return `GitHub answered HTTP ${String(response.status)} about the CI of ${short}${message}`;
   }
   try {
-    return ciProblem(parseCheckRuns(body), sha);
+    const runs = parseCheckRuns(body);
+    const total = isRecord(body) ? body['total_count'] : undefined;
+    if (typeof total === 'number' && total > runs.length) {
+      return `GitHub has ${String(total)} check runs for ${short}, more than one page: a failed "${REQUIRED_CI_JOB}" could be on the next one. Deploy a newer commit`;
+    }
+    return ciProblem(runs, sha);
   } catch (error) {
     return `could not read GitHub's answer about the CI of ${short}: ${error instanceof Error ? error.message : String(error)}`;
   }

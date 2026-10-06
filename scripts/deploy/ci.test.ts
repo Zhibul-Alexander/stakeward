@@ -80,7 +80,7 @@ describe('ciProblem', () => {
   });
 
   it('refuses a check job that did not succeed, naming how it ended', () => {
-    for (const conclusion of ['failure', 'cancelled', 'timed_out', 'skipped', 'neutral', 'action_required']) {
+    for (const conclusion of ['failure', 'cancelled', 'timed_out', 'neutral', 'action_required']) {
       const problem = ciProblem([run('check', 'completed', conclusion)], SHA);
       expect(problem, conclusion).toContain('did not pass');
       expect(problem, conclusion).toContain(conclusion);
@@ -91,6 +91,23 @@ describe('ciProblem', () => {
     expect(ciProblem([run('check', 'completed', 'success'), run('check', 'completed', 'failure')], SHA)).toContain(
       'did not pass',
     );
+  });
+
+  it('a check job the daily scheduled run skipped neither passes nor blocks the push run', () => {
+    // ci.yml skips check on schedule; that run lands on the HEAD of the default branch next to the push run.
+    expect(ciProblem([run('check', 'completed', 'success'), run('check', 'completed', 'skipped')], SHA)).toBeNull();
+    expect(ciProblem([run('check', 'completed', 'failure'), run('check', 'completed', 'skipped')], SHA)).toContain(
+      'did not pass',
+    );
+    expect(ciProblem([run('check', 'in_progress', null), run('check', 'completed', 'skipped')], SHA)).toContain(
+      'still running',
+    );
+  });
+
+  it('refuses a commit whose every check job was skipped: nothing checked it', () => {
+    const problem = ciProblem([run('check', 'completed', 'skipped'), run('audit', 'completed', 'success')], SHA);
+    expect(problem).toContain('skipped the "check" job');
+    expect(problem).toContain(SHA.slice(0, 12));
   });
 
   it('names the commit', () => {
@@ -144,6 +161,16 @@ describe('readCiProblem', () => {
     expect(headers.get('authorization')).toBeNull();
     expect(headers.get('accept')).toBe('application/vnd.github+json');
     expect(calls[0]?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('more check runs than one page holds is a problem: a red check could hide on the next page', async () => {
+    // Every daily scheduled run on an unchanged default-branch HEAD adds a check suite of three runs.
+    const { fetch } = fakeFetch(() =>
+      json({ total_count: 101, check_runs: [{ name: 'check', status: 'completed', conclusion: 'success', app: { slug: 'github-actions' } }] }),
+    );
+    const problem = await readCiProblem(REPO, SHA, fetch);
+    expect(problem).toContain('101 check runs');
+    expect(problem).toContain(SHA.slice(0, 12));
   });
 
   it('a red check job is a problem', async () => {
