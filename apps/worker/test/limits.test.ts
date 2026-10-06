@@ -25,10 +25,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('rate limits per client IP', () => {
+/**
+ * The rate limiter counts in windows aligned to the wall clock (miniflare: floor(now / period)). A burst that crosses a
+ * window boundary starts counting again, so the limit would not be reached. Start the burst at the beginning of a
+ * window when less than `needMs` of the current one is left.
+ */
+async function atFreshWindow(periodSeconds: number, needMs: number): Promise<void> {
+  const periodMs = periodSeconds * 1000;
+  const left = periodMs - (Date.now() % periodMs);
+  if (left < needMs) await new Promise((resolve) => setTimeout(resolve, left + 50));
+}
+
+describe('rate limits per client IP', { timeout: 90_000 }, () => {
   it(`POST /api/rpc: ${String(RPC_LIMIT)} requests per 10 s, then HTTP 429 with Retry-After`, async () => {
     const upstream = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
     const client = testApp(upstream);
+    await atFreshWindow(10, 8_000);
     for (let i = 0; i < RPC_LIMIT; i++) expect((await client.rpc(EPOCH_INFO)).status).toBe(200);
     const limited = await client.rpc(EPOCH_INFO);
     expect(limited.status).toBe(429);
@@ -47,6 +59,7 @@ describe('rate limits per client IP', () => {
     });
     const client = testApp(upstream);
     // Invalid queries count too: the limit runs before anything else.
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < LOOKUP_LIMIT; i++) expect((await client.request('/api/stake-accounts')).status).toBe(400);
     const limited = await client.request(`/api/stake-accounts?withdrawer=${key(1)}`);
     expect(limited.status).toBe(429);
@@ -58,6 +71,7 @@ describe('rate limits per client IP', () => {
     const upstream = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
     const ip = freshIp();
     // Invalid bodies count too: the limit runs before anything else, and they never reach upstream.
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < WATCH_LIMIT; i++) expect((await testApp(upstream, { ip }).watch({})).status).toBe(400);
     const limited = await testApp(upstream, { ip }).watch({ accounts: [key(1)] });
     expect(limited.status).toBe(429);
@@ -75,15 +89,17 @@ describe('rate limits per client IP', () => {
   it('the two limits are separate counters', async () => {
     const upstream = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
     const ip = freshIp();
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < LOOKUP_LIMIT; i++) await testApp(upstream, { ip }).request('/api/stake-accounts');
     expect((await testApp(upstream, { ip }).request('/api/stake-accounts')).status).toBe(429);
     expect((await testApp(upstream, { ip }).rpc(EPOCH_INFO)).status).toBe(200);
   });
 });
 
-describe('allowRequest: a limit on any key (the webhook limits per chat, not per IP)', () => {
+describe('allowRequest: a limit on any key (the webhook limits per chat, not per IP)', { timeout: 90_000 }, () => {
   it('TELEGRAM_RATE_LIMIT: 20 per key in 60 s, keys counted apart', async () => {
     const chat = `chat:${freshIp()}`;
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < 20; i++) expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', chat)).toBe(true);
     expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', chat)).toBe(false);
     expect(await allowRequest(env, 'TELEGRAM_RATE_LIMIT', `chat:${freshIp()}`)).toBe(true);
@@ -93,6 +109,7 @@ describe('allowRequest: a limit on any key (the webhook limits per chat, not per
 
   it('WATCH_RATE_LIMIT: 10 per key in 60 s', async () => {
     const ip = freshIp();
+    await atFreshWindow(60, 20_000);
     for (let i = 0; i < 10; i++) expect(await allowRequest(env, 'WATCH_RATE_LIMIT', ip)).toBe(true);
     expect(await allowRequest(env, 'WATCH_RATE_LIMIT', ip)).toBe(false);
   });
