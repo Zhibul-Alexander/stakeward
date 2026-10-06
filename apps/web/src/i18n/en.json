@@ -857,6 +857,8 @@
       "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you imported this account from a different seed phrase.",
       "sameWalletSwitch": "While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
       "onlyStakeward": "Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.",
+      "heldBeforeOne": "This second key held the lock on stake account {address} before. If it may be stolen, use a new second key from a new seed phrase.",
+      "heldBeforeOther": "This second key held the lock on {count} of these stake accounts before. If it may be stolen, use a new second key from a new seed phrase.",
       "problem": {
         "zero-key": "This is the empty address, not a wallet. Choose another wallet as your second key.",
         "main-key": "This is your main key. Choose a wallet from a different seed phrase.",
@@ -1016,7 +1018,8 @@
       "extended": "The lock now ends on {date}",
       "removed": "The lock is removed",
       "withdraw": "Withdraw now",
-      "protect": "Protect it again"
+      "protect": "Protect again",
+      "protectNewKey": "Use a new second key if this one may be stolen."
     },
     "refused": {
       "not-found": "This stake account no longer exists.",

@@ -23,6 +23,7 @@ import {
   effectiveSelection,
   initialWizardState,
   parseAccountParams,
+  previouslyHeldBy,
   protectedIds,
   retryableIds,
   secondKeyProblems,
@@ -95,6 +96,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
   const chosen = effectiveSelection(selected, cands).filter((id) => !done.includes(id));
   const chosenAccounts = chosen.flatMap((id) => cands.find((candidate) => candidate.account.address === id)?.account ?? []);
   const problems = secondKey === null || mainKey === null ? [] : secondKeyProblems(secondKey, mainKey, chosenAccounts);
+  const heldBefore = secondKey === null ? [] : previouslyHeldBy(secondKey, chosenAccounts);
   const blockerInput = {
     mainReady,
     selection: chosen.length,
@@ -223,6 +225,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           mainKey={mainKey}
           sameWallet={sameWallet}
           problems={problems}
+          heldBefore={heldBefore}
           seedConfirmed={state.seedConfirmed}
           mode={state.secondMode}
           linkKey={state.linkKey}

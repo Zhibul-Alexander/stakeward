@@ -67,11 +67,13 @@ export function ExtendDone({ headingRef, account, lockUntil, job, checking, chec
       {lockUntil === 0n ? (
         <>
           <RiskNote risk="unlock-opens-window" tone="danger" />
+          {/* The way on after a "second key may be stolen" alert: a lock under a new second key (SECURITY-CHECK П9). The
+              wizard warns again while the old second key is still the one connected. */}
+          <p className="max-w-prose text-sm">{t('extend.done.protectNewKey')}</p>
           <div className="flex flex-wrap gap-3">
             <Button asChild>
               <Link href={appLinks.withdraw(account)}>{t('extend.done.withdraw')}</Link>
             </Button>
-            {/* The way on after a "second key may be stolen" alert: a lock under a new second key (SECURITY-CHECK П9). */}
             <Button asChild variant="outline">
               <Link href={appLinks.protect([account])}>{t('extend.done.protect')}</Link>
             </Button>

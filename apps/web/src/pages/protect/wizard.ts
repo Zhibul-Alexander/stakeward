@@ -83,6 +83,17 @@ export function secondKeyProblems(second: Address, mainKey: Address, accounts: r
   });
 }
 
+/**
+ * The chosen accounts whose lock `second` held before: a lock that ended or that the second key removed keeps naming
+ * its second key. Protecting them again with it is allowed (a normal end may reuse it), but after a "second key may be
+ * stolen" alert the old key is the one to replace, so the step warns (SECURITY-CHECK П9). Never for the empty address,
+ * which every account that never had a lock names.
+ */
+export function previouslyHeldBy(second: Address, accounts: readonly StakeAccount[]): Address[] {
+  if (second === ZERO_ADDRESS) return [];
+  return accounts.filter((account) => account.lockup.custodian === second).map((account) => account.address);
+}
+
 export type Blocker =
   | 'need-main'
   | 'need-one'

@@ -8,6 +8,7 @@ import {
   formatUtcDateTime,
   lockupEnd,
   networkFeeFor,
+  shortAddress,
   ZERO_ADDRESS,
   type Lockup,
 } from '@stakeward/core';
@@ -19,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { createSlotStore } from '@/ports';
 import {
   click,
+  connect,
   connectAndContinue,
   renderStakePage,
   SCENARIO_TIMEOUT,
@@ -267,7 +269,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const withdrawNow = screen.getByRole('link', { name: 'Withdraw now' });
       expect(withdrawNow).toHaveAttribute('href', `/withdraw/${S}`);
       // The way on after a removal from a "second key may be stolen" alert (SECURITY-CHECK П9): a new second key.
-      expect(screen.getByRole('link', { name: 'Protect it again' })).toHaveAttribute('href', `/protect?account=${S}`);
+      expect(screen.getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${S}`);
 
       await user.click(withdrawNow);
       expect(location.history.at(-1)).toBe(`/withdraw/${S}`);
@@ -280,6 +282,52 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       expect(w.testChain.account(S)).toBeNull();
       expect(second.requests).toHaveLength(1);
       expect(main.requests).toHaveLength(1);
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
+describe('/extend/:account: after a removal (SECURITY-CHECK П9)', () => {
+  it(
+    'Protect again opens the wizard for this stake, and the wizard warns that the second key still connected held its lock',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w);
+      const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
+      const { user, location } = renderStakePage(w.chain, `/extend/${S}?remove`, [main, second]);
+
+      expect(await radio('Remove the lock now')).toBeChecked();
+      await click(user, 'Review and sign');
+      await connectAndContinue(user, 'Second key', 'Second Wallet');
+      await user.click(
+        await screen.findByRole(
+          'checkbox',
+          { name: 'I understand that after this, anyone with my main key can withdraw this stake right away' },
+          WAIT,
+        ),
+      );
+      await click(user, 'Sign in Second Wallet as Second key');
+      await heading('The lock is removed');
+      expect(w.testChain.stakeAccount(S)?.lockup).toEqual({ unixTimestamp: 0n, epoch: 0n, custodian: w.K.address });
+      expect(screen.getByText('Use a new second key if this one may be stolen.')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('link', { name: 'Protect again' }));
+      expect(location.history.at(-1)).toBe(`/protect?account=${S}`);
+      await connect(user, 'Main key', 'Main Wallet');
+      await waitFor(() => {
+        expect(screen.getByRole('checkbox', { name: `Protect stake account ${shortAddress(S)}` })).toBeChecked();
+      }, WAIT);
+      await click(user, 'Continue');
+      await heading('Connect your second key');
+      // The second key slot still holds the key that just removed the lock: the wizard says to use a new one.
+      expect(within(screen.getByRole('group', { name: 'Second key' })).getByText('Connected')).toBeInTheDocument();
+      const warning = document.querySelector('[data-slot="former-second-key"]');
+      expect(warning).toHaveAttribute('data-tone', 'warning');
+      expect(warning).toHaveTextContent(
+        `This second key held the lock on stake account ${shortAddress(S)} before. If it may be stolen, use a new second key from a new seed phrase.`,
+      );
+      expect(second.requests).toHaveLength(1);
+      expect(main.requests).toHaveLength(0);
     },
     SCENARIO_TIMEOUT,
   );

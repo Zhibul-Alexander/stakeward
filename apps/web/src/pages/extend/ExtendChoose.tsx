@@ -29,7 +29,7 @@ export function choiceText(choice: ExtendChoice): string {
 type ExtendChooseProps = {
   headingRef: Ref<HTMLHeadingElement>;
   loaded: LoadedAccount;
-  /** The page was opened to remove the lock (`?remove`, from /withdraw's fallback or a lock-change alert). */
+  /** The page was opened to remove the lock (`?remove`, from /withdraw's fallback). */
   removeParam: boolean;
   /** The radio value the user picked; null: the default. */
   selected: string | null;
