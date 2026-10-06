@@ -71,8 +71,8 @@ lock keeps the SOL in place. Out of scope: liquid staking tokens, exchange stake
   Rescue, co-signing by link on another device (`/cosign`, QR code), the recovery card, stats.
 - `apps/worker`: one Cloudflare Worker: static site, an RPC proxy that only forwards transactions the inspector
   accepts, monitoring every 2 minutes on D1, the Telegram bot.
-- Tests: **FILL** (`pnpm test` totals) unit and LiteSVM integration tests, worker tests in workerd with a local D1,
-  Playwright on the built site under the production CSP at 1280 and 360 px with axe.
+- Tests: 2,234 unit and LiteSVM integration tests (core 840, web 780, worker 552 in workerd with a local D1, scripts 62),
+  and Playwright on the built site under the production CSP at 1280 and 360 px with axe (as of 6 October 2026).
 
 ## Links
 
