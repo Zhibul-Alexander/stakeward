@@ -2,7 +2,7 @@ import { address } from '@solana/kit';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { WalletSlot } from './wallet-slot.tsx';
+import { RoleNamesProvider, WalletSlot, type RoleNames } from './wallet-slot.tsx';
 
 const ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=';
 const ALPHA = { id: 'alpha', name: 'Alpha Wallet', icon: ICON };
@@ -71,6 +71,28 @@ describe('WalletSlot', () => {
     expect(screen.getByText('Switch to your second account in the wallet, then press Continue.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(onContinue).toHaveBeenCalledOnce();
+  });
+
+  it('a page may rename a role (RoleNamesProvider): the slot, its buttons and its switch line say the new name; others keep theirs', () => {
+    const names: RoleNames = { new: { label: 'common.roles.newSecond', switchAccount: 'components.walletSlot.switch.newSecond' } };
+    render(
+      <RoleNamesProvider names={names}>
+        <WalletSlot role="new" status="wrong-account" wallet={ALPHA} address={MAIN} conflictRole="main" onContinue={vi.fn()} onDisconnect={vi.fn()} />
+        <WalletSlot role="second" status="empty" wallets={WALLETS} onConnect={vi.fn()} />
+      </RoleNamesProvider>,
+    );
+    const renamed = screen.getByRole('group', { name: 'New second key' });
+    expect(within(renamed).getByText('This account is already your Main key.')).toBeInTheDocument();
+    expect(within(renamed).getByText("Switch to your new second key's account in the wallet, then press Continue.")).toBeInTheDocument();
+    expect(within(renamed).getByRole('button', { name: 'Disconnect Alpha Wallet from New second key' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'New wallet' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect a wallet as Second key' })).toBeInTheDocument();
+  });
+
+  it('without a provider the New wallet slot keeps its name (/rescue)', () => {
+    render(<WalletSlot role="new" status="wrong-account" wallet={ALPHA} address={MAIN} onDisconnect={vi.fn()} />);
+    expect(screen.getByRole('group', { name: 'New wallet' })).toBeInTheDocument();
+    expect(screen.getByText("Switch to your new wallet's account in the wallet, then press Continue.")).toBeInTheDocument();
   });
 
   it('wrong account with the expected one: names the account this step needs in full, Continue when offered', async () => {

@@ -30,7 +30,8 @@
     "roles": {
       "main": "Main key",
       "second": "Second key",
-      "new": "New wallet"
+      "new": "New wallet",
+      "newSecond": "New second key"
     },
     "pages": {
       "protect": "Protect your stake",
@@ -319,7 +320,8 @@
       "switch": {
         "main": "Switch to your main account in the wallet, then press Continue.",
         "second": "Switch to your second account in the wallet, then press Continue.",
-        "new": "Switch to your new wallet's account in the wallet, then press Continue."
+        "new": "Switch to your new wallet's account in the wallet, then press Continue.",
+        "newSecond": "Switch to your new second key's account in the wallet, then press Continue."
       }
     },
     "tx": {

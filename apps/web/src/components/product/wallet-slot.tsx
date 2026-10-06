@@ -11,7 +11,7 @@ import {
   WalletIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { createContext, use, useId, useMemo, useState, type ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,8 +80,45 @@ const ROLE_LABEL: Record<WalletRole, MessageKey> = {
   new: 'common.roles.new',
 };
 
+const SWITCH_ACCOUNT: Record<WalletRole, MessageKey> = {
+  main: 'components.walletSlot.switch.main',
+  second: 'components.walletSlot.switch.second',
+  new: 'components.walletSlot.switch.new',
+};
+
+/** The role's name everywhere but where a page renames it (`RoleNamesProvider`). */
 export function roleLabel(role: WalletRole): string {
   return t(ROLE_LABEL[role]);
+}
+
+/** Another name for a slot's role: its label, and the line that asks to switch to its account in the wallet. */
+export type RoleName = { label: MessageKey; switchAccount: MessageKey };
+
+/** The roles a page renames; every other role keeps its usual name (UX rule 4). */
+export type RoleNames = Partial<Readonly<Record<WalletRole, RoleName>>>;
+
+const RoleNamesContext = createContext<RoleNames>({});
+
+/**
+ * Renames slot roles for one page. CLAUDE.md section 6 keeps three slots (main, second, new); /second-key fills the
+ * New wallet slot with the new second key and calls it "New second key" in every slot, signer list and summary inside.
+ */
+export function RoleNamesProvider({ names, children }: { names: RoleNames; children: ReactNode }) {
+  return <RoleNamesContext value={names}>{children}</RoleNamesContext>;
+}
+
+/** The words for the slot roles where this is rendered: `label(role)` and `switchAccount(role)`. */
+export type RoleWords = { label: (role: WalletRole) => string; switchAccount: (role: WalletRole) => string };
+
+export function useRoleWords(): RoleWords {
+  const names = use(RoleNamesContext);
+  return useMemo(
+    () => ({
+      label: (role) => t(names[role]?.label ?? ROLE_LABEL[role]),
+      switchAccount: (role) => t(names[role]?.switchAccount ?? SWITCH_ACCOUNT[role]),
+    }),
+    [names],
+  );
 }
 
 type Chip = { tone: NonNullable<BadgeProps['tone']>; icon: LucideIcon; label: MessageKey };
@@ -103,7 +140,7 @@ const CHIPS: Record<Exclude<WalletSlotStatus, 'loading'>, Chip> = {
  */
 export function WalletSlot(props: WalletSlotProps) {
   const labelId = useId();
-  const role = roleLabel(props.role);
+  const role = useRoleWords().label(props.role);
   const chip = props.status === 'loading' ? null : CHIPS[props.status];
   return (
     <div
@@ -133,6 +170,7 @@ export function WalletSlot(props: WalletSlotProps) {
 }
 
 function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
+  const words = useRoleWords();
   switch (props.status) {
     case 'loading':
       return (
@@ -203,10 +241,10 @@ function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
             <TriangleAlertIcon aria-hidden="true" />
             <AlertDescription className="flex flex-col gap-1 text-foreground">
               {props.conflictRole === undefined ? null : (
-                <p>{t('components.walletSlot.conflict', { role: roleLabel(props.conflictRole) })}</p>
+                <p>{t('components.walletSlot.conflict', { role: words.label(props.conflictRole) })}</p>
               )}
               {props.expected === undefined ? (
-                <p className="font-medium">{t(`components.walletSlot.switch.${props.role}`)}</p>
+                <p className="font-medium">{words.switchAccount(props.role)}</p>
               ) : (
                 <>
                   {/* Without Continue the slot is filled and keeps its account whatever the wallet offers (D35): the

@@ -2,6 +2,7 @@ import type { Address } from '@solana/kit';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { SignerList, SignerListSkeleton, type SignerListItem, type SignerStatus } from './signer-list.tsx';
+import { RoleNamesProvider } from './wallet-slot.tsx';
 
 const MAIN = 'B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8' as Address;
 const SECOND = '9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi' as Address;
@@ -93,6 +94,23 @@ describe('SignerList', () => {
     }
     expect(screen.queryByText(/\.\.\./)).not.toBeInTheDocument();
     expect(forbiddenRoleWords()).toEqual([]);
+  });
+
+  it('says the role by the name the page gives it (RoleNamesProvider), keeping the role in data-role', () => {
+    render(
+      <RoleNamesProvider names={{ new: { label: 'common.roles.newSecond', switchAccount: 'components.walletSlot.switch.newSecond' } }}>
+        <SignerList
+          items={[
+            { role: 'new', walletName: 'Gamma Wallet', address: NEW_WALLET, count: 1, status: 'current' },
+            { role: 'second', walletName: null, address: SECOND, count: 1, status: 'missing' },
+          ]}
+        />
+      </RoleNamesProvider>,
+    );
+    const [fresh, second] = within(screen.getByRole('list', { name: 'Signatures' })).getAllByRole('listitem') as [HTMLElement, HTMLElement];
+    expect(fresh).toHaveAttribute('data-role', 'new');
+    expect(within(fresh).getByText('1. New second key in Gamma Wallet')).toBeInTheDocument();
+    expect(within(second).getByText('2. Second key: not connected')).toBeInTheDocument();
   });
 
   it('loading: a decorative placeholder, hidden from assistive technology', () => {

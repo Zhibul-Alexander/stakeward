@@ -12,7 +12,7 @@ import {
   TransactionSummarySkeleton,
   type OnChainContext,
 } from '@/components/product/transaction-summary';
-import { roleLabel } from '@/components/product/wallet-slot';
+import { useRoleWords, type RoleWords } from '@/components/product/wallet-slot';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -242,9 +242,10 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
         {back === 'back' ? t('common.back') : t('signing.backNothingSent')}
       </Button>
     );
+  const words = useRoleWords();
   const step = 'step' in phase ? round?.steps[phase.step] : undefined;
-  const wallet = step === undefined ? '' : walletOf(step);
-  const role = step === undefined ? '' : roleLabel(step.role);
+  const wallet = step === undefined ? '' : walletOf(step, words);
+  const role = step === undefined ? '' : words.label(step.role);
 
   switch (phase.kind) {
     case 'idle':
@@ -348,7 +349,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
           <AlertDescription className="flex flex-col gap-3 text-foreground">
             <p>{t('signing.accountNotOffered', { wallet })}</p>
             <AddressText address={step.address} variant="full" />
-            <p className="font-medium">{t(`components.walletSlot.switch.${step.role}`)}</p>
+            <p className="font-medium">{words.switchAccount(step.role)}</p>
             {phase.again ? <p>{t('signing.stillNotOffered', { wallet })}</p> : null}
             <Buttons>
               <Button
@@ -495,6 +496,7 @@ function PrepareFailed({
   /** The way out ends the run (an earlier round has a result to report), not Back: the text must say that. */
   finishing: boolean;
 }) {
+  const words = useRoleWords();
   const retry = () => {
     actions.retryPrepare();
   };
@@ -517,7 +519,7 @@ function PrepareFailed({
             <span className="flex flex-col gap-2">
               <span>
                 {t('signing.feeBalance', {
-                  role: roleLabel(problem.role),
+                  role: words.label(problem.role),
                   balance: formatSol(problem.balance),
                   needed: formatSol(problem.needed),
                 })}
@@ -687,8 +689,8 @@ function walletStopText(reason: Extract<StopReason, { kind: 'wallet' }>): string
 }
 
 /** The wallet name, or the role when no wallet in this browser holds the key. */
-function walletOf(step: SignStep): string {
-  return step.walletName ?? roleLabel(step.role);
+function walletOf(step: SignStep, words: RoleWords): string {
+  return step.walletName ?? words.label(step.role);
 }
 
 function StopWaiting({ actions }: { actions: SigningActions }) {
