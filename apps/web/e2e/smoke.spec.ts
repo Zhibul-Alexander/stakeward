@@ -194,6 +194,13 @@ const ROUTES: readonly SmokeRoute[] = [
     heading: text('recovery.title'),
     shows: async (page) => {
       await expect(page.locator('[data-slot="recovery-account"]')).toHaveCount(1);
+      // The card is how people recover without Stakeward: its commands and its devnet note follow this build's network.
+      const urls = await page
+        .locator('[data-slot="command-block"] pre')
+        .evaluateAll((blocks) => blocks.flatMap((block) => [...block.textContent.matchAll(/--url\s+(\S+)/g)].map((match) => match[1])));
+      expect(urls.length).toBeGreaterThan(0);
+      expect(new Set(urls)).toEqual(new Set([DEVNET ? 'devnet' : 'mainnet-beta']));
+      await expect(page.getByText(text('recovery.devnet'), { exact: true })).toHaveCount(DEVNET ? 1 : 0);
     },
     after: recoveryPrint,
     screen: 'recovery',
