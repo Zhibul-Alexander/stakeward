@@ -4,6 +4,7 @@ import type { Address } from '@solana/kit';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { insertWatchedStatements, type WatchRow } from '../src/monitor/store.ts';
+import { STATS_CLOCK_SKEW_MS } from '../src/public-api.ts';
 import { fakeUpstream, freshIp, SECURITY_HEADERS, securityHeadersOf, testApp } from './fakes.ts';
 import { countingDb } from './monitor/harness.ts';
 import { key } from './transactions.ts';
@@ -311,11 +312,15 @@ describe('GET /api/stats', () => {
     expect(await rowsReadAt(NOW + 10 * MINUTE)).toBeGreaterThanOrEqual(40);
   });
 
-  it('requests that arrive together, the first ones included, count once', async () => {
+  // Clocks of the machines that run the requests differ by a few ms: a request may run after one whose clock is ahead.
+  it.each([
+    ['in clock order', [0, 1, 2, 3, 4]],
+    ['each clock a little behind the one before', [4, 3, 2, 1, 0]],
+  ])('requests that arrive together, the first ones included, count once: %s', async (_order, offsets) => {
     await seed(Array.from({ length: 40 }, (_, i) => row(key(100 + i), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY })));
     const reads = rowsReadDb(env.DB);
     const answers = await Promise.all(
-      [0, 1, 2, 3, 4].map(async (ms) => {
+      offsets.map(async (ms) => {
         const res = await testApp(noUpstream(), { now: () => NOW + ms, env: { DB: reads.db } }).request('/api/stats');
         return res.json();
       }),
@@ -335,7 +340,8 @@ describe('GET /api/stats', () => {
       JSON.stringify({ at: String(NOW), accounts: 3, lamports: '3' }),
       JSON.stringify({ at: NOW, accounts: '3', lamports: '3' }),
       JSON.stringify({ at: NOW, accounts: 3, lamports: 3 }),
-      JSON.stringify({ at: NOW + 1, accounts: 99, lamports: '99' }),
+      // More than STATS_CLOCK_SKEW_MS from the future: not a clock that differs, a count that cannot be trusted.
+      JSON.stringify({ at: NOW + STATS_CLOCK_SKEW_MS + 1, accounts: 99, lamports: '99' }),
     ]) {
       await env.DB.prepare(
         "INSERT INTO meta (key, value) VALUES ('stats_cache', ?1) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -349,6 +355,29 @@ describe('GET /api/stats', () => {
         now: '2026-10-05T12:00:00.000Z',
       });
     }
+  });
+
+  it('a count up to 60 s from the future stands (the clocks of the machines differ); further ahead it counts again', async () => {
+    expect(STATS_CLOCK_SKEW_MS).toBe(MINUTE);
+    const at = (ms: number) => testApp(noUpstream(), { now: () => ms }).request('/api/stats');
+    await seed([row(key(43), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '5' })]);
+    // Counted by a request whose clock is a minute ahead.
+    expect(await (await at(NOW + MINUTE)).json()).toMatchObject({ accountsLocked: 1, now: '2026-10-05T12:01:00.000Z' });
+    await seed([row(key(44), { withdrawer: WALLET, custodian: OTHER, lockUntil: NOW_S + DAY, lamports: '7' })]);
+    // A request a minute behind it uses that count.
+    expect(await (await at(NOW)).json()).toEqual({
+      accountsLocked: 1,
+      lamportsLocked: '5',
+      alertsSent: 0,
+      now: '2026-10-05T12:01:00.000Z',
+    });
+    // One more millisecond behind, it counts again.
+    expect(await (await at(NOW - 1)).json()).toEqual({
+      accountsLocked: 2,
+      lamportsLocked: '12',
+      alertsSent: 0,
+      now: '2026-10-05T11:59:59.999Z',
+    });
   });
 
   it('500 when D1 fails', async () => {

@@ -709,11 +709,12 @@ describe('public API statements', () => {
     expect(results[0]).toEqual({ stake_account: key(10), type: 'STAKER_CHANGED', details_json: '{}', slot: 4, detected_at: NOW_MS });
   });
 
-  it('STATS_COUNT and STATS_CACHE: live locks not ended; the lamport sum is exact above 2^53; a count stands ?3 ms', async () => {
+  it('STATS_COUNT and STATS_CACHE: live locks not ended; the lamport sum is exact above 2^53; a count stands ?3 ms, from up to ?4 ms ahead', async () => {
     const TTL = 600_000;
+    const SKEW = 60_000;
     const count = async (ms: number) => {
       const [, cache] = await db.batch([
-        db.prepare(SQL.STATS_COUNT).bind(ms, Math.floor(ms / 1000), TTL),
+        db.prepare(SQL.STATS_COUNT).bind(ms, Math.floor(ms / 1000), TTL, SKEW),
         db.prepare(SQL.STATS_CACHE),
       ]);
       return cache?.results;
@@ -733,7 +734,9 @@ describe('public API statements', () => {
     await db.prepare('DELETE FROM accounts').run();
     expect(await count(NOW_MS + TTL - 1)).toEqual([{ at: NOW_MS, accounts: 2, lamports: '9007199254740994' }]);
     expect(await count(NOW_MS + TTL)).toEqual([{ at: NOW_MS + TTL, accounts: 0, lamports: '0' }]);
-    // A count from the future does not stand.
-    expect(await count(NOW_MS)).toEqual([{ at: NOW_MS, accounts: 0, lamports: '0' }]);
+    // A count up to ?4 ms from the future stands (clocks differ); further ahead it does not.
+    await seed(watchRow(14, { lamports: '3' }));
+    expect(await count(NOW_MS + TTL - SKEW)).toEqual([{ at: NOW_MS + TTL, accounts: 0, lamports: '0' }]);
+    expect(await count(NOW_MS + TTL - SKEW - 1)).toEqual([{ at: NOW_MS + TTL - SKEW - 1, accounts: 1, lamports: '3' }]);
   });
 });

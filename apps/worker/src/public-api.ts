@@ -158,17 +158,24 @@ function parseDetails(text: string): unknown {
 export const STATS_TTL_MS = 10 * 60_000;
 
 /**
+ * How far from the future a stored count of /api/stats still stands. Requests run on different Cloudflare machines
+ * whose clocks differ: without this, a request whose clock is a few ms behind the one that counted would count again
+ * (and say an earlier `now`). A count further ahead is not a clock that differs, and is counted again.
+ */
+export const STATS_CLOCK_SKEW_MS = 60_000;
+
+/**
  * GET /api/stats: watched accounts whose lock is in force, the lamports in them (a decimal string: SQLite sums integers
  * exactly and all SOL is below 2^63 lamports) and the alerts delivered so far (meta.alerts_sent, read on every
  * request). The two counts are stored in meta.stats_cache and counted again after STATS_TTL_MS (SQL.STATS_COUNT);
- * `now` is when they were counted. One batch per request.
+ * `now` is when they were counted (up to STATS_CLOCK_SKEW_MS ahead of this request's clock). One batch per request.
  */
 export function statsHandler(now: () => number) {
   return async (c: Context<AppEnv>): Promise<Response> => {
     const db = c.env.DB;
     const nowMs = now();
     const [, stats, sent] = await db.batch([
-      db.prepare(SQL.STATS_COUNT).bind(nowMs, Math.floor(nowMs / 1000), STATS_TTL_MS),
+      db.prepare(SQL.STATS_COUNT).bind(nowMs, Math.floor(nowMs / 1000), STATS_TTL_MS, STATS_CLOCK_SKEW_MS),
       db.prepare(SQL.STATS_CACHE),
       db.prepare(SQL.ALERTS_SENT),
     ]);
