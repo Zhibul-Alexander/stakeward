@@ -1,7 +1,18 @@
-import { getBase58Decoder } from '@solana/kit';
+import { getBase58Decoder, getSolanaErrorFromJsonRpcError } from '@solana/kit';
+import { translateError } from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
 import { errorOf, fakeUpstream, rpcResponse, testApp, type UpstreamCall } from './fakes.ts';
-import { b64, BLOCKHASH, corruptFirstSignature, key, signedProtect, signedSystemTransfer, unsignedProtect } from './transactions.ts';
+import {
+  b64,
+  BLOCKHASH,
+  corruptFirstSignature,
+  key,
+  signedNonceClose,
+  signedProtect,
+  signedSystemTransfer,
+  signedWithdraw,
+  unsignedProtect,
+} from './transactions.ts';
 
 const ADDRESS = key(5);
 const SIGNATURE = getBase58Decoder().decode(new Uint8Array(64).fill(7));
@@ -293,6 +304,41 @@ describe('POST /api/rpc: transactions go through the inspector', () => {
       expect(error.code).toBe(-32003);
       expect(error.data).toMatchObject({ check: 'inspector', code: 'invalid-signature' });
       expect(upstream.calls).toHaveLength(0);
+    }
+  });
+
+  // SECURITY-CHECK П13: Stakeward withdraws only to the main key (D64) and closes a nonce account only to its authority.
+  // Signed bytes can leave the page, so the proxy refuses to simulate or send anything else, though the format is ours.
+  it.each([
+    ['a withdraw to another address than the main key', () => signedWithdraw(key(66))],
+    ['a nonce account closed to another address than its authority', () => signedNonceClose(key(66))],
+  ])('refuses %s with -32602 (foreign-recipient), on simulate and on send', async (_case, build) => {
+    const bytes = await build();
+    for (const method of ['simulateTransaction', 'sendTransaction']) {
+      const upstream = unreachable();
+      const res = await testApp(upstream).rpc(call(method, [b64(bytes), { encoding: 'base64' }]));
+      expect(res.status).toBe(200);
+      const error = await errorOf(res);
+      expect(error.code).toBe(-32602);
+      expect(error.message).toBe('Transaction rejected by inspector: foreign-recipient');
+      expect(error.data).toMatchObject({ check: 'policy', code: 'foreign-recipient' });
+      expect(upstream.calls).toHaveLength(0);
+      // The site reads it as any other inspector refusal.
+      expect(translateError(getSolanaErrorFromJsonRpcError(error)).code).toBe('rejected-by-inspector');
+    }
+  });
+
+  it.each([
+    ['a withdraw to the main key', () => signedWithdraw()],
+    ['a nonce account closed to its authority', () => signedNonceClose()],
+  ])('forwards %s', async (_case, build) => {
+    const bytes = await build();
+    for (const method of ['simulateTransaction', 'sendTransaction']) {
+      const upstream = fakeUpstream((c) => rpcResponse(c.json.id, method === 'sendTransaction' ? 'sig' : { value: { err: null } }));
+      const res = await testApp(upstream).rpc(call(method, [b64(bytes), { encoding: 'base64' }]));
+      expect(res.status).toBe(200);
+      expect(upstream.calls).toHaveLength(1);
+      expect(upstream.calls[0]?.json.params[0]).toBe(b64(bytes));
     }
   });
 

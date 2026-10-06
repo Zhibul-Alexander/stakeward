@@ -1,4 +1,9 @@
-import { inspectAndVerifyTransaction, INSPECTOR_REFUSAL_PREFIX, SIGNATURE_REFUSAL_PREFIX } from '@stakeward/core';
+import {
+  inspectAndVerifyTransaction,
+  INSPECTOR_REFUSAL_PREFIX,
+  SIGNATURE_REFUSAL_PREFIX,
+  type TransactionAction,
+} from '@stakeward/core';
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { decodeBase64, encodeBase64 } from './base64.ts';
@@ -9,15 +14,17 @@ import type { AppEnv } from './app.ts';
 /**
  * POST /api/rpc: the browser's only way to the chain (CLAUDE.md sections 3 and 8). One JSON-RPC request object per
  * call, an allow-listed method, strict params. simulateTransaction and sendTransaction pass only if the inspector
- * accepts the bytes; sendTransaction also needs every signature present and valid. What goes upstream is rebuilt
+ * accepts the bytes and the action passes the proxy's policy (`policyRefusal`); sendTransaction also needs every
+ * signature present and valid. What goes upstream is rebuilt
  * from the validated request (and the inspected bytes), never the client's text. Upstream answers come back as they
  * are, with HTTP 200; our own rejections are JSON-RPC errors with HTTP 200 too, so kit surfaces their codes.
  *
  * Refused transactions use codes kit knows, never a custom one: outside production builds kit 8.4 throws a TypeError
  * while formatting an unknown JSON-RPC code, and a TypeError reads as a network error. Signature problems are -32003
  * (what a node answers for bad signatures; kit keeps `data` as the error context), any other inspector refusal is
- * -32602 with the inspector code in the message (kit keeps only the message for -32602). The message prefixes come
- * from core, whose `translateError` reads them on the site. `data` carries the details for clients that read the body.
+ * -32602 with the inspector code in the message (kit keeps only the message for -32602), and so is a policy refusal:
+ * the site reads both as `rejected-by-inspector`. The message prefixes come from core, whose `translateError` reads
+ * them on the site. `data` carries the details for clients that read the body.
  *
  * CPU: the inspector and the signature check run in one pass (`inspectAndVerifyTransaction`): one decode, one
  * verification per signature (test/cpu.test.ts).
@@ -40,7 +47,26 @@ export const MAX_RPC_BODY_BYTES = 32 * 1024;
 
 export type TransactionRejection =
   | { check: 'inspector'; code: string; message: string }
+  | { check: 'policy'; code: PolicyCode; message: string }
   | { check: 'signatures'; code: string; signers: readonly string[]; message: string };
+
+export type PolicyCode = 'foreign-recipient';
+
+/**
+ * What the inspector accepts but Stakeward never sends (SECURITY-CHECK П13). The inspector is context-free and takes
+ * any recipient the builder takes; the product withdraws only to the main key (D64) and closes a nonce account only
+ * to its authority. Signed bytes can leave the page, so the proxy refuses to simulate or send anything else: a
+ * hacked page or a dependency cannot use this domain to move SOL elsewhere. Null when the action passes.
+ */
+export function policyRefusal(action: TransactionAction): { code: PolicyCode; message: string } | null {
+  if (action.kind === 'withdraw' && action.recipient !== action.mainKey) {
+    return { code: 'foreign-recipient', message: 'Stakeward withdraws only to the main key' };
+  }
+  if (action.kind === 'nonce-close' && action.recipient !== action.nonceAuthority) {
+    return { code: 'foreign-recipient', message: 'Stakeward closes a nonce account only to its authority' };
+  }
+  return null;
+}
 
 export function jsonRpcError(
   c: Context,
@@ -99,6 +125,13 @@ export function rpcHandler(upstreamOptions: UpstreamOptions) {
           check: 'inspector',
           code,
           message,
+        });
+      }
+      const policy = policyRefusal(checked.summary.action);
+      if (policy !== null) {
+        return jsonRpcError(c, 200, id, JSON_RPC_ERRORS.invalidParams, `${INSPECTOR_REFUSAL_PREFIX}${policy.code}`, {
+          check: 'policy',
+          ...policy,
         });
       }
       if (method === 'sendTransaction' && !checked.signatures.ok) {
