@@ -204,7 +204,10 @@ test('every route renders under the production headers, without console errors o
       await expect(page.getByRole('heading', { level: 1, name: route.heading, exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: text('nav.home') })).toBeVisible();
       const footer = page.getByRole('contentinfo');
-      await expect(footer.getByRole('link', { name: text('footer.sourceCode') })).toHaveAttribute('href', SOURCE_CODE_URL);
+      const source = footer.getByRole('link', { name: `${text('footer.sourceCode')} ${text('common.opensInNewTab')}`, exact: true });
+      await expect(source).toHaveAttribute('href', SOURCE_CODE_URL);
+      await expect(source).toHaveAttribute('target', '_blank');
+      await expect(source).toHaveAttribute('rel', 'noreferrer');
       await expect(footer.getByRole('link', { name: text('footer.cannotDo') })).toHaveAttribute('href', '/#cannot-do');
       await expect(footer.getByRole('link', { name: text('footer.stats') })).toHaveAttribute('href', '/stats');
       await expect(footer.getByText(text('footer.license'))).toBeVisible();

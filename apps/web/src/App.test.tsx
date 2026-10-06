@@ -35,11 +35,12 @@ describe('app shell', () => {
   it('has the trust links in the footer on every page (UX rule 12)', () => {
     renderAt('/rescue');
     const footer = screen.getByRole('contentinfo');
-    expect(footer).toContainElement(screen.getByRole('link', { name: 'Source code' }));
-    expect(screen.getByRole('link', { name: 'Source code' })).toHaveAttribute(
-      'href',
-      'https://github.com/Zhibul-Alexander/stakeward',
-    );
+    // Another site: it opens in a new tab and says so, as every external link does (step 8 spec L14).
+    const source = screen.getByRole('link', { name: 'Source code (opens in a new tab)' });
+    expect(footer).toContainElement(source);
+    expect(source).toHaveAttribute('href', 'https://github.com/Zhibul-Alexander/stakeward');
+    expect(source).toHaveAttribute('target', '_blank');
+    expect(source).toHaveAttribute('rel', 'noreferrer');
     expect(screen.getByRole('link', { name: 'What Stakeward cannot do' })).toHaveAttribute('href', '/#cannot-do');
     expect(footer).toContainElement(screen.getByRole('link', { name: 'Stats' }));
     expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('href', '/stats');
