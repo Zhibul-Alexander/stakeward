@@ -26,8 +26,10 @@ export const COST = {
    * meta.
    */
   daily: 4,
-  /** The daily bot check: getWebhookInfo + getMe, one attempt each. */
-  botCheck: 2,
+  /** The bot check of every pass: getWebhookInfo, one attempt. */
+  webhookCheck: 1,
+  /** The daily part of the bot check: getMe, one attempt. */
+  usernameCheck: 1,
   sendLoad: 2,
   sendCommit: 4,
   /** One rescan call and its post-processing. */

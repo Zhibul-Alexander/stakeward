@@ -20,8 +20,11 @@ export const ADMIN_KINDS: readonly AdminKind[] = [
   'rescan-dropped',
 ];
 
-/** What the daily bot check found not to be this deployment's: the webhook URL, the bot's username. */
-export type BotMismatch = 'webhook' | 'username';
+/**
+ * What the bot check found not to be this deployment's: the webhook URL, Telegram's updates refused by this worker
+ * (401: they do not carry TELEGRAM_WEBHOOK_SECRET), the bot's username.
+ */
+export type BotMismatch = 'webhook' | 'refused' | 'username';
 
 export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number; bot?: readonly BotMismatch[] };
 
@@ -30,6 +33,9 @@ const WRANGLER_ENV: Record<Cluster, string> = { devnet: 'dev', mainnet: 'prod' }
 
 const BOT_MISMATCH: Record<BotMismatch, string> = {
   webhook: "Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook",
+  refused:
+    `this worker refused Telegram's updates with 401 in the last ${String(MONITOR_LIMITS.webhookErrorWindowMs / 60_000)} ` +
+    'minutes: Telegram does not send TELEGRAM_WEBHOOK_SECRET with them',
   username: 'the bot token belongs to another bot than TELEGRAM_BOT_USERNAME',
 };
 

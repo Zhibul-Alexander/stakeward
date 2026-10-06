@@ -81,6 +81,8 @@ export const MONITOR_LIMITS = {
   dailyHourUtc: 6,
   rescanQueueMax: 1_000,
   adminThrottleMs: 3_600_000,
+  /** A 401 Telegram got from the webhook this recently is a bot-mismatch (pass.ts checkBot). */
+  webhookErrorWindowMs: 600_000,
   rpcDownPasses: 3,
   telegramTimeoutMs: 8_000,
 } as const;

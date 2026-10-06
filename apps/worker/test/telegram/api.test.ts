@@ -56,17 +56,47 @@ describe('sendTelegramMessage', () => {
 });
 
 describe('getBotIdentity', () => {
-  it('reads the webhook URL (getWebhookInfo) and the username (getMe)', async () => {
+  it('reads the webhook URL and its last delivery error (getWebhookInfo) and, when asked, the username (getMe)', async () => {
     const telegram = new FakeTelegram();
-    telegram.identity = { webhookUrl: 'https://elsewhere.example/hook', username: 'other_bot', reply: 200 };
+    telegram.identity = {
+      webhookUrl: 'https://elsewhere.example/hook',
+      username: 'other_bot',
+      reply: 200,
+      lastError: { date: 1_790_000_000, message: 'Wrong response from the webhook: 401 Unauthorized' },
+    };
     const { fetch, calls } = client(telegram);
-    expect(await getBotIdentity({ token: TOKEN, fetch, timeoutMs: 50 })).toEqual({
+    expect(await getBotIdentity({ token: TOKEN, fetch, timeoutMs: 50, withUsername: true })).toEqual({
       outcome: 'ok',
       webhookUrl: 'https://elsewhere.example/hook',
+      lastError: { date: 1_790_000_000, message: 'Wrong response from the webhook: 401 Unauthorized' },
       username: 'other_bot',
     });
     expect(calls).toEqual([`https://api.telegram.org/bot${TOKEN}/getWebhookInfo`, `https://api.telegram.org/bot${TOKEN}/getMe`]);
     expect(telegram.requests).toEqual([]);
+  });
+
+  it('without the username: getWebhookInfo alone; no delivery error reported: lastError null', async () => {
+    const telegram = new FakeTelegram();
+    const { fetch, calls } = client(telegram);
+    expect(await getBotIdentity({ token: TOKEN, fetch, timeoutMs: 50, withUsername: false })).toEqual({
+      outcome: 'ok',
+      webhookUrl: 'https://stakeward.test/api/telegram/webhook',
+      lastError: null,
+      username: null,
+    });
+    expect(calls).toEqual([`https://api.telegram.org/bot${TOKEN}/getWebhookInfo`]);
+  });
+
+  it('a last error without a whole date and message reads as none', async () => {
+    for (const extra of ['"last_error_date":"x","last_error_message":"401"', '"last_error_date":1.5,"last_error_message":"401"', '"last_error_message":"401"', '"last_error_date":5']) {
+      const fetchFn: typeof fetch = () => Promise.resolve(new Response(`{"ok":true,"result":{"url":"",${extra}}}`, { status: 200 }));
+      expect(await getBotIdentity({ token: TOKEN, fetch: fetchFn, timeoutMs: 50, withUsername: false })).toEqual({
+        outcome: 'ok',
+        webhookUrl: '',
+        lastError: null,
+        username: null,
+      });
+    }
   });
 
   it('401/404 config (the second call is not made), the rest retry; no token: config without a request', async () => {
@@ -82,19 +112,29 @@ describe('getBotIdentity', () => {
       const telegram = new FakeTelegram();
       telegram.identity = { ...telegram.identity, reply };
       const { fetch, calls } = client(telegram);
-      expect(await getBotIdentity({ token: TOKEN, fetch, timeoutMs: 50 })).toEqual({ outcome });
+      expect(await getBotIdentity({ token: TOKEN, fetch, timeoutMs: 50, withUsername: true })).toEqual({ outcome });
       expect(calls).toHaveLength(requests);
     }
     const { fetch, calls } = client(new FakeTelegram());
-    expect(await getBotIdentity({ token: null, fetch, timeoutMs: 50 })).toEqual({ outcome: 'config' });
+    expect(await getBotIdentity({ token: null, fetch, timeoutMs: 50, withUsername: true })).toEqual({ outcome: 'config' });
     expect(calls).toEqual([]);
   });
 
   it('an answer that is not a Bot API result: retry', async () => {
     for (const body of ['not json', '{"ok":false}', '{"ok":true,"result":{"url":5}}', '{"ok":true}', '[]']) {
       const fetchFn: typeof fetch = () => Promise.resolve(new Response(body, { status: 200 }));
-      expect(await getBotIdentity({ token: TOKEN, fetch: fetchFn, timeoutMs: 50 })).toEqual({ outcome: 'retry' });
+      for (const withUsername of [true, false]) {
+        expect(await getBotIdentity({ token: TOKEN, fetch: fetchFn, timeoutMs: 50, withUsername })).toEqual({ outcome: 'retry' });
+      }
     }
+    // getMe without a username.
+    let call = 0;
+    const meWithout: typeof fetch = () => {
+      call += 1;
+      const body = call === 1 ? '{"ok":true,"result":{"url":""}}' : '{"ok":true,"result":{"id":1}}';
+      return Promise.resolve(new Response(body, { status: 200 }));
+    };
+    expect(await getBotIdentity({ token: TOKEN, fetch: meWithout, timeoutMs: 50, withUsername: true })).toEqual({ outcome: 'retry' });
   });
 
   it('logs nothing (the URL carries the token)', async () => {
@@ -103,7 +143,7 @@ describe('getBotIdentity', () => {
     for (const reply of [200, 401, 500, 'network-error'] as const) {
       const telegram = new FakeTelegram();
       telegram.identity = { ...telegram.identity, reply };
-      await getBotIdentity({ token: TOKEN, fetch: client(telegram).fetch, timeoutMs: 50 });
+      await getBotIdentity({ token: TOKEN, fetch: client(telegram).fetch, timeoutMs: 50, withUsername: true });
     }
     for (const spy of spies) expect(spy).not.toHaveBeenCalled();
     vi.restoreAllMocks();

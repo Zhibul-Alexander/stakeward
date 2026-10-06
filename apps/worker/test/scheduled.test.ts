@@ -14,7 +14,7 @@ async function meta(): Promise<Record<string, string>> {
 }
 
 describe('scheduled', () => {
-  it('on an empty database: one pass, the marker written, noRetry called, no fetch', async () => {
+  it('on an empty database: one pass, the marker written, noRetry called, no fetch but the webhook check', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('no network in this test'));
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const controller = createScheduledController({ scheduledTime: Date.now(), cron: '*/2 * * * *' });
@@ -24,7 +24,10 @@ describe('scheduled', () => {
     await worker.scheduled(controller, env);
 
     expect(noRetry).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    // Telegram not answering the bot check does not fail the pass: the next one asks again.
+    expect(fetchSpy.mock.calls.map(([url]) => (url instanceof Request ? url.url : url.toString()))).toEqual([
+      'https://api.telegram.org/bot123456789:test-token/getWebhookInfo',
+    ]);
     const marker = Number((await meta()).last_pass_at);
     expect(marker).toBeGreaterThanOrEqual(before);
     expect(marker).toBeLessThanOrEqual(Date.now());

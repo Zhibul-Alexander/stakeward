@@ -291,10 +291,12 @@ describe('the queue survives every stop', () => {
     expect(await h.pass()).toMatchObject({ rows: 1, fastPath: 1, rescans: 0 });
   });
 
-  it('an empty queue and no live row: nothing is read', async () => {
+  it('an empty queue and no live row: nothing is read from the chain (the webhook is still checked)', async () => {
     const h = createHarness();
     h.at('2026-10-05T01:02:00Z');
-    expect(await h.pass()).toMatchObject({ outcome: 'ok', rows: 0, rescans: 0, fetches: 0 });
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', rows: 0, rescans: 0, fetches: 1 });
+    expect(h.chain.calls).toEqual([]);
+    expect(h.telegram.identityCalls.map((call) => call.method)).toEqual(['getWebhookInfo']);
   });
 
   it('past the soft deadline: no search, the urgent pair waits in meta for the next pass', async () => {

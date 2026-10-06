@@ -282,15 +282,17 @@ describe('limits of a pass', () => {
     expect(new Set((await h.readEvents()).map((e) => e.stake_account)).size).toBe(total);
   });
 
-  it('a quiet pass: one getMultipleAccounts, the load batch, the pending read and the finish', async () => {
+  it('a quiet pass: one getMultipleAccounts, the webhook check, the load batch, the pending read and the finish', async () => {
     const h = createHarness();
     h.at('2026-10-05T01:00:00Z');
     h.chain.putStake(key(10), spec(key(1)));
     await h.seedWatched([key(10)]);
     h.at('2026-10-05T01:02:00Z');
     const report = await h.pass();
-    expect(report).toMatchObject({ outcome: 'ok', fastPath: 1, decoded: 0, fetches: 1 });
-    // Load 3 + PENDING 1 + finish 1, and the one fetch: 6 in all (step 5 spec section 6.2).
+    expect(report).toMatchObject({ outcome: 'ok', fastPath: 1, decoded: 0, fetches: 2 });
+    expect(h.net.calls.map((call) => call.host)).toEqual(['primary.rpc.test', 'api.telegram.org']);
+    expect(h.telegram.identityCalls.map((call) => call.method)).toEqual(['getWebhookInfo']);
+    // Load 3 + PENDING 1 + finish 1, and the two fetches: 7 in all (step 5 spec section 6.2).
     expect(report.statements).toBe(5);
     expect(h.db.journal.map((e) => e.name)).toEqual(['LOAD_META', 'LEASE_ACQUIRE', 'PAGE', 'PENDING', 'PUT_META']);
   });

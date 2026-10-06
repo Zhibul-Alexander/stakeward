@@ -56,33 +56,50 @@ export async function sendTelegramMessage(opts: {
   }
 }
 
-/** What Telegram reports about the bot behind a token (getBotIdentity). */
-export type BotIdentity = { outcome: 'ok'; webhookUrl: string; username: string } | { outcome: 'config' | 'retry' };
+/**
+ * What Telegram reports about the bot behind a token (getBotIdentity): the webhook URL ('' when none is set), the last
+ * error Telegram had delivering an update to it (null: none reported), and the bot's username (null: not asked).
+ */
+export type BotIdentity =
+  | {
+      outcome: 'ok';
+      webhookUrl: string;
+      /** getWebhookInfo last_error_date (unix s) and last_error_message, e.g. "Wrong response from the webhook: 401 Unauthorized". */
+      lastError: { date: number; message: string } | null;
+      username: string | null;
+    }
+  | { outcome: 'config' | 'retry' };
 
 /** Bot API answers this small; anything longer is not read on. */
 const MAX_IDENTITY_BODY_BYTES = 64 * 1024;
 
 /**
- * The webhook URL Telegram delivers this bot's updates to (getWebhookInfo; '' when none is set) and the bot's username
- * (getMe), for the monitor's daily check (SECURITY-CHECK П17). Two requests, one after the other; a refused token
- * (401, 404, or none set) is `config` and stops after the first, anything else that is not a Bot API result is
- * `retry`. Like sendMessage: the URL carries the token, so nothing here is logged.
+ * getWebhookInfo and, with `withUsername`, getMe: for the monitor's bot check (SECURITY-CHECK П17), the webhook on
+ * every pass and the bot once a day. One request after the other; a refused token (401, 404, or none set) is `config`
+ * and stops after the first, anything else that is not a Bot API result is `retry`. Like sendMessage: the URL carries
+ * the token, so nothing here is logged.
  */
 export async function getBotIdentity(opts: {
   token: string | null;
   fetch: typeof fetch;
   timeoutMs: number;
+  withUsername: boolean;
 }): Promise<BotIdentity> {
   const { token } = opts;
   if (token === null) return { outcome: 'config' };
   const webhook = await botApiResult(token, 'getWebhookInfo', opts);
   if (webhook.outcome !== 'ok') return webhook;
+  const webhookUrl = webhook.result.url;
+  if (typeof webhookUrl !== 'string') return { outcome: 'retry' };
+  const date = webhook.result.last_error_date;
+  const message = webhook.result.last_error_message;
+  const lastError = Number.isSafeInteger(date) && typeof message === 'string' ? { date: date as number, message } : null;
+  if (!opts.withUsername) return { outcome: 'ok', webhookUrl, lastError, username: null };
   const me = await botApiResult(token, 'getMe', opts);
   if (me.outcome !== 'ok') return me;
-  const webhookUrl = webhook.result.url;
   const username = me.result.username;
-  if (typeof webhookUrl !== 'string' || typeof username !== 'string') return { outcome: 'retry' };
-  return { outcome: 'ok', webhookUrl, username };
+  if (typeof username !== 'string') return { outcome: 'retry' };
+  return { outcome: 'ok', webhookUrl, lastError, username };
 }
 
 async function botApiResult(

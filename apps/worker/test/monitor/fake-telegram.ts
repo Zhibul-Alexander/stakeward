@@ -23,8 +23,16 @@ const DESCRIPTIONS: Partial<Record<TelegramReply, string>> = {
   500: 'Internal Server Error',
 };
 
-/** What getWebhookInfo and getMe report; `reply` other than 200 answers both with that error instead. */
-export type BotIdentityScript = { webhookUrl: string; username: string; reply: TelegramReply };
+/**
+ * What getWebhookInfo and getMe report; `reply` other than 200 answers both with that error instead. `lastError`
+ * is getWebhookInfo's last_error_date (unix s) and last_error_message, left out of the answer when not set.
+ */
+export type BotIdentityScript = {
+  webhookUrl: string;
+  username: string;
+  reply: TelegramReply;
+  lastError?: { date: number; message: string };
+};
 
 export class FakeTelegram {
   readonly requests: TelegramRequest[] = [];
@@ -113,7 +121,15 @@ export class FakeTelegram {
     const result =
       method === 'getMe'
         ? { id: 123456789, is_bot: true, first_name: 'Stakeward', username: this.identity.username, can_join_groups: false }
-        : { url: this.identity.webhookUrl, has_custom_certificate: false, pending_update_count: 0, max_connections: 40 };
+        : {
+            url: this.identity.webhookUrl,
+            has_custom_certificate: false,
+            pending_update_count: 0,
+            max_connections: 40,
+            ...(this.identity.lastError === undefined
+              ? {}
+              : { last_error_date: this.identity.lastError.date, last_error_message: this.identity.lastError.message }),
+          };
     return Response.json({ ok: true, result });
   }
 
