@@ -135,6 +135,7 @@
       "items": {
         "scope": "It cannot protect liquid staking tokens, stake on an exchange, SOL in your wallet balance or validator vote accounts.",
         "mainKeyActions": "It cannot stop a thief with your main key from stopping your staking or moving it to another validator. While the lock holds, they still cannot take the SOL.",
+        "split": "It cannot stop a thief with your main key from splitting your stake into many small stake accounts. Each part keeps the lock, but a rescue moves at most {max} of them per run: act early, and extend the lock with your second key first.",
         "afterEnd": "It cannot keep a thief out after the lock ends. If your main key may be stolen, rescue your stake before that date.",
         "lostMain": "It cannot help if you lose your main key. Withdrawing always needs the main key, with or without the lock.",
         "lostSecond": "It cannot shorten the wait if you lose your second key. The lock ends on its date, not before.",
@@ -1639,7 +1640,7 @@
       },
       "good-second-key": {
         "q": "What makes a good second key?",
-        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Stakeward has not been tested with a Ledger, so try one with a small stake first. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase."
+        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Stakeward has not been tested with a Ledger, so try one with a small stake first. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase.\n\nUse your second key only to co-sign Stakeward transactions; do not connect it to other sites. One signature on a fake site can hand your lock to a thief's key."
       },
       "different-seed": {
         "q": "Why must the two keys come from different seed phrases?",
@@ -1651,7 +1652,7 @@
       },
       "main-stolen": {
         "q": "My main key was stolen. What now?",
-        "a": "Stay calm: while the lock holds, the thief cannot take the stake. They may still stop your staking or move it to another validator.\n\nRescue before the lock ends: after that time the thief can withdraw. If you need more time, first extend the lock with your second key alone.\n\nOn a device you trust, make a new wallet with a new seed phrase and put about {rescueAmount} on it. Then open Rescue: your main key, your second key and the new wallet sign together, and the stake moves to the new wallet. Afterwards, stake it again from the new wallet.\n\nDo not send SOL to the stolen wallet: thieves' bots empty it within seconds."
+        "a": "Stay calm: while the lock holds, the thief cannot take the stake. They may still stop your staking or move it to another validator. They may also split it into many small stake accounts. Each part keeps the lock.\n\nRescue before the lock ends: after that time the thief can withdraw. One rescue run moves at most {rescueMax} stake accounts, and Stakeward cannot move them all at once. If you need more time, or there are many, first extend the lock on each with your second key alone, then rescue them run by run.\n\nOn a device you trust, make a new wallet with a new seed phrase and put about {rescueAmount} on it. Then open Rescue: your main key, your second key and the new wallet sign together, and the stake moves to the new wallet. Afterwards, stake it again from the new wallet.\n\nDo not send SOL to the stolen wallet: thieves' bots empty it within seconds."
       },
       "main-lost": {
         "q": "I lost my main key. Can Stakeward help?",
@@ -1680,6 +1681,10 @@
       "fake-site": {
         "q": "How do I avoid a fake Stakeward site?",
         "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. A stake account that says Locked by another key is not locked by your key. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
+      },
+      "check-explorer": {
+        "q": "How can I check my lock without Stakeward?",
+        "a": "Stakeward reads the network through its own server, so a hacked server could show you a wrong state. To check without it, open Solana Explorer by typing explorer.solana.com yourself, and look up your stake account. In its lockup, the custodian must be your second key and the end time the date you chose; its withdraw authority must be your main key."
       },
       "ledger": {
         "q": "What will my Ledger show?",

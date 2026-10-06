@@ -79,7 +79,7 @@ const depositShown = () =>
 const ROLE_SYNONYMS = /\b(second wallet|main wallet|backup key|primary key|recovery key|co-?signer|guardian)\b/i;
 
 describe('landing page structure', () => {
-  it('has the hero, the three-step scheme, the twelve limits, every section once and one primary button', async () => {
+  it('has the hero, the three-step scheme, the thirteen limits, every section once and one primary button', async () => {
     renderLanding();
     expect(screen.getByRole('heading', { level: 1, name: 'Protect your staked SOL' })).toBeInTheDocument();
 
@@ -89,7 +89,7 @@ describe('landing page structure', () => {
       'Get alerts',
       'Rescue or withdraw',
     ]);
-    expect(section('cannot-do').querySelectorAll('li')).toHaveLength(12);
+    expect(section('cannot-do').querySelectorAll('li')).toHaveLength(13);
     expect(within(section('cannot-do')).getByRole('heading', { level: 2, name: 'What Stakeward cannot do' })).toHaveAttribute(
       'id',
       'cannot-do-title',
@@ -315,6 +315,33 @@ describe('landing words and numbers', () => {
     // Never a 2FA wallet (CLAUDE.md section 1); no synonym for Main key, Second key, New wallet (D81).
     expect(document.body.textContent).not.toMatch(/\b2FA\b|two-factor/i);
     expect(document.body.textContent).not.toMatch(ROLE_SYNONYMS);
+  });
+
+  // SECURITY-CHECK П4, П8, П26: the honest limits the security check found, said before anyone protects a stake.
+  it('says that a thief can split a locked stake and that a rescue run moves at most 10 accounts', async () => {
+    renderLanding();
+    await depositShown();
+    expect(section('cannot-do')).toHaveTextContent(
+      'It cannot stop a thief with your main key from splitting your stake into many small stake accounts. Each part keeps the lock, but a rescue moves at most 10 of them per run: act early, and extend the lock with your second key first.',
+    );
+    const mainStolen = section('faq-main-stolen');
+    expect(mainStolen).toHaveTextContent('They may also split it into many small stake accounts. Each part keeps the lock.');
+    expect(mainStolen).toHaveTextContent('One rescue run moves at most 10 stake accounts, and Stakeward cannot move them all at once.');
+    expect(mainStolen).toHaveTextContent(
+      'If you need more time, or there are many, first extend the lock on each with your second key alone, then rescue them run by run.',
+    );
+  });
+
+  it('keeps the second key for Stakeward, and says how to check a lock without Stakeward', async () => {
+    renderLanding();
+    await depositShown();
+    expect(section('faq-good-second-key')).toHaveTextContent(
+      'Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.',
+    );
+    const check = section('faq-check-explorer');
+    expect(check.querySelector('summary')).toHaveTextContent('How can I check my lock without Stakeward?');
+    expect(check).toHaveTextContent('Solana Explorer');
+    expect(check).toHaveTextContent('the custodian must be your second key');
   });
 
   it('promises "alerts, not SOL" only for a server that is down: the same server delivers this website', async () => {
