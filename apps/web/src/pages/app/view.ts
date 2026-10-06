@@ -128,6 +128,7 @@ export const appLinks = {
   /** The protect wizard with these accounts selected (`account` repeated for several). */
   protect: (accounts: readonly Address[]) => `/protect?${new URLSearchParams(accounts.map((a) => ['account', a])).toString()}`,
   extend: (account: Address) => `/extend/${account}`,
+  secondKey: (account: Address) => `/second-key/${account}`,
   withdraw: (account: Address) => `/withdraw/${account}`,
   rescue: (mainKey: Address) => `/rescue?${new URLSearchParams({ address: mainKey }).toString()}`,
 };

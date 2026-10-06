@@ -9,6 +9,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { SecondKeyPage } from '@/pages/SecondKeyPage';
 import { StatsPage } from '@/pages/StatsPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
@@ -33,7 +34,7 @@ function Lazy({ children }: { children: ReactNode }) {
   );
 }
 
-/** Every route of CLAUDE.md section 9. Unknown paths get a not-found page with a way back. */
+/** Every route of CLAUDE.md section 9, and /second-key/:account (F7). Unknown paths get a not-found page with a way back. */
 export function AppRoutes() {
   return (
     <Switch>
@@ -51,6 +52,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/extend/:account">
         <ExtendPage />
+      </Route>
+      <Route path="/second-key/:account">
+        <SecondKeyPage />
       </Route>
       <Route path="/rescue">
         <RescuePage />

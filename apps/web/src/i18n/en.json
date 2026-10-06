@@ -37,6 +37,7 @@
       "protect": "Protect your stake",
       "withdraw": "Withdraw",
       "extend": "Extend the lock",
+      "secondKey": "Change the second key",
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "recovery": "Recovery card",
@@ -1023,6 +1024,10 @@
     "noLater": "No period ends later than the current lock. You can still remove the lock.",
     "continue": "Review and sign",
     "phone": "In a phone wallet's own browser this works when your second key holds a little SOL for the fee.",
+    "changeKey": {
+      "hint": "If your second key may be stolen, or you want another one, hand this lock to a new second key. The end stays.",
+      "link": "Hand the lock to a new second key"
+    },
     "removeConfirm": "I understand that after this, anyone with my main key can withdraw this stake right away",
     "mainPays": "Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least {amount}, then press Check again.",
     "result": "Lock change",
@@ -1040,6 +1045,55 @@
       "other-second-key": "Another key holds this lock now. Only that key can change it.",
       "not-later": "The lock already ends later than this. Choose again.",
       "lock-end-passed": "The chosen end is too close or has passed. Choose again."
+    }
+  },
+  "secondKey": {
+    "intro": "Your second key hands the lock to a new second key, which signs too. The lock keeps its end date, and your SOL stays where it is.",
+    "epochLocked": "This lock is held until epoch {epoch}. Stakeward changes the second key only of a lock that ends on a date, so it leaves this one alone. The recovery card shows the command that can.",
+    "notLocked": "This stake account has no lock that a second key holds, so there is no second key to change.",
+    "protect": "Protect it",
+    "choose": {
+      "heading": "Connect your new second key",
+      "body": "Use a wallet made from a seed phrase of its own: not your main key's, and not the one of the second key you replace. Your current second key and the new one sign now. After that only the new one can co-sign a withdrawal or change the lock.",
+      "current": "The second key that holds the lock now. It signs, and never pays the fee: it may be stolen.",
+      "slotDescription": "The wallet that becomes your second key. Connecting signs nothing.",
+      "oneBrowser": "Both second keys sign in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
+      "newKey": "Your new second key:",
+      "endStays": "This change keeps the end of the lock: {date}.",
+      "seedCheck": "My new second key comes from a different seed phrase than my main key",
+      "seedHint": "If both keys come from one seed phrase, whoever gets that phrase has both keys and the lock stops nothing.",
+      "needNewKey": "Connect your new second key to continue.",
+      "needSeedCheck": "Confirm that your new second key comes from a different seed phrase than your main key.",
+      "fixProblem": "Choose another wallet as your new second key.",
+      "problem": {
+        "zero-key": "This is the empty address, not a wallet. Choose another wallet as your new second key.",
+        "main-key": "This is your main key. Choose a wallet from a different seed phrase.",
+        "staker": "This wallet manages staking for this stake account. Choose another wallet as your new second key.",
+        "stake-account": "This is the stake account, not a wallet. Choose another wallet as your new second key.",
+        "current-second-key": "This is the second key that holds the lock now. Choose a wallet from a new seed phrase."
+      }
+    },
+    "sign": {
+      "heading": "Hand the lock to your new second key",
+      "mainPays": "Your new second key has too little SOL for the network fee, so your main key pays and signs too. To have the new second key pay, send it at least {amount}, then press Check again."
+    },
+    "result": "Second key change",
+    "done": {
+      "heading": "Your new second key holds the lock",
+      "newKey": "Now held by your new second key:",
+      "oldKey": "Your old second key can no longer change the lock or co-sign a withdrawal:",
+      "end": "The lock still ends on {date}.",
+      "card": "Your recovery card names the old second key. Open the new card and print it again.",
+      "openCard": "Open the recovery card"
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "epoch-locked": "An epoch holds this lock, so Stakeward does not change its second key.",
+      "other-account": "This change is for another stake account.",
+      "not-locked": "This stake account has no lock in force any more. Protect it again with your new second key.",
+      "not-current-second-key": "Another key holds this lock now. Only that key can hand it over.",
+      "lock-ending": "The lock ends too soon to hand it over. Once it has ended, protect the stake again with your new second key."
     }
   },
   "devCosign": {
@@ -1498,6 +1552,7 @@
     "stolenSecond": {
       "title": "If your second key is stolen",
       "body": "The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and so freeze the stake. Hand the lock to a new second key first. The new second key must come from its own seed phrase, never from the Ledger or wallet that holds the main key. The old and the new second key sign; the new one pays:",
+      "stakeward": "Change the second key: the old and the new second key sign in one transaction, and the lock keeps its end.",
       "after": "If the thief got there first, only their key can change the lock now, and the stake stays locked until the time they chose. Your SOL still cannot leave without the main key."
     },
     "lostSecond": {

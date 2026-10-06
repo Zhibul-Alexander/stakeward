@@ -123,6 +123,13 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
               {t('extend.continue')}
             </Button>
           </div>
+          {/* F7: the other thing a second key can do with its lock, one step aside from this page's main one. */}
+          <div className="flex flex-col items-start gap-2 border-t border-border pt-5" data-slot="change-second-key">
+            <p className="max-w-prose text-sm text-muted">{t('extend.changeKey.hint')}</p>
+            <Button asChild variant="outline" size="sm">
+              <Link href={appLinks.secondKey(account.address)}>{t('extend.changeKey.link')}</Link>
+            </Button>
+          </div>
         </section>
       );
     }

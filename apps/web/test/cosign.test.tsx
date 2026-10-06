@@ -282,6 +282,13 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
       expected: problem('not-linkable-kind'),
     },
     {
+      // F7 is live only (D69): a well-formed hand-over of the lock, on the paying main key's nonce and signed by it.
+      name: "a change of second key on the main key's nonce, signed by the main key",
+      fragment: () =>
+        fragment(built({ kind: 'change-second-key', stakeAccount: S, secondKey: K.address, newSecondKey: X }, A.address, nonceA), [A]),
+      expected: problem('not-linkable-kind'),
+    },
+    {
       name: "a protect on the main key's nonce, not signed",
       fragment: () => fragment(built(protect(), A.address, nonceA)),
       expected: problem('fee-payer-unsigned'),
