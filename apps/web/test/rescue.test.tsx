@@ -447,7 +447,15 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       // S1 and S2 keep their lock; S3 had none and still has none. Done says both, never that the second key locks S3.
       expect(screen.queryByText(/still holds the lock/)).not.toBeInTheDocument();
       expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
-      expect(screen.getByText('A stake account that had no lock still has none. Protect it, with your new wallet as the main key.')).toBeInTheDocument();
+      expect(screen.getByText('1 stake account had no lock, and it still has none.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Protect 1 stake account with your new wallet as the main key' })).toHaveAttribute(
+        'href',
+        `/protect?account=${S3}`,
+      );
+      // A card printed before names the old main key: the new card of the pair (D74) opens from the first locked account.
+      expect(screen.getByRole('link', { name: 'Open the new recovery card' }).getAttribute('href')).toMatch(
+        new RegExp(`^/recovery/(${S1}|${S2})$`),
+      );
       for (const id of [S1, S2, S3]) {
         const after = w.testChain.stakeAccount(id);
         expect(after?.staker).toBe(w.D.address);
@@ -630,6 +638,8 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       // Only a locked account moved: nothing to say about accounts without a lock.
       expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
       expect(screen.queryByText(/had no lock/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /^Protect / })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Open the new recovery card' })).toHaveAttribute('href', `/recovery/${S1}`);
       expect(w.testChain.stakeAccount(S1)?.withdrawer).toBe(w.D.address);
       expect(w.testChain.stakeAccount(split)?.withdrawer).toBe(w.A.address);
 

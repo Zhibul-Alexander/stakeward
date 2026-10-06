@@ -1421,7 +1421,17 @@
       "owner": "Now controlled by your new wallet:",
       "useNew": "From now on your new wallet is the main key of these stake accounts. Stop using the old main key: anything sent to it may be taken.",
       "lockKept": "Each lock stays as it was, and your second key still holds it.",
-      "noLock": "A stake account that had no lock still has none. Protect it, with your new wallet as the main key.",
+      "noLockOne": "1 stake account had no lock, and it still has none.",
+      "noLockOther": "{count} stake accounts had no lock, and they still have none.",
+      "lockEndedOne": "The lock of 1 stake account had already ended, so it is not protected now.",
+      "lockEndedOther": "The locks of {count} stake accounts had already ended, so they are not protected now.",
+      "protectOne": "Protect 1 stake account with your new wallet as the main key",
+      "protectOther": "Protect {count} stake accounts with your new wallet as the main key",
+      "recovery": {
+        "title": "Print a new recovery card",
+        "body": "Your new wallet is now the main key of these stake accounts. A recovery card printed before names your old main key, and its commands no longer work for them. Print the new card and keep it with your second key. It holds no secrets.",
+        "open": "Open the new recovery card"
+      },
       "delegate": {
         "title": "Earn rewards again",
         "body": "These stake accounts are no longer staking. Your new wallet can delegate them to the same validator again. Check that this is your validator:",
