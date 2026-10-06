@@ -144,7 +144,6 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
   const mainId = useId();
   const secondId = useId();
   const confirmId = useId();
-  const anyLocked = view.owned.some((row) => row.protection === 'protected' || row.protection === 'expiring');
   return (
     <>
       {view.noLongerProtected.length === 0 ? null : <NoLongerProtectedBanner accounts={view.noLongerProtected} />}
@@ -163,7 +162,9 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
         ) : (
           <p className="text-sm text-muted">{t('app.lists.noneOwned')}</p>
         )}
-        {anyLocked ? (
+        {/* Always, for any stake of this main key: a fresh device knows no second key, and an unlocked account can be
+            moved too (D70). The victim is told to use another computer, which is exactly such a device. */}
+        {view.owned.length > 0 ? (
           <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
             {t('app.results.rescueNote')}
             <Link
@@ -309,7 +310,7 @@ function NoLongerProtectedBanner({ accounts }: { accounts: readonly Address[] })
           : t('app.noLongerProtected.titleOther', { count: accounts.length })}
       </AlertTitle>
       <AlertDescription className="flex flex-col gap-3 text-foreground">
-        <p>{t('app.noLongerProtected.body')}</p>
+        <p>{accounts.length === 1 ? t('app.noLongerProtected.bodyOne') : t('app.noLongerProtected.body')}</p>
         <div>
           <Button asChild variant="danger" size="sm">
             <Link href={appLinks.protect(accounts)}>

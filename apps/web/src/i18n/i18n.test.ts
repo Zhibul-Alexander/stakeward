@@ -52,7 +52,7 @@ describe('en.json', () => {
   // command, which fails with LockupInForce or CustodianMissing).
   it('points the command line hints for locks Stakeward cannot handle to the option that makes them work', () => {
     expect(en.withdraw.unsupportedLock).toContain('solana withdraw-stake --help');
-    expect(en.rescue.stake.unsupported).toContain('solana stake-authorize --help');
+    expect(en.rescue.stake.unsupported).toContain('solana stake-authorize-checked --help');
   });
 
   it('never calls the product a 2FA wallet', () => {

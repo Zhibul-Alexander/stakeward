@@ -104,7 +104,7 @@ describe('/second-key/:account: hand the lock to a new second key (F7)', () => {
       ).toBeInTheDocument();
       // The risks before the action, with the date (UX rule 6).
       expect(document.querySelector('[data-risk="second-key-can-freeze"]')).toHaveTextContent(
-        `Whoever holds the second key can freeze this stake by moving the lock date. Keep it as safe as your main key.This change keeps the end of the lock: ${DATE}.`,
+        `Whoever holds the second key can freeze this stake by moving the lock date. Keep it as safe as the main key.This change keeps the end of the lock: ${DATE}.`,
       );
       expect(document.querySelector('[data-risk="lose-second-key"]')).toHaveTextContent(DATE);
 

@@ -10,7 +10,8 @@ import { useSyncExternalStore } from 'react';
 
 /**
  * What a /cosign link holds, read from its fragment alone (CLAUDE.md section 6), before any chain read:
- * - `bad`: no transaction Stakeward can read (not `#tx=`, not base64url, empty or too long);
+ * - `bad`: no transaction Stakeward can read (not `#tx=`, not base64url, empty or too long, or bytes that are not a
+ *   whole transaction, as when a messenger cut the link off);
  * - `rejected`: the inspector refuses the bytes (another program, an unknown instruction, a lookup table, ...);
  * - `problem`: the bytes are a Stakeward transaction, but not a link Stakeward makes (core `cosignLinkProblem`);
  * - `ok`: a link Stakeward makes; the chain decides the rest (plan.ts).
@@ -26,7 +27,8 @@ export async function readLink(fragment: string): Promise<LinkRead> {
   const bytes = parseCosignFragment(fragment);
   if (bytes === null) return { kind: 'bad' };
   const inspected = await inspectTransaction(bytes);
-  if (!inspected.ok) return { kind: 'rejected', error: inspected.error };
+  // Bytes that are not a whole transaction (a link cut off by a messenger) are a broken link, not a hostile one.
+  if (!inspected.ok) return inspected.error.code === 'malformed' ? { kind: 'bad' } : { kind: 'rejected', error: inspected.error };
   const problem = cosignLinkProblem(inspected.summary);
   if (problem !== null) return { kind: 'problem', problem, summary: inspected.summary };
   return { kind: 'ok', bytes, summary: inspected.summary };

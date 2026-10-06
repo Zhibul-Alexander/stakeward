@@ -57,6 +57,13 @@ describe('readLink', () => {
     expect(read).toMatchObject({ kind: 'rejected', error: { code: 'unknown-program' } });
   });
 
+  it('bad: a valid link cut off by a messenger (the bytes still decode as base64url, not as a transaction)', async () => {
+    const bytes = await signed(buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA }).bytes, [A]);
+    for (const keep of [bytes.length - 1, Math.floor(bytes.length / 2), 10]) {
+      expect(await readLink(`#${cosignFragment(bytes.slice(0, keep))}`), String(keep)).toEqual({ kind: 'bad' });
+    }
+  });
+
   it('problem: a Stakeward transaction that is not a link Stakeward makes (the fee payer has not signed)', async () => {
     const { bytes } = buildTransaction(protect(), { feePayer: A.address, lifetime: nonceA });
     const read = await readLink(`#${cosignFragment(bytes)}`);

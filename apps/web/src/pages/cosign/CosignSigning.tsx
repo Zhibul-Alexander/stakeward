@@ -2,6 +2,7 @@ import type { Address, Signature } from '@solana/kit';
 import {
   actionRoles,
   actionTarget,
+  formatUtcDate,
   scannerStatus,
   stakeActivationStatus,
   type ChainClock,
@@ -172,7 +173,9 @@ function AskBlock({ summary }: { summary: TransactionSummary }) {
           <Alert tone="info" role="note" data-slot="cosign-ask" data-kind="protect">
             <InfoIcon aria-hidden="true" />
             <AlertDescription className="text-foreground">
-              <p className="font-medium">{t('cosign.ask.protect')}</p>
+              <p className="font-medium">
+                {t('cosign.ask.protect', { date: formatUtcDate(action.lockUntil) ?? action.lockUntil.toString() })}
+              </p>
             </AlertDescription>
           </Alert>
           <RiskNote risk="second-key-can-freeze" />

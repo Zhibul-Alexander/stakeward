@@ -208,7 +208,7 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       await waitFor(() => {
         expect(api.calls).toEqual([[S1, S2]]);
       });
-      await screen.findByText('Monitoring is on: Stakeward checks these stake accounts every few minutes.');
+      await screen.findByText('Monitoring is on: Stakeward checks these stake accounts every few minutes. To hear about a change, turn on Telegram alerts below.');
 
       const telegram = screen.getByRole('link', { name: /Open the Stakeward bot in Telegram/ });
       expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${w.A.address}`);
@@ -522,7 +522,8 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       // The other device: /cosign with only the second key's wallet.
       const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K] });
       const other = renderCosignPage(w.chain, new URL(url).hash, [second]);
-      await other.view.findByText(en.cosign.ask.protect, undefined, WAIT);
+      // The holder of the second key is told the date the lock would run to (no context of their own, CLAUDE.md section 9).
+      await other.view.findByText(/^The owner of this stake asks your wallet to become its second key until \d{1,2} [A-Z][a-z]+ \d{4}\./, undefined, WAIT);
       await connectAndContinue(other.user, 'Second key', 'Second Wallet', other.view);
       await other.user.click(await other.view.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT));
       await other.view.findByRole('heading', { name: en.cosign.done.title }, WAIT);
@@ -625,7 +626,7 @@ describe('/protect step gates', () => {
       // Another key's lock: shown, not selectable.
       expect(selectBox(locked)).toBeDisabled();
       expect(selectBox(locked)).not.toBeChecked();
-      expect(screen.getByText('Locked by another key. Only that key can change this lock.')).toBeInTheDocument();
+      expect(screen.getByText('Locked by a key this browser does not know. If it is your second key, extend the lock instead.')).toBeInTheDocument();
       // The link named an account this main key cannot withdraw (DECISIONS.md D36).
       expect(screen.queryByRole('checkbox', { name: `Protect stake account ${shortAddress(theirs)}` })).toBeNull();
       const outside = document.querySelector('[data-slot="left-out"]') as HTMLElement;

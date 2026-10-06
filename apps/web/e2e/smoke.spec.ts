@@ -125,7 +125,7 @@ const ROUTES: readonly SmokeRoute[] = [
     ready: null,
     shows: async (page) => {
       await expect(page.getByRole('heading', { level: 2, name: 'Which main key may be stolen?' })).toBeVisible();
-      await expect(page.getByText(/^Your stake is locked until /)).toBeVisible();
+      await expect(page.getByText(/^Your locked stake accounts stay locked until at least /)).toBeVisible();
       await expect(page.locator('[data-slot="rescue-movable"] article[data-slot="account-row"]')).toHaveCount(1);
     },
     screen: 'rescue-start',

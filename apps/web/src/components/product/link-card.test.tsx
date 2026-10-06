@@ -22,7 +22,7 @@ describe('LinkCard', () => {
         cancel={<button type="button">Cancel slot</button>}
       />,
     );
-    expect(screen.getByRole('heading', { level: 3, name: 'Send this link to your Second key' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Send this link to the device with your Second key' })).toBeInTheDocument();
     expect(screen.getByText(SECOND)).toBeInTheDocument();
     expect(screen.getByText(/never a key/)).toBeInTheDocument();
     expect(screen.getByText(/Scan the code with the other device's camera/)).toBeInTheDocument();

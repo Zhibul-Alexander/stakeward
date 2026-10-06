@@ -160,7 +160,7 @@ describe('/app statuses without a known second key (CLAUDE.md section 5, D14)', 
     const before = view([]); // by address on a phone, or a fresh browser
     const after = view([K]); // the owner connects the second key
     // Fails today: with no key known the thief's lock is "Protected" (green) and counted: "540 SOL protected";
-    // after connecting K it is "Locked by another key" and the total drops to 40 SOL.
+    // after connecting K it is "Locked by a second key" and the total drops to 40 SOL.
     expect(before.totals.protectedLamports).toBeLessThanOrEqual(after.totals.protectedLamports);
     const plantedRow = before.owned.find((row) => row.account.address === planted);
     // Fix round of step 3: AccountView has no secondKeyConfirmed any more; a lock held by an unknown key is someone else's.
@@ -202,11 +202,11 @@ describe('/app "Is this lock yours?" by address (CLAUDE.md section 6, F1: K must
     await userEvent.click(within(confirm).getByRole('button', { name: 'Connect a wallet as Second key' }));
     await userEvent.click(within(confirm).getByRole('button', { name: 'Main Wallet' }));
 
-    // Fails today: A fills the Second key slot, and the owner's own lock (held by K) flips to "Locked by another key".
+    // Fails today: A fills the Second key slot, and the owner's own lock (held by K) flips to "Locked by a second key".
     await waitFor(() => {
       expect(ports.slots.getSnapshot().second?.address).not.toBe(A);
     });
-    // The slot says why and how to go on (CLAUDE.md section 6). The row stays Locked by another key: with no second key
+    // The slot says why and how to go on (CLAUDE.md section 6). The row stays Locked by a second key: with no second key
     // known, no lock is called the viewer's (D14, fix round of step 3), but never because A became the second key.
     expect(within(confirm).getByText('This account is already your Main key.')).toBeInTheDocument();
     expect(within(confirm).getByText('Switch to your second account in the wallet, then press Continue.')).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('AccountRow lock date', () => {
         managedByService={false}
       />,
     );
-    // Fails today: "Locked by another key  until 13 September 2020".
+    // Fails today: "Locked by a second key  until 13 September 2020".
     expect(screen.queryByText(/until .*2020/)).toBeNull();
   });
 });

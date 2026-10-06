@@ -1,4 +1,5 @@
 import { ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
+import { Link } from 'wouter';
 import { SOURCE_CODE_URL } from '@/config';
 import { t, type MessageKey } from '@/i18n';
 
@@ -8,8 +9,8 @@ type FaqEntry = {
   question: MessageKey;
   /** The answer's paragraphs, in order. Only answers may use the program's words (custodian, withdrawer): UX rule 4. */
   answer: readonly MessageKey[];
-  /** A link under the answer; it opens in a new tab. */
-  link?: { href: string; label: MessageKey } | undefined;
+  /** A link under the answer: another site opens in a new tab, a page of this site (`internal`) in this one. */
+  link?: { href: string; label: MessageKey; internal?: boolean } | undefined;
 };
 
 /** README.md sections on GitHub: recovery with the Solana command line, without Stakeward. */
@@ -51,6 +52,7 @@ const FAQ: readonly FaqEntry[] = [
     id: 'thief',
     question: 'landing.faq.thief.question',
     answer: ['landing.faq.thief.answer.cannot', 'landing.faq.thief.answer.can', 'landing.faq.thief.answer.rescue'],
+    link: { href: '/rescue', label: 'landing.faq.thief.link', internal: true },
   },
   {
     id: 'lose-second',
@@ -139,7 +141,16 @@ function FaqItem({ entry }: { entry: FaqEntry }) {
             {t(key)}
           </p>
         ))}
-        {link === undefined ? null : (
+        {link === undefined ? null : link.internal === true ? (
+          <p>
+            <Link
+              href={link.href}
+              className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+            >
+              {t(link.label)}
+            </Link>
+          </p>
+        ) : (
           <p>
             <a
               href={link.href}
