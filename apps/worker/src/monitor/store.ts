@@ -188,24 +188,37 @@ ON CONFLICT (stake_account) DO UPDATE SET
   fingerprint = excluded.fingerprint
 WHERE accounts.state = 'closed' AND excluded.slot > accounts.slot`,
 
-  // ?1 = today (YYYY-MM-DD, UTC). /start link writes the webhook made today: meta.link_writes {"day","n"}, 0 on a new
-  // day (telegram/webhook.ts MAX_LINK_WRITES_PER_DAY).
-  LINK_WRITES: `SELECT CASE WHEN value ->> '$.day' = ?1 THEN value ->> '$.n' ELSE 0 END AS n FROM meta WHERE key = 'link_writes'`,
+  // The /start batch (telegram/webhook.ts): LINK_COUNT, LINK_WALLET, LINK_STATE. meta.link_writes counts the links
+  // /start added on one UTC day: {"day", "n": all chats, "chats": {"<chat id>": n}, "last": token}. LINK_COUNT counts
+  // the link only when it is new and every limit allows it, and leaves its token in "last"; LINK_WALLET inserts only
+  // under that token. A batch is one transaction, so a link is added exactly when it is counted. A new day starts
+  // from 0 with no chats. Chat ids are decimal integers: safe inside a JSON path label.
 
-  // ?1 = today. One more /start link write today (a new day starts at 1); in the batch before LINK_WALLET.
-  LINK_WRITES_UP: `INSERT INTO meta (key, value) VALUES ('link_writes', json_object('day', ?1, 'n', 1))
-ON CONFLICT (key) DO UPDATE SET value = json_object('day', ?1, 'n',
-  CASE WHEN meta.value ->> '$.day' = ?1 THEN (meta.value ->> '$.n') + 1 ELSE 1 END)`,
+  // ?1 wallet, ?2 chat, ?3 today (YYYY-MM-DD, UTC), ?4 token, ?5 links per chat (20), ?6 links per day (all chats),
+  // ?7 links per chat per day.
+  LINK_COUNT: `INSERT INTO meta (key, value)
+SELECT 'link_writes', json_object('day', ?3, 'n', d.n + 1, 'chats', json_set(d.chats, '$."' || ?2 || '"', d.chat_n + 1), 'last', ?4)
+FROM (SELECT COALESCE(m.value ->> '$.n', 0) AS n, COALESCE(m.value -> '$.chats', '{}') AS chats,
+             COALESCE(m.value ->> ('$.chats."' || ?2 || '"'), 0) AS chat_n
+      FROM (SELECT 1) AS one LEFT JOIN meta m ON m.key = 'link_writes' AND m.value ->> '$.day' = ?3) AS d
+WHERE NOT EXISTS (SELECT 1 FROM alert_links WHERE wallet = ?1 AND chat_id = ?2)
+  AND (SELECT COUNT(*) FROM alert_links WHERE chat_id = ?2) < ?5
+  AND d.n < ?6 AND d.chat_n < ?7
+ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
 
-  // ?1 wallet, ?2 chat, ?3 now ms, ?4 = links per chat (20). The limit and the insert are one atomic statement.
+  // ?1 wallet, ?2 chat, ?3 now ms, ?4 token: inserts only after a LINK_COUNT with this token counted it.
   LINK_WALLET: `INSERT INTO alert_links (wallet, chat_id, created_at, last_event_id)
 SELECT ?1, ?2, ?3, (SELECT COALESCE(MAX(id), 0) FROM events)
-WHERE (SELECT COUNT(*) FROM alert_links WHERE chat_id = ?2) < ?4
+WHERE EXISTS (SELECT 1 FROM meta WHERE key = 'link_writes' AND value ->> '$.last' = ?4)
 ON CONFLICT (wallet, chat_id) DO NOTHING`,
 
-  // ?1 wallet, ?2 chat; in the same batch, after LINK_WALLET.
+  // ?1 wallet, ?2 chat, ?3 today. Before the batch (refuse without a write) and as its last statement.
   LINK_STATE: `SELECT EXISTS (SELECT 1 FROM alert_links WHERE wallet = ?1 AND chat_id = ?2) AS linked,
-       (SELECT COUNT(*) FROM accounts WHERE state != 'closed' AND (withdrawer = ?1 OR custodian = ?1)) AS watched`,
+       (SELECT COUNT(*) FROM accounts WHERE state != 'closed' AND (withdrawer = ?1 OR custodian = ?1)) AS watched,
+       (SELECT COUNT(*) FROM alert_links WHERE chat_id = ?2) AS links,
+       COALESCE((SELECT value ->> '$.n' FROM meta WHERE key = 'link_writes' AND value ->> '$.day' = ?3), 0) AS day_writes,
+       COALESCE((SELECT value ->> ('$.chats."' || ?2 || '"') FROM meta
+                 WHERE key = 'link_writes' AND value ->> '$.day' = ?3), 0) AS chat_writes`,
 
   // ?1 chat
   STATUS: `SELECT l.wallet,
@@ -341,6 +354,48 @@ export function insertWatchedStatements(
     statements.push(db.prepare(SQL.INSERT_WATCHED).bind(JSON.stringify(chunk), nowMs));
   }
   return statements;
+}
+
+/** Limits of /start (telegram/webhook.ts, telegram/texts.ts). */
+export type LinkLimits = { linksPerChat: number; writesPerDay: number; writesPerChatPerDay: number };
+
+/** A LINK_STATE row, numbers as numbers. */
+export type LinkState = { linked: boolean; watched: number; links: number; dayWrites: number; chatWrites: number };
+
+/** LINK_STATE of `wallet` in `chatId` on `today` (YYYY-MM-DD, UTC). */
+export function linkStateStatement(db: D1Database, wallet: string, chatId: string, today: string): D1PreparedStatement {
+  return db.prepare(SQL.LINK_STATE).bind(wallet, chatId, today);
+}
+
+/** The LINK_STATE row of a result, or null without one. */
+export function linkStateOf(result: D1Result | null | undefined): LinkState | null {
+  const row = result?.results[0] as Record<string, unknown> | undefined;
+  if (row === undefined) return null;
+  return {
+    linked: Number(row.linked) === 1,
+    watched: Number(row.watched),
+    links: Number(row.links),
+    dayWrites: Number(row.day_writes),
+    chatWrites: Number(row.chat_writes),
+  };
+}
+
+/**
+ * The /start batch for a link not there yet: LINK_COUNT, LINK_WALLET, LINK_STATE. `token` must be new for every
+ * batch (crypto.randomUUID()).
+ */
+export function linkWalletStatements(
+  db: D1Database,
+  args: { wallet: string; chatId: string; today: string; nowMs: number; token: string; limits: LinkLimits },
+): D1PreparedStatement[] {
+  const { wallet, chatId, today, nowMs, token, limits } = args;
+  return [
+    db
+      .prepare(SQL.LINK_COUNT)
+      .bind(wallet, chatId, today, token, limits.linksPerChat, limits.writesPerDay, limits.writesPerChatPerDay),
+    db.prepare(SQL.LINK_WALLET).bind(wallet, chatId, nowMs, token),
+    linkStateStatement(db, wallet, chatId, today),
+  ];
 }
 
 /** The lease value in `meta.pass_lease`; `until: 0` = free. */

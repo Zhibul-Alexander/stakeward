@@ -9,10 +9,13 @@ import {
   chunkUpdateStatement,
   insertWatchedStatements,
   leaseAcquireStatement,
+  linkStateStatement,
+  linkWalletStatements,
   putMetaStatement,
   reminderDaysStatement,
   SQL,
   type AccountRow,
+  type LinkLimits,
   type WatchRow,
 } from '../../src/monitor/store.ts';
 import { key, LOCK_UNTIL } from '../transactions.ts';
@@ -518,8 +521,24 @@ describe('delivery statements', () => {
 });
 
 describe('webhook statements', () => {
-  const linkWallet = (wallet: string, chat: string, nowMs = NOW_MS) =>
-    db.batch([db.prepare(SQL.LINK_WALLET).bind(wallet, chat, nowMs, 20), db.prepare(SQL.LINK_STATE).bind(wallet, chat)]);
+  const TODAY = '2026-10-05';
+  const LIMITS: LinkLimits = { linksPerChat: 20, writesPerDay: 1000, writesPerChatPerDay: 50 };
+  /** The /start batch: [LINK_COUNT, LINK_WALLET, LINK_STATE], each call with a fresh token. */
+  const linkWallet = (wallet: string, chat: string, opts: { nowMs?: number; today?: string; limits?: LinkLimits } = {}) =>
+    db.batch(
+      linkWalletStatements(db, {
+        wallet,
+        chatId: chat,
+        today: opts.today ?? TODAY,
+        nowMs: opts.nowMs ?? NOW_MS,
+        token: crypto.randomUUID(),
+        limits: opts.limits ?? LIMITS,
+      }),
+    );
+  const linkWrites = async () =>
+    JSON.parse((await db.prepare("SELECT value FROM meta WHERE key = 'link_writes'").first<{ value: string }>())?.value ?? 'null') as unknown;
+  const state = async (wallet: string, chat: string, today = TODAY) =>
+    (await linkStateStatement(db, wallet, chat, today).all()).results;
 
   it('LINK_WALLET starts at the newest event id and is idempotent; LINK_STATE counts live accounts of the wallet', async () => {
     await seed(watchRow(10), watchRow(11, { withdrawer: OTHER }), watchRow(12));
@@ -527,28 +546,82 @@ describe('webhook statements', () => {
     await insertEvent(key(10), 'DEACTIVATED', 1);
     await insertEvent(key(10), 'STAKER_CHANGED', 2);
 
-    const [inserted, state] = await linkWallet(SECOND, '42');
+    const [counted, inserted, after] = await linkWallet(SECOND, '42');
+    expect(counted?.meta.changes).toBe(1);
     expect(inserted?.meta.changes).toBe(1);
-    expect(state?.results).toEqual([{ linked: 1, watched: 2 }]);
-    const [again, stateAgain] = await linkWallet(SECOND, '42', NOW_MS + 1);
+    expect(after?.results).toEqual([{ linked: 1, watched: 2, links: 1, day_writes: 1, chat_writes: 1 }]);
+    const [countedAgain, again, afterAgain] = await linkWallet(SECOND, '42', { nowMs: NOW_MS + 1 });
+    expect(countedAgain?.meta.changes).toBe(0);
     expect(again?.meta.changes).toBe(0);
-    expect(stateAgain?.results).toEqual([{ linked: 1, watched: 2 }]);
+    expect(afterAgain?.results).toEqual([{ linked: 1, watched: 2, links: 1, day_writes: 1, chat_writes: 1 }]);
     expect(await links()).toEqual([{ wallet: SECOND, chat_id: '42', last_event_id: 2 }]);
 
-    const [, nothingWatched] = await linkWallet(key(99), '42');
-    expect(nothingWatched?.results).toEqual([{ linked: 1, watched: 0 }]);
+    const [, , nothingWatched] = await linkWallet(key(99), '42');
+    expect(nothingWatched?.results).toEqual([{ linked: 1, watched: 0, links: 2, day_writes: 2, chat_writes: 2 }]);
   });
 
   it('LINK_WALLET: with no events the link starts at 0; a chat follows at most 20 wallets', async () => {
     for (let n = 100; n < 120; n++) await linkWallet(key(n), '42');
     expect(await links()).toHaveLength(20);
     expect((await links()).every((l) => l.last_event_id === 0)).toBe(true);
-    const [refused, state] = await linkWallet(key(120), '42');
+    const [counted, refused, after] = await linkWallet(key(120), '42');
+    expect(counted?.meta.changes).toBe(0);
     expect(refused?.meta.changes).toBe(0);
-    expect(state?.results).toEqual([{ linked: 0, watched: 0 }]);
+    expect(after?.results).toEqual([{ linked: 0, watched: 0, links: 20, day_writes: 20, chat_writes: 20 }]);
     // An existing link stays linked at the limit; another chat is not affected.
-    expect((await linkWallet(key(100), '42'))[1]?.results).toEqual([{ linked: 1, watched: 0 }]);
-    expect((await linkWallet(key(120), '43'))[1]?.results).toEqual([{ linked: 1, watched: 0 }]);
+    expect((await linkWallet(key(100), '42'))[2]?.results).toMatchObject([{ linked: 1, links: 20 }]);
+    expect((await linkWallet(key(120), '43'))[2]?.results).toMatchObject([{ linked: 1, links: 1, chat_writes: 1 }]);
+  });
+
+  it('LINK_COUNT counts only the links LINK_WALLET adds, per day and per chat (meta.link_writes)', async () => {
+    await linkWallet(MAIN, '42');
+    await linkWallet(MAIN, '42');
+    await linkWallet(SECOND, '42');
+    await linkWallet(MAIN, '-1001234567890');
+    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 3, chats: { '42': 2, '-1001234567890': 1 } });
+    // A /stop deletes links, not the count: the same wallet linked again counts again.
+    await db.prepare(SQL.STOP).bind('42').run();
+    await linkWallet(MAIN, '42');
+    expect(await linkWrites()).toMatchObject({ day: TODAY, n: 4, chats: { '42': 3, '-1001234567890': 1 } });
+    expect(await state(OTHER, '42')).toEqual([{ linked: 0, watched: 0, links: 1, day_writes: 4, chat_writes: 3 }]);
+    // A new day starts from 0, and its count holds only the chats that linked that day.
+    await linkWallet(OTHER, '43', { today: '2026-10-06' });
+    expect(await linkWrites()).toMatchObject({ day: '2026-10-06', n: 1, chats: { '43': 1 } });
+    expect(await state(OTHER, '42', '2026-10-06')).toMatchObject([{ day_writes: 1, chat_writes: 0 }]);
+  });
+
+  it('LINK_COUNT refuses past the day\'s budget or the chat\'s, and LINK_WALLET then adds nothing', async () => {
+    const tight: LinkLimits = { linksPerChat: 20, writesPerDay: 3, writesPerChatPerDay: 2 };
+    await linkWallet(key(100), '42', { limits: tight });
+    await linkWallet(key(101), '42', { limits: tight });
+    const [chatFull, notAdded, after] = await linkWallet(key(102), '42', { limits: tight });
+    expect(chatFull?.meta.changes).toBe(0);
+    expect(notAdded?.meta.changes).toBe(0);
+    expect(after?.results).toMatchObject([{ linked: 0, links: 2, day_writes: 2, chat_writes: 2 }]);
+    // Another chat still links until the day's budget is used up.
+    await linkWallet(key(100), '43', { limits: tight });
+    const [dayFull, , afterDay] = await linkWallet(key(101), '43', { limits: tight });
+    expect(dayFull?.meta.changes).toBe(0);
+    expect(afterDay?.results).toMatchObject([{ linked: 0, day_writes: 3, chat_writes: 1 }]);
+    expect(await links()).toHaveLength(3);
+    expect(await linkWrites()).toMatchObject({ n: 3, chats: { '42': 2, '43': 1 } });
+  });
+
+  it('LINK_WALLET adds nothing without the token of the LINK_COUNT before it', async () => {
+    const [counted] = await linkWallet(MAIN, '42');
+    expect(counted?.meta.changes).toBe(1);
+    const statements = linkWalletStatements(db, {
+      wallet: SECOND,
+      chatId: '42',
+      today: TODAY,
+      nowMs: NOW_MS,
+      token: 'not-the-last-token',
+      limits: LIMITS,
+    });
+    const [inserted, after] = await db.batch(statements.slice(1));
+    expect(inserted?.meta.changes).toBe(0);
+    expect(after?.results).toMatchObject([{ linked: 0 }]);
+    expect(await links()).toEqual([{ wallet: MAIN, chat_id: '42', last_event_id: 0 }]);
   });
 
   it('STATUS lists the wallets of the chat in link order with their live account counts; STOP forgets the chat', async () => {
