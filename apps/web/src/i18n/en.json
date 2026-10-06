@@ -1684,7 +1684,7 @@
       },
       "check-explorer": {
         "q": "How can I check my lock without Stakeward?",
-        "a": "Stakeward reads the network through its own server, so a hacked server could show you a wrong state. To check without it, open Solana Explorer by typing explorer.solana.com yourself, and look up your stake account. In its lockup, the custodian must be your second key and the end time the date you chose; its withdraw authority must be your main key."
+        "a": "Stakeward reads the network through its own server, so a hacked server could show you a wrong state. To check without it, open Solana Explorer by typing explorer.solana.com yourself, and look up your stake account. At the top it must say \"Account is locked! Lockup expires on\" and the date you chose. If that line is missing, your stake account is not locked. Under Authorities, the Lockup Authority Address must be your second key and the Withdraw Authority Address must be your main key."
       },
       "ledger": {
         "q": "What will my Ledger show?",

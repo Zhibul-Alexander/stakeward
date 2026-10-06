@@ -341,7 +341,14 @@ describe('landing words and numbers', () => {
     const check = section('faq-check-explorer');
     expect(check.querySelector('summary')).toHaveTextContent('How can I check my lock without Stakeward?');
     expect(check).toHaveTextContent('Solana Explorer');
-    expect(check).toHaveTextContent('the custodian must be your second key');
+    // Explorer's own labels (solana-foundation/explorer StakeAccountSection): the lock is a "Lockup expires on" banner
+    // shown only while it holds, the second key is "Lockup Authority Address", the main key "Withdraw Authority Address".
+    // Explorer shows no "custodian" and no lockup section, so the FAQ never sends a user to look for one.
+    expect(check).toHaveTextContent('Account is locked! Lockup expires on');
+    expect(check).toHaveTextContent('Lockup Authority Address must be your second key');
+    expect(check).toHaveTextContent('Withdraw Authority Address must be your main key');
+    expect(check).toHaveTextContent('If that line is missing, your stake account is not locked.');
+    expect(check.textContent).not.toMatch(/custodian/i);
   });
 
   it('promises "alerts, not SOL" only for a server that is down: the same server delivers this website', async () => {
