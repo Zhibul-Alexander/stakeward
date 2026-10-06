@@ -4,9 +4,10 @@ const CI = Boolean(process.env['CI']);
 const MAINNET = process.env['E2E_CLUSTER'] === 'mainnet';
 /**
  * Port of `vite preview`. Locally Playwright reuses a server already listening on it, so two checkouts (parallel
- * worktrees) on one machine would test each other's build: give each its own with E2E_PORT.
+ * worktrees) on one machine would test each other's build: give each its own with E2E_PORT. Unset or empty means 4173.
  */
-const PORT = Number(process.env['E2E_PORT'] ?? '4173');
+const RAW_PORT = process.env['E2E_PORT'];
+const PORT = Number(RAW_PORT === undefined || RAW_PORT === '' ? '4173' : RAW_PORT);
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65_535) throw new Error('E2E_PORT must be a TCP port number.');
 const BASE_URL = `http://localhost:${String(PORT)}`;
 
