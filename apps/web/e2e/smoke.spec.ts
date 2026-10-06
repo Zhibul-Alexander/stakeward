@@ -1,46 +1,144 @@
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
 import { MAIN, mockApi, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
+import { text } from './texts.ts';
 
 /**
- * The entry routes under the production headers (CLAUDE.md sections 11 and 13), with the worker's API mocked
- * (e2e/mock-api.ts). One test walks every route, so the Playwright suite stays at 10 tests or fewer as routes are
- * added. With UPDATE_SCREENS=1 a route with a screen goes to docs/screens/<screen>-{1280,360}.png.
+ * Every route of the site under the production headers (CLAUDE.md sections 9, 11 and 13; step 8 spec 12.3), with the
+ * worker's API mocked (e2e/mock-api.ts). One test walks every route, so the Playwright suite stays at 10 tests or
+ * fewer as routes are added. It runs on the devnet build (`pnpm e2e`) and on the mainnet build that prod serves
+ * (`pnpm e2e:mainnet`, E2E_CLUSTER=mainnet). With UPDATE_SCREENS=1 the devnet run writes each route's screen to
+ * docs/screens/<screen>-{1280,360}.png.
  */
+const CLUSTER = process.env['E2E_CLUSTER'] === 'mainnet' ? 'mainnet' : 'devnet';
+const DEVNET = CLUSTER === 'devnet';
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
 const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 const STATIC_HEADERS = readStaticHeaders();
+const SOURCE_CODE_URL = 'https://github.com/Zhibul-Alexander/stakeward';
 
 type SmokeRoute = {
   path: string;
   /** The page's h1. */
   heading: string;
-  /** A stake account page: the h2 that shows it has read the account and says what can be done; null otherwise. */
-  ready: string | null;
-  /** What else the route must show once it has read what it needs (before axe and the screenshot). */
+  /** A stake account page: the h2 that shows it has read the account and says what can be done. */
+  ready?: string | undefined;
+  /** What else the route must show once it has read what it needs (before the overflow check, axe and the screen). */
   shows?: ((page: Page) => Promise<void>) | undefined;
+  /** Checks that change the page, after axe and the screen. */
+  after?: ((page: Page) => Promise<void>) | undefined;
   /** The route reads nothing from the API (a page that needs no wallet and no chain read to say what it says). */
   noApi?: boolean | undefined;
-  screen: string | null;
+  screen?: string | undefined;
 };
 
+/** Writes docs/screens/<name>-<width>.png, on the devnet build with UPDATE_SCREENS=1 only. */
+async function screenshot(page: Page, name: string) {
+  if (!UPDATE_SCREENS || !DEVNET) return;
+  mkdirSync(SCREENS_DIR, { recursive: true });
+  const width = page.viewportSize()?.width ?? 0;
+  await page.screenshot({ path: `${SCREENS_DIR}${name}-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+}
+
+async function bodyColours(page: Page) {
+  return page.evaluate(() => {
+    const style = getComputedStyle(document.body);
+    return { color: style.color, background: style.backgroundColor };
+  });
+}
+
+/** The landing page: fees with the deposit read from the network, the three steps, the limits, the network, the FAQ. */
+async function landingShows(page: Page) {
+  await expect(page.locator('#fees')).toContainText('0.00105664 SOL');
+  await expect(page.locator('#how-it-works ol > li')).toHaveCount(3);
+  await expect(page.locator('#cannot-do')).toBeVisible();
+  const network = page.locator('[data-slot="network"]');
+  await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
+  await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
+  // Every answer open, so the overflow check and axe cover the whole FAQ.
+  const questions = page.locator('#faq details');
+  expect(await questions.count()).toBeGreaterThan(0);
+  await questions.evaluateAll((items) => {
+    for (const item of items) (item as HTMLDetailsElement).open = true;
+  });
+}
+
+/**
+ * Deep links into the landing page: the footer's `/#cannot-do` followed from another page (a fresh load) shows that
+ * section; a later `/#faq-ledger` (a hash change, as an in-page link makes) opens that question and shows it.
+ */
+async function landingDeepLinks(page: Page) {
+  await page.goto('/stats');
+  await page.goto('/#cannot-do');
+  await expect(page.locator('#cannot-do')).toBeInViewport();
+  const ledger = page.locator('#faq-ledger');
+  await expect(ledger).not.toHaveAttribute('open');
+  await page.goto('/#faq-ledger');
+  await expect(ledger).toHaveAttribute('open', '');
+  await expect(ledger).toBeInViewport();
+}
+
+/**
+ * The recovery card on paper: light whatever the reader's theme, without the site's header, footer and Print button,
+ * with the commands.
+ */
+async function recoveryPrint(page: Page) {
+  await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
+  const light = await bodyColours(page);
+  const screenOnly: Locator[] = [
+    page.getByRole('banner', { includeHidden: true }),
+    page.getByRole('contentinfo', { includeHidden: true }),
+    page.getByRole('button', { name: text('recovery.print'), includeHidden: true }),
+  ];
+  for (const part of screenOnly) await expect(part).toBeVisible();
+
+  await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+  for (const part of screenOnly) await expect(part).toBeHidden();
+  expect(await bodyColours(page)).toEqual(light);
+  await expect(page.locator('[data-slot="command-block"]').first()).toBeVisible();
+  await screenshot(page, 'recovery-print');
+  await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
+}
+
+async function notFoundShows(page: Page) {
+  await expect(page.getByRole('main').getByRole('link', { name: text('common.backHome') })).toHaveAttribute('href', '/');
+}
+
+const NOT_FOUND = { heading: text('common.notFoundTitle'), shows: notFoundShows };
+
 const ROUTES: readonly SmokeRoute[] = [
-  { path: '/', heading: 'Protect your staked SOL', ready: null, screen: null },
-  { path: '/app', heading: 'Your stake accounts', ready: null, screen: null },
-  { path: '/protect', heading: 'Protect your stake', ready: null, screen: 'protect-start' },
-  { path: `/withdraw/${SMOKE_STAKE}`, heading: 'Withdraw', ready: 'Withdraw 1,250.5 SOL to your main key', screen: 'withdraw' },
-  { path: `/extend/${SMOKE_STAKE}`, heading: 'Extend the lock', ready: 'New end of the lock', screen: 'extend' },
+  { path: '/', heading: text('landing.title'), shows: landingShows, after: landingDeepLinks, screen: 'landing' },
+  { path: '/app', heading: text('app.title') },
+  {
+    path: '/protect',
+    heading: text('common.pages.protect'),
+    // Step 1 of 5 asks for the main key; without it the wizard reads nothing from the network (UX rule 1).
+    shows: async (page) => {
+      await expect(page.getByRole('heading', { level: 2, name: text('protect.accounts.heading') })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: text('components.walletSlot.connectAs', { role: text('common.roles.main') }) }),
+      ).toBeVisible();
+    },
+    noApi: true,
+    screen: 'protect-start',
+  },
+  {
+    path: `/withdraw/${SMOKE_STAKE}`,
+    heading: text('common.pages.withdraw'),
+    ready: text('withdraw.ready.title', { amount: '1,250.5 SOL' }),
+    screen: 'withdraw',
+  },
+  { path: `/extend/${SMOKE_STAKE}`, heading: text('common.pages.extend'), ready: text('extend.legend'), screen: 'extend' },
   {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
-    heading: 'Rescue your stake',
-    ready: null,
+    heading: text('common.pages.rescue'),
     shows: async (page) => {
-      await expect(page.getByRole('heading', { level: 2, name: 'Which main key may be stolen?' })).toBeVisible();
-      await expect(page.getByText(/^Your stake is locked until /)).toBeVisible();
+      await expect(page.getByRole('heading', { level: 2, name: text('rescue.stake.heading') })).toBeVisible();
+      await expect(page.getByText(text('rescue.stake.safeUntil', { date: '10 April 2027' }))).toBeVisible();
       await expect(page.locator('[data-slot="rescue-movable"] article[data-slot="account-row"]')).toHaveCount(1);
     },
     screen: 'rescue-start',
@@ -48,23 +146,42 @@ const ROUTES: readonly SmokeRoute[] = [
   {
     // A broken link: said before anything is read or asked (step 7 spec 8.3).
     path: '/cosign#tx=@@',
-    heading: 'Co-sign a transaction',
-    ready: null,
+    heading: text('common.pages.cosign'),
     shows: async (page) => {
-      await expect(page.getByRole('heading', { name: 'This link is broken' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: text('cosign.bad.title') })).toBeVisible();
     },
     noApi: true,
     screen: 'cosign-broken',
   },
+  {
+    // The card of the smoke stake's pair of keys, read from the network with no wallet.
+    path: `/recovery/${SMOKE_STAKE}`,
+    heading: text('recovery.title'),
+    shows: async (page) => {
+      await expect(page.locator('[data-slot="recovery-account"]')).toHaveCount(1);
+    },
+    after: recoveryPrint,
+    screen: 'recovery',
+  },
+  {
+    path: '/stats',
+    heading: text('stats.title'),
+    shows: async (page) => {
+      await expect(page.getByRole('definition')).toHaveText(['12', '1,234 SOL', '7']);
+    },
+    screen: 'stats',
+  },
+  { path: '/no-such-page', ...NOT_FOUND, noApi: true, screen: 'not-found' },
+  // The devnet-only pages are not in a mainnet build (on devnet, dev-ui.spec.ts and dev-cosign.spec.ts cover them).
+  ...(DEVNET ? [] : [{ path: '/dev/ui', ...NOT_FOUND }, { path: '/dev/cosign', ...NOT_FOUND }]),
 ];
 
-test('every entry route renders under the production headers, without console errors or axe violations', async ({
+test('every route renders under the production headers, without console errors or axe violations', async ({
   page,
   expectNoA11yViolations,
 }) => {
-  // Seven pages, each checked by axe in two themes.
-  test.setTimeout(180_000);
-  const width = page.viewportSize()?.width ?? 0;
+  // Each page is checked by axe in two themes; the landing page with every FAQ answer open is the longest.
+  test.setTimeout(20_000 * ROUTES.length);
   const apiRequests: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
@@ -75,7 +192,7 @@ test('every entry route renders under the production headers, without console er
 
   for (const route of ROUTES) {
     await test.step(route.path, async () => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
       apiRequests.length = 0;
       const response = await page.goto(route.path);
       expect(response?.status()).toBe(200);
@@ -85,24 +202,20 @@ test('every entry route renders under the production headers, without console er
       }
 
       await expect(page.getByRole('heading', { level: 1, name: route.heading, exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Stakeward home' })).toBeVisible();
+      await expect(page.getByRole('link', { name: text('nav.home') })).toBeVisible();
       const footer = page.getByRole('contentinfo');
-      await expect(footer.getByRole('link', { name: 'Source code' })).toHaveAttribute(
-        'href',
-        'https://github.com/Zhibul-Alexander/stakeward',
-      );
-      await expect(footer.getByRole('link', { name: 'What Stakeward cannot do' })).toHaveAttribute('href', '/#cannot-do');
-      await expect(footer.getByText('No warranty. MIT license.')).toBeVisible();
+      await expect(footer.getByRole('link', { name: text('footer.sourceCode') })).toHaveAttribute('href', SOURCE_CODE_URL);
+      await expect(footer.getByRole('link', { name: text('footer.cannotDo') })).toHaveAttribute('href', '/#cannot-do');
+      await expect(footer.getByRole('link', { name: text('footer.stats') })).toHaveAttribute('href', '/stats');
+      await expect(footer.getByText(text('footer.license'))).toBeVisible();
+      // The header says when the site works on the test network, and only then.
+      const devnetBadge = page.getByRole('banner').getByText(text('common.devnet'), { exact: true });
+      if (DEVNET) await expect(devnetBadge).toBeVisible();
+      else await expect(devnetBadge).toHaveCount(0);
 
-      if (route.path === '/protect') {
-        // Step 1 of 5 asks for the main key; without it the wizard reads nothing from the network (UX rule 1).
-        await expect(page.getByRole('heading', { level: 2, name: 'Choose the stake accounts to protect' })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Connect a wallet as Main key' })).toBeVisible();
-        expect(apiRequests).toEqual([]);
-      }
       await route.shows?.(page);
       if (route.noApi === true) expect(apiRequests).toEqual([]);
-      if (route.ready !== null) {
+      if (route.ready !== undefined) {
         // A stake account page reads its own account, never the search (step 6 spec 4.3).
         await expect(page.getByRole('heading', { level: 2, name: route.ready, exact: true })).toBeVisible();
         await expect(page.locator('article[data-slot="account-row"]')).toHaveAttribute('data-status', 'protected');
@@ -126,11 +239,11 @@ test('every entry route renders under the production headers, without console er
       await page.emulateMedia({ colorScheme: 'dark' });
       await expectNoA11yViolations();
 
-      if (UPDATE_SCREENS && route.screen !== null) {
+      if (route.screen !== undefined) {
         await page.emulateMedia({ colorScheme: 'light' });
-        mkdirSync(SCREENS_DIR, { recursive: true });
-        await page.screenshot({ path: `${SCREENS_DIR}${route.screen}-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+        await screenshot(page, route.screen);
       }
+      await route.after?.(page);
     });
   }
 });

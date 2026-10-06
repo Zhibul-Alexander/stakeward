@@ -4,7 +4,8 @@ import { getAddressEncoder, type Address } from '@solana/kit';
 /**
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
- * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption) and /api/health.
+ * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption), /api/health
+ * and /api/stats.
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
 
@@ -27,9 +28,12 @@ const STAKE_PROGRAM = 'Stake11111111111111111111111111111111111111';
 const SYSVAR_PROGRAM = 'Sysvar1111111111111111111111111111111111111';
 const CLOCK_SYSVAR = 'SysvarC1ock11111111111111111111111111111111';
 
-/** The rent-exempt minimum the way the cluster computes it: (128 + size) bytes × 3 480 lamports × 2 years. */
+/**
+ * The rent-exempt minimum as mainnet and devnet answer it today: (128 + size) bytes × 5 080 lamports (DECISIONS.md
+ * D22). An 80-byte nonce account: 1 056 640 lamports, the landing's "0.00105664 SOL".
+ */
 function rentExempt(size: number): bigint {
-  return (128n + BigInt(size)) * 6_960n;
+  return (128n + BigInt(size)) * 5_080n;
 }
 
 /** One stake account; every field left out takes the usual value (main key MAIN, staked, no lock). */
@@ -74,6 +78,9 @@ export type ApiFixture = {
   /** Receives the query string of every stake account search. */
   searches?: string[];
 };
+
+/** GET /api/stats as the worker answers it (step 8 spec 7): 1 234.567891234 SOL locked shows as "1,234 SOL". */
+export const STATS = { accountsLocked: 12, lamportsLocked: '1234567891234', alertsSent: 7 } as const;
 
 /** The stake account of the smoke loop (step 6 spec 13.3): not staked, locked by SECOND until NOW + 190 days. */
 export const SMOKE_STAKE = '472uhJhLhUNK898jCeGUQ2XYA4PTLM7tqng7o7HB7jmD';
@@ -167,7 +174,7 @@ function rpcResult(fixture: ApiFixture, request: RpcRequest): unknown {
   }
 }
 
-/** Answers /api/stake-accounts, /api/rpc and /api/health on `page` from `fixture`. Call it before the first goto. */
+/** Answers the worker's API on `page` from `fixture` (and /api/stats with STATS). Call it before the first goto. */
 export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   await page.route('**/api/stake-accounts?*', async (route) => {
     const url = new URL(route.request().url());
@@ -191,6 +198,9 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   await page.route('**/api/health', async (route) => {
     const ageMin = fixture.healthAgeMin ?? 2;
     await json(route, { ok: ageMin <= 10, lastMonitorRunAt: new Date(Date.now() - ageMin * 60_000).toISOString() });
+  });
+  await page.route('**/api/stats', async (route) => {
+    await json(route, { ...STATS, now: new Date().toISOString() });
   });
 }
 
