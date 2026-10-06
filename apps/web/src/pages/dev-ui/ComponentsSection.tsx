@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { t } from '@/i18n';
+import { appLinks } from '@/pages/app/view';
 import { FaqAnswer } from '@/pages/landing/Faq.tsx';
 import { REMINDER_DAYS_TEXT } from '@/pages/landing/faq.ts';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
@@ -99,7 +100,9 @@ function rowActions(row: SampleRow) {
 }
 
 function rowLabel(row: SampleRow): string {
-  return row.key === 'managed-by-service' ? t('devUi.states.managedByService') : statusLabel(row.key);
+  if (row.key === 'managed-by-service') return t('devUi.states.managedByService');
+  if (row.key === 'stake-key-changed') return t('devUi.states.stakeKeyChanged');
+  return statusLabel(row.key);
 }
 
 function SummaryDemo({ sample }: { sample: SampleSummary }) {
@@ -229,6 +232,7 @@ export function ComponentsSection() {
                 protection={row.protection}
                 managedByService={row.managedByService}
                 wasProtected={row.wasProtected}
+                rescueHref={appLinks.rescue(row.account.withdrawer)}
                 actions={rowActions(row)}
               />
             </Demo>

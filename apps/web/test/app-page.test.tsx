@@ -5,6 +5,7 @@ import { formatSol, formatUtcDate, shortAddress, type ChainPort } from '@stakewa
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { LAMPORTS_PER_SOL, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
+import { changeStaker } from '@stakeward/core/test/thief';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -283,6 +284,30 @@ describe('/app on LiteSvmChain', () => {
     expect(within(banner).getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${account}`);
     expect(within(row(account)).getByText('No longer protected')).toBeInTheDocument();
     expect(within(row(account)).getByRole('link', { name: `Protect again stake account ${shortAddress(account)}` })).toBeInTheDocument();
+  });
+
+  // SECURITY-CHECK П6: a thief with the main key changed the stake key of a locked account (CLAUDE.md section 4). The
+  // row says the main key may be stolen and leads to Rescue for that main key, instead of the staking-service hint.
+  it('a protected account whose stake key is another key: the main key may be stolen, with Open Rescue', async () => {
+    const theftChain = await TestChain.create();
+    const owner = await theftChain.fundedKey();
+    const thief = await theftChain.fundedKey();
+    const A = owner.address;
+    const account = await theftChain.createStakeAccount({
+      staker: A,
+      withdrawer: A,
+      lockup: { unixTimestamp: NOW + 100n * DAY, epoch: 0n, custodian: K.address },
+    });
+    await changeStaker(theftChain, { stake: account, withdrawer: owner, newStaker: thief });
+    expect(theftChain.stakeAccount(account)?.staker).toBe(thief.address);
+    renderApp({ path: `/app?address=${A}`, chain: new LiteSvmChain(theftChain), rememberedSecondKeys: [K.address] }, chain);
+
+    await findRow(account);
+    expect(rowStatus(account)).toBe('protected');
+    const theRow = within(row(account));
+    expect(theRow.getByText('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.')).toBeInTheDocument();
+    expect(theRow.getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', `/rescue?address=${A}`);
+    expect(theRow.queryByText('A staking service may manage this stake.')).toBeNull();
   });
 
   it('explains an address without stake accounts (UX rule 13)', async () => {

@@ -145,7 +145,7 @@ function stakeAccount(sample: SampleStake): StakeAccount {
 }
 
 export type SampleRow = {
-  key: StatusBadgeStatus | 'managed-by-service';
+  key: StatusBadgeStatus | 'managed-by-service' | 'stake-key-changed';
   account: StakeAccount;
   activation: ActivationStatus;
   protection: ProtectionStatus;
@@ -183,6 +183,17 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       {
         key: 'managed-by-service',
         stake: { address: SAMPLE.stakeG, sol: 64n, activation: 'active', staker: SAMPLE.serviceStaker },
+      },
+      {
+        // Under the viewer's own lock another key took over staking: what a thief with the main key does first.
+        key: 'stake-key-changed',
+        stake: {
+          address: SAMPLE.stakeE,
+          sol: 300n,
+          activation: 'deactivating',
+          staker: SAMPLE.stranger,
+          lockup: lock(SAMPLE_LOCK_END, SAMPLE.secondKey),
+        },
       },
     ];
   return rows.map((row) => {

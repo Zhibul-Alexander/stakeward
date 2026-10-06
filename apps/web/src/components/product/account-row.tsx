@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Link } from 'wouter';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,8 +42,13 @@ type AccountRowProps = {
   activation: ActivationStatus;
   /** From core `scannerStatus`. */
   protection: ProtectionStatus;
-  /** From core `scannerStatus`: staker != withdrawer, a service may manage the stake. */
+  /**
+   * From core `scannerStatus`: staker != withdrawer. Without a lock of the viewer's second key a service may manage the
+   * stake; under one (Protected, Expiring) it is what a thief with the main key does first, so the row says so.
+   */
   managedByService: boolean;
+  /** Rescue for this account's main key (`/rescue?address=`): linked from that warning. Left out on the rescue pages. */
+  rescueHref?: string | undefined;
   /** F6: this account was protected and its lock is gone. With `protection: 'unprotected'` it shows red. */
   wasProtected?: boolean | undefined;
   /** Buttons or a selection checkbox for this account. */
@@ -61,7 +67,8 @@ const HINTS: Record<StatusBadgeStatus, MessageKey | null> = {
 
 /**
  * One stake account in the accounts list: short address (copy, explorer), SOL, staking state, protection status
- * with the lock end date, the hint that goes with the status, the managed-by-service warning and an action slot.
+ * with the lock end date, the hint that goes with the status, the managed-by-service warning (or, under the viewer's
+ * own lock, the warning that another key can stop or move the stake, with Rescue) and an action slot.
  * The caller computes the statuses with core (`scannerStatus`, `stakeActivationStatus`); this renders them.
  */
 export function AccountRow({
@@ -70,6 +77,7 @@ export function AccountRow({
   protection,
   managedByService,
   wasProtected = false,
+  rescueHref,
   actions,
   className,
 }: AccountRowProps) {
@@ -84,6 +92,9 @@ export function AccountRow({
   const short = shortAddress(account.address);
   const hintKey = HINTS[status];
   const hint = hintKey === null ? null : t(hintKey, { date: date ?? '' });
+  // Another stake key under the viewer's own lock (SECURITY-CHECK П6): a thief with the main key can still stop or move
+  // the stake, and this is what it looks like.
+  const stakeKeyChanged = managedByService && (status === 'protected' || status === 'expiring');
   return (
     <article
       aria-label={t('components.accountRow.label', { address: short })}
@@ -117,7 +128,19 @@ export function AccountRow({
       {hint === null || (status === 'protected' && date === null) ? null : (
         <p className={cn('text-sm', status === 'was-protected' ? 'font-medium text-danger' : 'text-muted')}>{hint}</p>
       )}
-      {managedByService ? (
+      {stakeKeyChanged ? (
+        <Alert tone="warning" role="note">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="flex flex-col items-start gap-2 text-foreground">
+            <p className="font-medium">{t('components.accountRow.stakeKeyChanged')}</p>
+            {rescueHref === undefined ? null : (
+              <Link href={rescueHref} className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover">
+                {t('components.accountRow.openRescue')}
+              </Link>
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : managedByService ? (
         <Alert tone="warning" role="note">
           <TriangleAlertIcon aria-hidden="true" />
           <AlertDescription className="text-foreground">

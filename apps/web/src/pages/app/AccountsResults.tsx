@@ -211,6 +211,8 @@ function Totals({ totals }: { totals: AccountsView['totals'] }) {
 }
 
 function AccountList({ rows, actions }: { rows: readonly AccountView[]; actions: (row: AccountView) => ReactNode }) {
+  // Rescue for the account's own main key (its withdrawer): the address itself in the main list, the owner in the
+  // second-key list. The row links it only under its warning that another key can stop or move the stake.
   return (
     <ul className="flex flex-col gap-3">
       {rows.map((row) => (
@@ -221,6 +223,7 @@ function AccountList({ rows, actions }: { rows: readonly AccountView[]; actions:
             protection={row.protection}
             managedByService={row.managedByService}
             wasProtected={row.wasProtected}
+            rescueHref={appLinks.rescue(row.account.withdrawer)}
             actions={actions(row) ?? undefined}
           />
         </li>

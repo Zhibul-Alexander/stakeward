@@ -290,6 +290,8 @@
       "label": "Stake account {address}",
       "stakeAccount": "Stake account",
       "managedByServiceDetail": "With a lock, the service may fail to rebalance or merge it. Check with the service before you protect it.",
+      "stakeKeyChanged": "Another key can stop or move this stake. If you did not set this up, your main key may be stolen.",
+      "openRescue": "Open Rescue",
       "loadError": "Check your connection, then try again."
     },
     "walletSlot": {
@@ -662,6 +664,7 @@
       "last": "Last step",
       "pickerOpen": "Empty, wallet list open",
       "managedByService": "Managed by a service",
+      "stakeKeyChanged": "Another stake key under your lock",
       "everyStatus": "Every status",
       "batch": "One summary for {count} stake accounts",
       "tooLong": "Too long for a QR code",
