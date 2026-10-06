@@ -1,7 +1,19 @@
 import { getBase58Decoder } from '@solana/kit';
+import { buildTransaction } from '@stakeward/core';
+import { craft, instructionsOf } from '@stakeward/core/test/craft';
 import { describe, expect, it } from 'vitest';
 import { errorOf, fakeUpstream, rpcResponse, testApp, type UpstreamCall } from './fakes.ts';
-import { b64, BLOCKHASH, corruptFirstSignature, key, signedProtect, signedSystemTransfer, unsignedProtect } from './transactions.ts';
+import {
+  b64,
+  BLOCKHASH,
+  corruptFirstSignature,
+  key,
+  signedChangeSecondKey,
+  signedProtect,
+  signedSystemTransfer,
+  unsignedChangeSecondKey,
+  unsignedProtect,
+} from './transactions.ts';
 
 const ADDRESS = key(5);
 const SIGNATURE = getBase58Decoder().decode(new Uint8Array(64).fill(7));
@@ -11,6 +23,13 @@ function unreachable() {
   return fakeUpstream(() => {
     throw new Error('the request should not reach the upstream RPC');
   });
+}
+
+/** `bytes` with its last byte (the end of the last instruction's data) set to `value`; the length stays. */
+function withLastDataByte(bytes: Uint8Array, value: number): Uint8Array {
+  const copy = bytes.slice();
+  copy[copy.length - 1] = value;
+  return copy;
 }
 
 function call(method: string, params?: unknown[], id: unknown = 'req-1') {
@@ -293,6 +312,48 @@ describe('POST /api/rpc: transactions go through the inspector', () => {
       expect(error.code).toBe(-32003);
       expect(error.data).toMatchObject({ check: 'inspector', code: 'invalid-signature' });
       expect(upstream.calls).toHaveLength(0);
+    }
+  });
+
+  it('a change of second key (F7): simulate forwards the unsigned bytes, send forwards the signed bytes exactly', async () => {
+    const unsigned = await unsignedChangeSecondKey();
+    const simulateUpstream = fakeUpstream((c) => rpcResponse(c.json.id, { context: { slot: 1 }, value: { err: null } }));
+    const simulateConfig = { encoding: 'base64', sigVerify: false, replaceRecentBlockhash: true };
+    const simulated = await testApp(simulateUpstream).rpc(call('simulateTransaction', [b64(unsigned.bytes), simulateConfig]));
+    expect(simulated.status).toBe(200);
+    expect(simulateUpstream.calls[0]?.json).toEqual(call('simulateTransaction', [b64(unsigned.bytes), simulateConfig]));
+
+    const { bytes } = await signedChangeSecondKey();
+    const answer = '{"jsonrpc":"2.0","id":"req-1","result":"4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi"}';
+    const sendUpstream = fakeUpstream(() => new Response(answer, { headers: { 'Content-Type': 'application/json' } }));
+    const sent = await testApp(sendUpstream).rpc(call('sendTransaction', [b64(bytes), { encoding: 'base64' }]));
+    expect(await sent.text()).toBe(answer);
+    expect(sendUpstream.calls).toHaveLength(1);
+    expect(sendUpstream.calls[0]?.json.params[0]).toBe(b64(bytes));
+  });
+
+  it('a change of second key that is malformed, or paid by the old second key, never reaches upstream', async () => {
+    const { bytes, secondKey, newSecondKey, stakeAccount } = await signedChangeSecondKey();
+    // The change's instructions as the main key would pay them (the new key a read-only signer), then compiled with
+    // the old second key as fee payer: the builder never makes that, so neither does the inspector.
+    const byMainKey = buildTransaction(
+      { kind: 'change-second-key', stakeAccount, secondKey: secondKey.address, newSecondKey: newSecondKey.address },
+      { feePayer: key(9), lifetime: { kind: 'blockhash', blockhash: BLOCKHASH, lastValidBlockHeight: 1000n } },
+    );
+    const cases: [string, Uint8Array, string][] = [
+      ['a trailing byte', new Uint8Array([...bytes, 0]), 'malformed'],
+      ['a lock end of option tag 2 (decodes as None, not canonical)', withLastDataByte(bytes, 2), 'malformed'],
+      ['paid by the old second key', craft(instructionsOf(byMainKey.bytes), secondKey.address, BLOCKHASH), 'unknown-instruction'],
+    ];
+    for (const [name, transaction, code] of cases) {
+      for (const method of ['simulateTransaction', 'sendTransaction']) {
+        const upstream = unreachable();
+        const res = await testApp(upstream).rpc(call(method, [b64(transaction), { encoding: 'base64' }]));
+        const error = await errorOf(res);
+        expect(error.code, `${name} on ${method}`).toBe(-32602);
+        expect(error.message, `${name} on ${method}`).toBe(`Transaction rejected by inspector: ${code}`);
+        expect(upstream.calls).toHaveLength(0);
+      }
     }
   });
 

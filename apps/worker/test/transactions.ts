@@ -51,6 +51,27 @@ export async function signedProtect(): Promise<ProtectSetup> {
   return { ...setup, bytes: bySecond ?? new Uint8Array() };
 }
 
+export type ChangeSecondKeySetup = { secondKey: TestWallet; newSecondKey: TestWallet; stakeAccount: Address; bytes: Uint8Array };
+
+/** Unsigned change of second key (F7, SetLockupChecked without lock values) on a blockhash, paid by the new key. */
+export async function unsignedChangeSecondKey(): Promise<ChangeSecondKeySetup> {
+  const [secondKey, newSecondKey] = await Promise.all([newTestWallet(), newTestWallet()]);
+  const stakeAccount = key(7);
+  const built = buildTransaction(
+    { kind: 'change-second-key', stakeAccount, secondKey: secondKey.address, newSecondKey: newSecondKey.address },
+    { feePayer: newSecondKey.address, lifetime: { kind: 'blockhash', blockhash: BLOCKHASH, lastValidBlockHeight: 1000n } },
+  );
+  return { secondKey, newSecondKey, stakeAccount, bytes: built.bytes };
+}
+
+/** The same change, signed by the new second key (the fee payer) and then the old one. */
+export async function signedChangeSecondKey(): Promise<ChangeSecondKeySetup> {
+  const setup = await unsignedChangeSecondKey();
+  const [byNew] = await setup.newSecondKey.signTransactions([setup.bytes]);
+  const [byBoth] = await setup.secondKey.signTransactions([byNew ?? new Uint8Array()]);
+  return { ...setup, bytes: byBoth ?? new Uint8Array() };
+}
+
 /** Fully signed rescue on the new wallet's durable nonce: the heaviest kind (3 signatures, 2 stake instructions). */
 export async function signedNonceRescue(): Promise<Uint8Array> {
   const [mainKey, secondKey, newWallet] = await Promise.all([newTestWallet(), newTestWallet(), newTestWallet()]);
