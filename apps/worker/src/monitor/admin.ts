@@ -25,6 +25,9 @@ export type BotMismatch = 'webhook' | 'username';
 
 export type AdminCounts = { stage?: Stage; errorName?: string; passes?: number; kb?: number; bot?: readonly BotMismatch[] };
 
+/** The wrangler environment that deploys each cluster (wrangler.jsonc: env.dev is devnet, env.prod is mainnet). */
+const WRANGLER_ENV: Record<Cluster, string> = { devnet: 'dev', mainnet: 'prod' };
+
 const BOT_MISMATCH: Record<BotMismatch, string> = {
   webhook: "Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook",
   username: 'the bot token belongs to another bot than TELEGRAM_BOT_USERNAME',
@@ -55,9 +58,15 @@ export function adminText(kind: AdminKind, cluster: Cluster | null, counts: Admi
     case 'bot-mismatch': {
       const found = (counts.bot ?? []).map((what) => BOT_MISMATCH[what]);
       const what = found.length === 0 ? "Telegram's webhook or bot is not this deployment's" : found.join(', and ');
+      // The rotation runbook (SECURITY-CHECK П17): both secrets, in the cluster's environment. A webhook set with a new
+      // secret_token while the worker keeps the old TELEGRAM_WEBHOOK_SECRET answers every update 401.
+      const env = cluster === null ? '<env>' : WRANGLER_ENV[cluster];
       return (
-        `${monitor}: ${what}. If you did not change it, the bot token may be stolen: revoke it with BotFather, put ` +
-        'the new one with wrangler secret put TELEGRAM_BOT_TOKEN, then set the webhook again with a new secret token.'
+        `${monitor}: ${what}. If you did not change it, the bot token may be stolen. Revoke it with BotFather and ` +
+        `put the new one with wrangler secret put TELEGRAM_BOT_TOKEN --env ${env}. Then put a new webhook secret with ` +
+        `wrangler secret put TELEGRAM_WEBHOOK_SECRET --env ${env} and call setWebhook with ` +
+        'SITE_ORIGIN/api/telegram/webhook and that same secret as secret_token: while the two differ, the webhook ' +
+        'refuses every update.'
       );
     }
   }

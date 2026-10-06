@@ -12,9 +12,14 @@ describe('admin alerts', () => {
       'Stakeward devnet monitor: the RPC could not be read for 4 passes in a row. Health turns red after 10 minutes.',
     );
     expect(adminText('rescan-dropped', 'devnet', { kb: 100 })).toBe('Stakeward devnet monitor: a rescan answer over 100 KB was skipped.');
-    const advice =
-      'If you did not change it, the bot token may be stolen: revoke it with BotFather, put the new one with wrangler ' +
-      'secret put TELEGRAM_BOT_TOKEN, then set the webhook again with a new secret token.';
+    // The runbook names both secrets and the wrangler environment of the cluster: a webhook set with a new secret
+    // token while the worker keeps the old TELEGRAM_WEBHOOK_SECRET refuses every update (401).
+    const adviceFor = (env: string) =>
+      'If you did not change it, the bot token may be stolen. Revoke it with BotFather and put the new one with ' +
+      `wrangler secret put TELEGRAM_BOT_TOKEN --env ${env}. Then put a new webhook secret with wrangler secret put ` +
+      `TELEGRAM_WEBHOOK_SECRET --env ${env} and call setWebhook with SITE_ORIGIN/api/telegram/webhook and that same ` +
+      'secret as secret_token: while the two differ, the webhook refuses every update.';
+    const advice = adviceFor('prod');
     expect(adminText('bot-mismatch', 'mainnet', { bot: ['webhook'] })).toBe(
       `Stakeward mainnet monitor: Telegram sends this bot's updates to another address than SITE_ORIGIN/api/telegram/webhook. ${advice}`,
     );
@@ -23,8 +28,9 @@ describe('admin alerts', () => {
     );
     expect(adminText('bot-mismatch', 'devnet', { bot: ['webhook', 'username'] })).toBe(
       "Stakeward devnet monitor: Telegram sends this bot's updates to another address than " +
-        `SITE_ORIGIN/api/telegram/webhook, and the bot token belongs to another bot than TELEGRAM_BOT_USERNAME. ${advice}`,
+        `SITE_ORIGIN/api/telegram/webhook, and the bot token belongs to another bot than TELEGRAM_BOT_USERNAME. ${adviceFor('dev')}`,
     );
+    expect(adminText('bot-mismatch', null, { bot: ['webhook'] })).toContain(adviceFor('<env>'));
     // CLUSTER itself broken: the monitor without a cluster name.
     expect(adminText('pass-error', null, { stage: 'config', errorName: 'MonitorConfigError' })).toMatch(
       /^Stakeward monitor: the pass failed at config \(MonitorConfigError\)\./,

@@ -12,8 +12,10 @@ const SECOND = key(2);
 const STAKE = key(10);
 const SPEC: StakeAccountSpec = { state: 'delegated', staker: MAIN, withdrawer: MAIN, custodian: SECOND, unixTimestamp: LOCK_UNTIL };
 const ADVICE =
-  'If you did not change it, the bot token may be stolen: revoke it with BotFather, put the new one with wrangler ' +
-  'secret put TELEGRAM_BOT_TOKEN, then set the webhook again with a new secret token.';
+  'If you did not change it, the bot token may be stolen. Revoke it with BotFather and put the new one with wrangler ' +
+  'secret put TELEGRAM_BOT_TOKEN --env dev. Then put a new webhook secret with wrangler secret put ' +
+  'TELEGRAM_WEBHOOK_SECRET --env dev and call setWebhook with SITE_ORIGIN/api/telegram/webhook and that same secret ' +
+  'as secret_token: while the two differ, the webhook refuses every update.';
 
 afterEach(() => {
   vi.restoreAllMocks();
