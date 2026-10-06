@@ -12,7 +12,8 @@ owner to fill in.
       (D84: the prod address is not published before that).
 - [ ] The numbers from `/stats` and the first users' quotes are filled in (section 8).
 - [ ] The business section is written (section 9).
-- [ ] Every incident below has a source link (section 11).
+- [ ] Every incident below has a source link (section 11): links added on 6 October 2026, the owner opens and checks
+      each one.
 - [ ] The wallet table on the landing page shows the wallet matrix results, and section 4 says the same.
 - [ ] Pitch video (2-3 min) and product demo (under 3 min) are recorded from the scripts in sections 6 and 7.
 - [ ] Logo uploaded: `docs/brand/logo-512.png` (PNG) or `docs/brand/logo.svg`.
@@ -156,7 +157,7 @@ names its sources on screen.
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00-0:20 | Black slide, two lines appear: "8 Sep 2025: about 192,600 SOL, SwissBorg" and "31 Jan 2026: 261,854 SOL, Step Finance". Sources in small type. | On the 8th of September 2025, SwissBorg reported that about 192,600 staked SOL were gone. Public reports say a hacked staking service slipped one hidden instruction into routine transactions: it handed the stake's withdraw key to the attacker. In January 2026, Step Finance reported 261,854 SOL stolen. |
+| 0:00-0:20 | Black slide, two lines appear: "8 Sep 2025: about 192,600 SOL, SwissBorg" and "31 Jan 2026: 261,854 SOL, Step Finance". Sources in small type. | On the 8th of September 2025, SwissBorg reported that about 192,600 staked SOL were gone. Public reports say a hacked staking service slipped hidden instructions into a routine unstaking transaction: they handed the stake accounts' withdraw key to the attacker. In January 2026, Step Finance reported 261,854 SOL stolen. |
 | 0:20-0:40 | Diagram: a stake account with one key; the key copied by a hooded figure; arrow out. | Native stake on Solana answers to one key. Whoever gets it, through a phished seed phrase, malware, or a hidden step in a transaction you approved, can withdraw your stake, or make it theirs. |
 | 0:40-1:05 | The same diagram, a padlock appears on the account with a second key. Then the stake program source, `Meta::set_lockup`, highlighted. | But every stake account has a lock built in: the lockup. While it holds, withdrawing, or changing who can withdraw, also needs the lock's own key. The docs say you can only set it when the account is created. The stake program's code says otherwise, and we proved it on mainnet. |
 | 1:05-1:35 | Devnet site: landing, accounts page "Not protected", the protect wizard, "Review and sign", Done. | Stakeward turns that lock on for the stake you already have, with a second key you control, from a different seed phrase. Your stake keeps earning. A thief with your main key cannot withdraw it and cannot hand it to themselves. The network itself refuses. |
@@ -254,7 +255,11 @@ locks set with other tools count too, the page says so):
 - Validators or teams that tried it: [TODO owner].
 - Quotes from first users: [TODO owner: name or handle, role, one sentence, with permission].
 - Mainnet proof of the mechanism: docs/gate.md, 8 of 8 checks, 5 October 2026.
-- [TODO owner: a sourced figure for SOL held in native stake accounts, with link and date. Do not guess it.]
+- SOL in native stake accounts: about 437.5 million SOL was staked at the end of September 2026 (68.9% of supply), and
+  liquid staking tokens held about 16.6% of it, so roughly 83%, about 365 million SOL, is native stake (Datawallet,
+  "Solana staking statistics", updated 1 October 2026, citing Messari, P2P.org, Staking Rewards and DefiLlama:
+  https://www.datawallet.com/crypto/solana-staking-statistics-and-trends). Say "over 350 million SOL" or "about 83%
+  of staked SOL", and check the live figure on the day of recording: https://www.stakingrewards.com/asset/solana/analytics
 
 ## 9. How the free product becomes a business
 
@@ -282,14 +287,31 @@ Use these as public reports, with a source link next to each in the video and th
 Stakeward would have prevented a specific incident; say what the lock does.
 
 - **SwissBorg, 8 September 2025.** "SwissBorg reported that about 192,600 SOL left its staking program. Public
-  reports say a compromised staking API slipped a hidden change of the stake's withdraw authority into routine
-  transactions; multi-party signing did not stop it." What the lock does: while a lockup held by a separate second
-  key is in force, that change fails with `CustodianMissing` unless the second key signs too (docs/gate.md, check 4
-  on mainnet). [TODO owner: source link]
-- **Step Finance, 31 January 2026.** "Public reports put the loss at 261,854 SOL." No claim about the method.
-  [TODO owner: source link]
-- **Ledger owners, August 2026.** "Phishing aimed at Ledger owners' seed phrases was reported in August 2026." Use
-  only with a source. [TODO owner: source link]
+  reports say an attacker who got into its staking partner's API slipped hidden instructions into a routine
+  unstaking transaction: they handed the withdraw authority of several stake accounts to the attacker." What the
+  lock does: while a lockup held by a separate second key is in force, that change fails with `CustodianMissing`
+  unless the second key signs too (docs/gate.md, check 4 on mainnet).
+  - Kiln and SwissBorg, announcement of 8 September 2025 (no figures, no method):
+    https://www.kiln.fi/post/sol-incident-swissborg---announcement
+  - Halborn: about 192,600 SOL; "eight authorization instructions designed to transfer control over several of the
+    platform's staking accounts" hidden in an unstaking transaction signed days before:
+    https://www.halborn.com/blog/post/explained-the-swissborg-hack-september-2025
+  - QuillAudits: the transaction (from 31 August) moved the withdrawal authority of several stake accounts:
+    https://www.quillaudits.com/blog/hack-analysis/swissborg-exploit
+  - Do not say multi-party signing (MPC) failed to stop it: no source found says so, and QuillAudits writes the
+    authorities were changed "without adequate anomaly detection or multi-signature confirmations".
+- **Step Finance, 31 January 2026.** "Public reports put the loss at 261,854 SOL." No claim about the method beyond
+  what the sources say (compromised devices of the team's executives; the SOL was unstaked and moved).
+  - Whale Alert, citing CertiK's on-chain data: 261,854 SOL unstaked and transferred on 31 January 2026:
+    https://whale-alert.io/stories/f18201194ae359/Step-Finance-treasury-wallets-compromised-attacker-unstaked-261854-SOL-26M-STEP-token-plunges-80
+  - HackMag, 12 February 2026: CertiK's first estimate of 261,854 SOL; executives' devices breached; Step Finance
+    put the total at about $40 million: https://hackmag.com/news/step-finance
+- **Ledger owners, August 2026.** "Phishing aimed at Ledger owners' seed phrases was reported in August 2026."
+  - Zscaler ThreatLabz, 25 September 2026: a campaign analysed in August 2026 used fake Google ads and a fake
+    device check that asked Ledger owners for their recovery phrase:
+    https://www.zscaler.com/blogs/security-research/threat-actors-use-google-ads-target-ledger-users
+
+Sources found on 6 October 2026; open each link before recording and before submitting.
 
 ## 12. Fact sheet
 
