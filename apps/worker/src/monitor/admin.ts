@@ -24,7 +24,7 @@ export function adminText(kind: AdminKind, cluster: Cluster | null, counts: Admi
         'Health turns red after 10 minutes. See Workers Logs.'
       );
     case 'wrong-cluster':
-      return `${monitor}: RPC_URL answers for another cluster. Account closures were not recorded.`;
+      return `${monitor}: an RPC it reads answers for another cluster. Account closures were not recorded.`;
     case 'pass-died':
       return (
         `${monitor}: the previous pass did not finish, most likely the 10 ms CPU limit of the Workers Free plan. ` +

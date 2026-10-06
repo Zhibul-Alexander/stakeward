@@ -211,7 +211,7 @@ describe('/recovery/:account: the recovery card', () => {
           WAIT,
         ),
       ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Protect your stake' })).toHaveAttribute('href', '/protect');
+      expect(screen.getByRole('link', { name: 'Protect your stake' })).toHaveAttribute('href', `/protect?account=${open}`);
       expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
       expect(screen.queryByRole('button', { name: 'Print or save as PDF' })).not.toBeInTheDocument();
       expect(document.querySelectorAll('[data-slot="command-block"]')).toHaveLength(0);

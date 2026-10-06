@@ -1,12 +1,13 @@
 import { translateError, U64_MAX } from '@stakeward/core';
 
 /**
- * GET /api/stats of the worker (CLAUDE.md section 8, DECISIONS D62): the public numbers of the /stats page, counted
- * from D1 when the request arrives. Body, exactly these keys:
+ * GET /api/stats of the worker (CLAUDE.md section 8, DECISIONS D62, D84): the public numbers of the /stats page. The
+ * accounts and the SOL are counted from D1 at most every 10 minutes; the alerts are read on every request. Body,
+ * exactly these keys:
  * - `accountsLocked`: watched stake accounts whose lock is in force now (by the worker's clock), a JSON number;
  * - `lamportsLocked`: the lamports in them, a decimal string (exact above 2^53, where a JSON number is not);
  * - `alertsSent`: Telegram alerts delivered so far, reminders not counted, a JSON number;
- * - `now`: the worker's clock when it counted, ISO 8601 UTC (`Date#toISOString`).
+ * - `now`: the worker's clock when it counted the accounts and the SOL, ISO 8601 UTC (`Date#toISOString`).
  * Any other status is an error, its body is not read: 429 is the per-IP rate limit, 500 a D1 failure.
  */
 export type Stats = {

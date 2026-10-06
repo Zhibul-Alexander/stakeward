@@ -81,7 +81,7 @@ const ROUTES: readonly SmokeRoute[] = [
     ready: null,
     shows: async (page) => {
       await expect(page.locator('[data-slot="stat-value"]')).toHaveText(['3', '2,750.5 SOL', '5']);
-      await expect(page.getByText('Counted on 2 October 2026, 12:00 UTC.')).toBeVisible();
+      await expect(page.getByText('Accounts and SOL counted on 2 October 2026, 12:00 UTC.')).toBeVisible();
       await expect(page.locator('[data-slot="monitoring"]')).toHaveAttribute('data-state', 'fresh');
     },
     apiPaths: ['/api/health', '/api/stats'],

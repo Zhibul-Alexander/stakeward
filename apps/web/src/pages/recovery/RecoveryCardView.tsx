@@ -194,6 +194,8 @@ export function RecoveryCardView({ card, cluster, readAt, siteOrigin }: Recovery
 }
 
 type NoRecoveryCardProps = {
+  /** The stake account, preselected on /protect. */
+  account: string;
   reason: NoCardReason;
   /** When the lock ended (`lock-ended`) or ends (`nobody-holds`), unix seconds; null when there is no such date. */
   date: bigint | null;
@@ -201,7 +203,7 @@ type NoRecoveryCardProps = {
 };
 
 /** Why there is no card, and the way forward: protect the account (F1), or back to the accounts. */
-export function NoRecoveryCard({ reason, date, mainKey }: NoRecoveryCardProps) {
+export function NoRecoveryCard({ account, reason, date, mainKey }: NoRecoveryCardProps) {
   const day = date === null ? null : formatUtcDate(date);
   return (
     <Alert tone={reason === 'lock-ended' ? 'danger' : 'warning'} data-slot="no-recovery-card">
@@ -211,7 +213,7 @@ export function NoRecoveryCard({ reason, date, mainKey }: NoRecoveryCardProps) {
         <div className="flex flex-wrap gap-2 print:hidden">
           {reason === 'nobody-holds' ? null : (
             <Button asChild>
-              <Link href="/protect">{t('common.pages.protect')}</Link>
+              <Link href={`/protect?${new URLSearchParams({ account }).toString()}`}>{t('common.pages.protect')}</Link>
             </Button>
           )}
           <Button asChild variant={reason === 'nobody-holds' ? 'primary' : 'outline'}>

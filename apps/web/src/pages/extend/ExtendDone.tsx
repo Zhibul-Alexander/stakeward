@@ -67,9 +67,13 @@ export function ExtendDone({ headingRef, account, lockUntil, job, checking, chec
       {lockUntil === 0n ? (
         <>
           <RiskNote risk="unlock-opens-window" tone="danger" />
-          <div>
+          <div className="flex flex-wrap gap-2">
             <Button asChild>
               <Link href={appLinks.withdraw(account)}>{t('extend.done.withdraw')}</Link>
+            </Button>
+            {/* After a stolen second key (FAQ), the way back to a lock with a new one. */}
+            <Button asChild variant="outline">
+              <Link href={appLinks.protect([account])}>{t('extend.done.protectAgain')}</Link>
             </Button>
           </div>
         </>
