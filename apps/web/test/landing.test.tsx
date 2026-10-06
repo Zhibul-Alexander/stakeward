@@ -286,6 +286,18 @@ describe('landing FAQ', () => {
     await depositShown();
   });
 
+  it('quotes the status a lock of an unknown key shows, and says that on a new device it is how your own lock looks', async () => {
+    renderLanding();
+    const label = en.status.lockedByOther;
+    const unknownLock = section('faq-locked-by-other');
+    expect(unknownLock.querySelector('summary')).toHaveTextContent(`Why does my stake account say ${label}?`);
+    expect(unknownLock).toHaveTextContent('On a new device or in another browser, your own lock looks like this');
+    // The fake-site check names the same status, and Protected as the only sign of your own key.
+    expect(section('faq-fake-site')).toHaveTextContent(`One that still says ${label} is not locked by the key you connected.`);
+    expect(document.body.textContent).not.toMatch(/Locked by another key/);
+    await depositShown();
+  });
+
   it('lists what a Ledger should show, hedged until a device has shown it', async () => {
     renderLanding();
     const ledger = section('faq-ledger');

@@ -7,7 +7,8 @@ const EXPECTED: [StatusBadgeStatus, string, string][] = [
   ['protected', 'Protected', 'success'],
   ['expiring', 'Expiring soon', 'warning'],
   ['unprotected', 'Not protected', 'neutral'],
-  ['locked-by-other', 'Locked by another key', 'info'],
+  // Not "another key": on a new device the owner's own lock looks like this too. Never Protected (D35).
+  ['locked-by-other', 'Locked by a second key', 'info'],
   ['was-protected', 'No longer protected', 'danger'],
   ['unknown', 'Status unknown', 'outline'],
 ];

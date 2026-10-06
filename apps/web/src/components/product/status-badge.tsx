@@ -16,7 +16,8 @@ import { t, type MessageKey } from '@/i18n';
 /**
  * Everything a stake account's protection can show (CLAUDE.md section 5, D14):
  * - the four scanner statuses of core `scannerStatus` (a lock held by a key the viewer is not known to hold is
- *   Locked by another key, never Protected: the chain cannot say whose key it is);
+ *   Locked by a second key, never Protected: the chain cannot say whose key it is, and on a new device it is the
+ *   viewer's own lock as often as someone else's);
  * - `was-protected`: F6, the account was protected and now stands without a lock (red);
  * - `unknown`: the account could not be read (error state).
  */

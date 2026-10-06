@@ -170,7 +170,7 @@ describe('/app on LiteSvmChain', () => {
     ).toBeInTheDocument();
 
     // Locked by a key that is not the viewer's second key: view only.
-    expect(within(row(stake.foreign)).getByText('Locked by another key')).toBeInTheDocument();
+    expect(within(row(stake.foreign)).getByText('Locked by a second key')).toBeInTheDocument();
     expect(lockHolder(stake.foreign)).toBe(shortAddress(stranger));
     expect(within(row(stake.foreign)).queryAllByRole('link', { name: /stake account/ })).toEqual([]);
 
@@ -223,9 +223,19 @@ describe('/app on LiteSvmChain', () => {
     });
   });
 
-  it('calls every lock Locked by another key, view only, when no second key is known (D14)', async () => {
+  it('calls every lock Locked by a second key, view only, when no second key is known (D14)', async () => {
     const { ports } = renderApp({ path: `/app?address=${main.address}` }, chain);
     await findRow(stake.locked);
+
+    // The owner's own lock on a new device: not called someone else's, and the row says how to confirm it.
+    const own = within(row(stake.locked));
+    expect(own.getByText('Locked by a second key')).toBeInTheDocument();
+    expect(
+      own.getByText(
+        'This browser does not know this key yet. If it is your second key, connect it to manage the lock; if not, only that key can change it.',
+      ),
+    ).toBeInTheDocument();
+    expect(section('Stake accounts')).not.toHaveTextContent(/another key/i);
 
     // The chain cannot say whose key holds a lock: none is called Protected or counted as protected SOL.
     for (const [account, holder] of [[stake.locked, K.address], [stake.expiring, K.address], [stake.foreign, stranger]] as const) {
@@ -247,7 +257,7 @@ describe('/app on LiteSvmChain', () => {
     expect(ports.protectedAccounts.getSnapshot()).toEqual([]);
   });
 
-  it('calls a lock held by an unknown key Locked by another key once a second key is known', async () => {
+  it('calls a lock held by an unknown key Locked by a second key once a second key is known', async () => {
     const otherSecondKey = (await generateKeyPairSigner()).address;
     renderApp({ path: `/app?address=${main.address}`, rememberedSecondKeys: [otherSecondKey] }, chain);
     await findRow(stake.locked);

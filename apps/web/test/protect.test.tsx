@@ -689,7 +689,13 @@ describe('/protect step gates', () => {
       // Another key's lock: shown, not selectable.
       expect(selectBox(locked)).toBeDisabled();
       expect(selectBox(locked)).not.toBeChecked();
-      expect(screen.getByText('Locked by another key. Only that key can change this lock.')).toBeInTheDocument();
+      // Why it cannot be chosen; the row above says what to do if that key is the viewer's own.
+      expect(screen.getByText('Already locked by a second key, so it cannot be locked again here.')).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('article', { name: `Stake account ${shortAddress(locked)}` })).getByText(
+          /^This browser does not know this key yet\. If it is your second key, connect it/,
+        ),
+      ).toBeInTheDocument();
       // The link named an account this main key cannot withdraw (DECISIONS.md D36).
       expect(screen.queryByRole('checkbox', { name: `Protect stake account ${shortAddress(theirs)}` })).toBeNull();
       const outside = document.querySelector('[data-slot="left-out"]') as HTMLElement;
