@@ -13,7 +13,16 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "observability": { "enabled": true },
+  // Workers Logs stay on (the monitor's pass reports, errors). Query strings are redacted: Workers Logs store each
+  // request URL next to the client IP and country, and /api/stake-accounts?withdrawer=, /api/accounts?wallet= and
+  // /api/telegram/link?wallet= name a wallet (CLAUDE.md section 2.7). Inherited by dev and prod. Never turn traces on:
+  // the URLs of outbound requests carry the Helius API key (RPC_URL) and the bot token (test/observability.review.test.ts).
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "logs": { "enabled": true },
+    "traces": { "enabled": false }
+  },
   // Secrets (set with `wrangler secret put <NAME> --env dev|prod`, locally in .dev.vars.dev / .dev.vars.prod; never committed):
   //   RPC_URL                  required. Helius RPC URL including the API key (e.g. https://mainnet.helius-rpc.com/?api-key=...)
   //   RPC_FALLBACK_URL         optional. Second RPC URL, used for reads only when RPC_URL fails. Not listed in

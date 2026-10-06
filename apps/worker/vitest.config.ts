@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
+import { unstable_readConfig } from 'wrangler';
 
 export default defineConfig({
   plugins: [
@@ -32,6 +33,15 @@ export default defineConfig({
           ]),
         ),
       );
+      // `observability` of each environment as wrangler resolves it (test/observability.review.test.ts). The return
+      // type of readConfig lives in a package wrangler does not ship types for: only this one field is read.
+      const readConfig = unstable_readConfig as unknown as (args: { config: string; env: string }) => {
+        observability?: unknown;
+      };
+      const configPath = path.join(import.meta.dirname, 'wrangler.jsonc');
+      const observability = Object.fromEntries(
+        (['dev', 'prod'] as const).map((name) => [name, readConfig({ config: configPath, env: name }).observability]),
+      );
       return {
         wrangler: { configPath: './wrangler.jsonc', environment: 'dev' },
         miniflare: {
@@ -40,6 +50,7 @@ export default defineConfig({
             TEST_MIGRATIONS: migrations,
             TEST_STATIC_HEADERS_FILE: staticHeaders,
             TEST_WORKER_SOURCES: sources,
+            TEST_OBSERVABILITY: JSON.stringify(observability),
             RPC_URL: 'https://primary.rpc.test/?api-key=test-primary-key',
             TELEGRAM_BOT_TOKEN: '123456789:test-token',
             TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret',
