@@ -146,7 +146,7 @@
           "migrations_dir": "migrations"
         }
       ]
-      // Served on workers.dev for now: https://stakeward-prod.zhibul-alexander.workers.dev (DECISIONS.md, «Развёртывание»).
+      // Served on workers.dev for now: https://stakeward-prod.stakeward.workers.dev (DECISIONS.md, «Развёртывание»).
       // A permanent domain, once it is on Cloudflare:
       // "routes": [{ "pattern": "<domain>", "custom_domain": true }]
     }

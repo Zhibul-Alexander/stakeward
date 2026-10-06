@@ -29,7 +29,7 @@ Stakeward
 | --- | --- |
 | Repository (MIT) | https://github.com/Zhibul-Alexander/stakeward |
 | Product, Solana mainnet | `<PROD_URL>` [TODO owner: after step 9] |
-| Test version, Solana devnet | https://stakeward-dev.zhibul-alexander.workers.dev |
+| Test version, Solana devnet | https://stakeward-dev.stakeward.workers.dev |
 | Telegram alerts bot | `@stakeward_bot` (mainnet), `@stakeward_dev_bot` (devnet) |
 | Proof of the mechanism on mainnet | [docs/gate.md](gate.md), section Mainnet: 8 of 8 checks |
 | Recovery without Stakeward | [README, "Recover without Stakeward"](../README.md#recover-without-stakeward) |

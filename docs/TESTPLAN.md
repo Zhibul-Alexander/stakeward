@@ -5,7 +5,32 @@
 
 ## Порядок действий владельца (06.10.2026)
 
-Всё по порядку, каждый этап опирается на предыдущий. Адрес dev: https://stakeward-dev.zhibul-alexander.workers.dev (devnet, SOL там ничего не стоят). Подробные клики по отдельным проверкам — в разделах ниже. Если что-то не совпадает с описанием или непонятно — пишите в чат.
+Всё по порядку, каждый этап опирается на предыдущий. Адрес dev: https://stakeward-dev.stakeward.workers.dev (devnet, SOL там ничего не стоят). Подробные клики по отдельным проверкам — в разделах ниже. Если что-то не совпадает с описанием или непонятно — пишите в чат.
+
+### Переезд на stakeward.workers.dev (06.10.2026, D106) — 10 минут
+
+1. Cloudflare → Workers & Pages → справа «Your subdomain» (сейчас `zhibul-alexander.workers.dev`) → Change → `stakeward` → подтвердить. Если имя занято — остановиться и написать в чат.
+2. Новый терминал на сервере, вставить целиком (обновляет `SITE_ORIGIN` обоих воркеров, вебхуки и описания обоих ботов и строку `SITE_ORIGIN` в `dev.vars` и `prod.vars`):
+   ```sh
+   cd ~/workspace/stakeward/apps/worker
+   for env in dev prod; do
+     ( set -a; . ~/.config/stakeward/secrets.env; . ~/.config/stakeward/$env.vars; set +a
+       NEW="https://stakeward-$env.stakeward.workers.dev"
+       printf '%s' "$NEW" | env -i PATH="$PATH" HOME="$HOME" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
+         CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID" pnpm exec wrangler secret put SITE_ORIGIN --env "$env"
+       sed -i "s|^SITE_ORIGIN=.*|SITE_ORIGIN=$NEW|" ~/.config/stakeward/$env.vars
+       API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
+       PREFIX=""; [ "$env" = dev ] && PREFIX="Devnet test bot. "
+       curl -sS "$API/setWebhook" --data-urlencode "url=$NEW/api/telegram/webhook" \
+         --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
+         --data-urlencode 'allowed_updates=["message","my_chat_member"]'; echo
+       curl -sS "$API/setMyDescription" --data-urlencode "description=${PREFIX}Stakeward alerts for natively staked SOL. Send /start followed by a wallet address to get a message when one of its stake accounts changes and before a lock ends. Alerts only link to $NEW. Stakeward never asks for your seed phrase."; echo
+       curl -sS "$API/setMyShortDescription" --data-urlencode "short_description=${PREFIX}Alerts for SOL stake protected by Stakeward. Site: $NEW"; echo
+     )
+   done
+   ```
+   В выводе по каждому окружению: `Success! Uploaded secret SITE_ORIGIN`, `"Webhook was set"`, два `{"ok":true,"result":true}`. Если `dev.vars` или `prod.vars` уже удалены — написать в чат, будет вариант с вводом токена.
+3. Написать в чат «переехали». Claude проверяет новые адреса, старые, `verify-deploy` и мониторинг. Одна тревога bot-mismatch в админском чате в эти минуты ожидаема; повтор через час — нет.
 
 ### Этап 0. Посмотреть интерфейс — сейчас, без кошелька, 5 минут
 
@@ -84,7 +109,7 @@ Claude правит найденное и пишет «готово к prod».
 
 - [ ] `pnpm install --frozen-lockfile && pnpm typecheck && pnpm test` проходят на чистом клоне.
 - [ ] GitHub Actions зелёные на последнем push. 05.10.2026: check зелёный, e2e красный на build/product (#9, #10): axe находит недостаточный контраст кнопок на ширине 360, каждый раз разных, часть тестов проходит со второй попытки. 06.10.2026: на a5f563c наоборот — e2e зелёный (контраст один раз упал и на 1280, `/cosign#tx=@@`, прошёл со второй попытки), check красный на `pnpm test`: гонка блокхэша в тестовой подготовке LiteSVM (SECURITY-CHECK П27), исправлено в d0c5e7d; на 40edd82 check зелёный. Контраст в e2e: axe мерил цвета посреди смены темы (DECISIONS D99), исправлено. Для prod нужен зелёный check: без него `pnpm deploy:prod` откажет.
-- [x] 05.10.2026: prod открывается на временном адресе https://stakeward-prod.zhibul-alexander.workers.dev (свой домен не куплен, DECISIONS.md «Развёртывание»), заголовки безопасности на месте (`curl -I`).
+- [x] 05.10.2026: prod открывается на временном адресе https://stakeward-prod.stakeward.workers.dev (свой домен не куплен, DECISIONS.md «Развёртывание»), заголовки безопасности на месте (`curl -I`).
 - [x] 05.10.2026: проверка Helius записана в docs/DECISIONS.md, раздел «Проверка RPC».
 
 ## Шаг 1. Проверка механизма
@@ -95,7 +120,7 @@ Claude правит найденное и пишет «готово к prod».
 
 ## Шаг 3. Каркас, дизайн-система, проверка кошельков
 
-Все команды — из корня репозитория, если не сказано иначе. Адрес dev: https://stakeward-dev.zhibul-alexander.workers.dev.
+Все команды — из корня репозитория, если не сказано иначе. Адрес dev: https://stakeward-dev.stakeward.workers.dev.
 
 ### а) Первый деплой в dev
 
@@ -155,7 +180,7 @@ Claude правит найденное и пишет «готово к prod».
 
 ### д) Проверка домена в Phantom
 
-- [ ] Открыть https://stakeward-prod.zhibul-alexander.workers.dev в браузере с Phantom и подключить кошелёк. Если Phantom пишет «This domain is new or has not been reviewed yet. Proceed with caution.», в тот же день отправить форму Phantom: https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform (ссылка со страницы https://docs.phantom.com/developer-powertools/domain-and-transaction-warnings). Phantom советует ждать неделю, но первые пользователи придут 10.10, а на workers.dev много фишинга.
+- [ ] Открыть https://stakeward-prod.stakeward.workers.dev в браузере с Phantom и подключить кошелёк. Если Phantom пишет «This domain is new or has not been reviewed yet. Proceed with caution.», в тот же день отправить форму Phantom: https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform (ссылка со страницы https://docs.phantom.com/developer-powertools/domain-and-transaction-warnings). Phantom советует ждать неделю, но первые пользователи придут 10.10, а на workers.dev много фишинга.
 - [ ] Поля формы: Project Name — Stakeward; dApp website URL — адрес prod; Transaction Link — шаг 2 mainnet из docs/gate.md (SetLockupChecked); Team Information — https://github.com/Zhibul-Alexander; Repository Links — https://github.com/Zhibul-Alexander/stakeward; Social Media Handles — X или Telegram владельца. Describe your dApp:
   > Stakeward is a free, open-source, non-custodial web app that protects natively staked SOL with the lockup built into the Solana stake program. Users set a second wallet they control as the lockup custodian of their existing stake accounts, so a stolen main key can neither withdraw the stake nor change its withdraw authority. There is no custom on-chain program: transactions contain only Stake program, System nonce and Compute Budget instructions.
 
@@ -207,7 +232,7 @@ curl -sS "$API/getWebhookInfo"
 ```
 У dev-бота оба описания начинаются с «Devnet test bot.».
 
-Ротация токена бота — по тревоге bot-mismatch в админском чате или при подозрении на кражу (SECURITY-CHECK П17, DECISIONS D89). Для prod — prod-бот, `--env prod` в шаге 3 и адрес `https://stakeward-prod.zhibul-alexander.workers.dev/api/telegram/webhook` в шаге 4. Шаги 3 и 4 делать подряд: пока секрет вебхука в Cloudflare и в Telegram разный, бот отвечает 401 на все обновления, /start и /stop не работают.
+Ротация токена бота — по тревоге bot-mismatch в админском чате или при подозрении на кражу (SECURITY-CHECK П17, DECISIONS D89). Для prod — prod-бот, `--env prod` в шаге 3 и адрес `https://stakeward-prod.stakeward.workers.dev/api/telegram/webhook` в шаге 4. Шаги 3 и 4 делать подряд: пока секрет вебхука в Cloudflare и в Telegram разный, бот отвечает 401 на все обновления, /start и /stop не работают.
 1. BotFather → /revoke → выбрать бота → новый токен.
 2. Новый секрет вебхука: `openssl rand -hex 32`. Держать на экране до шага 4, в файлы не сохранять.
 3. Оба секрета в Cloudflare. Wrangler дважды спросит «Enter a secret value:», не называя секрет: первым ввести новый токен бота, вторым — новый секрет вебхука (цикл печатает имя перед каждым). В историю оболочки значения не попадут:
@@ -223,7 +248,7 @@ curl -sS "$API/getWebhookInfo"
    ```sh
    ( read -rsp 'New bot token: ' TOKEN; echo; read -rsp 'New webhook secret: ' SECRET; echo
      curl -sS "https://api.telegram.org/bot$TOKEN/setWebhook" \
-       --data-urlencode "url=https://stakeward-dev.zhibul-alexander.workers.dev/api/telegram/webhook" \
+       --data-urlencode "url=https://stakeward-dev.stakeward.workers.dev/api/telegram/webhook" \
        --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member"]'
      curl -sS "https://api.telegram.org/bot$TOKEN/getWebhookInfo" )
    ```
@@ -278,7 +303,7 @@ curl -sS "$API/getWebhookInfo"
 
 ## Шаг 8. Тексты
 
-Читать на https://stakeward-dev.zhibul-alexander.workers.dev, на 1280 и на 360 (DevTools → Toggle device toolbar → 360), сверху вниз. Состояния без кошельков — в `docs/screens/*.png` и на `/dev/ui`. Правки писать в чат: экран, текст сейчас, как должно быть; я вношу их одним коммитом и переснимаю экраны.
+Читать на https://stakeward-dev.stakeward.workers.dev, на 1280 и на 360 (DevTools → Toggle device toolbar → 360), сверху вниз. Состояния без кошельков — в `docs/screens/*.png` и на `/dev/ui`. Правки писать в чат: экран, текст сейчас, как должно быть; я вношу их одним коммитом и переснимаю экраны.
 
 Правила:
 - Один главный шаг: на экране одна залитая кнопка.
@@ -309,19 +334,19 @@ curl -sS "$API/getWebhookInfo"
 - [ ] `pnpm deploy:dev`. Обёртка дописывает раздел в `docs/deploys.md`: закоммитить и запушить.
 - [ ] Миграция 0004 после деплоя кода (D90): применить командой из DECISIONS D96 (подоболочка, только два ключа Cloudflare); `migrations apply` сам покажет 0004 среди неприменённых и спросит подтверждение. Без ключей в окружении wrangler на VPS не работает (OAuth-входа там нет), поэтому и отдельный список — в такой же подоболочке, с `pnpm exec wrangler d1 migrations list DB --remote --env dev` в `apps/worker`.
 - [ ] `pnpm verify-deploy --env dev --commit <sha>` — PASS.
-- [ ] `curl -sI https://stakeward-dev.zhibul-alexander.workers.dev/app` — есть `cross-origin-opener-policy: same-origin`; `/api/health` — 200 через 2–4 минуты.
+- [ ] `curl -sI https://stakeward-dev.stakeward.workers.dev/app` — есть `cross-origin-opener-policy: same-origin`; `/api/health` — 200 через 2–4 минуты.
 
 ### б) Prod
 
-Prod работает на https://stakeward-prod.zhibul-alexander.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
+Prod работает на https://stakeward-prod.stakeward.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
 
 - [ ] Решение владельца: выкатить текущую `build/product` в prod. Перед этим догнать main до `build/product` (В7).
 - [ ] Зелёный check на HEAD в GitHub Actions. Можно сначала `pnpm deploy:prod --prod-confirm --dry-run`.
 - [ ] `pnpm deploy:prod --prod-confirm`; закоммитить и запушить `docs/deploys.md`. Я могу сделать это сам по вашему слову.
 - [ ] Миграция 0004 на prod той же командой с `db:migrate:prod`.
 - [ ] `pnpm verify-deploy --env prod --commit <sha>` — PASS.
-- [ ] `curl -s https://stakeward-prod.zhibul-alexander.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP.
-- [ ] Старый preview-адрес `https://037f86ff-stakeward-prod.zhibul-alexander.workers.dev/` больше не открывается (SECURITY-CHECK В5).
+- [ ] `curl -s https://stakeward-prod.stakeward.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP.
+- [ ] Старый preview-адрес `https://037f86ff-stakeward-prod.stakeward.workers.dev/` больше не открывается (SECURITY-CHECK В5).
 - [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
 
 ## Перед подачей: за владельцем

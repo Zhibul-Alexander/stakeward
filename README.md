@@ -4,7 +4,7 @@ Stakeward puts a lock on the Solana stake accounts you already have. The lock is
 
 Stakeward never holds your SOL or your keys. Your browser builds every transaction, your own wallets sign it, and Stakeward has no program of its own on the network. It is free: you pay only Solana network fees.
 
-> **Status: work in progress.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The checks with real wallets are still under way, and no wallet is verified yet. A devnet demo runs at https://stakeward-dev.zhibul-alexander.workers.dev (devnet SOL has no value). The mainnet version is not public yet. Do not lock real stake with Stakeward until this note changes.
+> **Status: work in progress.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The checks with real wallets are still under way, and no wallet is verified yet. A devnet demo runs at https://stakeward-dev.stakeward.workers.dev (devnet SOL has no value). The mainnet version is not public yet. Do not lock real stake with Stakeward until this note changes.
 
 ## Why your stake needs a lock
 
@@ -438,7 +438,7 @@ Keys for scripts and tests live in `.keys/` (gitignored). They are test data, ne
 
 Two Wrangler environments, each with its own D1 database, Telegram bot, RPC URL and secrets:
 
-- `dev`: Solana devnet, https://stakeward-dev.zhibul-alexander.workers.dev. It also offers 10-minute and 1-hour locks and the `/dev` pages.
+- `dev`: Solana devnet, https://stakeward-dev.stakeward.workers.dev. It also offers 10-minute and 1-hour locks and the `/dev` pages.
 - `prod`: Solana mainnet. Its address is published after the mainnet checks in the test plan.
 
 ```sh

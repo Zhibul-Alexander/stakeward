@@ -615,7 +615,7 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 
 ## D84. Prod (05.10.2026, поправлено 06.10.2026)
 
-- Владелец решил пока не покупать домен: prod работает на https://stakeward-prod.zhibul-alexander.workers.dev (раздел «Развёртывание»). Переход на свой домен — `routes` с `custom_domain`, тогда же `workers_dev: false`, новый `SITE_ORIGIN`, описания ботов, README и новая проверка Phantom.
+- Владелец решил пока не покупать домен: prod работает на https://stakeward-prod.stakeward.workers.dev (раздел «Развёртывание»; до 06.10.2026 — на поддомене `zhibul-alexander`, D106). Переход на свой домен — `routes` с `custom_domain`, тогда же `workers_dev: false`, новый `SITE_ORIGIN`, описания ботов, README и новая проверка Phantom.
 - `preview_urls: false` в dev и prod (D63): старые версии не доступны по своим адресам.
 - CI проверяет prod-конфиг сухим деплоем (`build:prod`) на mainnet-сборке; деплой только руками, токена Cloudflare в GitHub нет. Откат — `wrangler rollback`. С 06.10.2026 деплой только через обёртку `pnpm deploy:prod --prod-confirm` и сверку `pnpm verify-deploy` (D96).
 - Адрес prod не публикуем до проверки владельцем на mainnet (шаг 9).
@@ -801,6 +801,14 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - Снятый вторым ключом замок: «If you did not remove it, protect this stake again now with your main key and a new second key.» — только пока новый замок не записан (снять замок мог и сам владелец, F3).
 - /protect предупреждает, если выбранный второй ключ держал замок этого аккаунта раньше (снятый или кончившийся замок сохраняет прежнего хранителя): «If it may be stolen, use a new second key from a new seed phrase.» Это предупреждение, не отказ. /extend после снятия предлагает «Protect again» и строку про новый второй ключ.
 
+## D106. Поддомен workers.dev — stakeward (06.10.2026, решение владельца; поправка к D84 и «Развёртыванию»)
+
+- Адрес воркера на workers.dev всегда `<имя воркера>.<поддомен аккаунта>.workers.dev`, без поддомена аккаунта не бывает. Владелец выбрал бесплатный вариант без своего домена: поддомен аккаунта `zhibul-alexander` → `stakeward`. Адреса: dev — https://stakeward-dev.stakeward.workers.dev, prod — https://stakeward-prod.stakeward.workers.dev. Свой домен (около $10 в год) остаётся лучшим вариантом для пользователей (D84).
+- Поддомен один на аккаунт: смена переносит адреса всех воркеров аккаунта, старые адреса перестают работать. Имена воркеров не меняли: новое имя — это новый воркер без секретов, cron и привязок.
+- После смены владелец обновляет секрет `SITE_ORIGIN` обоих воркеров, вебхуки обоих ботов (тот же `secret_token`), описания ботов и строку `SITE_ORIGIN` в `dev.vars` и `prod.vars` (TESTPLAN, «Переезд на stakeward.workers.dev»). В окне переключения может прийти одна тревога bot-mismatch (D89).
+- В коде меняется только `ORIGIN_OF` в `scripts/deploy/args.ts` (по нему `verify-deploy` находит сайт); записи в `docs/deploys.md` — история, в них старые адреса остаются.
+- Старый поддомен освободился: кто-то другой может занять его и показать копию сайта по старому адресу. Prod-адрес не публиковался (D84), dev-адрес был в README и описании dev-бота; все ссылки заменены. Форма проверки домена в Phantom ещё не отправлялась — отправить для нового адреса prod.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
@@ -822,8 +830,8 @@ Helius, бесплатный план, 05.10.2026, тот же VPS: все за�
 
 | окружение | адрес | кластер | база D1 (WEUR) |
 |---|---|---|---|
-| dev | https://stakeward-dev.zhibul-alexander.workers.dev | devnet | stakeward-dev `ba00f60b-bd9d-443c-8928-268070d4967d` |
-| prod | https://stakeward-prod.zhibul-alexander.workers.dev | mainnet | stakeward-prod `6fd2892c-c158-4235-9ef2-055e490eccf3` |
+| dev | https://stakeward-dev.stakeward.workers.dev | devnet | stakeward-dev `ba00f60b-bd9d-443c-8928-268070d4967d` |
+| prod | https://stakeward-prod.stakeward.workers.dev | mainnet | stakeward-prod `6fd2892c-c158-4235-9ef2-055e490eccf3` |
 
 - Домен временный: поддомен аккаунта на workers.dev. Владелец решил не покупать домен сейчас; это расходится с CLAUDE.md, где prod с первого дня стоит на постоянном домене. Проверку Phantom проходит именно этот адрес. Переезд на свой домен означает `routes` с `custom_domain`, новый `SITE_ORIGIN`, новые описания ботов, правку README и новую проверку Phantom. Фишинга на workers.dev много (Fortra, 2024), поэтому форму Phantom отправляем в день деплоя prod. По D39 кэш поиска на workers.dev не работает: каждый поиск — getProgramAccounts в Helius, 10 кредитов.
 - В prod выкачена текущая сборка приложения для mainnet, а не заглушка, хотя по шагам 0 и 8 приложение должно было заменить заглушку только на шаге 8. Отдельной заглушки в коде больше нет, страниц /dev в сборке mainnet нет (D30), а проверке Phantom нужна живая страница. Адрес prod не публикуем до проверки владельцем на mainnet (шаг 9).

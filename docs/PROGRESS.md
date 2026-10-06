@@ -27,7 +27,7 @@
 ### Сделано
 
 - Базы D1 stakeward-dev и stakeward-prod, их id в `wrangler.jsonc`, миграции 0001–0003 на обеих. Миграция 0004 (06.10.2026) ещё не применена ни на одной.
-- Dev (devnet): https://stakeward-dev.zhibul-alexander.workers.dev. Prod (mainnet): https://stakeward-prod.zhibul-alexander.workers.dev. Домен временный, свой не куплен. В prod — текущее приложение, а не заглушка.
+- Dev (devnet): https://stakeward-dev.stakeward.workers.dev. Prod (mainnet): https://stakeward-prod.stakeward.workers.dev. Домен временный, свой не куплен. В prod — текущее приложение, а не заглушка.
 - Боты `@stakeward_dev_bot` и `@stakeward_bot`: вебхуки с секретом, команды, описания с адресом сайта.
 - Проверка Helius на devnet и mainnet записана в «Проверка RPC».
 - `pnpm gate:devnet`: 21 из 21; `pnpm gate:mainnet`: 8 из 8, остаток 0,0209302 SOL возвращён на Phantom 1. Результаты — docs/gate.md.
@@ -283,7 +283,7 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 
 ## Деплой шагов 4–7 в dev (05.10.2026)
 
-`pnpm deploy:dev` с `build/product` (версия a3578d6e): https://stakeward-dev.zhibul-alexander.workers.dev. Новых миграций нет. Проверено curl: `/`, `/app`, `/protect`, `/rescue`, `/cosign`, `/withdraw/…` — 200; `/api/health` — ok, свежий проход мониторинга; `/api/rpc` проводит getEpochInfo; `/api/watch` отвечает `rejected: not-stake-account` на системный адрес. Prod не обновлялся: ждёт решения владельца.
+`pnpm deploy:dev` с `build/product` (версия a3578d6e): https://stakeward-dev.stakeward.workers.dev. Новых миграций нет. Проверено curl: `/`, `/app`, `/protect`, `/rescue`, `/cosign`, `/withdraw/…` — 200; `/api/health` — ok, свежий проход мониторинга; `/api/rpc` проводит getEpochInfo; `/api/watch` отвечает `rejected: not-stake-account` на системный адрес. Prod не обновлялся: ждёт решения владельца.
 
 ## Шаг 11. Финиш (06.10.2026)
 

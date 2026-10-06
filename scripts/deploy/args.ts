@@ -11,8 +11,8 @@ export const CLUSTER_OF: Record<DeployEnv, Cluster> = { dev: 'devnet', prod: 'ma
 
 /** Where each environment is served (DECISIONS «Развёртывание»; workers.dev until a domain is bought, D84). */
 export const ORIGIN_OF: Record<DeployEnv, string> = {
-  dev: 'https://stakeward-dev.zhibul-alexander.workers.dev',
-  prod: 'https://stakeward-prod.zhibul-alexander.workers.dev',
+  dev: 'https://stakeward-dev.stakeward.workers.dev',
+  prod: 'https://stakeward-prod.stakeward.workers.dev',
 };
 
 export const DEPLOY_USAGE = [
