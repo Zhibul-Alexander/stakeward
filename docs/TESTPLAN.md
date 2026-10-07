@@ -30,7 +30,7 @@
 2. New wallet — третий аккаунт, он нужен только для спасения: новым владельцем стейка не может быть ни Main key, ни Second key (сайт их отклоняет). Для теста проще всего: в основном Phantom Add Account → Create New Account. Такой аккаунт из той же фразы, что Phantom 1, поэтому /rescue предупредит «Your new wallet and your main key are both in Phantom.» и попросит галочку «My new wallet comes from a new seed phrase…» — для теста её можно поставить. В жизни так нельзя: укравший фразу получит и этот кошелёк, поэтому настоящему пострадавшему нужна новая фраза.
 3. Прислать адрес New wallet — Claude переведёт на него 0,05 devnet SOL.
 4. Телефон: Phantom с фразой Phantom 2 (тестовый Second key), тот же Testnet Mode.
-5. Предупреждения «Both keys are in Phantom…» на /protect и «Your new wallet and your main key are both in Phantom.» на /rescue будут — так и должно быть: у Phantom 2 и New wallet свои фразы.
+5. Second key (Phantom 2) обязан быть из своей, отдельной фразы — той, что на телефоне, а не «Create New Account» от Phantom 1: иначе укравший фразу получает оба ключа и замок ничего не защищает. Предупреждение «Both keys are in Phantom…» на /protect всё равно будет: сайт видит одно приложение, а не фразы. На /rescue предупреждение «Your new wallet and your main key are both in Phantom.» для теста верное: тестовый New wallet из фразы Phantom 1 (п. 2).
 
 ### Этап 3. Проход на компьютере — около часа
 
