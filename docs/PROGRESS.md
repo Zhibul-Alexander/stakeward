@@ -360,6 +360,7 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - `pnpm typecheck`, `pnpm lint` — без ошибок; `TZ=UTC CI=true`: core 806, scripts 130, web 820 и 1 пропуск, worker 614.
 - CI на f856ef4: check и e2e зелёные. `pnpm audit` — `No known vulnerabilities found`.
 - `/api/health` dev и prod — ok, проход монитора в 18:08 UTC.
+- CPU проходов монитора (`wrangler tail`, 08.10.2026 13:5x UTC, наблюдаемых строк 0): dev 4 и 4 мс, prod 3 и 2 мс из 10 бесплатных, исход ok, `previousDied: false`. Повторить замер, когда появятся наблюдаемые аккаунты.
 
 ### Дальше
 

@@ -54,7 +54,7 @@
 
 - что пришло в Telegram, что было непонятно или выглядело не так;
 - «экраны утверждаю» или список правок: экран, текст сейчас, как надо (вместо макетов, D100);
-- через сутки (07.10): Cloudflare → Workers & Pages → stakeward-dev → Observability → Logs, вызовы cron: максимум CPU time за 24 часа, были ли исходы Exceeded CPU, приходили ли от бота «… the previous pass did not finish …».
+- CPU проходов монитора смотреть не нужно: 08.10 Claude снял его через `wrangler tail` — dev 4 мс, prod 2–3 мс из 10 бесплатных, исход ok, `previousDied: false`.
 Claude правит найденное и пишет «готово к prod».
 
 ### Этап 6. Mainnet — по слову Claude, начать не позже 09.10
