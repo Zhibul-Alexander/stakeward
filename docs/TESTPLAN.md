@@ -13,7 +13,7 @@
 |---|---|---|---|
 | Acc 1 · Main key | Main key | основной кошелёк, владелец стейка; с него стейкаем | `KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` |
 | Acc 2 · Second key | Second key | ключ замка, из своей отдельной фразы; стейк на нём не лежит, он только подписывает | `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK` |
-| Acc 3 · Rescue | New wallet | кошелёк для спасения: если Acc 1 украли, он становится новым владельцем стейка | `2VFhJxmyDPCYSjhaSddnLmjWdzYyvTnLVRKNgYcFXizR` |
+| Acc 3 · Backup | New wallet | запасной кошелёк для спасения: если Acc 1 украли, он становится новым владельцем стейка | `2VFhJxmyDPCYSjhaSddnLmjWdzYyvTnLVRKNgYcFXizR` |
 
 На сайте роль Acc 3 называется New wallet: настоящий пострадавший создаёт его в момент кражи из новой фразы. Наш Acc 3 сделан заранее из фразы Acc 1 только для теста.
 
@@ -38,7 +38,7 @@
 ### Этап 2. Кошельки — 15 минут
 
 1. Phantom на компьютере: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet.
-2. Acc 3 · Rescue — третий аккаунт, он нужен только для спасения: новым владельцем стейка не может быть ни Acc 1, ни Acc 2 (сайт их отклоняет). Для теста проще всего: в основном Phantom Add Account → Create New Account. Такой аккаунт из той же фразы, что Acc 1, поэтому /rescue предупредит «Your new wallet and your main key are both in Phantom.» и попросит галочку «My new wallet comes from a new seed phrase…» — для теста её можно поставить. В жизни так нельзя: укравший фразу получит и этот кошелёк, поэтому настоящему пострадавшему нужна новая фраза.
+2. Acc 3 · Backup — третий аккаунт, он нужен только для спасения: новым владельцем стейка не может быть ни Acc 1, ни Acc 2 (сайт их отклоняет). Для теста проще всего: в основном Phantom Add Account → Create New Account. Такой аккаунт из той же фразы, что Acc 1, поэтому /rescue предупредит «Your new wallet and your main key are both in Phantom.» и попросит галочку «My new wallet comes from a new seed phrase…» — для теста её можно поставить. В жизни так нельзя: укравший фразу получит и этот кошелёк, поэтому настоящему пострадавшему нужна новая фраза.
 3. [x] Acc 3 создан, на нём 0,05 devnet SOL.
 4. Телефон: Phantom с фразой Acc 2, тот же Testnet Mode.
 5. Acc 2 обязан быть из своей, отдельной фразы — той, что на телефоне, а не «Create New Account» от Acc 1: иначе укравший фразу получает оба ключа и замок ничего не защищает. Предупреждение «Both keys are in Phantom…» на /protect всё равно будет: сайт видит одно приложение, а не фразы. На /rescue предупреждение «Your new wallet and your main key are both in Phantom.» для теста верное: Acc 3 из фразы Acc 1 (п. 2).
