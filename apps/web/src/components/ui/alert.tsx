@@ -48,13 +48,16 @@ function AlertTitle({ className, ...props }: ComponentProps<'div'>) {
   return <div data-slot="alert-title" className={cn('font-semibold', className)} {...props} />;
 }
 
-/** Prose links stay underlined (WCAG 1.4.1); a button rendered as a link (data-slot="button") does not. */
+/**
+ * Its text size comes from the Alert (text-sm, text-base at `size="lg"`), so the stop panel's body grows with its title.
+ * Prose links stay underlined (WCAG 1.4.1); a button rendered as a link (data-slot="button") does not.
+ */
 function AlertDescription({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="alert-description"
       className={cn(
-        'text-sm [&_a:not([data-slot=button])]:underline [&_a:not([data-slot=button])]:underline-offset-4 [&_p:not(:last-child)]:mb-2',
+        '[&_a:not([data-slot=button])]:underline [&_a:not([data-slot=button])]:underline-offset-4 [&_p:not(:last-child)]:mb-2',
         className,
       )}
       {...props}
