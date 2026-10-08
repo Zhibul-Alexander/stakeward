@@ -1,6 +1,6 @@
 import { cliUrl, LEDGER_PUBKEY_COMMAND, recoveryCommands, U64_MAX } from '@stakeward/core';
-import { useEffect, useState } from 'react';
-import { AccountRow, AccountRowError, AccountRowSkeleton } from '@/components/product/account-row';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AccountList, AccountListItem, AccountListSkeleton, AccountRow, AccountRowError } from '@/components/product/account-row';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
 import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
 import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
@@ -23,7 +23,6 @@ import {
 } from '@/components/product/transaction-summary';
 import { WalletSlot } from '@/components/product/wallet-slot';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { t } from '@/i18n';
 import { appLinks } from '@/pages/app/view';
@@ -73,30 +72,35 @@ const COMMANDS = recoveryCommands({ mainKeyAddress: SAMPLE.mainKey, url: cliUrl(
 /** The FAQ's parameter in these answers, as the landing fills it: "30, 14, 7, 3, and 1". */
 const FAQ_PARAMS = { days: REMINDER_DAYS_TEXT };
 
-/** The action buttons a row would have on /app for its status. */
-function rowActions(row: SampleRow) {
+/** The actions a row would have on /app for its status: one visible, the others behind its More. */
+function rowActions(row: SampleRow): { action?: ReactNode; more?: ReactNode } {
   if (row.protection === 'unprotected') {
-    return (
-      <>
-        <Checkbox aria-label={t('devUi.sample.protect')} />
-        <Button size="sm">{t('devUi.sample.protect')}</Button>
-      </>
-    );
+    return {
+      action: (
+        <Button size="sm" variant="outline">
+          {t('devUi.sample.protect')}
+        </Button>
+      ),
+    };
   }
-  if (row.protection === 'locked-by-other') return undefined;
-  return (
-    <>
+  if (row.protection === 'locked-by-other') return {};
+  return {
+    action: (
       <Button size="sm" variant="outline">
         {t('devUi.sample.extend')}
       </Button>
-      <Button size="sm" variant="outline">
-        {t('devUi.sample.withdraw')}
-      </Button>
-      <Button size="sm" variant="ghost">
-        {t('devUi.sample.rescue')}
-      </Button>
-    </>
-  );
+    ),
+    more: (
+      <>
+        <Button size="sm" variant="outline">
+          {t('devUi.sample.withdraw')}
+        </Button>
+        <Button size="sm" variant="outline">
+          {t('devUi.sample.rescue')}
+        </Button>
+      </>
+    ),
+  };
 }
 
 function rowLabel(row: SampleRow): string {
@@ -227,25 +231,38 @@ export function ComponentsSection() {
 
       <DemoGroup title={t('devUi.names.accountRow')}>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {rows.map((row) => (
-            <Demo key={row.key} label={rowLabel(row)}>
-              <AccountRow
-                account={row.account}
-                activation={row.activation}
-                protection={row.protection}
-                managedByService={row.managedByService}
-                secondKeyKnown={row.secondKeyKnown}
-                wasProtected={row.wasProtected}
-                rescueHref={appLinks.rescue(row.account.withdrawer)}
-                actions={rowActions(row)}
-              />
-            </Demo>
-          ))}
+          {rows.map((row) => {
+            const { action, more } = rowActions(row);
+            return (
+              <Demo key={row.key} label={rowLabel(row)}>
+                <AccountList label={rowLabel(row)}>
+                  <AccountListItem>
+                    <AccountRow
+                      account={row.account}
+                      activation={row.activation}
+                      protection={row.protection}
+                      managedByService={row.managedByService}
+                      secondKeyKnown={row.secondKeyKnown}
+                      wasProtected={row.wasProtected}
+                      rescueHref={appLinks.rescue(row.account.withdrawer)}
+                      action={action}
+                      moreActions={more}
+                      serviceDetail
+                    />
+                  </AccountListItem>
+                </AccountList>
+              </Demo>
+            );
+          })}
           <Demo label={t('devUi.states.loading')}>
-            <AccountRowSkeleton />
+            <AccountListSkeleton rows={1} />
           </Demo>
           <Demo label={t('devUi.states.error')}>
-            <AccountRowError address={SAMPLE.stakeB} detail={SAMPLE_ERROR_DETAIL.rpc} onRetry={noop} />
+            <AccountList label={t('devUi.states.error')}>
+              <AccountListItem>
+                <AccountRowError address={SAMPLE.stakeB} detail={SAMPLE_ERROR_DETAIL.rpc} onRetry={noop} />
+              </AccountListItem>
+            </AccountList>
           </Demo>
         </div>
       </DemoGroup>

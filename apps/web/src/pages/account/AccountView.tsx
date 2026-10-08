@@ -1,7 +1,7 @@
 import { scannerStatus, stakeActivationStatus, type StakeAccount } from '@stakeward/core';
 import { CircleAlertIcon, LoaderCircleIcon } from 'lucide-react';
 import { Link } from 'wouter';
-import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountListSkeleton, AccountRow, SINGLE_ROW_FRAME } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -68,7 +68,7 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
     case 'loading':
       return (
         <div className="flex flex-col gap-3">
-          <AccountRowSkeleton />
+          <AccountListSkeleton rows={1} />
           <p role="status" className="flex items-center gap-2 text-sm text-muted">
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('stakePage.loading')}
@@ -111,6 +111,8 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
           managedByService={view.managedByService}
           secondKeyKnown={knownSecondKeys.length > 0}
           rescueHref={appLinks.rescue(account.withdrawer)}
+          serviceDetail
+          className={SINGLE_ROW_FRAME}
         />
       );
     }

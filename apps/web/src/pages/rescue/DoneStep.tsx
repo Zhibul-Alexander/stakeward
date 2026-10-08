@@ -11,7 +11,7 @@ import {
 import { CircleAlertIcon, FileTextIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon, ShieldCheckIcon } from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
-import { AccountRow } from '@/components/product/account-row';
+import { AccountList, AccountListItem, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { Button } from '@/components/ui/button';
@@ -104,13 +104,13 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
 
       {moved.length === 0 ? null : (
         <List title={t('rescue.done.movedList')}>
-          <ul className="flex flex-col gap-3">
+          <AccountList label={t('rescue.done.movedList')}>
             {moved.map(({ job, after }) => (
-              <li key={job.id}>
+              <AccountListItem key={job.id}>
                 <MovedRow job={job} after={after} clock={clock} newWallet={newWallet} secondKey={secondKey} />
-              </li>
+              </AccountListItem>
             ))}
-          </ul>
+          </AccountList>
         </List>
       )}
 
@@ -331,7 +331,8 @@ function MovedRow({
       protection={view.status}
       managedByService={view.managedByService}
       secondKeyKnown
-      actions={details}
+      serviceDetail
+      meta={details}
     />
   );
 }

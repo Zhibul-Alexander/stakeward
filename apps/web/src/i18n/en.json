@@ -291,11 +291,11 @@
     },
     "accountRow": {
       "label": "Stake account {address}",
-      "stakeAccount": "Stake account",
+      "list": "Stake accounts",
       "managedByServiceDetail": "With a lock, the service may fail to rebalance or merge it. Check with the service before you protect it.",
       "stakeKeyChanged": "Another key can stop or move this stake. If you did not set this up, your main key may be stolen.",
       "openRescue": "Open Rescue",
-      "loadError": "Check your connection, then try again."
+      "loadError": "Could not read this account."
     },
     "walletSlot": {
       "notConnected": "Not connected",
@@ -817,7 +817,8 @@
       "extend": "Extend",
       "withdraw": "Withdraw",
       "label": "{action} stake account {address}",
-      "recovery": "Recovery card"
+      "recovery": "Recovery card",
+      "more": "More for stake account {address}"
     },
     "noLongerProtected": {
       "titleOne": "1 stake account is no longer protected",

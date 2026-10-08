@@ -71,6 +71,15 @@ function renderApp(setup: Setup, defaultChain: ChainPort) {
 const row = (account: Address) => screen.getByRole('article', { name: `Stake account ${shortAddress(account)}` });
 const findRow = (account: Address) => screen.findByRole('article', { name: `Stake account ${shortAddress(account)}` });
 const rowStatus = (account: Address) => row(account).getAttribute('data-status');
+/** The row's More button (D109: the actions after its first one are behind it); null when the row has no more actions. */
+const moreButton = (account: Address) =>
+  within(row(account)).queryByRole('button', { name: `More for stake account ${shortAddress(account)}` });
+/** Opens the row's More, so the actions behind it are in the page. */
+async function openMore(account: Address) {
+  const more = moreButton(account);
+  if (more === null) throw new Error(`no More on ${account}`);
+  await userEvent.click(more);
+}
 /** The short address of the key that holds a lock, as the row shows it (with copy and explorer). */
 const lockHolder = (account: Address) =>
   row(account).querySelector('[data-slot="lock-holder"] [data-slot="address-text"]')?.textContent.match(/\w+\.\.\.\w+/)?.[0];
@@ -145,7 +154,7 @@ describe('/app on LiteSvmChain', () => {
       `/protect?account=${stake.open}`,
     );
 
-    // Protected by the connected second key: lock end date, extend and withdraw.
+    // Protected by the connected second key: lock end date, extend (visible) and withdraw (behind More, D109).
     const lockedRow = within(row(stake.locked));
     expect(lockedRow.getByText('Protected')).toBeInTheDocument();
     expect(lockedRow.getByText(`until ${formatUtcDate(NOW + 100n * DAY) ?? ''}`)).toBeInTheDocument();
@@ -153,14 +162,19 @@ describe('/app on LiteSvmChain', () => {
       'href',
       `/extend/${stake.locked}`,
     );
+    await openMore(stake.locked);
     expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
       `/withdraw/${stake.locked}`,
     );
-    // The recovery card of the keys that lock it (D74): on protected and expiring rows, never on someone else's lock.
+    // The recovery card of the keys that lock it (D74): on protected and expiring rows, never on someone else's lock
+    // (nor on an open one: those rows have no More at all).
     const recoveryLink = (account: Address) => within(row(account)).queryByRole('link', { name: `Recovery card stake account ${shortAddress(account)}` });
+    await openMore(stake.expiring);
     expect(recoveryLink(stake.locked)).toHaveAttribute('href', `/recovery/${stake.locked}`);
     expect(recoveryLink(stake.expiring)).toHaveAttribute('href', `/recovery/${stake.expiring}`);
+    expect(moreButton(stake.foreign)).toBeNull();
+    expect(moreButton(stake.open)).toBeNull();
     expect(recoveryLink(stake.foreign)).toBeNull();
     expect(recoveryLink(stake.open)).toBeNull();
 
@@ -191,6 +205,7 @@ describe('/app on LiteSvmChain', () => {
     const secondKeyRow = within(secondList).getByRole('article', { name: `Stake account ${shortAddress(stake.secondKeyFor)}` });
     expect(within(secondKeyRow).getByText('Protected')).toBeInTheDocument();
     expect(within(secondKeyRow).getByRole('link', { name: /^Extend/ })).toHaveAttribute('href', `/extend/${stake.secondKeyFor}`);
+    await openMore(stake.secondKeyFor);
     expect(within(secondKeyRow).getByRole('link', { name: /^Recovery card/ })).toHaveAttribute('href', `/recovery/${stake.secondKeyFor}`);
 
     // Totals of the main list: count, all SOL, SOL under a lock.

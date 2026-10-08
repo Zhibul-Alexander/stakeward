@@ -1,9 +1,10 @@
 import type { Address } from '@solana/kit';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { AccountRow } from './account-row.tsx';
+import { AccountList, AccountListItem, AccountListSkeleton, AccountRow, AccountRowError } from './account-row.tsx';
 
 const STAKE = 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW' as Address;
 const OTHER = '57M4tyxx6Rk1gz3uYVvfoB3KdQGQkyveqqmZzJUdw3Sz' as Address;
@@ -17,7 +18,7 @@ const account = (custodian: Address, unixTimestamp = APRIL_2027) => ({
 });
 
 describe('AccountRow', () => {
-  it('protected: short address, SOL, status with the lock end date, staking state and actions', () => {
+  it('protected: short address, SOL, status with the lock end date, staking state and its action', () => {
     render(
       <AccountRow
         account={account(SECOND)}
@@ -25,15 +26,19 @@ describe('AccountRow', () => {
         protection="protected"
         managedByService={false}
         secondKeyKnown
-        actions={<button type="button">Extend</button>}
+        action={<button type="button">Extend</button>}
       />,
     );
     const row = screen.getByRole('article', { name: 'Stake account AYA...DfW' });
     expect(row).toHaveTextContent('1,250.5 SOL');
     expect(screen.getByText('Protected')).toBeInTheDocument();
+    expect(screen.getByText('Protected')).toHaveAttribute('data-size', 'sm');
     expect(screen.getByText('until 12 April 2027')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Extend' })).toBeInTheDocument();
+    // Compact (D109): no "Stake account" eyebrow on screen, the article's name says it; nothing behind a More.
+    expect(within(row).queryByText('Stake account')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^More for stake account/ })).toBeNull();
   });
 
   it('a lock of a key this browser does not know names that key, with copy and explorer, so the viewer can connect it if it is theirs', () => {
@@ -113,9 +118,11 @@ describe('AccountRow', () => {
       </Router>,
     );
     const warning = screen.getByText('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.');
-    const alert = warning.closest('[data-slot="alert"]') as HTMLElement;
-    expect(alert).toHaveAttribute('data-tone', 'warning');
-    expect(within(alert).getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', '/rescue?address=MAIN');
+    // One unframed line with the warning icon, always visible (a sign of theft is never folded, D109).
+    const line = warning.closest('[data-slot="row-warning"]') as HTMLElement;
+    expect(line).toHaveAttribute('data-tone', 'warning');
+    expect(line).toHaveAttribute('role', 'note');
+    expect(within(line).getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', '/rescue?address=MAIN');
     expect(screen.queryByText('A staking service may manage this stake.')).toBeNull();
   });
 
@@ -138,5 +145,156 @@ describe('AccountRow', () => {
     );
     expect(screen.getByText('A staking service may manage this stake.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Open Rescue' })).toBeNull();
+  });
+
+  it('the service warning says what a lock may do to the service only with serviceDetail', () => {
+    const { rerender } = render(
+      <AccountRow account={account(SECOND, 0n)} activation="active" protection="unprotected" managedByService secondKeyKnown={false} />,
+    );
+    const detail = 'With a lock, the service may fail to rebalance or merge it. Check with the service before you protect it.';
+    expect(screen.queryByText(detail)).toBeNull();
+    rerender(
+      <AccountRow account={account(SECOND, 0n)} activation="active" protection="unprotected" managedByService secondKeyKnown={false} serviceDetail />,
+    );
+    const line = screen.getByText('A staking service may manage this stake.').closest('[data-slot="row-warning"]') as HTMLElement;
+    expect(within(line).getByText(detail)).toBeInTheDocument();
+  });
+
+  it('one visible action; the rest behind More, which is closed and empty until opened', async () => {
+    const user = userEvent.setup();
+    render(
+      <AccountRow
+        account={account(SECOND)}
+        activation="active"
+        protection="protected"
+        managedByService={false}
+        secondKeyKnown
+        action={<button type="button">Extend</button>}
+        moreActions={
+          <>
+            <button type="button">Withdraw</button>
+            <button type="button">Recovery card</button>
+          </>
+        }
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Extend' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Withdraw' })).toBeNull();
+    const more = screen.getByRole('button', { name: 'More for stake account AYA...DfW' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await user.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Withdraw' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Recovery card' })).toBeVisible();
+    await user.click(more);
+    expect(screen.queryByRole('button', { name: 'Withdraw' })).toBeNull();
+  });
+
+  it('select puts a named checkbox at the start of the row; meta goes on the second line', async () => {
+    const user = userEvent.setup();
+    const onCheckedChange = vi.fn();
+    render(
+      <AccountRow
+        account={account(SECOND, 0n)}
+        activation="inactive"
+        protection="unprotected"
+        managedByService={false}
+        secondKeyKnown={false}
+        select={{ checked: false, onCheckedChange, label: 'Protect stake account AYA...DfW' }}
+        meta={<span>Transaction 5Kx...</span>}
+      />,
+    );
+    const box = screen.getByRole('checkbox', { name: 'Protect stake account AYA...DfW' });
+    await user.click(box);
+    expect(onCheckedChange).toHaveBeenCalledWith(true);
+    expect(screen.getByText('Transaction 5Kx...').parentElement).toHaveTextContent('Inactive');
+  });
+
+  it('a disabled selection cannot be ticked', () => {
+    render(
+      <AccountRow
+        account={account(OTHER)}
+        activation="inactive"
+        protection="locked-by-other"
+        managedByService={false}
+        secondKeyKnown={false}
+        select={{ checked: false, onCheckedChange: vi.fn(), label: 'Protect stake account AYA...DfW', disabled: true }}
+      />,
+    );
+    expect(screen.getByRole('checkbox', { name: 'Protect stake account AYA...DfW' })).toBeDisabled();
+  });
+
+  it('hint={false} leaves the status sentence to the group; F6 shows no red sentence, only the red badge', () => {
+    const { rerender } = render(
+      <AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} secondKeyKnown={false} hint={false} />,
+    );
+    expect(screen.queryByText(/^This browser does not know this key yet/)).toBeNull();
+    // The lock holder is the row's own fact, not part of the hint (D35).
+    expect(screen.getByRole('article').querySelector('[data-slot="lock-holder"]')).toHaveTextContent('57M...3Sz');
+    rerender(
+      <AccountRow
+        account={account(SECOND, 1_700_000_000n)}
+        activation="active"
+        protection="unprotected"
+        managedByService={false}
+        secondKeyKnown
+        wasProtected
+      />,
+    );
+    const hint = screen.getByText(/^This stake was protected, but its lock has ended/);
+    expect(hint).toHaveClass('text-muted');
+    expect(hint).not.toHaveClass('text-danger');
+  });
+
+  it('a lock that ends within 30 days shows its date in warning with a clock icon, also for a key this browser does not know', () => {
+    const { rerender } = render(
+      <AccountRow account={account(SECOND)} activation="active" protection="expiring" managedByService={false} secondKeyKnown />,
+    );
+    const end = () => screen.getByText('until 12 April 2027');
+    expect(end()).toHaveClass('text-warning');
+    expect(end().querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    rerender(<AccountRow account={account(OTHER)} activation="active" protection="locked-by-other" managedByService={false} secondKeyKnown={false} />);
+    expect(end()).not.toHaveClass('text-warning');
+    rerender(
+      <AccountRow account={account(OTHER)} activation="active" protection="locked-by-other" managedByService={false} secondKeyKnown={false} lockEndsSoon />,
+    );
+    expect(end()).toHaveClass('text-warning');
+  });
+});
+
+describe('AccountList', () => {
+  it('rows in one named list, one item each', () => {
+    render(
+      <AccountList label="Stake accounts">
+        <AccountListItem>
+          <AccountRow account={account(SECOND)} activation="active" protection="protected" managedByService={false} secondKeyKnown />
+        </AccountListItem>
+        <AccountListItem>
+          <AccountRowError address={OTHER} detail="HTTP 500" onRetry={vi.fn()} />
+        </AccountListItem>
+      </AccountList>,
+    );
+    const list = screen.getByRole('list', { name: 'Stake accounts' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(list).getAllByRole('article')).toHaveLength(2);
+  });
+
+  it('the error row: one line saying the account could not be read, its address, Try again and Details', async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    render(<AccountRowError address={OTHER} detail="HTTP 500" onRetry={onRetry} />);
+    const row = screen.getByRole('article', { name: 'Stake account 57M...3Sz' });
+    expect(row).toHaveAttribute('data-status', 'unknown');
+    expect(within(row).getByText('Could not read this account.')).toHaveClass('text-danger');
+    expect(within(row).getByText('57M...3Sz')).toBeInTheDocument();
+    expect(within(row).getByText('Details').closest('details')).toHaveTextContent('HTTP 500');
+    await user.click(within(row).getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('the loading list is decorative, in the rows\' shape', () => {
+    const { container } = render(<AccountListSkeleton rows={3} />);
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelectorAll('[data-slot="account-row-skeleton"]')).toHaveLength(3);
   });
 });

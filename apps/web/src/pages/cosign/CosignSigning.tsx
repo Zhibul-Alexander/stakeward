@@ -11,7 +11,7 @@ import {
 } from '@stakeward/core';
 import { CircleCheckIcon, CopyIcon, InfoIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type Ref } from 'react';
-import { AccountRow } from '@/components/product/account-row';
+import { AccountRow, SINGLE_ROW_FRAME } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { RiskNote } from '@/components/product/risk-note';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -276,6 +276,8 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
           protection={view.status}
           managedByService={view.managedByService}
           secondKeyKnown={secondKeys.length > 0}
+          serviceDetail
+          className={SINGLE_ROW_FRAME}
         />
       )}
     </section>

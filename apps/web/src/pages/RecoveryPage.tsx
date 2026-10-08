@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { Page } from '@/components/layout/Page';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountListSkeleton } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -64,8 +64,7 @@ function RecoveryBody({ load, route, onRetry }: { load: Load<RecoveryLoad>; rout
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('recovery.loading')}
           </p>
-          <AccountRowSkeleton />
-          <AccountRowSkeleton />
+          <AccountListSkeleton />
         </div>
       );
     case 'error':

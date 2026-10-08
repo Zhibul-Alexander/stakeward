@@ -3,7 +3,7 @@ import { formatSol, shortAddress } from '@stakeward/core';
 import { CalendarPlusIcon, FileTextIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountList, AccountListItem, AccountListSkeleton, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
@@ -123,8 +123,7 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('app.results.loading')}
           </p>
-          <AccountRowSkeleton />
-          <AccountRowSkeleton />
+          <AccountListSkeleton />
         </div>
       ) : state.status === 'error' ? (
         <ErrorState
@@ -156,7 +155,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
         </div>
         {view.owned.length === 0 ? null : <Totals totals={view.totals} />}
         {view.owned.length > 0 ? (
-          <AccountList rows={view.owned} actions={(row) => ownedActions(row)} />
+          <Rows label={t('app.lists.main')} rows={view.owned} actions={(row) => ownedActions(row)} />
         ) : view.secondKeyFor.length === 0 ? (
           <NoStakeAccounts address={address} headingLevel={3} />
         ) : (
@@ -192,7 +191,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
             </h2>
             <p className="text-sm text-muted">{t('app.lists.secondKeyForNote')}</p>
           </div>
-          <AccountList rows={view.secondKeyFor} actions={(row) => secondKeyActions(row)} />
+          <Rows label={t('app.lists.secondKeyFor')} rows={view.secondKeyFor} actions={(row) => secondKeyActions(row)} />
         </section>
       )}
     </>
@@ -211,26 +210,34 @@ function Totals({ totals }: { totals: AccountsView['totals'] }) {
   );
 }
 
-function AccountList({ rows, actions }: { rows: readonly AccountView[]; actions: (row: AccountView) => ReactNode }) {
+/** A row's visible action and the ones behind its More. */
+type RowActions = { action?: ReactNode; more?: ReactNode };
+
+function Rows({ label, rows, actions }: { label: string; rows: readonly AccountView[]; actions: (row: AccountView) => RowActions }) {
   // Rescue for the account's own main key (its withdrawer): the address itself in the main list, the owner in the
   // second-key list. The row links it only under its warning that another key can stop or move the stake.
   return (
-    <ul className="flex flex-col gap-3">
-      {rows.map((row) => (
-        <li key={row.account.address}>
-          <AccountRow
-            account={row.account}
-            activation={row.activation}
-            protection={row.protection}
-            managedByService={row.managedByService}
-            secondKeyKnown={row.secondKeyKnown}
-            wasProtected={row.wasProtected}
-            rescueHref={appLinks.rescue(row.account.withdrawer)}
-            actions={actions(row) ?? undefined}
-          />
-        </li>
-      ))}
-    </ul>
+    <AccountList label={label}>
+      {rows.map((row) => {
+        const { action, more } = actions(row);
+        return (
+          <AccountListItem key={row.account.address}>
+            <AccountRow
+              account={row.account}
+              activation={row.activation}
+              protection={row.protection}
+              managedByService={row.managedByService}
+              secondKeyKnown={row.secondKeyKnown}
+              wasProtected={row.wasProtected}
+              rescueHref={appLinks.rescue(row.account.withdrawer)}
+              action={action}
+              moreActions={more}
+              serviceDetail
+            />
+          </AccountListItem>
+        );
+      })}
+    </AccountList>
   );
 }
 
@@ -257,24 +264,29 @@ function ActionLink({
   );
 }
 
-/** Main list: protect what is open, extend or withdraw what is locked, nothing on someone else's lock (view only). */
-function ownedActions(row: AccountView): ReactNode {
+/**
+ * Main list: protect what is open, extend or withdraw what is locked, nothing on someone else's lock (view only). The
+ * first action is the row's visible one; the others are behind its More.
+ */
+function ownedActions(row: AccountView): RowActions {
   const account = row.account.address;
   switch (row.protection) {
     case 'unprotected':
-      return (
-        <ActionLink
-          href={appLinks.protect([account])}
-          label={row.wasProtected ? t('app.actions.protectAgain') : t('app.actions.protect')}
-          icon={<ShieldCheckIcon aria-hidden="true" />}
-          variant="primary"
-          account={account}
-        />
-      );
+      return {
+        action: (
+          <ActionLink
+            href={appLinks.protect([account])}
+            label={row.wasProtected ? t('app.actions.protectAgain') : t('app.actions.protect')}
+            icon={<ShieldCheckIcon aria-hidden="true" />}
+            variant="primary"
+            account={account}
+          />
+        ),
+      };
     case 'protected':
     case 'expiring':
-      return (
-        <>
+      return {
+        action: (
           <ActionLink
             href={appLinks.extend(account)}
             label={t('app.actions.extend')}
@@ -282,20 +294,24 @@ function ownedActions(row: AccountView): ReactNode {
             variant={row.protection === 'expiring' ? 'primary' : 'outline'}
             account={account}
           />
-          <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
-          <RecoveryCardLink account={account} />
-        </>
-      );
+        ),
+        more: (
+          <>
+            <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
+            <RecoveryCardLink account={account} />
+          </>
+        ),
+      };
     case 'locked-by-other':
       // Whose key holds this lock is not known here, so no card speaks for it (D35).
-      return null;
+      return {};
   }
 }
 
 /** Second-key list: the second key can extend (or remove) the lock it holds, and keep the card of that lock. */
-function secondKeyActions(row: AccountView): ReactNode {
-  return (
-    <>
+function secondKeyActions(row: AccountView): RowActions {
+  return {
+    action: (
       <ActionLink
         href={appLinks.extend(row.account.address)}
         label={t('app.actions.extend')}
@@ -303,9 +319,9 @@ function secondKeyActions(row: AccountView): ReactNode {
         variant={row.protection === 'expiring' ? 'primary' : 'outline'}
         account={row.account.address}
       />
-      <RecoveryCardLink account={row.account.address} />
-    </>
-  );
+    ),
+    more: <RecoveryCardLink account={row.account.address} />,
+  };
 }
 
 /** The printable recovery card of the keys that lock this account (DECISIONS.md D74). */

@@ -17,7 +17,7 @@ import {
 } from '@stakeward/core';
 import { ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
-import { ActivationBadge } from '@/components/product/account-row';
+import { ActivationText } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { CommandBlock } from '@/components/product/command-block';
 import { RiskNote } from '@/components/product/risk-note';
@@ -169,7 +169,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
               <AddressText address={row.account.address} variant="full" explorer />
               <div className="flex flex-wrap items-center gap-2">
                 <SolAmount lamports={row.account.lamports} className="font-semibold" />
-                <ActivationBadge status={row.activation} />
+                <ActivationText status={row.activation} />
               </div>
               <p className="text-sm">{t('recovery.accounts.lockedUntil', { date: dateTime(row.lockUntil) })}</p>
               {row.staker === null ? null : (

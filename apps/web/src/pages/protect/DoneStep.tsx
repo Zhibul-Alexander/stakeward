@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
-import { AccountRow } from '@/components/product/account-row';
+import { AccountList, AccountListItem, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { ErrorDetails } from '@/components/product/error-state';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
@@ -154,13 +154,13 @@ export function ProtectDoneView({
 
       {protectedJobs.length === 0 ? null : (
         <List title={t('protect.done.protectedList')}>
-          <ul className="flex flex-col gap-3">
+          <AccountList label={t('protect.done.protectedList')}>
             {protectedJobs.map(({ job, after }) => (
-              <li key={job.id}>
+              <AccountListItem key={job.id}>
                 <ProtectedRow job={job} after={after} clock={clock} secondKey={secondKey} />
-              </li>
+              </AccountListItem>
             ))}
-          </ul>
+          </AccountList>
         </List>
       )}
 
@@ -311,7 +311,8 @@ function ProtectedRow({
       managedByService={view.managedByService}
       secondKeyKnown
       rescueHref={appLinks.rescue(after.withdrawer)}
-      actions={transaction}
+      serviceDetail
+      meta={transaction}
     />
   );
 }

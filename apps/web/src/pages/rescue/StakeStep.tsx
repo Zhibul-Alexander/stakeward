@@ -10,7 +10,7 @@ import {
 } from '@stakeward/core';
 import { LoaderCircleIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, useState, type ReactNode, type Ref, type SyntheticEvent } from 'react';
-import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountList, AccountListItem, AccountListSkeleton, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
@@ -70,8 +70,7 @@ export function StakeStep(props: StakeStepProps) {
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('rescue.stake.loading')}
           </p>
-          <AccountRowSkeleton />
-          <AccountRowSkeleton />
+          <AccountListSkeleton />
         </div>
       ) : loaded.status === 'error' ? (
         <ErrorState
@@ -135,7 +134,7 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
   });
   const earliest = dated.reduce<bigint | null>((lowest, { end }) => (lowest === null || end < lowest ? end : lowest), null);
   const endsSoon = dated.filter(({ end }) => end - clock.unixTimestamp <= ENDS_SOON_SECONDS);
-  const row = (account: StakeAccount, actions?: ReactNode) => {
+  const row = (account: StakeAccount, meta?: ReactNode) => {
     const view = scannerStatus(account, knownSecondKeys, clock);
     return (
       <AccountRow
@@ -144,7 +143,8 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
         protection={view.status}
         managedByService={view.managedByService}
         secondKeyKnown={knownSecondKeys.length > 0}
-        actions={actions}
+        serviceDetail
+        meta={meta}
       />
     );
   };
@@ -173,41 +173,43 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
         <p className="text-sm font-medium">{t('rescue.stake.tooMany', { count: movable.length, max: MAX_RESCUE_ACCOUNTS })}</p>
       ) : null}
       {movable.length === 0 ? null : (
-        <ol data-slot="rescue-movable" className="flex flex-col gap-3">
-          {movable.map((account) => (
-            <li key={account.address}>
-              {row(
-                account,
-                isLockupInForce(account.lockup, clock) ? undefined : (
-                  <p className="flex items-start gap-2 text-sm font-medium text-danger">
-                    <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                    {t('rescue.stake.unlocked')}
-                  </p>
-                ),
-              )}
-            </li>
-          ))}
-        </ol>
+        <div data-slot="rescue-movable">
+          <AccountList label={t('components.accountRow.list')} ordered>
+            {movable.map((account) => (
+              <AccountListItem key={account.address}>
+                {row(
+                  account,
+                  isLockupInForce(account.lockup, clock) ? undefined : (
+                    <p className="flex w-full items-start gap-2 text-sm font-medium text-danger">
+                      <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                      {t('rescue.stake.unlocked')}
+                    </p>
+                  ),
+                )}
+              </AccountListItem>
+            ))}
+          </AccountList>
+        </div>
       )}
       {otherKey.length === 0 ? null : (
         <Group slot="rescue-other-key" text={t('rescue.stake.otherKey')}>
           {otherKey.map((account) => (
-            <li key={account.address}>
+            <AccountListItem key={account.address}>
               {row(
                 account,
-                <span className="flex w-full flex-col gap-1 text-sm">
+                <span className="flex w-full flex-col gap-1 text-sm text-foreground">
                   <span className="font-medium">{roleLabel('second')}</span>
                   <AddressText address={account.lockup.custodian} variant="full" />
                 </span>,
               )}
-            </li>
+            </AccountListItem>
           ))}
         </Group>
       )}
       {unsupported.length === 0 ? null : (
         <Group slot="rescue-unsupported" text={t('rescue.stake.unsupported')}>
           {unsupported.map((account) => (
-            <li key={account.address}>{row(account)}</li>
+            <AccountListItem key={account.address}>{row(account)}</AccountListItem>
           ))}
         </Group>
       )}
@@ -220,7 +222,7 @@ function Group({ slot, text, children }: { slot: string; text: string; children:
   return (
     <div data-slot={slot} className="flex flex-col gap-3">
       <p className="text-sm font-medium">{text}</p>
-      <ul className="flex flex-col gap-3">{children}</ul>
+      <AccountList label={t('components.accountRow.list')}>{children}</AccountList>
     </div>
   );
 }

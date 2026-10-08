@@ -1,15 +1,13 @@
 import type { Address } from '@solana/kit';
 import { formatUtcDate, scannerStatus, shortAddress, stakeActivationStatus, type ClockView } from '@stakeward/core';
 import { LoaderCircleIcon } from 'lucide-react';
-import { useId, type Ref } from 'react';
+import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
-import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountList, AccountListItem, AccountListSkeleton, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { KeySlot } from '@/pages/app/KeySlot';
@@ -53,8 +51,7 @@ export function AccountsStep(props: AccountsStepProps) {
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('protect.accounts.loading')}
           </p>
-          <AccountRowSkeleton />
-          <AccountRowSkeleton />
+          <AccountListSkeleton />
         </div>
       ) : loaded.status === 'error' ? (
         <ErrorState
@@ -115,31 +112,32 @@ function Choices({
         />
       ) : (
         <>
-          <ul className="flex flex-col gap-3">
+          <AccountList label={t('protect.accounts.heading')}>
             {cands.map(({ account, block }) => {
               const view = scannerStatus(account, knownSecondKeys, clock);
               return (
-                <li key={account.address}>
+                <AccountListItem key={account.address}>
                   <AccountRow
                     account={account}
                     activation={stakeActivationStatus(account.delegation, clock.epoch)}
                     protection={view.status}
                     managedByService={view.managedByService}
                     secondKeyKnown={knownSecondKeys.length > 0}
-                    actions={
-                      <Selector
-                        address={account.address}
-                        checked={block === null && selected.includes(account.address)}
-                        block={block}
-                        lockEnd={account.lockup.unixTimestamp}
-                        onSelect={onSelect}
-                      />
-                    }
+                    serviceDetail
+                    select={{
+                      checked: block === null && selected.includes(account.address),
+                      disabled: block !== null,
+                      label: t('protect.accounts.select', { address: shortAddress(account.address) }),
+                      onCheckedChange: (checked) => {
+                        onSelect(account.address, checked);
+                      },
+                    }}
+                    meta={blockNote(account.address, block, account.lockup.unixTimestamp)}
                   />
-                </li>
+                </AccountListItem>
               );
             })}
-          </ul>
+          </AccountList>
           {cands.every((candidate) => candidate.block !== null) ? (
             <p className="text-sm font-medium">{t('protect.accounts.noneProtectable')}</p>
           ) : (
@@ -167,46 +165,18 @@ function Choices({
   );
 }
 
-function Selector({
-  address,
-  checked,
-  block,
-  lockEnd,
-  onSelect,
-}: {
-  address: Address;
-  checked: boolean;
-  block: Candidate['block'];
-  lockEnd: bigint;
-  onSelect: (account: Address, checked: boolean) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <Checkbox
-          id={id}
-          checked={checked}
-          disabled={block !== null}
-          onCheckedChange={(value) => {
-            onSelect(address, value === true);
-          }}
-        />
-        <Label htmlFor={id}>{t('protect.accounts.select', { address: shortAddress(address) })}</Label>
-      </div>
-      {block === 'already-protected' ? (
-        <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
-          {t('protect.accounts.alreadyProtected', { date: formatUtcDate(lockEnd) ?? '' })}
-          <Link
-            href={`/extend/${address}`}
-            className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-          >
-            {t('protect.accounts.extend')}
-          </Link>
-        </p>
-      ) : block === 'locked-by-other' ? (
-        <p className="text-sm text-muted">{t('protect.accounts.lockedByOther')}</p>
-      ) : null}
-    </div>
-  );
+/** Why an account cannot be chosen, on its row's second line. */
+function blockNote(address: Address, block: Candidate['block'], lockEnd: bigint): ReactNode {
+  if (block === 'already-protected') {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-x-2">
+        {t('protect.accounts.alreadyProtected', { date: formatUtcDate(lockEnd) ?? '' })}
+        <Link href={`/extend/${address}`} className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover">
+          {t('protect.accounts.extend')}
+        </Link>
+      </span>
+    );
+  }
+  if (block === 'locked-by-other') return <span>{t('protect.accounts.lockedByOther')}</span>;
+  return undefined;
 }

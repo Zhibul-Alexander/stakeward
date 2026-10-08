@@ -1,7 +1,8 @@
 import type { Address } from '@solana/kit';
 import { scannerStatus, shortAddress, stakeActivationStatus, type ChainClock, type StakeAccount } from '@stakeward/core';
+import { cn } from 'cn';
 import { RefreshCwIcon } from 'lucide-react';
-import { AccountRow, AccountRowSkeleton } from '@/components/product/account-row';
+import { AccountListSkeleton, AccountRow, SINGLE_ROW_FRAME } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { Button } from '@/components/ui/button';
@@ -37,8 +38,7 @@ export function AccountSection({ mainKey, secondKey, data, selected, onSelect, o
       return (
         <div aria-busy="true" className="flex flex-col gap-3">
           <p className="sr-only">{t('devCosign.account.loading')}</p>
-          <AccountRowSkeleton />
-          <AccountRowSkeleton />
+          <AccountListSkeleton />
         </div>
       );
     case 'error':
@@ -88,12 +88,13 @@ export function AccountSection({ mainKey, secondKey, data, selected, onSelect, o
               protection={view.status}
               managedByService={view.managedByService}
               secondKeyKnown={secondKeys.length > 0}
-              className={selected === account.address ? 'border-primary' : undefined}
-              actions={
-                <div className="flex items-center gap-2">
+              serviceDetail
+              className={cn(SINGLE_ROW_FRAME, selected === account.address && 'border-primary bg-primary-soft')}
+              meta={
+                <span className="flex w-full items-center gap-2 text-foreground">
                   <RadioGroupItem value={account.address} id={id} />
                   <Label htmlFor={id}>{t('devCosign.account.use', { address: shortAddress(account.address) })}</Label>
-                </div>
+                </span>
               }
             />
           );
