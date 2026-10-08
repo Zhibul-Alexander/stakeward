@@ -12,7 +12,7 @@ type SummaryBarProps = {
   detail?: ReactNode;
   /** MonitoringStatus: "Last checked N min ago", red after 10 minutes (UX rule 12). */
   monitoring: ReactNode;
-  /** Telegram (outline sm) and Refresh (ghost icon-sm, named "Refresh"). */
+  /** Telegram (outline sm) and Refresh (ghost icon-sm, named "Refresh"): one group that wraps as a whole. */
   tools?: ReactNode;
   /** At most one outline button, e.g. "Connect second key". */
   action?: ReactNode;
@@ -55,7 +55,11 @@ export function SummaryBar({ label, state, headline, detail, monitoring, tools, 
       )}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {monitoring}
-        {tools}
+        {tools === undefined ? null : (
+          <div data-slot="summary-tools" className="flex items-center gap-2">
+            {tools}
+          </div>
+        )}
       </div>
       {footer === undefined ? null : <div className="text-sm">{footer}</div>}
     </section>

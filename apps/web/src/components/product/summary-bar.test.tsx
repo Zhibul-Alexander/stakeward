@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button';
 import { SummaryBar } from './summary-bar.tsx';
 
 const monitoring = <span data-slot="monitoring">Last checked 2 min ago</span>;
-const tools = <Button variant="ghost" size="icon-sm" aria-label="Refresh" />;
+const tools = (
+  <>
+    <Button variant="outline" size="sm">
+      Get alerts in Telegram
+    </Button>
+    <Button variant="ghost" size="icon-sm" aria-label="Refresh" />
+  </>
+);
 
 describe('SummaryBar', () => {
   it('ready: the answer first, then how fresh it is, the tools, one action and the footer', () => {
@@ -27,6 +34,11 @@ describe('SummaryBar', () => {
     expect(within(bar).getByText('2 of 6 stake accounts')).toBeInTheDocument();
     expect(within(bar).getByText('Last checked 2 min ago')).toBeInTheDocument();
     expect(within(bar).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+    // Telegram and Refresh wrap together, never Refresh alone on a line under the rest.
+    const group = within(bar).getByRole('button', { name: 'Refresh' }).parentElement;
+    expect(group).toHaveAttribute('data-slot', 'summary-tools');
+    expect(group).not.toHaveClass('flex-wrap');
+    expect(within(group as HTMLElement).getByRole('button', { name: 'Get alerts in Telegram' })).toBeInTheDocument();
     expect(within(bar).getByRole('button', { name: 'Connect second key' })).toBeInTheDocument();
     expect(within(bar).getByRole('link', { name: 'Rescue your stake' })).toBeInTheDocument();
   });
