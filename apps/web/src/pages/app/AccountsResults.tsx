@@ -149,7 +149,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
       {view.noLongerProtected.length === 0 ? null : <NoLongerProtectedBanner accounts={view.noLongerProtected} />}
       <section aria-labelledby={mainId} className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <h2 id={mainId} className="text-xl font-semibold">
+          <h2 id={mainId} className="text-lg font-semibold">
             {t('app.lists.main')}
           </h2>
           {view.owned.length === 0 ? null : <p className="text-sm text-muted">{t('app.lists.mainNote')}</p>}
@@ -178,7 +178,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
       </section>
       {view.unconfirmedLock ? (
         <section aria-labelledby={confirmId} className="flex flex-col gap-3">
-          <h2 id={confirmId} className="text-xl font-semibold">
+          <h2 id={confirmId} className="text-lg font-semibold">
             {t('app.connect.secondTitle')}
           </h2>
           <KeySlot role="second" mainKey={address} description={t('app.connect.secondDescription')} />
@@ -187,7 +187,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
       {view.secondKeyFor.length === 0 ? null : (
         <section aria-labelledby={secondId} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <h2 id={secondId} className="text-xl font-semibold">
+            <h2 id={secondId} className="text-lg font-semibold">
               {t('app.lists.secondKeyFor')}
             </h2>
             <p className="text-sm text-muted">{t('app.lists.secondKeyForNote')}</p>

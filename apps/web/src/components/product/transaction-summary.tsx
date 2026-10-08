@@ -146,7 +146,7 @@ export function TransactionSummary({ summary, current: single, knownRoles = {}, 
       className={cn('flex flex-col gap-5 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6', className)}
     >
       <header className="flex flex-col gap-1">
-        <TitleTag id={titleId} className="text-xl font-semibold">
+        <TitleTag id={titleId} className="text-lg font-semibold">
           {t(`components.tx.kind.${action.kind}`)}
         </TitleTag>
         <p className="text-sm text-muted">{t('components.tx.intro')}</p>

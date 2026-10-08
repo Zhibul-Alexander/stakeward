@@ -5,6 +5,8 @@
  * class here (its swatch would stay transparent).
  */
 
+import type { MessageKey } from '@/i18n';
+
 export type ColourToken = { name: string; light: string; dark: string };
 export type SizeToken = { name: string; value: string };
 
@@ -72,6 +74,7 @@ export const SWATCH_CLASS: Record<string, string> = {
   primary: 'bg-primary',
   'primary-hover': 'bg-primary-hover',
   'on-primary': 'bg-on-primary',
+  'primary-soft': 'bg-primary-soft',
   inverse: 'bg-inverse',
   'on-inverse': 'bg-on-inverse',
   success: 'bg-success',
@@ -101,10 +104,18 @@ export const TEXT_CLASS: Record<string, string> = {
   sm: 'text-sm',
   base: 'text-base',
   lg: 'text-lg',
-  xl: 'text-xl',
   '2xl': 'text-2xl',
   '3xl': 'text-3xl',
-  '4xl': 'text-4xl',
+};
+
+/** The role of each size (the table in tokens.css, DECISIONS.md D109). */
+export const TEXT_ROLE: Record<string, MessageKey> = {
+  xs: 'devUi.typeRoles.xs',
+  sm: 'devUi.typeRoles.sm',
+  base: 'devUi.typeRoles.base',
+  lg: 'devUi.typeRoles.lg',
+  '2xl': 'devUi.typeRoles.2xl',
+  '3xl': 'devUi.typeRoles.3xl',
 };
 
 export const RADIUS_CLASS: Record<string, string> = {

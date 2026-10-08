@@ -82,7 +82,7 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
           </div>
           {choices.length === 1 ? <p className="max-w-prose text-sm text-muted">{t('extend.noLater')}</p> : null}
           <div className="flex flex-col gap-3">
-            <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-xl font-semibold">
+            <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
               {t('extend.legend')}
             </h2>
             <RadioGroup

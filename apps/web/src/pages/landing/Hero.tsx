@@ -31,7 +31,7 @@ export function Hero({ cluster }: { cluster: Cluster }) {
   return (
     <section aria-labelledby="landing-title" className="flex flex-col gap-6">
       <div className="flex max-w-prose flex-col gap-4">
-        <h1 id="landing-title" className="text-3xl font-semibold sm:text-4xl">
+        <h1 id="landing-title" className="text-2xl font-semibold sm:text-3xl">
           {t('landing.title')}
         </h1>
         <p className="text-lg text-muted">{t('landing.lead')}</p>

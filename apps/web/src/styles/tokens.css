@@ -21,7 +21,9 @@
  *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
  *   ring              focus indicator (3:1 against background and surface)
  *   primary           main actions and links; on-primary is text on it
+ *   primary-soft      selection and the current step (always with a second cue: checkbox, number or ring)
  *   inverse           tooltip background; on-inverse is text on it
+ * Colour means state. primary is the only non-state colour: the one action of a screen.
  * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
  * background, <tone>-border its outline.
  *   success   Protected
@@ -56,6 +58,7 @@
   --color-primary: #4338ca;
   --color-primary-hover: #3730a3;
   --color-on-primary: #ffffff;
+  --color-primary-soft: #eef0ff;
   --color-inverse: #1f2430;
   --color-on-inverse: #f5f6f8;
 
@@ -68,9 +71,9 @@
   --color-neutral: #3f4756;
   --color-neutral-soft: #e6e9ee;
   --color-neutral-border: #c5cad3;
-  --color-info: #1e40af;
-  --color-info-soft: #dbeafe;
-  --color-info-border: #93c5fd;
+  --color-info: #075985;
+  --color-info-soft: #e3f2fc;
+  --color-info-border: #9fd0f0;
   --color-danger: #b91c1c;
   --color-danger-soft: #fee2e2;
   --color-danger-border: #fca5a5;
@@ -86,7 +89,19 @@
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Type scale. T-shirt names on purpose: the class merger (cn) recognises them as font sizes, not colours. */
+  /*
+   * Type scale: six sizes, no others (test/design-tokens.test.ts rejects a size class that is not declared here;
+   * Tailwind would drop it silently). T-shirt names on purpose: the class merger (cn) recognises them as font sizes,
+   * not colours. Weights 400, 500 and 600 only; tabular-nums on every amount, count, fee and countdown; mono only for
+   * addresses, signatures and commands.
+   *   text-xs    12/16  meta, badges, captions, footer fine print
+   *   text-sm    14/20  UI text: rows, buttons, tables, receipt, labels
+   *   text-base  16/24  prose: landing, explanations, leads, inputs; h3 (font-semibold)
+   *   text-lg    18/28  h2 in the app (Section), receipt title, row amount from 640 px
+   *   text-2xl   24/32  h1 below 640 px (landing hero included), landing h2, the answer (SummaryBar headline, Done
+   *                     headline, /stats numbers)
+   *   text-3xl   36/40  h1 from 640 px (PageHeader and the landing hero)
+   */
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
   --text-sm: 0.875rem;
@@ -95,14 +110,14 @@
   --text-base--line-height: 1.5rem;
   --text-lg: 1.125rem;
   --text-lg--line-height: 1.75rem;
-  --text-xl: 1.25rem;
-  --text-xl--line-height: 1.75rem;
   --text-2xl: 1.5rem;
   --text-2xl--line-height: 2rem;
-  --text-3xl: 1.875rem;
-  --text-3xl--line-height: 2.25rem;
-  --text-4xl: 2.25rem;
-  --text-4xl--line-height: 2.5rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.02em;
+  --text-3xl--font-weight: 600;
 
   /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
   --spacing: 0.25rem;
@@ -120,6 +135,7 @@
 
   /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
   --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
 
   @keyframes fade-in {
@@ -153,9 +169,10 @@
     --color-border: #2c3240;
     --color-border-strong: #7a8396;
     --color-ring: #a5b4fc;
-    --color-primary: #a5b4fc;
-    --color-primary-hover: #c7d2fe;
+    --color-primary: #818cf8;
+    --color-primary-hover: #a5b4fc;
     --color-on-primary: #14123a;
+    --color-primary-soft: #22244a;
     --color-inverse: #eceef3;
     --color-on-inverse: #151922;
 
@@ -168,9 +185,9 @@
     --color-neutral: #c5cad3;
     --color-neutral-soft: #262b37;
     --color-neutral-border: #4a5263;
-    --color-info: #93c5fd;
-    --color-info-soft: #13254a;
-    --color-info-border: #1e40af;
+    --color-info: #7dd3fc;
+    --color-info-soft: #0b2236;
+    --color-info-border: #1d5f88;
     --color-danger: #fca5a5;
     --color-danger-soft: #3b1212;
     --color-danger-border: #991b1b;

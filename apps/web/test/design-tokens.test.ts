@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseTokens } from '@/pages/dev-ui/tokens';
+import { parseTokens, TEXT_CLASS } from '@/pages/dev-ui/tokens';
 
 /**
  * CLAUDE.md section 9: colours, sizes and other raw design values live only in src/styles/tokens.css. Components and
@@ -201,6 +201,19 @@ const TEXT_PAIRS: [string, string][] = [
   ['foreground', 'subtle'],
   ['muted', 'subtle'],
   ['foreground', 'subtle-hover'],
+  ['muted', 'subtle-hover'],
+  // Selection and the current step (primary-soft): text, links and status words on it (a checked RadioCard can
+  // carry a danger title).
+  ['foreground', 'primary-soft'],
+  ['primary', 'primary-soft'],
+  ['muted', 'primary-soft'],
+  ...TONES.map((tone): [string, string] => [tone, 'primary-soft']),
+  // Insets inside panels are a subtle fill without a frame: links and status words on it.
+  ['primary', 'subtle'],
+  ...TONES.map((tone): [string, string] => [tone, 'subtle']),
+  // Links inside Alerts, callouts and the /cosign StopPanel. The thinnest text pair of all (dark: primary on
+  // warning-soft, 4.65), so it is pinned here.
+  ...TONES.map((tone): [string, string] => ['primary', `${tone}-soft`]),
   ['on-primary', 'primary'],
   ['on-primary', 'primary-hover'],
   ['primary-hover', 'surface'],
@@ -216,11 +229,18 @@ const TEXT_PAIRS: [string, string][] = [
 ];
 
 /** Control outlines, focus indicator and the checked fill need 3:1 against what surrounds them (WCAG 1.4.11). */
-const UI_PAIRS: [string, string][] = SURFACES.flatMap((bg): [string, string][] => [
-  ['border-strong', bg],
-  ['ring', bg],
-  ['primary', bg],
-]);
+const UI_PAIRS: [string, string][] = [
+  ...SURFACES.flatMap((bg): [string, string][] => [
+    ['border-strong', bg],
+    ['ring', bg],
+    ['primary', bg],
+  ]),
+  // Controls and focus on an inset (subtle) and on a selected row or current step (primary-soft).
+  ['ring', 'subtle'],
+  ['border-strong', 'subtle'],
+  ['primary', 'primary-soft'],
+  ['ring', 'primary-soft'],
+];
 
 describe('tokens.css colours', () => {
   const css = readFileSync(TOKENS_FILE, 'utf8');
@@ -280,5 +300,54 @@ describe('tokens.css colours', () => {
   it('contrast maths matches known WCAG values', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 5);
     expect(contrastRatio('#767676', '#ffffff')).toBeCloseTo(4.54, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+
+/** The type scale (DECISIONS.md D109): six sizes, each with a role written in tokens.css. */
+const TYPE_SCALE = ['xs', 'sm', 'base', 'lg', '2xl', '3xl'];
+
+/** Sizes declared in tokens.css: `--text-<name>:`, not the sub-properties `--text-<name>--line-height:`. */
+function declaredTextSizes(css: string): string[] {
+  return [...css.matchAll(/--text-([a-z0-9]+)(--[\w-]+)?\s*:/g)].filter((m) => m[2] === undefined).map((m) => m[1] ?? '');
+}
+
+/**
+ * Font-size utilities in code, with or without variants (`sm:text-xl`, `print:text-sm`). Tailwind drops a class whose
+ * size has no token without a word, so a removed size would leave text at the inherited size unnoticed.
+ */
+function textSizeClasses(code: string): string[] {
+  return [...code.matchAll(/(?<![\w-])text-(xs|sm|base|lg|xl|[2-9]xl)(?![\w-])/g)].map((m) => m[1] ?? '');
+}
+
+describe('type scale', () => {
+  const css = readFileSync(TOKENS_FILE, 'utf8');
+
+  it('tokens.css declares exactly six sizes', () => {
+    expect(declaredTextSizes(css)).toEqual(TYPE_SCALE);
+  });
+
+  it('the size guard finds sizes with and without variants (positive control) and nothing else (negative control)', () => {
+    expect(textSizeClasses(`const a = 'sm:text-xl text-4xl';`)).toEqual(['xl', '4xl']);
+    expect(textSizeClasses(`const b = 'print:text-2xl [&_p]:text-base';`)).toEqual(['2xl', 'base']);
+    expect(textSizeClasses(`const c = 'text-muted text-on-primary text-sm md:text-3xl';`).filter((size) => !TYPE_SCALE.includes(size))).toEqual([]);
+    expect(textSizeClasses(`const d = 'text-muted text-on-primary text-balance text-pretty var(--text-xl) text-xl-foo';`)).toEqual([]);
+  });
+
+  it('every size class in src/ is one of the six', () => {
+    const files = sourceFiles(SRC).filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'));
+    expect(files.length).toBeGreaterThan(10);
+    const report = files.flatMap((file) =>
+      textSizeClasses(readFileSync(file, 'utf8'))
+        .filter((size) => !TYPE_SCALE.includes(size))
+        .map((size) => `${relative(SRC, file)}: text-${size}`),
+    );
+    expect(report).toEqual([]);
+  });
+
+  it('the /dev/ui type scale shows every size, each with its class', () => {
+    expect(parseTokens(css).textSizes.map((size) => size.name)).toEqual(TYPE_SCALE);
+    expect(Object.keys(TEXT_CLASS).sort()).toEqual([...TYPE_SCALE].sort());
   });
 });

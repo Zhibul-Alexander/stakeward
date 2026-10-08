@@ -9,6 +9,7 @@ import {
   SPACING_STEPS,
   SWATCH_CLASS,
   TEXT_CLASS,
+  TEXT_ROLE,
   type ColourToken,
 } from './tokens.ts';
 
@@ -52,16 +53,22 @@ export function TokensSection() {
         </div>
       </DemoGroup>
 
-      <DemoGroup title={t('devUi.typeScale')}>
+      <DemoGroup title={t('devUi.typeScale')} note={t('devUi.typeScaleNote')}>
         <ul className="flex flex-col gap-3">
-          {TOKENS.textSizes.map((size) => (
-            <li key={size.name} className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-baseline sm:gap-4">
-              <span className="w-28 shrink-0 font-mono text-xs text-muted">
-                text-{size.name} · {size.value}
-              </span>
-              <span className={`min-w-0 ${TEXT_CLASS[size.name] ?? ''}`}>{t('devUi.typeSample')}</span>
-            </li>
-          ))}
+          {TOKENS.textSizes.map((size) => {
+            const role = TEXT_ROLE[size.name];
+            return (
+              <li key={size.name} className="flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-baseline sm:gap-4">
+                <span className="w-28 shrink-0 font-mono text-xs text-muted">
+                  text-{size.name} · {size.value}
+                </span>
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className={TEXT_CLASS[size.name] ?? ''}>{t('devUi.typeSample')}</span>
+                  {role !== undefined && <span className="text-xs text-muted">{t(role)}</span>}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </DemoGroup>
 

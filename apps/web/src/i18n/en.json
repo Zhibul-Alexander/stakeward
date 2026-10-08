@@ -606,6 +606,15 @@
     "darkTheme": "Dark theme",
     "typeScale": "Type scale",
     "typeSample": "Protect your staked SOL",
+    "typeScaleNote": "Six sizes, no others. Weights 400, 500 and 600. Amounts, counts, fees and countdowns use tabular figures.",
+    "typeRoles": {
+      "xs": "Meta, badges, captions, footer fine print",
+      "sm": "Interface text: rows, buttons, tables, the receipt, labels",
+      "base": "Prose: landing, explanations, leads, inputs; h3 in semibold",
+      "lg": "h2 in the app (Section), receipt title, row amount from 640 px",
+      "2xl": "h1 below 640 px, landing h2, the answer (summary headline, Done headline, stats)",
+      "3xl": "h1 from 640 px (PageHeader and the landing hero)"
+    },
     "fonts": "Fonts",
     "sansSample": "Geist: Stakeward never asks for your seed phrase.",
     "monoSample": "Geist Mono: 7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ",
