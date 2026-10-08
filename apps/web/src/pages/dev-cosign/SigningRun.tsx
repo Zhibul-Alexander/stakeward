@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { t, type MessageKey } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import { StandardWalletPort, waitForConfirmation, type ConfirmationOptions } from '@/ports';
+import { connectOffering, StandardWalletPort, waitForConfirmation, type ConfirmationOptions } from '@/ports';
 import { describeMessageChange, type MessageChange } from './diff.ts';
 import { changeCode, type SendOutcome, type SignerRecord, type SigningRunResult, type VerifyOutcome } from './report.ts';
 
@@ -148,7 +148,7 @@ export function SigningRun({ chain, built, signers, current, knownRoles, confirm
     onFinishedRef.current(result);
   }
 
-  async function sign(step: number) {
+  async function sign(step: number, afterSwitch = false) {
     const signer = signers[step];
     if (signer === undefined) return;
     tokenRef.current += 1;
@@ -158,6 +158,20 @@ export function SigningRun({ chain, built, signers, current, knownRoles, confirm
     // Stop waiting aborts it: the wallet's queue then lets the next request through (core createWalletRequestQueue).
     const controller = new AbortController();
     abortRef.current = controller;
+    if (!signer.wallet.accounts.includes(signer.address)) {
+      // The user's own click (Sign, or Continue after switching): ask the wallet for the account selected in it now,
+      // reconnecting once if it stays on another one (Phantom, D109).
+      try {
+        await connectOffering(signer.wallet, (offered) => offered.includes(signer.address), { signal: controller.signal });
+      } catch {
+        // Declined or failed: the check below keeps the user on the switch step.
+      }
+      if (token !== tokenRef.current) return;
+      if (!signer.wallet.accounts.includes(signer.address)) {
+        setPhase({ kind: 'switch-account', step, again: afterSwitch });
+        return;
+      }
+    }
     let returned: Uint8Array;
     try {
       const [answer] = await signer.wallet.signTransactions(signer.address, [sent], { signal: controller.signal });
@@ -211,21 +225,7 @@ export function SigningRun({ chain, built, signers, current, knownRoles, confirm
   }
 
   async function continueAfterSwitch(step: number) {
-    const signer = signers[step];
-    if (signer === undefined) return;
-    if (!signer.wallet.accounts.includes(signer.address)) {
-      // A wallet that dropped the site's access to this account asks again (the user's own click).
-      try {
-        await signer.wallet.connect();
-      } catch {
-        // Declined or failed: the check below keeps the user on the switch step.
-      }
-    }
-    if (!signer.wallet.accounts.includes(signer.address)) {
-      setPhase({ kind: 'switch-account', step, again: true });
-      return;
-    }
-    await sign(step);
+    await sign(step, true);
   }
 
   async function send() {

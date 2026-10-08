@@ -666,3 +666,56 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
     SCENARIO_TIMEOUT * 2,
   );
 });
+
+describe('/rescue: all three keys in one Phantom (D109)', () => {
+  it(
+    'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload',
+    async () => {
+      const w = await world();
+      const S1 = await stake(w, { custodian: w.K.address });
+      // The owner's test setup: the new wallet, the main key and the second key are accounts of one Phantom, which
+      // offers one account at a time and stays on the one the site connected until the site connects again.
+      const phantom = await createTestWalletPort({ name: 'Phantom', signers: [w.D, w.A, w.K], sticky: true });
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [phantom]);
+      const keyOf: Record<RoleName, Address> = { 'New wallet': w.D.address, 'Main key': w.A.address, 'Second key': w.K.address };
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      phantom.select(w.D.address);
+      await connect(user, 'New wallet', 'Phantom');
+      await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
+      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      await click(user, 'Continue');
+      await heading(en.rescue.keys.heading);
+      const mainWhere = screen.getByRole('radiogroup', { name: 'Where does your Main key sign?' });
+      await user.click(within(mainWhere).getByRole('radio', { name: 'In this browser' }));
+      const secondWhere = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
+      await user.click(within(secondWhere).getByRole('radio', { name: 'In this browser' }));
+      await click(user, 'Continue');
+      await heading(en.rescue.move.heading);
+      await click(user, 'Create the link-signing account');
+      await click(user, 'Sign in Phantom as New wallet');
+
+      // Before each key the user selects its account in Phantom, as the page asks, and presses the button once.
+      const remaining: Signer[] = [
+        { role: 'New wallet', wallet: 'Phantom' },
+        { role: 'Main key', wallet: 'Phantom' },
+        { role: 'Second key', wallet: 'Phantom' },
+      ];
+      while (remaining.length > 0) {
+        const { signer, connect: first } = await nextSigner(remaining);
+        phantom.select(keyOf[signer.role]);
+        if (first) await connectAndContinue(user, signer.role, 'Phantom');
+        await click(user, `Sign in Phantom as ${signer.role}`);
+        remaining.splice(remaining.indexOf(signer), 1);
+      }
+
+      await heading(en.rescue.done.titleOne);
+      expect(w.testChain.stakeAccount(S1)?.withdrawer).toBe(w.D.address);
+      expect(w.testChain.stakeAccount(S1)?.staker).toBe(w.D.address);
+      expect(w.testChain.stakeAccount(S1)?.lockup.custodian).toBe(w.K.address);
+    },
+    SCENARIO_TIMEOUT,
+  );
+});

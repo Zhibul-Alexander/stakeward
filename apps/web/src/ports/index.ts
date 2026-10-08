@@ -12,6 +12,7 @@ export {
   type ConfirmationOptions,
   type ConfirmationOutcome,
 } from './confirm.ts';
+export { connectOffering } from './connect-offering.ts';
 export { systemDeviceClock, type DeviceClock } from './device-clock.ts';
 export { refreshStakeAccounts } from './fresh-accounts.ts';
 export { HttpChain, type HttpChainOptions } from './http-chain.ts';

@@ -917,6 +917,45 @@ describe('/protect step gates', () => {
     },
     TIMEOUT,
   );
+
+  it(
+    'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload (D109)',
+    async () => {
+      const w = await world();
+      const { S1, S2 } = await twoAccounts(w);
+      // One account at a time, and the site stays on the account it connected until it reconnects (owner, 08.10.2026).
+      const phantom = await createTestWalletPort({ name: 'Phantom', signers: [w.A, w.K], sticky: true });
+      const page = renderProtect(w, [S1, S2], [phantom]);
+      const { user } = page;
+
+      await connect(user, 'Main key', 'Phantom');
+      expect(phantom.accounts).toEqual([w.A.address]);
+      await screen.findAllByRole('checkbox', { name: /^Protect stake account / }, WAIT);
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      // The user switches to the second account in Phantom: the site sees nothing until it connects again.
+      phantom.select(w.K.address);
+      expect(phantom.accounts).toEqual([w.A.address]);
+      await connect(user, 'Second key', 'Phantom');
+      expect(page.ports.slots.getSnapshot().second?.address).toBe(w.K.address);
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
+      await user.click(continueButton());
+      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      await user.click(continueButton());
+
+      // Before each signature the user selects the account the button names, then presses it: one click each.
+      phantom.select(w.A.address);
+      await click(user, 'Sign 2 transactions in Phantom as Main key');
+      await screen.findByRole('button', { name: 'Sign 2 transactions in Phantom as Second key' }, WAIT);
+      phantom.select(w.K.address);
+      await click(user, 'Sign 2 transactions in Phantom as Second key');
+      await finished('2 stake accounts are protected');
+      expect(phantom.requests.map((request) => request.address)).toEqual([w.A.address, w.K.address]);
+      expect(lockOf(w, S1)?.custodian).toBe(w.K.address);
+      expect(lockOf(w, S2)?.custodian).toBe(w.K.address);
+    },
+    TIMEOUT,
+  );
 });
 
 describe('protectPlan reads every account fresh and decides it', () => {

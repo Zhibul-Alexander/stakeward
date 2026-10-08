@@ -337,6 +337,31 @@ describe('/dev/cosign on LiteSvmChain', () => {
   );
 
   it(
+    'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload (D109)',
+    async () => {
+      const base = await world();
+      const wallet = await createTestWalletPort({ name: 'Phantom', signers: [base.mainKey, base.secondKey], sticky: true });
+      const w = renderPage(base, [wallet]);
+      await connect(w.user, 'Main key', 'Phantom');
+      // The user switches to the second account in Phantom, then connects it as the Second key: no reload, no Continue.
+      wallet.select(base.secondKey.address);
+      await connect(w.user, 'Second key', 'Phantom');
+
+      await chooseAccount(w.user, w.stake);
+      await w.user.click(screen.getByRole('button', { name: 'Start run' }));
+      wallet.select(base.mainKey.address);
+      await clickWhenReady(w.user, 'Sign in Phantom as Main key');
+      expect(await runSection().findByText(/^Phantom holds both keys\./)).toBeInTheDocument();
+      wallet.select(base.secondKey.address);
+      await clickWhenReady(w.user, 'Sign in Phantom as Second key');
+      await clickWhenReady(w.user, 'Send to devnet');
+      expect(await runSection().findByText(/^Lock set: Second key/, {}, { timeout: 10_000 })).toBeInTheDocument();
+      expect(wallet.requests.map((request) => request.address)).toEqual([base.mainKey.address, base.secondKey.address]);
+    },
+    TIMEOUT,
+  );
+
+  it(
     'Reset with a second key that holds no SOL: the main key pays and co-signs (F5)',
     async () => {
       const testChain = await TestChain.create();

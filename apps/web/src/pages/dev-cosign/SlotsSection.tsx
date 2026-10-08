@@ -6,7 +6,7 @@ import { WalletSlot } from '@/components/product/wallet-slot';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import type { ResolvedSlot, SlotStore } from '@/ports';
+import { connectOffering, type ResolvedSlot, type SlotStore } from '@/ports';
 
 export type DevRole = Extract<WalletRole, 'main' | 'second'>;
 
@@ -95,9 +95,13 @@ function SlotCard({
     pending.current = controller;
     setUi({ kind: 'connecting', wallet });
     try {
-      const usable = wallet.accounts.some((address) => address !== other?.slot.address);
-      // Connecting is always the user's own click; an already offered account needs no new prompt on Continue.
-      const accounts = forcePrompt || !usable ? await wallet.connect({ signal: controller.signal }) : wallet.accounts;
+      const fits = (accounts: readonly Address[]) => accounts.some((address) => address !== other?.slot.address);
+      // Connecting is always the user's own click; an already offered account needs no new prompt on Continue. A
+      // wallet that keeps offering only the other role's account is reconnected once (Phantom, D109).
+      const accounts =
+        forcePrompt || !fits(wallet.accounts)
+          ? await connectOffering(wallet, fits, { signal: controller.signal })
+          : wallet.accounts;
       if (mine !== token.current) return;
       place(wallet, accounts);
     } catch (error) {

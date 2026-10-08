@@ -25,6 +25,7 @@ import {
   type WalletRole,
 } from '@stakeward/core';
 import { waitForConfirmations, type ConfirmationOptions, type ConfirmationOutcome } from '@/ports/confirm';
+import { connectOffering } from '@/ports/connect-offering';
 import { checkLanded, type LandedItem } from './check.ts';
 import { transactionIdOf } from './link.ts';
 import {
@@ -516,34 +517,16 @@ export class SigningSession {
   }
 
   private async afterSwitch(index: number): Promise<void> {
-    const step = this.state.round?.steps[index];
-    if (step === undefined) return;
-    const resolution = this.options.resolveSigner(step.address, step.role);
-    if (resolution.kind === 'missing') {
-      this.dispatch({ type: 'needs-wallet', step: index });
-      return;
-    }
-    const { wallet } = resolution;
-    if (!wallet.accounts.includes(step.address)) {
-      // A wallet that dropped this site's access to the account asks again (the user's own click).
-      const work = this.begin();
-      this.dispatch({ type: 'starting', step: index, waitFor: 'wallet' });
-      try {
-        await wallet.connect({ signal: work.signal });
-      } catch {
-        // Declined or failed: the check below keeps the user on this step.
-      }
-      if (this.stale(work)) return;
-      if (!wallet.accounts.includes(step.address)) {
-        this.dispatch({ type: 'switch-account', step: index, again: true });
-        return;
-      }
-    }
-    await this.signStep(index);
+    await this.signStep(index, true);
   }
 
-  /** One wallet request for every transaction of the round that lacks this step's signature. */
-  private async signStep(index: number): Promise<void> {
+  /**
+   * One wallet request for every transaction of the round that lacks this step's signature. A wallet that does not
+   * offer the step's account is asked for it first (the user's own click: Sign, or Continue after switching), and
+   * reconnected once if it keeps offering another one: Phantom stays on the account the site connected first
+   * (connectOffering, D109). Still missing: the user is asked to switch accounts (`again` after Continue).
+   */
+  private async signStep(index: number, afterSwitch = false): Promise<void> {
     const round = this.state.round;
     const step = round?.steps[index];
     if (round === null || step === undefined) return;
@@ -555,8 +538,17 @@ export class SigningSession {
     }
     const { wallet } = resolution;
     if (!wallet.accounts.includes(step.address)) {
-      this.dispatch({ type: 'switch-account', step: index, again: false });
-      return;
+      this.dispatch({ type: 'starting', step: index, waitFor: 'wallet' });
+      try {
+        await connectOffering(wallet, (offered) => offered.includes(step.address), { signal: work.signal });
+      } catch {
+        // Declined or failed: the check below keeps the user on this step.
+      }
+      if (this.stale(work)) return;
+      if (!wallet.accounts.includes(step.address)) {
+        this.dispatch({ type: 'switch-account', step: index, again: afterSwitch });
+        return;
+      }
     }
 
     // Enough time left? A read error is ignored: the wallet is asked and the send reports an expiry. A durable nonce
