@@ -90,3 +90,43 @@
 | `assets/use-load-DT9ATTCJ.js` | 180807 | `a41689be93dd932fdb833fc4310ee9ca59dba5e0286b7aa002e748fbfcd657e4` |
 | `favicon.svg` | 325 | `7c88716d99402fcf990c7d778fdfefccb7581c467c8dee53354f4c4686c3be24` |
 | `index.html` | 1034 | `8df7d35f5eef4d81a5242eda9854839c2954fbe7395467fa7a63b61614720425` |
+
+## dev · 2026-10-08 18:12:35 UTC
+
+- Коммит: `98a8bcf092fcaf46fc3b117979a4665dc5b9ff6c`, ветка `build/product`, совпадает с origin/build/product.
+- CI: не проверялся (dev).
+- Version ID: `0500d635-86a8-4506-a5e2-5c596bcb09c9`.
+- Цели: `https://stakeward-dev.stakeward.workers.dev`, `schedule: */2 * * * *`.
+- Сборка сайта: devnet; Node v24.21.0, pnpm 12.8.1, wrangler 4.146.0.
+- На этой папке прошли `build-output.test.ts` и `test-code-guard.test.ts`; после выгрузки файлы не изменились.
+- Сверить сайт с коммитом: `pnpm verify-deploy --env dev --commit 98a8bcf092fcaf46fc3b117979a4665dc5b9ff6c`.
+
+| файл | байт | sha256 |
+|---|---|---|
+| `_headers` | 710 | `53fa331e2041fd9fa0cee0eafd85263b3c396891499e4cf93819bf1e727b6bd0` |
+| `assets/ComponentsSection-aqhB7aHz.js` | 12191 | `229efa24c5914488a926dbebbe7317a6a4ebb6ccbb59efe84bab7473948e6e5f` |
+| `assets/DevCosignPage-PPs3b4LO.js` | 43831 | `722e88828e4540f357c53ae7e771f28b8f5221a30ce98bc6531588dee6824dba` |
+| `assets/DevUiPage-CsxM4HcW.js` | 23612 | `fe6d0dca02270f1da76906a4d50cadd0867870dd15391157803b071a91acbf39` |
+| `assets/FlowsSection-BOeG82Z-.js` | 10568 | `0d275dfdab5b827e4d9b47d77a312d1bfe3c3bce302158363d4b2b079e9abdc3` |
+| `assets/checkbox-DPmz-jBq.js` | 4700 | `01cc1879d71505fdbc5870736a92e456db1ab99b70d8f0d421f6e09a4b2b8c89` |
+| `assets/command-block-GqAt3_3e.js` | 28704 | `c007635de64ba9b7880d38d6fc8ba5e78493cb38d2cff696076b63d5d66afe18` |
+| `assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2` | 7420 | `2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e` |
+| `assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2` | 15084 | `6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09` |
+| `assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2` | 16512 | `824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f` |
+| `assets/geist-latin-wght-normal-BgDaEnEv.woff2` | 29400 | `19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1` |
+| `assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2` | 6176 | `cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4` |
+| `assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2` | 12940 | `4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df` |
+| `assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2` | 14696 | `1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b` |
+| `assets/geist-mono-latin-wght-normal-XN7g48iV.woff2` | 23128 | `684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc` |
+| `assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2` | 5812 | `5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad` |
+| `assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2` | 7696 | `d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175` |
+| `assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2` | 8004 | `8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1` |
+| `assets/index-Bi7a-6Wa.css` | 37411 | `d096f74c9553bc6b51d7256ec11479e8878ef964cd6acd4ef05197a08543e2bf` |
+| `assets/index-CVXVMk8c.js` | 473480 | `b47fcdc3a8354f0b7b4536d8ec7627183e89b13434a2802a58949e6918c4456a` |
+| `assets/info-Cn2sRaiR.js` | 233 | `ffe7afdb991b39145fc6b974d88d1f999193ed121d2b0fcdf3dc8585a350dca6` |
+| `assets/label-CEIjRbm8.js` | 165599 | `9c68ee35f6a068807b28a74c00e58a6fad78aff07ddd1a22a87f7e01ebca47d1` |
+| `assets/nonce-D8jLtlaz.js` | 3861 | `2e8516655043e2d1d8332f2361ba1ff58398eebb6542ee3765674b656a856b9f` |
+| `assets/samples-Cwys7LiL.js` | 9472 | `341943fa09d40f37ba1a6439e2187063af245d1ea9221387c60e16acf2f8312e` |
+| `assets/use-load-DG8NeVyx.js` | 181050 | `74c038c7991567dd2ce3ca107ef6ada0d19ed004f672e0e8b52aa397be1fecb3` |
+| `favicon.svg` | 325 | `7c88716d99402fcf990c7d778fdfefccb7581c467c8dee53354f4c4686c3be24` |
+| `index.html` | 1034 | `2932ea68eaf86e96fe77868c34b5ad71802807d51bb477dbc75ce88f0ffde0ae` |
