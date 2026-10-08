@@ -66,6 +66,8 @@ type TransactionSummaryProps = {
    */
   batch?: SummaryBatch | undefined;
   headingLevel?: 2 | 3 | undefined;
+  /** The line under the title (`components.tx.intro`); /cosign leaves it out (default true). */
+  intro?: boolean | undefined;
   className?: string | undefined;
 };
 
@@ -123,7 +125,15 @@ export function lockText(lockup: Lockup, clock: ClockView): string {
  * Warnings come from comparing the bytes with the chain (DECISIONS.md D23): a new second key replacing another,
  * a lock made shorter, a withdrawal to a wallet that does not sign.
  */
-export function TransactionSummary({ summary, current: single, knownRoles = {}, batch, headingLevel = 2, className }: TransactionSummaryProps) {
+export function TransactionSummary({
+  summary,
+  current: single,
+  knownRoles = {},
+  batch,
+  headingLevel = 2,
+  intro = true,
+  className,
+}: TransactionSummaryProps) {
   const titleId = useId();
   const { action } = summary;
   const roles = rolesOf(action, knownRoles);
@@ -149,7 +159,7 @@ export function TransactionSummary({ summary, current: single, knownRoles = {}, 
         <TitleTag id={titleId} className="text-lg font-semibold">
           {t(`components.tx.kind.${action.kind}`)}
         </TitleTag>
-        <p className="text-sm text-muted">{t('components.tx.intro')}</p>
+        {intro ? <p className="text-sm text-muted">{t('components.tx.intro')}</p> : null}
         {batch === undefined ? null : (
           <p className="text-sm text-muted">{t('components.tx.batch.intro', { count: batch.accounts.length })}</p>
         )}
