@@ -1,6 +1,8 @@
 import type { Address } from '@solana/kit';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearch } from 'wouter';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useLoad } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount } from '@/pages/account/AccountView';
@@ -107,12 +109,8 @@ export function ExtendPage({ signing }: ExtendPageProps) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('common.pages.extend')}</h1>
-        <p className="text-muted">{t('extend.intro')}</p>
-        <p className="text-sm font-medium">{t('common.neverSeedPhrase')}</p>
-      </div>
+    <Page width="flow">
+      <PageHeader title={t('common.pages.extend')} lead={t('extend.intro')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (
@@ -173,6 +171,6 @@ export function ExtendPage({ signing }: ExtendPageProps) {
           ) : null}
         </div>
       )}
-    </div>
+    </Page>
   );
 }

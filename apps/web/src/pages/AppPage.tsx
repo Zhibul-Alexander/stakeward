@@ -2,6 +2,8 @@ import type { Address } from '@solana/kit';
 import { useId } from 'react';
 import { useSearchParams } from 'wouter';
 import { fetchHealth, type Health } from '@/api/health';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { t } from '@/i18n';
 import { useSlot } from '@/ports';
 import { AccountsResults } from './app/AccountsResults.tsx';
@@ -34,11 +36,8 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('app.title')}</h1>
-        <p className="text-muted">{t('app.intro')}</p>
-      </div>
+    <Page width="app">
+      <PageHeader title={t('app.title')} lead={t('app.intro')} />
       <div className="grid gap-6 md:grid-cols-2 md:items-start">
         <AddressForm value={query ?? ''} onSubmit={show} />
         <section aria-labelledby={connectId} className="flex flex-col gap-2">
@@ -49,6 +48,6 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
         </section>
       </div>
       {address === null ? null : <AccountsResults key={address} address={address} loadHealth={loadHealth} />}
-    </div>
+    </Page>
   );
 }

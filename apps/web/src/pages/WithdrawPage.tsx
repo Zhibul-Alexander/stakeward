@@ -2,6 +2,8 @@ import type { Address } from '@solana/kit';
 import { isLockupInForce } from '@stakeward/core';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'wouter';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { RiskNote } from '@/components/product/risk-note';
 import { useThrottledCall } from '@/hooks/use-throttled-call';
 import { t } from '@/i18n';
@@ -123,12 +125,8 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
 
   const landedDeactivate = page.kind === 'done' && page.run.what === 'deactivate' && isLanded(page.job);
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('common.pages.withdraw')}</h1>
-        <p className="text-muted">{t('withdraw.intro')}</p>
-        <p className="text-sm font-medium">{t('common.neverSeedPhrase')}</p>
-      </div>
+    <Page width="flow">
+      <PageHeader title={t('common.pages.withdraw')} lead={t('withdraw.intro')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (
@@ -201,6 +199,6 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
           ) : null}
         </div>
       )}
-    </div>
+    </Page>
   );
 }

@@ -1,5 +1,7 @@
 import { CircleXIcon, LoaderCircleIcon } from 'lucide-react';
 import { Link } from 'wouter';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { TransactionSummaryError, TransactionSummarySkeleton } from '@/components/product/transaction-summary';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -27,21 +29,25 @@ export function CosignPage({ fragment: given, signing }: CosignPageProps) {
   const fragment = given ?? locationHash;
   const read = useLoad(`link#${fragment}`, () => readLink(fragment));
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('common.pages.cosign')}</h1>
-        <p className="text-muted">{t('cosign.intro')}</p>
-        <p className="text-sm font-medium">{t('common.neverSeedPhrase')}</p>
-        <p className="text-sm">
-          {/* Opens the landing on its card for someone who was sent a link to co-sign. */}
-          <Link
-            href="/#for-second-key"
-            className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-          >
-            {t('cosign.whatIs')}
-          </Link>
-        </p>
-      </div>
+    <Page width="flow">
+      <PageHeader
+        title={t('common.pages.cosign')}
+        lead={t('cosign.intro')}
+        meta={
+          <>
+            <p>{t('common.neverSeedPhrase')}</p>
+            <p>
+              {/* Opens the landing on its card for someone who was sent a link to co-sign. */}
+              <Link
+                href="/#for-second-key"
+                className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+              >
+                {t('cosign.whatIs')}
+              </Link>
+            </p>
+          </>
+        }
+      />
       {read.status === 'idle' || read.status === 'loading' ? (
         <div aria-busy="true" className="flex flex-col gap-3">
           <p role="status" className="flex items-center gap-2 text-sm text-muted">
@@ -55,7 +61,7 @@ export function CosignPage({ fragment: given, signing }: CosignPageProps) {
       ) : (
         <LinkContent read={read.value} fragment={fragment} signing={signing} />
       )}
-    </div>
+    </Page>
   );
 }
 

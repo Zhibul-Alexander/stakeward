@@ -1,3 +1,5 @@
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { t } from '@/i18n';
 import { useWalletSlots } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
@@ -15,12 +17,9 @@ type ProtectPageProps = {
 export function ProtectPage({ signing }: ProtectPageProps) {
   const mainKey = useWalletSlots().main?.address ?? null;
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('common.pages.protect')}</h1>
-        <p className="text-muted">{t('protect.intro')}</p>
-      </div>
+    <Page width="flow">
+      <PageHeader title={t('common.pages.protect')} lead={t('protect.intro')} />
       <ProtectWizard key={mainKey ?? 'none'} mainKey={mainKey} signing={signing} />
-    </div>
+    </Page>
   );
 }

@@ -1,3 +1,5 @@
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { t } from '@/i18n';
 import type { SigningTestOptions } from '@/signing/create';
 import { RescueWizard } from './rescue/RescueWizard.tsx';
@@ -14,14 +16,18 @@ type RescuePageProps = {
  */
 export function RescuePage({ signing }: RescuePageProps) {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex max-w-2xl flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('common.pages.rescue')}</h1>
-        <p className="text-muted">{t('rescue.intro')}</p>
-        <p className="text-sm text-muted">{t('rescue.desktop')}</p>
-        <p className="text-sm font-medium">{t('common.neverSeedPhrase')}</p>
-      </div>
+    <Page width="flow">
+      <PageHeader
+        title={t('common.pages.rescue')}
+        lead={t('rescue.intro')}
+        meta={
+          <>
+            <p>{t('rescue.desktop')}</p>
+            <p>{t('common.neverSeedPhrase')}</p>
+          </>
+        }
+      />
       <RescueWizard signing={signing} />
-    </div>
+    </Page>
   );
 }

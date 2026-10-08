@@ -3,6 +3,8 @@ import { shortAddress } from '@stakeward/core';
 import { CircleAlertIcon, LoaderCircleIcon, PrinterIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { AccountRowSkeleton } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
@@ -156,32 +158,32 @@ export function RecoveryPage() {
     };
   }, [route]);
 
+  // Full width, with the card's own max-w-3xl column inside (its print layout, DECISIONS.md D77).
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('recovery.title')}</h1>
-        <p className="text-muted">{t('recovery.intro')}</p>
+    <Page width="app">
+      <div className="flex max-w-3xl flex-col gap-6">
+        <PageHeader title={t('recovery.title')} lead={t('recovery.intro')} />
+        {card === null ? null : <Actions mainKey={card.mainKey} />}
+        {route === null ? (
+          <Alert tone="danger">
+            <CircleAlertIcon aria-hidden="true" />
+            <AlertDescription className="flex flex-col gap-3 text-foreground">
+              <p className="font-medium">{t('recovery.invalid')}</p>
+              <div>
+                <BackToAccounts />
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <RecoveryBody
+            load={load}
+            route={route}
+            onRetry={() => {
+              setAttempt((value) => value + 1);
+            }}
+          />
+        )}
       </div>
-      {card === null ? null : <Actions mainKey={card.mainKey} />}
-      {route === null ? (
-        <Alert tone="danger">
-          <CircleAlertIcon aria-hidden="true" />
-          <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <p className="font-medium">{t('recovery.invalid')}</p>
-            <div>
-              <BackToAccounts />
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <RecoveryBody
-          load={load}
-          route={route}
-          onRetry={() => {
-            setAttempt((value) => value + 1);
-          }}
-        />
-      )}
-    </div>
+    </Page>
   );
 }

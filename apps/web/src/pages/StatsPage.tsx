@@ -2,6 +2,8 @@ import { LockIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { fetchStats, type Stats } from '@/api/stats';
+import { Page } from '@/components/layout/Page';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { SolAmount } from '@/components/product/sol-amount';
@@ -90,17 +92,14 @@ export function StatsPage({ load = () => fetchStats() }: { load?: () => Promise<
   const [attempt, setAttempt] = useState(0);
   const stats = useLoad(`stats#${String(attempt)}`, load);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t('stats.title')}</h1>
-        <p className="text-muted">{t('stats.intro')}</p>
-      </div>
+    <Page width="flow">
+      <PageHeader title={t('stats.title')} lead={t('stats.intro')} />
       <StatsBody
         stats={stats}
         onRetry={() => {
           setAttempt((value) => value + 1);
         }}
       />
-    </div>
+    </Page>
   );
 }
