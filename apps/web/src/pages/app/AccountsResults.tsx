@@ -15,7 +15,7 @@ import type { Health } from '@/api/health';
 import { telegramLinkPath } from '@/api/telegram';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import { useKnownSecondKeys, usePorts, useProtectedAccounts, useWalletSlots } from '@/ports';
+import { useKnownSecondKeys, usePorts, useProtectedAccounts, useSlot, useWalletSlots } from '@/ports';
 import { useHealth, useNow, useStakeAccounts } from './hooks.ts';
 import { KeySlot } from './KeySlot.tsx';
 import { MonitoringStatus } from './MonitoringStatus.tsx';
@@ -233,7 +233,9 @@ function Summary({
 function Loaded({ address, view, clock }: { address: Address; view: AccountsView; clock: ClockView }) {
   const { attention, protected: protectedRows, locked, secondKeyFor } = view.groups;
   const primary = view.primaryAction;
-  const secondSlot = useWalletSlots().second;
+  // The second key as this browser can use it now: a slot remembered from before whose wallet does not offer it (not
+  // reconnected yet, or gone) would draw an empty slot, that is a Connect button.
+  const secondReady = useSlot('second')?.ready === true;
   if (view.owned.length === 0 && secondKeyFor.length === 0) return <NoStakeAccounts address={address} />;
 
   const secondKeyForSection =
@@ -303,9 +305,9 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
           description={lockedKnown ? t('status.lockedByAnotherHint') : t('status.lockedByOtherHint')}
           // With no second key known, "Connect second key": on a new device these are usually the viewer's own locks.
           // With one known, a lock none of them holds may be a fake site's (D35): no "connect it", only a second key
-          // connected here, to compare with the holder.
+          // connected and ready here, to compare with the holder.
           action={
-            lockedKnown && secondSlot === null ? undefined : (
+            lockedKnown && !secondReady ? undefined : (
               <KeySlot role="second" mainKey={address} layout="inline" connectLabel={t('app.connect.secondButton')} />
             )
           }

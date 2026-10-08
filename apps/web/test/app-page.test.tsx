@@ -39,6 +39,8 @@ type Setup = {
   mainSlot?: TestWalletPort;
   /** Fill the second slot with this wallet's first key (the wallet must be connected to offer it). */
   secondSlot?: TestWalletPort;
+  /** A second slot kept from an earlier visit, stored as is: its wallet need not offer the account now. */
+  storedSecondSlot?: { walletId: string; address: Address };
   rememberedSecondKeys?: Address[];
   loadHealth?: () => Promise<Health>;
 };
@@ -57,6 +59,7 @@ function renderApp(setup: Setup, defaultChain: ChainPort) {
     const address = wallet?.accounts[0];
     if (wallet !== undefined && address !== undefined) ports.slots.assign(role, { walletId: wallet.id, address });
   }
+  if (setup.storedSecondSlot !== undefined) ports.slots.assign('second', setup.storedSecondSlot);
   for (const key of setup.rememberedSecondKeys ?? []) ports.secondKeys.remember(key);
   render(
     <Router hook={location.hook} searchHook={location.searchHook}>
@@ -347,6 +350,27 @@ describe('/app on LiteSvmChain', () => {
     expect(within(summary()).getByText(`0 of ${sol(ownedLamports())} SOL protected`)).toBeInTheDocument();
     expect(summary()).not.toHaveTextContent('not connected here');
     expect(within(row(stake.open)).getByText('Not protected')).toBeInTheDocument();
+  });
+
+  it('offers no Connect next to Locked by another key while the stored second slot is not ready (D35)', async () => {
+    const otherSecondKey = (await generateKeyPairSigner()).address;
+    // A second slot kept from an earlier visit whose wallet does not offer its account now: after a reload, before the
+    // wallet reconnects, or with its extension gone. Nothing to compare yet, and still no "connect" next to these locks.
+    const sleeping = await createTestWalletPort({ name: 'Sleeping Wallet', signers: [K] });
+    renderApp(
+      {
+        path: `/app?address=${main.address}`,
+        wallets: [sleeping],
+        storedSecondSlot: { walletId: sleeping.id, address: K.address },
+        rememberedSecondKeys: [otherSecondKey],
+      },
+      chain,
+    );
+    await findRow(stake.locked);
+    const lockedGroup = section('Locked by another key');
+    expect(lockedGroup).toContainElement(row(stake.locked));
+    expect(within(lockedGroup).queryByRole('button', { name: /connect/i })).toBeNull();
+    expect(within(lockedGroup).queryByRole('group', { name: 'Second key' })).toBeNull();
   });
 
   it('shows the red banner when a lock this device saw ends (F6), until the account is protected again', async () => {
