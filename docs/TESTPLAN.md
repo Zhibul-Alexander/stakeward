@@ -136,11 +136,11 @@ Claude правит найденное и пишет «готово к prod».
 
 Пара (Main key / Second key): Phantom 1 / Phantom 2. У владельца нет Ledger и других кошельков (05.10.2026), поэтому Solflare, Backpack и Ledger не проверяются; в FAQ так и пишем: проверен только Phantom. Если кошельки появятся, пары те же, что были: Phantom + Solflare, Phantom + Backpack, Solflare + Backpack, Ledger через каждый из них как Main key (ему нужен свой аккаунт: `pnpm dev-accounts <адрес Ledger> --only undelegated`).
 
-Каждую пару прогнать четыре раза:
-- [ ] blockhash, Main key first;
-- [ ] blockhash, Second key first;
-- [ ] nonce, Main key first;
-- [ ] nonce, Second key first.
+Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109).
+- [x] blockhash, Main key first: `2E3eJenmimzSkwEuw2ZpABGnd3QsX8K8vDMwoF8QY5A5D6wkv9DoEzJkudmVxJuCetQMv78jiSg2hYYZyeE26EzS`;
+- [x] blockhash, Second key first: `3WCesYLeZBFPpxsByJPxZBQMio7yyfmMMtvyWVDwcvKXJjia6wNaRpYg5JDP3H5M1w49tkRxy7RWjbRpEU4nEcYV`;
+- [x] nonce, Main key first: `5CPSxuKadDZ3QZ8msivNRrJ5caThjQQtrYYJRKRdvXt6oK2TZ98fnTRi9eFHDHQ1w23KvrDx2rXheQFqmwtPo5aG`;
+- [x] nonce, Second key first: `5kE76RfhS5QL5zDa6UYjRweYZcAaQgzxn3NSbBKHojYAhCi8Z9sa5EvpXnLdkUTAmY2ysFSk1oWuQ2rsFLqSrXbh`.
 
 Один прогон по шагам:
 1. Открыть `<адрес dev>/dev/cosign`.

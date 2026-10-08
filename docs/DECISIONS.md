@@ -30,6 +30,8 @@ LiteSVM 1.5.0 содержит стейк-программу v5.0.0, а в mainn
 
 Ledger отказывается разбирать транзакцию, если в ней есть незнакомая ему программа. Значит, хвост Lighthouse, который дописывает Phantom, переводит Ledger в слепую подпись. Насколько это бьёт по пользователям Ledger через Phantom, меряем в матрице кошельков на шаге 3.
 
+Поправка 08.10.2026, матрица на devnet (два аккаунта Phantom, Ledger у владельца нет): ни в одном из четырёх прогонов Phantom не дописал Lighthouse. Lighthouse — защита Phantom для mainnet, на devnet он её, по-видимому, не включает. Поэтому вопрос, что видит Ledger через Phantom, остаётся открытым; на mainnet хвост покажет этап 6 (отчёт подписи на экране и TESTPLAN).
+
 ## D6. RPC: всегда base64 (02.10.2026)
 
 В каждом запросе явно передаём `encoding: 'base64'`. Публичные узлы отклоняют кодировку по умолчанию (base58) для 200-байтных аккаунтов: getProgramAccounts отвечает `-32602`, getAccountInfo — `-32600`.
@@ -158,6 +160,7 @@ Rent sysvar в mainnet и devnet отдаёт `lamportsPerByte` 5080 (порог
 - `compareSignedMessage` заменён на `checkSigningStep(sent, returned)`. «Первый подписывающий» значит, что транзакция пришла без подписей; флагу больше не доверяем. Подписи, которые были на входе, должны вернуться побайтно; новые подписи должны проверяться. Коды: `message-changed`, `tail-not-first-signer`, `tail-adds-signer`, `signature-changed`, `invalid-signature`, `verification-unavailable`. Legacy, превращённый в v0, — `message-changed`.
 - `verifyAllSignatures` сообщает сначала «проверка недоступна», потом неверные подписи, потом отсутствующие. Сайту нужен Ed25519 в Web Crypto.
 - Поправка 06.10.2026: вопрос «кто может обновлять Lighthouse» закрыт. Программа в mainnet неизменяемая: programdata `CJ5WEjifs4d77pEA9DpewppByFjHcAkNv3YYSuSoDk7c`, upgrade authority null (SECURITY-CHECK У2). Открытым остаётся только то, что покажет матрица кошельков.
+- Поправка 08.10.2026, матрица кошельков на devnet (Acc 1 / Acc 2, оба в Phantom; TESTPLAN «Шаг 3, в»): blockhash и nonce, в обоих порядках — `changed: none`, `checkSigningStep: ok`, подтверждено. Phantom сообщение не менял и Lighthouse не дописывал, поэтому порядок подписей для пары Phantom/Phantom значения не имеет, и правило §6 (сначала Phantom на неподписанной транзакции, затем плательщик) не меняется. Хвоста не было, так что вопрос о пересортировке read-only аккаунтов остаётся открытым до mainnet (этап 6).
 
 ## D25. Мониторинг: события (02.10.2026)
 
