@@ -45,4 +45,17 @@ describe('StepProgress', () => {
     const segments = [...document.querySelectorAll('[aria-hidden="true"] span[data-state]')];
     expect(segments.at(-1)).toHaveClass('bg-danger');
   });
+
+  // UX rule 5 and WCAG 1.4.1: below 640 px the failure is not the red segment alone. The line says it in words, in
+  // danger, with an X.
+  it('below 640 px the line says the step failed, in words and with an X', () => {
+    const { rerender } = render(<StepProgress steps={STEPS} current={3} failed={3} />);
+    const line = screen.getByText('Failed: Step 4 of 4: Sign');
+    expect(line).toHaveClass('text-danger');
+    expect(line.querySelector('svg')).not.toBeNull();
+    expect(line.closest('[aria-hidden="true"]')).not.toBeNull();
+    rerender(<StepProgress steps={STEPS} current={3} />);
+    expect(screen.getByText('Step 4 of 4: Sign')).not.toHaveClass('text-danger');
+    expect(screen.queryByText(/^Failed: Step/)).toBeNull();
+  });
 });

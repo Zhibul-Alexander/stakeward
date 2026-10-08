@@ -32,18 +32,28 @@ const SEGMENT: Record<StepState, string> = {
  * Wizard progress (UX rule 2: the wizard shows its steps and where you are). An ordered list with
  * `aria-current="step"`; each state is also spelled out for screen readers ("Done:", "Current step:", "Failed:"), and
  * shown with a number, a check or an X, not colour alone. From 640 px the list is visible as numbered dots with their
- * names. Below, one line "Step 2 of 4: Second key" and a segmented bar stand in for it on screen; the list stays in the
- * page as screen-reader text (never display: none), so assistive technology gets every step at any width.
+ * names. Below, one line "Step 2 of 4: Second key" (after a failure "Failed: Step 4 of 4: Sign" in danger with an X)
+ * and a segmented bar stand in for it on screen; the list stays in the page as screen-reader text (never display:
+ * none), so assistive technology gets every step at any width.
  */
 export function StepProgress({ steps, current, failed, className }: StepProgressProps) {
   const total = steps.length;
   const index = Math.min(Math.max(current, 0), Math.max(total - 1, 0));
   const currentLabel = steps[index] ?? '';
   const stateOf = (i: number): StepState => (i === failed ? 'failed' : i < index ? 'done' : i === index ? 'current' : 'upcoming');
+  // Below 640 px the line names the failed step in words, with an X, not only the red segment (UX rule 5, WCAG 1.4.1).
+  const failedLabel = failed === undefined ? undefined : steps[failed];
   return (
     <nav aria-label={t('components.steps.label')} data-slot="step-progress" className={cn('flex flex-col gap-2', className)}>
       <div aria-hidden="true" className="flex flex-col gap-2 sm:hidden">
-        <p className="text-sm font-medium">{t('components.steps.stepOf', { current: index + 1, total, label: currentLabel })}</p>
+        {failed === undefined || failedLabel === undefined ? (
+          <p className="text-sm font-medium">{t('components.steps.stepOf', { current: index + 1, total, label: currentLabel })}</p>
+        ) : (
+          <p data-state="failed" className="flex items-center gap-1.5 text-sm font-medium text-danger">
+            <XIcon aria-hidden="true" className="size-4 shrink-0" />
+            {t('components.steps.failed')} {t('components.steps.stepOf', { current: failed + 1, total, label: failedLabel })}
+          </p>
+        )}
         <div className="flex gap-1">
           {steps.map((label, i) => (
             <span key={`${String(i)}-${label}`} data-state={stateOf(i)} className={cn('h-1 flex-1 rounded-full', SEGMENT[stateOf(i)])} />
