@@ -1,7 +1,7 @@
 # Stakeward: Colosseum submission drafts
 
 Colosseum Crypto World's Fair. Deadline: 12 October 2026, 23:59 PT (13 October, 10:59 Tbilisi).
-Drafts as of 6 October 2026, matching the code on `build/product` (steps 0-8 built). Every number below comes
+Drafts as of 8 October 2026, matching the code on `main` (steps 0-8 built). Every number below comes
 from the code or from docs/gate.md; the fact sheet at the end says where. Text in `[TODO owner: ...]` is for the
 owner to fill in.
 
@@ -120,9 +120,13 @@ with the main key can split the stake into many small accounts; each keeps the l
 wallet balance or vote accounts.
 
 **Wallets.** Stakeward talks to browser wallets through the Wallet Standard (Phantom, Solflare, Backpack, and a
-Ledger through them). Testing so far used Phantom; Solflare, Backpack and Ledger have not been tested yet, and the
-site marks untested pairs "Not verified yet". In a phone wallet's own browser you can check stake, extend or remove
-a lock and co-sign by link; protecting and rescuing need a computer. [TODO owner: update after the wallet matrix.]
+Ledger through them). Tested so far: two Phantom accounts from different seed phrases, both in one browser, on
+devnet on 8 October 2026: 4 of 4 co-signing runs (recent blockhash and durable nonce, either key first) landed
+unchanged. Phantom warns that these transactions "could steal your funds in the future", as it does for any
+transaction that gives a key a role in an account; the signing screen explains this before the wallet asks.
+Solflare, Backpack and Ledger have not been tested yet, and the site marks untested pairs "Not verified yet". In a
+phone wallet's own browser you can check stake, extend or remove a lock and co-sign by link; protecting and rescuing
+need a computer. [TODO owner: signing by link from a phone after TESTPLAN stage 4.]
 
 **How it is built.** pnpm monorepo in TypeScript. `packages/core` (pure, no I/O): decoding, lock rules, transaction
 builders, inspector, signature checks, monitoring diffs, built on `@solana/kit` 8.4 and `@solana-program/stake`

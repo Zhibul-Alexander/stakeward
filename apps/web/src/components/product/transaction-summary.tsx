@@ -232,6 +232,8 @@ export function TransactionSummary({ summary, current: single, knownRoles = {}, 
             <span>{t('common.neverSeedPhrase')}</span>
           </li>
         </ul>
+        {/* Phantom shows "could steal your funds in the future" for these transactions (wallet matrix, D110). */}
+        <p className="text-sm text-muted">{t('components.tx.walletWarning')}</p>
       </Section>
 
       <Section title={t('components.tx.lifetime')} tag={SectionTag}>

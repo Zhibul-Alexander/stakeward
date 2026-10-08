@@ -22,6 +22,11 @@ describe('wallet support data', () => {
     expect(WALLET_PAIRS.map((pair) => pair.id)).toEqual(['phantom+phantom-imported']);
   });
 
+  it('Phantom with Phantom: works in one browser after its warnings; by link not verified before the phone run (D110)', () => {
+    expect(WALLET_MATRIX_DATE).toBe('2026-10-08');
+    expect(WALLET_PAIRS[0]).toMatchObject({ here: 'works-with-warning', link: 'not-verified', note: 'authority-warning' });
+  });
+
   it('claims nothing before the matrix has run', () => {
     if (WALLET_MATRIX_DATE !== null) {
       expect(matrixDateText(WALLET_MATRIX_DATE)).not.toBeNull();

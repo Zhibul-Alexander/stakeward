@@ -204,14 +204,15 @@ describe('landing network line', () => {
 });
 
 describe('landing wallet table', () => {
-  it('claims nothing before the wallet matrix: the one Phantom pair is "Not verified yet", and the note says so', async () => {
+  it('the wallet matrix of 8 October 2026: the one Phantom pair works here after a warning, by link not verified yet (D110)', async () => {
     renderLanding();
     const wallets = section('wallets');
     // Only the pair the matrix runs (TESTPLAN step 3: two Phantom accounts; no Solflare, Backpack or Ledger to test).
     expect([...wallets.querySelectorAll('[data-pair]')].map((pair) => pair.getAttribute('data-pair'))).toEqual(['phantom+phantom-imported']);
-    const verdicts = [...wallets.querySelectorAll('[data-verdict]')];
-    expect(verdicts).toHaveLength(2);
-    expect(new Set(verdicts.map((badge) => badge.textContent))).toEqual(new Set(['Not verified yet']));
+    const verdicts = [...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict'));
+    expect(verdicts).toEqual(['works-with-warning', 'not-verified']);
+    expect(wallets).toHaveTextContent('Works, with a wallet warning');
+    expect(wallets).toHaveTextContent(en.landing.wallets.notes['authority-warning']);
     expect(within(wallets).getByRole('note')).toHaveTextContent(en.landing.wallets.notVerified);
     expect(within(wallets).getAllByText('Signing by link')).toHaveLength(1);
     expect(within(wallets).getAllByText('Both wallets in this browser')).toHaveLength(1);
@@ -220,7 +221,7 @@ describe('landing wallet table', () => {
     ).toBeInTheDocument();
     // The wallets that are not in the table are named as untested.
     expect(wallets).toHaveTextContent('Solflare, Backpack and Ledger have not been tested yet.');
-    expect(wallets).not.toHaveTextContent('Tested on Solana devnet');
+    expect(wallets).toHaveTextContent('Tested on Solana devnet on 8 October 2026.');
     await depositShown();
   });
 

@@ -35,21 +35,25 @@ export type PairSupport = {
 };
 
 /** UTC 'YYYY-MM-DD' of the wallet matrix run (TESTPLAN step 3). Null: not run. */
-export const WALLET_MATRIX_DATE: string | null = null;
+export const WALLET_MATRIX_DATE: string | null = '2026-10-08';
 
 /**
- * The pairs the wallet matrix runs (TESTPLAN step 3), none run yet. Only two Phantom accounts: the owner has no Solflare,
- * Backpack or Ledger to test with (05.10.2026), so the table lists no pair that no one will run, and the intro says
- * those wallets are not tested. A pair goes in when a run of it is planned.
+ * The pairs the wallet matrix runs (TESTPLAN step 3). Only two Phantom accounts: the owner has no Solflare, Backpack or
+ * Ledger to test with (05.10.2026), so the table lists no pair that no one will run, and the intro says those wallets
+ * are not tested. A pair goes in when a run of it is planned.
+ *
+ * Phantom + Phantom, 08.10.2026 on devnet: all four one-browser runs landed unchanged, after Phantom's warnings "This
+ * transaction could steal your funds in the future" and "This domain is new" (D110). Signing by link stays not verified
+ * until the phone run (TESTPLAN stage 4).
  */
 export const WALLET_PAIRS: readonly PairSupport[] = [
   {
     id: 'phantom+phantom-imported',
     main: 'phantom',
     second: 'phantom-imported',
-    here: 'not-verified',
+    here: 'works-with-warning',
     link: 'not-verified',
-    note: null,
+    note: 'authority-warning',
   },
 ];
 

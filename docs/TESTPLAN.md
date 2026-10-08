@@ -73,7 +73,7 @@ Claude правит найденное и пишет «готово к prod».
 ### Этап 6. Mainnet — по слову Claude, начать не позже 09.10
 
 0. Выключить Testnet Mode в Phantom на компьютере и на телефоне.
-1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd /home/dev/workspace/stakeward` → `pnpm deploy:prod --prod-confirm`. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
+1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd <папка, которую назовёт Claude>` → `pnpm deploy:prod --prod-confirm`. Деплой идёт из чистой папки на main (D111): в `/home/dev/workspace/stakeward` может работать другая сессия на своей ветке, тогда Claude подготовит отдельную копию. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
    ```sh
    ( set -a; . ~/.config/stakeward/secrets.env; set +a
      exec env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
@@ -136,7 +136,7 @@ Claude правит найденное и пишет «готово к prod».
 
 Пара (Main key / Second key): Phantom 1 / Phantom 2. У владельца нет Ledger и других кошельков (05.10.2026), поэтому Solflare, Backpack и Ledger не проверяются; в FAQ так и пишем: проверен только Phantom. Если кошельки появятся, пары те же, что были: Phantom + Solflare, Phantom + Backpack, Solflare + Backpack, Ledger через каждый из них как Main key (ему нужен свой аккаунт: `pnpm dev-accounts <адрес Ledger> --only undelegated`).
 
-Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109).
+Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Phantom при подписи предупреждал: «This transaction could steal your funds in the future…» и «This domain is new…» (D110). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109).
 - [x] blockhash, Main key first: `2E3eJenmimzSkwEuw2ZpABGnd3QsX8K8vDMwoF8QY5A5D6wkv9DoEzJkudmVxJuCetQMv78jiSg2hYYZyeE26EzS`;
 - [x] blockhash, Second key first: `3WCesYLeZBFPpxsByJPxZBQMio7yyfmMMtvyWVDwcvKXJjia6wNaRpYg5JDP3H5M1w49tkRxy7RWjbRpEU4nEcYV`;
 - [x] nonce, Main key first: `5CPSxuKadDZ3QZ8msivNRrJ5caThjQQtrYYJRKRdvXt6oK2TZ98fnTRi9eFHDHQ1w23KvrDx2rXheQFqmwtPo5aG`;
