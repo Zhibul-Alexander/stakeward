@@ -1,6 +1,6 @@
 import type { Address } from '@solana/kit';
-import { shortAddress } from '@stakeward/core';
-import { CircleAlertIcon, LoaderCircleIcon, PrinterIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
+import { formatUtcDateTime, shortAddress } from '@stakeward/core';
+import { CircleAlertIcon, FlaskConicalIcon, LoaderCircleIcon, PrinterIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
 import { Page } from '@/components/layout/Page';
@@ -9,7 +9,9 @@ import { AccountListSkeleton } from '@/components/product/account-row';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { CLUSTER } from '@/config';
 import type { Load } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
@@ -17,23 +19,23 @@ import { parseAccountParam } from '@/pages/account/load';
 import { appLinks } from '@/pages/app/view';
 import { useRecovery } from '@/pages/recovery/load';
 import { RecoveryCardView } from '@/pages/recovery/RecoveryCardView';
-import { accountsPath, type RecoveryLoad } from '@/pages/recovery/view';
+import { accountsPath, type RecoveryCard, type RecoveryLoad } from '@/pages/recovery/view';
 import { usePorts } from '@/ports';
 
 /** `/app`, the way out of a page with no card. */
-function BackToAccounts() {
+function BackToAccounts({ variant = 'outline' }: { variant?: 'outline' | 'ghost' }) {
   return (
-    <Button asChild variant="outline">
+    <Button asChild variant={variant} size={variant === 'ghost' ? 'sm' : 'md'}>
       <Link href="/app">{t('common.backToAccounts')}</Link>
     </Button>
   );
 }
 
-/** Print, back to the main key's accounts, how to keep a file. On screen only. */
+/** Print (the page's one filled button), back to the main key's accounts, how to keep a file. On screen only. */
 function Actions({ mainKey }: { mainKey: Address }) {
   return (
-    <div data-slot="recovery-actions" className="flex flex-col gap-2 print:hidden">
-      <div className="flex flex-wrap gap-2">
+    <div data-slot="recovery-actions" className="flex w-full flex-col gap-2 print:hidden sm:w-auto sm:items-end">
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
         <Button
           type="button"
           onClick={() => {
@@ -43,12 +45,33 @@ function Actions({ mainKey }: { mainKey: Address }) {
           <PrinterIcon aria-hidden="true" />
           {t('recovery.print')}
         </Button>
-        <Button asChild variant="outline">
+        <Button asChild variant="ghost" className="w-fit">
           <Link href={accountsPath(mainKey)}>{t('common.backToAccounts')}</Link>
         </Button>
       </div>
-      <p className="text-sm text-muted">{t('recovery.printHint')}</p>
+      <p className="text-xs text-muted">{t('recovery.printHint')}</p>
     </div>
+  );
+}
+
+/**
+ * Under the title, and printed with it: when the card was read, and on devnet a badge and what it means (the site
+ * header, which says devnet on screen, is not printed).
+ */
+function CardMeta({ card }: { card: RecoveryCard }) {
+  return (
+    <>
+      <p>{t('recovery.readAt', { date: formatUtcDateTime(card.readAt) ?? String(card.readAt) })}</p>
+      {CLUSTER === 'devnet' ? (
+        <p>
+          <Badge tone="outline" className="mr-2 align-middle">
+            <FlaskConicalIcon aria-hidden="true" />
+            {t('common.devnet')}
+          </Badge>
+          <span>{t('recovery.devnet')}</span>
+        </p>
+      ) : null}
+    </>
   );
 }
 
@@ -68,7 +91,15 @@ function RecoveryBody({ load, route, onRetry }: { load: Load<RecoveryLoad>; rout
         </div>
       );
     case 'error':
-      return <ErrorState title={t('recovery.loadError')} message={errorMessage(load.error)} detail={load.error.detail} onRetry={onRetry} />;
+      return (
+        <ErrorState
+          title={t('recovery.loadError')}
+          message={errorMessage(load.error)}
+          detail={load.error.detail}
+          onRetry={onRetry}
+          actions={<BackToAccounts variant="ghost" />}
+        />
+      );
     case 'ready': {
       const result = load.value;
       if (result.kind === 'card') return <RecoveryCardView card={result.card} />;
@@ -157,12 +188,17 @@ export function RecoveryPage() {
     };
   }, [route]);
 
-  // Full width, with the card's own max-w-3xl column inside (its print layout, DECISIONS.md D77).
+  // The header spans the page, Print on the right of the title; the card keeps its own max-w-3xl column below (its
+  // print layout, DECISIONS.md D77).
   return (
     <Page width="app">
+      <PageHeader
+        title={t('recovery.title')}
+        lead={t('recovery.intro')}
+        meta={card === null ? undefined : <CardMeta card={card} />}
+        action={card === null ? undefined : <Actions mainKey={card.mainKey} />}
+      />
       <div className="flex max-w-3xl flex-col gap-6">
-        <PageHeader title={t('recovery.title')} lead={t('recovery.intro')} />
-        {card === null ? null : <Actions mainKey={card.mainKey} />}
         {route === null ? (
           <Alert tone="danger">
             <CircleAlertIcon aria-hidden="true" />

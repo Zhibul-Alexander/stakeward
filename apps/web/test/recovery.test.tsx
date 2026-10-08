@@ -186,25 +186,60 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const stolen = caseOf('Your main key is stolen, or someone saw its seed phrase');
       // The thief can split while the stake accounts move one at a time: list them again after the moves. The card
       // printed again names the new wallet, so this copy is the only one that lists the stolen key's accounts.
-      const listAgain = within(stolen).getByText(/run the command that lists them again/);
+      const listAgain = within(stolen).getByText(/^When all are moved, list them again/);
       expect(follows(block('Move a stake account to the new wallet'), listAgain)).toBe(true);
-      expect(listAgain.textContent).toMatch(/lists them again.*until it lists none.*open this card again.*Keep this copy/s);
-      // Every new key comes from a new seed phrase, never from a Ledger that holds a key of this card.
+      expect(listAgain.textContent).toMatch(/list them again.*until the list is empty.*Open this card again.*Keep this copy/s);
+      // Every new key comes from a new seed phrase, never from a Ledger that holds a key of this card. The card says
+      // it once, in a note before the cases, and both stolen-key cases send the reader to it before a new key is made.
+      const newKey = document.querySelector('[data-slot="recovery-new-key"]') as HTMLElement;
+      expect(newKey).toHaveTextContent('A new key means a new seed phrase');
+      expect(newKey).toHaveTextContent('a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file from solana-keygen new');
+      expect(newKey).toHaveTextContent('Never use the Ledger that holds your main key or your second key, not even another account on it');
       for (const part of [stolen, caseOf('Your second key is stolen, or someone saw its seed phrase')]) {
-        expect(part).toHaveTextContent('a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with solana-keygen new');
-        expect(part).toHaveTextContent('Never use the Ledger that holds your main key or your second key, not even another account on it');
+        expect(follows(newKey, part)).toBe(true);
+        expect(within(part).getByRole('link', { name: /A new key means a new seed phrase/ })).toHaveAttribute('href', `#${newKey.id}`);
       }
       expect(caseOf('You lost the second key')).toHaveTextContent('a new second key made from a new seed phrase');
+      // Each case says what to do in Stakeward before the command line.
+      expect(follows(within(stolen).getByRole('link', { name: 'Rescue in Stakeward' }), block('List the stake accounts of the main key'))).toBe(true);
+      expect(follows(within(caseOf('The lock is about to end')).getByRole('link', { name: 'Extend in Stakeward' }), block('Extend the lock'))).toBe(true);
+      expect(follows(within(caseOf('You want to withdraw')).getByRole('link', { name: 'Withdraw in Stakeward' }), block('Stop staking'))).toBe(
+        true,
+      );
+      // An index of the six cases comes before them, each entry an anchor link to its case, named by the start of its
+      // title.
+      const index = screen.getByRole('navigation', { name: 'The cases on this card' });
+      const entries = within(index).getAllByRole('link');
+      const caseHeadings = [...document.querySelectorAll('[data-slot="recovery-card"] h3')];
+      expect(entries).toHaveLength(6);
+      expect(caseHeadings).toHaveLength(6);
+      entries.forEach((entry, position) => {
+        const target = document.getElementById((entry.getAttribute('href') ?? '').slice(1));
+        expect(target?.querySelector('h3')).toBe(caseHeadings[position]);
+        expect(caseHeadings[position]?.textContent.startsWith(entry.textContent)).toBe(true);
+        expect(follows(index, target as HTMLElement)).toBe(true);
+      });
       // Stopping an Activating stake makes it Inactive at once; only an Active one waits for the epoch's end (as the
       // Deactivate summary says, 4e).
-      expect(within(caseOf('You want to withdraw')).getByText(/^If the stake is Active or Activating/)).toHaveTextContent(
-        'If the stake is Active or Activating, stop staking first. An Activating stake becomes Inactive at once; an Active one at the end of the epoch, within about 2 days. The second command shows the time left:',
+      expect(within(caseOf('You want to withdraw')).getByText(/^Or, without Stakeward: stop staking first/)).toHaveTextContent(
+        "Or, without Stakeward: stop staking first if the stake is Active or Activating. Activating stops at once, Active at the epoch's end, within about 2 days. The second command shows the time left:",
       );
       const limits = screen.getByRole('heading', { level: 2, name: 'What no one can undo' }).closest('section') as HTMLElement;
       expect(within(limits).getByText(/^Two keys from one seed phrase protect nothing/)).toBeInTheDocument();
       // The command line steps say what was run (keypair files) and what was not (a real Ledger), as the README does.
       expect(screen.getByText(/^Tested with Solana CLI 4\.3\.0 on a local Solana test validator, with keypair files\.$/)).toBeInTheDocument();
-      expect(screen.getByText(/^To find which Ledger key is yours.* These commands have not been tried with a real Ledger yet\.$/)).toBeInTheDocument();
+      expect(screen.getByText(/^To find your Ledger key, open its Solana app and run this\./)).toBeInTheDocument();
+      expect(screen.getByText('Not tested with a real Ledger yet.')).toBeInTheDocument();
+      // Before a command: every key that signs on this computer, and what replaces each placeholder.
+      const beforeCli = screen.getByRole('heading', { level: 2, name: 'Before you run a command' }).closest('section') as HTMLElement;
+      expect(beforeCli).toHaveTextContent(
+        'Every key that signs must be on this computer: a keypair file or a Ledger. A key only in a browser or phone wallet cannot sign here.',
+      );
+      const meaning = (placeholder: string) => within(beforeCli).getByText(placeholder, { selector: 'code' }).closest('dt')?.nextElementSibling;
+      expect(meaning('<STAKE_ACCOUNT>')).toHaveTextContent(/^an address from the list above/);
+      for (const key of ['<MAIN_KEY>', '<SECOND_KEY>', '<NEW_WALLET>', '<NEW_SECOND_KEY>']) {
+        expect(meaning(key)).toHaveTextContent('the keypair file path, or "usb://ledger?key=0" with the quotes');
+      }
 
       // Risk before action: the unlock warning comes before the remove-lock command.
       const unlockRisk = document.querySelector('[data-risk="unlock-opens-window"]') as HTMLElement;
@@ -225,6 +260,15 @@ describe('/recovery/:account on LiteSvmChain', () => {
       await user.click(screen.getByRole('button', { name: 'Print this card' }));
       expect(print).toHaveBeenCalledTimes(1);
       expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
+      // The page's one filled button is Print; Back is a ghost link next to it.
+      expect([...document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')].map((b) => b.textContent)).toEqual([
+        'Print this card',
+      ]);
+      // Under the title, and printed with it: when the card was read and, on devnet, that it holds no real SOL.
+      const meta = document.querySelector('[data-slot="page-header-meta"]') as HTMLElement;
+      expect(meta).toHaveTextContent(/^Read from the network on .+, \d\d:\d\d UTC\./);
+      expect(within(meta).getByText('Devnet')).toBeInTheDocument();
+      expect(within(meta).getByText('Test network: these stake accounts hold no real SOL.')).toBeInTheDocument();
 
       // Read only: the account and the clock, then the main key's search (read again). No wallet, no storage.
       expect(new Set(chain.calls.map((call) => call.method))).toEqual(new Set(['getAccounts', 'getClock', 'findStakeAccounts']));
@@ -289,6 +333,9 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const { user } = renderRecovery(`/recovery/${w.S1}`);
       expect(await screen.findByText('Could not load the recovery card', undefined, WAIT)).toBeInTheDocument();
       expect(screen.queryByRole('heading', { name: 'Keys' })).toBeNull();
+      // A way out besides Try again, and no filled button: there is nothing to print.
+      expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', '/app');
+      expect(document.querySelector('[data-slot="button"][data-variant="primary"]')).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Try again' }));
       expect(await screen.findByRole('heading', { level: 2, name: 'Keys' }, WAIT)).toBeInTheDocument();
       // This route first: S1, then S2.
