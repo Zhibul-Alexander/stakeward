@@ -24,7 +24,7 @@ export function SupportBadge({ verdict, className }: { verdict: SupportVerdict; 
   const { tone, icon: Icon } = LOOKS[verdict];
   return (
     // whitespace-normal overrides the Badge's nowrap: "Works, with a wallet warning" wraps at 360 px.
-    <Badge tone={tone} data-verdict={verdict} className={cn('text-sm whitespace-normal', className)}>
+    <Badge tone={tone} size="md" data-verdict={verdict} className={cn('whitespace-normal', className)}>
       <Icon aria-hidden="true" />
       {t(`components.support.${verdict}`)}
     </Badge>

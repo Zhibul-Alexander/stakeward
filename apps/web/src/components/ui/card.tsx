@@ -3,12 +3,13 @@ import { Slot } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 // shadcn/ui card, classes rewritten to design tokens. CardTitle takes asChild so a page can make it a heading.
+// A hairline frame and no shadow: shadows belong to floating layers only (the tooltip).
 function Card({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="card"
       className={cn(
-        'flex flex-col gap-4 rounded-lg border border-border bg-surface py-4 text-foreground shadow-sm sm:py-6',
+        'flex flex-col gap-4 rounded-lg border border-border bg-surface py-4 text-foreground sm:py-6',
         className,
       )}
       {...props}

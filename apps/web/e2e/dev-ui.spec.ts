@@ -95,6 +95,24 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.keyboard.press('Space');
   await expect(faq).not.toHaveAttribute('open');
 
+  // The Collapsible primitive (a row's "More" actions, DECISIONS.md D109): closed, its content is hidden and holds
+  // nothing; the trigger opens and closes it from the keyboard, and Radix sizes it through CSSOM (a refused inline
+  // style would fail the fixture's console check).
+  const more = page.locator('#primitives').getByRole('button', { name: 'More actions for this row' });
+  const moreContent = page.locator('#primitives [data-slot="collapsible-content"]');
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(moreContent).toBeHidden();
+  await expect(moreContent.locator('*')).toHaveCount(0);
+  await more.focus();
+  await page.keyboard.press('Enter');
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(moreContent.getByRole('button')).toHaveCount(2);
+  await expect(moreContent.getByRole('button').first()).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await expect(moreContent).toBeHidden();
+  await expect(moreContent.locator('*')).toHaveCount(0);
+
   // Keyboard: the wallet list opens from its button.
   const connect = page.getByRole('button', { name: 'Connect a wallet as Main key' });
   await connect.focus();

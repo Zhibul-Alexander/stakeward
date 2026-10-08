@@ -57,7 +57,7 @@ type StatusBadgeProps = {
 export function StatusBadge({ status, secondKeyKnown = false, className }: StatusBadgeProps) {
   const { tone, icon: Icon } = LOOKS[status];
   return (
-    <Badge tone={tone} data-status={status} className={cn('text-sm', className)}>
+    <Badge tone={tone} size="md" data-status={status} className={className}>
       <Icon aria-hidden="true" />
       {t(labelOf(status, secondKeyKnown))}
     </Badge>

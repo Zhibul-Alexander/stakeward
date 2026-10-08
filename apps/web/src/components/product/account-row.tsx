@@ -30,7 +30,7 @@ const ACTIVATION_ICON: Record<ActivationStatus, LucideIcon> = {
 export function ActivationBadge({ status, className }: { status: ActivationStatus; className?: string | undefined }) {
   const Icon = ACTIVATION_ICON[status];
   return (
-    <Badge tone="outline" data-activation={status} className={cn('text-sm', className)}>
+    <Badge tone="outline" size="md" data-activation={status} className={className}>
       <Icon aria-hidden="true" />
       {t(`components.activation.${status}`)}
     </Badge>

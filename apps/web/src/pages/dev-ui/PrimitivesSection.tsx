@@ -1,10 +1,11 @@
-import { CircleAlertIcon, InfoIcon, ShieldCheckIcon, TriangleAlertIcon, WalletIcon } from 'lucide-react';
+import { ChevronDownIcon, CircleAlertIcon, InfoIcon, ShieldCheckIcon, TriangleAlertIcon, WalletIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
@@ -16,8 +17,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { t } from '@/i18n';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
 
-const BUTTON_VARIANTS = ['primary', 'secondary', 'outline', 'ghost', 'danger', 'link'] as const;
+const BUTTON_VARIANTS = ['primary', 'outline', 'ghost', 'danger', 'link'] as const;
 const TONES = ['neutral', 'success', 'warning', 'info', 'danger', 'outline', 'primary'] as const;
+const BADGE_SIZES = ['sm', 'md'] as const;
+/** The large alert: the /cosign stop panel. */
+const ALERT_LARGE = { tone: 'danger', size: 'lg' } as const;
 const ALERT_TONES = [
   ['neutral', InfoIcon],
   ['success', ShieldCheckIcon],
@@ -62,13 +66,16 @@ export function PrimitivesSection() {
       </DemoGroup>
 
       <DemoGroup title={t('devUi.badges')}>
-        <div className="flex flex-wrap gap-2">
-          {TONES.map((tone) => (
-            <Badge key={tone} tone={tone}>
-              {tone}
-            </Badge>
-          ))}
-        </div>
+        {BADGE_SIZES.map((size) => (
+          <div key={size} className="flex flex-wrap items-center gap-2">
+            <span className="w-8 shrink-0 font-mono text-xs text-muted">{size}</span>
+            {TONES.map((tone) => (
+              <Badge key={tone} tone={tone} size={size}>
+                {tone}
+              </Badge>
+            ))}
+          </div>
+        ))}
       </DemoGroup>
 
       <DemoGroup title={t('devUi.alerts')}>
@@ -83,6 +90,37 @@ export function PrimitivesSection() {
             </Alert>
           ))}
         </div>
+        <Alert tone={ALERT_LARGE.tone} size={ALERT_LARGE.size} role="note">
+          <CircleAlertIcon aria-hidden="true" />
+          <AlertTitle>
+            {t('devUi.alertTitle')} · {ALERT_LARGE.tone} · {ALERT_LARGE.size}
+          </AlertTitle>
+          <AlertDescription>
+            <p>{t('devUi.alertLargeBody')}</p>
+            <a href="#primitives">{t('devUi.alertLink')}</a>
+          </AlertDescription>
+        </Alert>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.collapsible')} note={t('devUi.collapsibleNote')}>
+        <Collapsible className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm">{t('devUi.collapsibleRow')}</span>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={t('devUi.collapsibleTrigger')}>
+                <ChevronDownIcon aria-hidden="true" />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="flex flex-wrap items-center gap-2 rounded-md bg-subtle p-3">
+            <Button variant="outline" size="sm">
+              {t('devUi.sample.withdraw')}
+            </Button>
+            <Button variant="outline" size="sm">
+              {t('devUi.sample.extend')}
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
       </DemoGroup>
 
       <DemoGroup title={t('devUi.formControls')}>
