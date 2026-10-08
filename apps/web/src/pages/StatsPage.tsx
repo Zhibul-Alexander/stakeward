@@ -20,11 +20,16 @@ function formatCount(value: number): string {
   return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-function Tile({ term, children }: { term: string; children: ReactNode }) {
+/**
+ * One number: read first on screen, its label under it. The DOM keeps the label (`dt`) before the number (`dd`), as a
+ * description list must; `flex-col-reverse` only flips what the eye sees. Tiles in a row share their height, and their
+ * numbers start on one line.
+ */
+function Stat({ term, children }: { term: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col justify-between gap-2 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col-reverse justify-end gap-1 rounded-lg border border-border bg-surface p-4 sm:p-5">
       <dt className="text-sm text-muted">{term}</dt>
-      <dd className="text-2xl font-semibold tabular-nums wrap-anywhere">{children}</dd>
+      <dd className="text-2xl tabular-nums wrap-anywhere">{children}</dd>
     </div>
   );
 }
@@ -39,10 +44,10 @@ function StatsBody({ stats, onRetry }: { stats: Load<Stats>; onRetry: () => void
             <Spinner aria-hidden="true" className="text-muted" />
             {t('stats.loading')}
           </p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Skeleton className="h-28 rounded-lg" />
-            <Skeleton className="h-28 rounded-lg" />
-            <Skeleton className="h-28 rounded-lg" />
+          <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+            <Skeleton className="h-24 rounded-lg sm:h-28" />
+            <Skeleton className="h-24 rounded-lg sm:h-28" />
+            <Skeleton className="h-24 rounded-lg sm:h-28" />
           </div>
         </div>
       );
@@ -66,17 +71,17 @@ function StatsBody({ stats, onRetry }: { stats: Load<Stats>; onRetry: () => void
         );
       }
       return (
-        <>
-          <dl className="grid gap-4 sm:grid-cols-3">
-            <Tile term={t('stats.accountsLocked')}>{formatCount(accountsLocked)}</Tile>
-            <Tile term={t('stats.solLocked')}>
+        <div className="flex flex-col gap-4">
+          <dl className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+            <Stat term={t('stats.accountsLocked')}>{formatCount(accountsLocked)}</Stat>
+            <Stat term={t('stats.solLocked')}>
               {/* Whole SOL, rounded down; wraps rather than overflows a narrow tile. */}
               <SolAmount lamports={(lamportsLocked / LAMPORTS_PER_SOL) * LAMPORTS_PER_SOL} className="whitespace-normal" />
-            </Tile>
-            <Tile term={t('stats.alertsSent')}>{formatCount(alertsSent)}</Tile>
+            </Stat>
+            <Stat term={t('stats.alertsSent')}>{formatCount(alertsSent)}</Stat>
           </dl>
-          <p className="max-w-prose text-sm text-muted">{t('stats.note')}</p>
-        </>
+          <p className="max-w-prose text-sm text-pretty text-muted">{t('stats.note')}</p>
+        </div>
       );
     }
   }
