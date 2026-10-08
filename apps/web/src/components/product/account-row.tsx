@@ -1,4 +1,12 @@
-import { formatUtcDate, shortAddress, type ActivationStatus, type ProtectionStatus, type StakeAccount } from '@stakeward/core';
+import {
+  EXPIRING_THRESHOLD_SECONDS,
+  formatUtcDate,
+  shortAddress,
+  type ActivationStatus,
+  type ClockView,
+  type ProtectionStatus,
+  type StakeAccount,
+} from '@stakeward/core';
 import { cn } from 'cn';
 import {
   ActivityIcon,
@@ -66,10 +74,11 @@ type AccountRowProps = {
   /** Rescue for this account's main key (`/rescue?address=`): linked from the stake-key warning. Left out on the rescue pages. */
   rescueHref?: string | undefined;
   /**
-   * The lock ends within 30 days by the chain's clock: its date turns warning with a clock icon. Implied by `expiring`;
-   * pass it for a lock of a key this browser does not know, which has no Expiring status of its own.
+   * The cluster clock the statuses were computed with. A lock that ends within 30 days of it (core's Expiring
+   * threshold) shows its date in warning with a clock icon, whoever holds it: a lock of a key this browser does not
+   * know has no Expiring status of its own (DECISIONS.md D109).
    */
-  lockEndsSoon?: boolean | undefined;
+  clock: ClockView;
   /**
    * The one visible button: `<Button variant="outline" size="sm">`, primary only when it is the screen's one filled
    * button (DECISIONS.md D109); never danger.
@@ -107,7 +116,7 @@ const HINTS: Record<StatusBadgeStatus, MessageKey | null> = {
 /** One warning line of a row: the tone's icon and text, no frame (the row stays one compact block). */
 function RowWarning({ children }: { children: ReactNode }) {
   return (
-    <div role="note" data-slot="row-warning" data-tone="warning" className="flex w-full items-start gap-2 text-sm text-foreground sm:order-2">
+    <div role="note" data-slot="row-warning" data-tone="warning" className="flex w-full items-start gap-2 text-sm text-foreground">
       <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
       <div className="flex min-w-0 flex-col gap-0.5">{children}</div>
     </div>
@@ -116,14 +125,15 @@ function RowWarning({ children }: { children: ReactNode }) {
 
 /**
  * One stake account as a compact row (DECISIONS.md D109), usually inside an AccountList:
- * - line 1: [checkbox] status badge, short address (copy, explorer), SOL; at 640 px and wider the action and More at
- *   its end;
- * - line 2, muted: the lock end date (warning with a clock icon when it ends within 30 days), the staking state, for a
+ * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. Below
+ *   640 px the badge and address keep line 1 to themselves, and SOL with the action and More take the next line;
+ * - then, muted: the lock end date (warning with a clock icon when it ends within 30 days), the staking state, for a
  *   lock of an unknown key the key that holds it (D35), then the caller's meta;
  * - always visible, one line each: the warning that another stake key works under the viewer's own lock (with Rescue,
  *   SECURITY-CHECK П6), or that a staking service may manage the stake;
  * - the status hint, unless the list says it once for its group;
- * - below 640 px the action and More on their own line; More opens the other actions under the row.
+ * - More opens the other actions under the row.
+ * The DOM order is the visual order at every width (no CSS `order`), so Tab follows what is on screen (WCAG 2.4.3).
  * The caller computes the statuses with core (`scannerStatus`, `stakeActivationStatus`); this renders them.
  */
 export function AccountRow({
@@ -134,7 +144,7 @@ export function AccountRow({
   secondKeyKnown,
   wasProtected = false,
   rescueHref,
-  lockEndsSoon = false,
+  clock,
   action,
   moreActions,
   defaultMoreOpen = false,
@@ -153,7 +163,8 @@ export function AccountRow({
     lockInForce && account.lockup.epoch === 0n && account.lockup.unixTimestamp > 0n
       ? formatUtcDate(account.lockup.unixTimestamp)
       : null;
-  const endsSoon = date !== null && (status === 'expiring' || lockEndsSoon);
+  const endsSoon =
+    date !== null && (status === 'expiring' || account.lockup.unixTimestamp - clock.unixTimestamp < EXPIRING_THRESHOLD_SECONDS);
   const short = shortAddress(account.address);
   const hintKey = status === 'locked-by-other' && secondKeyKnown ? 'status.lockedByAnotherHint' : HINTS[status];
   const hintText = hintKey === null || (status === 'protected' && date === null) ? null : t(hintKey, { date: date ?? '' });
@@ -164,7 +175,7 @@ export function AccountRow({
 
   const body = (
     <>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+      <div data-slot="row-head" className="flex w-full min-w-0 flex-auto flex-wrap items-center gap-x-1.5 gap-y-1 sm:w-auto">
         {select === undefined ? null : (
           <Checkbox
             aria-label={select.label}
@@ -173,14 +184,25 @@ export function AccountRow({
             onCheckedChange={(value) => {
               select.onCheckedChange(value === true);
             }}
-            className="mr-1"
           />
         )}
         <StatusBadge status={status} secondKeyKnown={secondKeyKnown} size="sm" />
         <AddressText address={account.address} />
       </div>
       <SolAmount lamports={account.lamports} className="shrink-0 text-base font-semibold sm:text-lg" />
-      <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted sm:order-2">
+      {hasActions ? (
+        <div data-slot="row-actions" className="ml-auto flex shrink-0 items-center gap-2">
+          {action}
+          {moreActions === undefined ? null : (
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={t('app.actions.more', { address: short })}>
+                <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', moreOpen && 'rotate-180')} />
+              </Button>
+            </CollapsibleTrigger>
+          )}
+        </div>
+      ) : null}
+      <div data-slot="row-meta" className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
         {date === null ? null : (
           <span data-slot="lock-end" className={cn('inline-flex items-center gap-1', endsSoon && 'text-warning')}>
             {endsSoon ? <ClockIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
@@ -220,21 +242,9 @@ export function AccountRow({
           {serviceDetail ? <p>{t('components.accountRow.managedByServiceDetail')}</p> : null}
         </RowWarning>
       ) : null}
-      {!hint || hintText === null ? null : <p className="w-full text-sm text-muted sm:order-2">{hintText}</p>}
-      {hasActions ? (
-        <div data-slot="row-actions" className="flex w-full flex-wrap items-center gap-2 sm:order-1 sm:w-auto">
-          {action}
-          {moreActions === undefined ? null : (
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={t('app.actions.more', { address: short })}>
-                <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', moreOpen && 'rotate-180')} />
-              </Button>
-            </CollapsibleTrigger>
-          )}
-        </div>
-      ) : null}
+      {!hint || hintText === null ? null : <p className="w-full text-sm text-muted">{hintText}</p>}
       {moreActions === undefined ? null : (
-        <CollapsibleContent className="mt-1 flex w-full flex-wrap items-center gap-2 rounded-md bg-subtle p-3 sm:order-3">
+        <CollapsibleContent className="mt-1 flex w-full flex-wrap items-center gap-2 rounded-md bg-subtle p-3">
           {moreActions}
         </CollapsibleContent>
       )}

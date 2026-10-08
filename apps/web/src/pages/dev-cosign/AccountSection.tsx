@@ -85,6 +85,7 @@ export function AccountSection({ mainKey, secondKey, data, selected, onSelect, o
               key={account.address}
               account={account}
               activation={stakeActivationStatus(account.delegation, clock.epoch)}
+              clock={clock}
               protection={view.status}
               managedByService={view.managedByService}
               secondKeyKnown={secondKeys.length > 0}

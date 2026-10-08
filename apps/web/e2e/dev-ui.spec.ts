@@ -153,6 +153,42 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.keyboard.press('Enter');
   await expect(expiringRow.getByRole('button', { name: 'Withdraw' })).toHaveCount(0);
 
+  // Compact rows (D109): a row without warnings and with an action is at most 72 px tall at 1280 and 112 px at 360
+  // (the row itself, without its list item's padding). At 360 that holds where the status badge and the address share
+  // line 1; the two longest badges (No longer protected, Locked by …) push the address to a line of its own.
+  const rowHeights = await page
+    .getByRole('list', { name: 'In a list, the hint said once per group' })
+    .locator('article[data-slot="account-row"]')
+    .evaluateAll((rows) =>
+      rows
+        .filter((row) => row.querySelector('[data-slot="row-actions"]') !== null && row.querySelector('[data-slot="row-warning"]') === null)
+        .map((row) => ({ status: row.getAttribute('data-status') ?? '', height: row.getBoundingClientRect().height })),
+    );
+  const measured = width < 640 ? rowHeights.filter((row) => ['protected', 'expiring', 'unprotected'].includes(row.status)) : rowHeights;
+  expect(measured.map((row) => row.status)).toEqual(
+    width < 640 ? ['protected', 'expiring', 'unprotected'] : ['protected', 'expiring', 'unprotected', 'was-protected'],
+  );
+  for (const row of measured) expect(row.height, row.status).toBeLessThanOrEqual(width < 640 ? 112 : 72);
+
+  // WCAG 2.4.3: in every sample row Tab goes the way the row reads, left to right on a line, then down. Nothing in a
+  // row is moved with CSS order, so the action and More on line 1 come before a warning's Open Rescue below it.
+  const rowFocusOrder = await page.locator('#components article[data-slot="account-row"]').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const boxes = [...row.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')]
+        .map((element) => ({ name: element.getAttribute('aria-label') ?? element.textContent, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && box.height > 0);
+      return boxes.slice(1).flatMap((next, index) => {
+        const previous = boxes[index];
+        if (previous === undefined) return [];
+        const centre = (box: DOMRect) => box.top + box.height / 2;
+        const sameLine = Math.abs(centre(next.box) - centre(previous.box)) < 12;
+        const inOrder = sameLine ? next.box.left >= previous.box.right - 1 : centre(next.box) > centre(previous.box);
+        return inOrder ? [] : [`${row.getAttribute('aria-label') ?? ''}: ${previous.name} before ${next.name}`];
+      });
+    }),
+  );
+  expect(rowFocusOrder).toEqual([]);
+
   // Keyboard: the wallet list opens from its button. Exact: the connectLabel sample is named "or connect a wallet as
   // Main key".
   const connect = page.getByRole('button', { name: 'Connect a wallet as Main key', exact: true });

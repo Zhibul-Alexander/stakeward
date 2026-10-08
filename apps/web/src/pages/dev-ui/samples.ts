@@ -153,12 +153,15 @@ export type SampleRow = {
   /** This viewer knows a second key: a lock none of them holds reads Locked by another key (D35). */
   secondKeyKnown: boolean;
   wasProtected: boolean;
+  /** The clock the statuses were computed with (AccountRow warns about a lock that ends within 30 days of it). */
+  clock: ClockView;
 };
 
 /**
  * One account per status. Statuses come from core: `scannerStatus` with the second keys this viewer is known to
  * hold, and `stakeActivationStatus` from the epochs. `locked-new-device` is the same lock seen by a browser that knows
- * no second key yet (Locked by a second key); `locked-by-other` is a lock that the known key does not hold.
+ * no second key yet (Locked by a second key), ending within 30 days so its date shows in warning; `locked-by-other` is
+ * a lock that the known key does not hold.
  */
 export function sampleRows(clock: ClockView): SampleRow[] {
   const known = [SAMPLE.secondKey];
@@ -180,7 +183,7 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       },
       {
         key: 'locked-new-device',
-        stake: { address: SAMPLE.stakeH, sol: 25n, activation: 'active', lockup: lock(SAMPLE_LOCK_END, SAMPLE.secondKey) },
+        stake: { address: SAMPLE.stakeH, sol: 25n, activation: 'active', lockup: lock(sampleExpiringEnd(clock), SAMPLE.secondKey) },
         knownKeys: [],
       },
       {
@@ -216,6 +219,7 @@ export function sampleRows(clock: ClockView): SampleRow[] {
       managedByService: view.managedByService,
       secondKeyKnown: keys.length > 0,
       wasProtected: row.wasProtected ?? false,
+      clock,
     };
   });
 }

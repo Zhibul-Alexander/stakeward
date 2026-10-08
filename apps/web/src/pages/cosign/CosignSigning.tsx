@@ -273,6 +273,7 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
         <AccountRow
           account={after}
           activation={stakeActivationStatus(after.delegation, clock.epoch)}
+          clock={clock}
           protection={view.status}
           managedByService={view.managedByService}
           secondKeyKnown={secondKeys.length > 0}

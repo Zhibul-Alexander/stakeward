@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { formatSol, shortAddress } from '@stakeward/core';
+import { formatSol, shortAddress, type ClockView } from '@stakeward/core';
 import { CalendarPlusIcon, FileTextIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -133,13 +133,13 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
           onRetry={reload}
         />
       ) : view === null ? null : (
-        <Loaded address={address} view={view} />
+        <Loaded address={address} view={view} clock={state.data.clock} />
       )}
     </div>
   );
 }
 
-function Loaded({ address, view }: { address: Address; view: AccountsView }) {
+function Loaded({ address, view, clock }: { address: Address; view: AccountsView; clock: ClockView }) {
   const mainId = useId();
   const secondId = useId();
   const confirmId = useId();
@@ -155,7 +155,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
         </div>
         {view.owned.length === 0 ? null : <Totals totals={view.totals} />}
         {view.owned.length > 0 ? (
-          <Rows label={t('app.lists.main')} rows={view.owned} actions={(row) => ownedActions(row)} />
+          <Rows label={t('app.lists.main')} rows={view.owned} clock={clock} actions={(row) => ownedActions(row)} />
         ) : view.secondKeyFor.length === 0 ? (
           <NoStakeAccounts address={address} headingLevel={3} />
         ) : (
@@ -191,7 +191,7 @@ function Loaded({ address, view }: { address: Address; view: AccountsView }) {
             </h2>
             <p className="text-sm text-muted">{t('app.lists.secondKeyForNote')}</p>
           </div>
-          <Rows label={t('app.lists.secondKeyFor')} rows={view.secondKeyFor} actions={(row) => secondKeyActions(row)} />
+          <Rows label={t('app.lists.secondKeyFor')} rows={view.secondKeyFor} clock={clock} actions={(row) => secondKeyActions(row)} />
         </section>
       )}
     </>
@@ -213,7 +213,18 @@ function Totals({ totals }: { totals: AccountsView['totals'] }) {
 /** A row's visible action and the ones behind its More. */
 type RowActions = { action?: ReactNode; more?: ReactNode };
 
-function Rows({ label, rows, actions }: { label: string; rows: readonly AccountView[]; actions: (row: AccountView) => RowActions }) {
+function Rows({
+  label,
+  rows,
+  clock,
+  actions,
+}: {
+  label: string;
+  rows: readonly AccountView[];
+  /** The clock the statuses were computed with: a lock that ends within 30 days shows its date in warning. */
+  clock: ClockView;
+  actions: (row: AccountView) => RowActions;
+}) {
   // Rescue for the account's own main key (its withdrawer): the address itself in the main list, the owner in the
   // second-key list. The row links it only under its warning that another key can stop or move the stake.
   return (
@@ -225,6 +236,7 @@ function Rows({ label, rows, actions }: { label: string; rows: readonly AccountV
             <AccountRow
               account={row.account}
               activation={row.activation}
+              clock={clock}
               protection={row.protection}
               managedByService={row.managedByService}
               secondKeyKnown={row.secondKeyKnown}

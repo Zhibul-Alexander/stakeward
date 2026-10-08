@@ -140,6 +140,7 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
       <AccountRow
         account={account}
         activation={stakeActivationStatus(account.delegation, clock.epoch)}
+        clock={clock}
         protection={view.status}
         managedByService={view.managedByService}
         secondKeyKnown={knownSecondKeys.length > 0}

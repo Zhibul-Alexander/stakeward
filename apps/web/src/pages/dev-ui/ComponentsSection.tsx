@@ -120,6 +120,7 @@ function SampleAccountRow({ row, hint = false, defaultMoreOpen }: { row: SampleR
     <AccountRow
       account={row.account}
       activation={row.activation}
+      clock={row.clock}
       protection={row.protection}
       managedByService={row.managedByService}
       secondKeyKnown={row.secondKeyKnown}
@@ -146,6 +147,7 @@ function SelectableRows({ rows }: { rows: readonly SampleRow[] }) {
             <AccountRow
               account={row.account}
               activation={row.activation}
+              clock={row.clock}
               protection={row.protection}
               managedByService={row.managedByService}
               secondKeyKnown={row.secondKeyKnown}
@@ -380,6 +382,7 @@ export function ComponentsSection() {
                   <AccountRow
                     account={row.account}
                     activation={row.activation}
+                    clock={row.clock}
                     protection={row.protection}
                     managedByService={false}
                     secondKeyKnown

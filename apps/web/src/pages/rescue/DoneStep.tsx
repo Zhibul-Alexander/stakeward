@@ -328,6 +328,7 @@ function MovedRow({
     <AccountRow
       account={after}
       activation={stakeActivationStatus(after.delegation, clock.epoch)}
+      clock={clock}
       protection={view.status}
       managedByService={view.managedByService}
       secondKeyKnown

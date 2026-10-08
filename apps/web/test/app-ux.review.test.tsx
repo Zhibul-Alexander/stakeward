@@ -223,6 +223,7 @@ describe('AccountRow lock date', () => {
       <AccountRow
         account={{ address: await newAddress(), lamports: 10n * SOL, lockup }}
         activation="active"
+        clock={{ unixTimestamp: 1_790_000_000n, epoch: 850n }}
         protection="locked-by-other"
         managedByService={false}
         secondKeyKnown={false}

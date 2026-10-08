@@ -10,6 +10,9 @@ const STAKE = 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW' as Address;
 const OTHER = '57M4tyxx6Rk1gz3uYVvfoB3KdQGQkyveqqmZzJUdw3Sz' as Address;
 const SECOND = '9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi' as Address;
 const APRIL_2027 = 1_807_488_000n;
+const DAY = 86_400n;
+/** The cluster clock the rows' statuses are computed with: 21 September 2026, months before the sample lock ends. */
+const CLOCK = { unixTimestamp: 1_790_000_000n, epoch: 850n };
 
 const account = (custodian: Address, unixTimestamp = APRIL_2027) => ({
   address: STAKE,
@@ -23,6 +26,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(SECOND)}
         activation="active"
+        clock={CLOCK}
         protection="protected"
         managedByService={false}
         secondKeyKnown
@@ -43,7 +47,7 @@ describe('AccountRow', () => {
 
   it('a lock of a key this browser does not know names that key, with copy and explorer, so the viewer can connect it if it is theirs', () => {
     render(
-      <AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} secondKeyKnown={false} />,
+      <AccountRow account={account(OTHER)} activation="inactive" clock={CLOCK} protection="locked-by-other" managedByService={false} secondKeyKnown={false} />,
     );
     expect(screen.getByText('Locked by a second key')).toBeInTheDocument();
     expect(screen.queryByText('Locked by another key')).toBeNull();
@@ -65,7 +69,7 @@ describe('AccountRow', () => {
   // "connect it": they would send a victim to the key a fake site set. View only, as before.
   it('a lock held by none of the second keys this browser knows: Locked by another key, with that key and no "connect it"', () => {
     render(
-      <AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} secondKeyKnown />,
+      <AccountRow account={account(OTHER)} activation="inactive" clock={CLOCK} protection="locked-by-other" managedByService={false} secondKeyKnown />,
     );
     const row = screen.getByRole('article');
     expect(row).toHaveAttribute('data-status', 'locked-by-other');
@@ -84,6 +88,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(SECOND, 1_700_000_000n)}
         activation="active"
+        clock={CLOCK}
         protection="unprotected"
         managedByService={false}
         secondKeyKnown
@@ -96,7 +101,7 @@ describe('AccountRow', () => {
   });
 
   it('warns when a staking service may manage the stake', () => {
-    render(<AccountRow account={account(SECOND, 0n)} activation="active" protection="unprotected" managedByService secondKeyKnown={false} />);
+    render(<AccountRow account={account(SECOND, 0n)} activation="active" clock={CLOCK} protection="unprotected" managedByService secondKeyKnown={false} />);
     expect(screen.getByText('A staking service may manage this stake.')).toBeInTheDocument();
     expect(screen.queryByText(/your main key may be stolen/)).toBeNull();
   });
@@ -110,6 +115,7 @@ describe('AccountRow', () => {
         <AccountRow
           account={account(SECOND)}
           activation="deactivating"
+          clock={CLOCK}
           protection={protection}
           managedByService
           secondKeyKnown
@@ -127,7 +133,7 @@ describe('AccountRow', () => {
   });
 
   it('the same warning without a link where no Rescue link is given (the rescue pages themselves)', () => {
-    render(<AccountRow account={account(SECOND)} activation="active" protection="protected" managedByService secondKeyKnown />);
+    render(<AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService secondKeyKnown />);
     expect(screen.getByText('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Open Rescue' })).toBeNull();
   });
@@ -137,6 +143,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(OTHER)}
         activation="active"
+        clock={CLOCK}
         protection="locked-by-other"
         managedByService
         secondKeyKnown={secondKeyKnown}
@@ -149,12 +156,12 @@ describe('AccountRow', () => {
 
   it('the service warning says what a lock may do to the service only with serviceDetail', () => {
     const { rerender } = render(
-      <AccountRow account={account(SECOND, 0n)} activation="active" protection="unprotected" managedByService secondKeyKnown={false} />,
+      <AccountRow account={account(SECOND, 0n)} activation="active" clock={CLOCK} protection="unprotected" managedByService secondKeyKnown={false} />,
     );
     const detail = 'With a lock, the service may fail to rebalance or merge it. Check with the service before you protect it.';
     expect(screen.queryByText(detail)).toBeNull();
     rerender(
-      <AccountRow account={account(SECOND, 0n)} activation="active" protection="unprotected" managedByService secondKeyKnown={false} serviceDetail />,
+      <AccountRow account={account(SECOND, 0n)} activation="active" clock={CLOCK} protection="unprotected" managedByService secondKeyKnown={false} serviceDetail />,
     );
     const line = screen.getByText('A staking service may manage this stake.').closest('[data-slot="row-warning"]') as HTMLElement;
     expect(within(line).getByText(detail)).toBeInTheDocument();
@@ -166,6 +173,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(SECOND)}
         activation="active"
+        clock={CLOCK}
         protection="protected"
         managedByService={false}
         secondKeyKnown
@@ -197,6 +205,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(SECOND, 0n)}
         activation="inactive"
+        clock={CLOCK}
         protection="unprotected"
         managedByService={false}
         secondKeyKnown={false}
@@ -215,6 +224,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(OTHER)}
         activation="inactive"
+        clock={CLOCK}
         protection="locked-by-other"
         managedByService={false}
         secondKeyKnown={false}
@@ -226,7 +236,7 @@ describe('AccountRow', () => {
 
   it('hint={false} leaves the status sentence to the group; F6 shows no red sentence, only the red badge', () => {
     const { rerender } = render(
-      <AccountRow account={account(OTHER)} activation="inactive" protection="locked-by-other" managedByService={false} secondKeyKnown={false} hint={false} />,
+      <AccountRow account={account(OTHER)} activation="inactive" clock={CLOCK} protection="locked-by-other" managedByService={false} secondKeyKnown={false} hint={false} />,
     );
     expect(screen.queryByText(/^This browser does not know this key yet/)).toBeNull();
     // The lock holder is the row's own fact, not part of the hint (D35).
@@ -235,6 +245,7 @@ describe('AccountRow', () => {
       <AccountRow
         account={account(SECOND, 1_700_000_000n)}
         activation="active"
+        clock={CLOCK}
         protection="unprotected"
         managedByService={false}
         secondKeyKnown
@@ -246,19 +257,66 @@ describe('AccountRow', () => {
     expect(hint).not.toHaveClass('text-danger');
   });
 
-  it('a lock that ends within 30 days shows its date in warning with a clock icon, also for a key this browser does not know', () => {
+  it('a lock that ends within 30 days of the clock shows its date in warning with a clock icon, also for a key this browser does not know', () => {
     const { rerender } = render(
-      <AccountRow account={account(SECOND)} activation="active" protection="expiring" managedByService={false} secondKeyKnown />,
+      <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="expiring" managedByService={false} secondKeyKnown />,
     );
     const end = () => screen.getByText('until 12 April 2027');
     expect(end()).toHaveClass('text-warning');
     expect(end().querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
-    rerender(<AccountRow account={account(OTHER)} activation="active" protection="locked-by-other" managedByService={false} secondKeyKnown={false} />);
-    expect(end()).not.toHaveClass('text-warning');
     rerender(
-      <AccountRow account={account(OTHER)} activation="active" protection="locked-by-other" managedByService={false} secondKeyKnown={false} lockEndsSoon />,
+      <AccountRow account={account(OTHER)} activation="active" clock={CLOCK} protection="locked-by-other" managedByService={false} secondKeyKnown={false} />,
     );
+    expect(end()).not.toHaveClass('text-warning');
+    expect(end().querySelector('svg')).toBeNull();
+    // Ten days before the end by the chain's clock: no Expiring status for a lock of an unknown key, but the date warns.
+    const late = { unixTimestamp: APRIL_2027 - 10n * DAY, epoch: CLOCK.epoch };
+    rerender(
+      <AccountRow account={account(OTHER)} activation="active" clock={late} protection="locked-by-other" managedByService={false} secondKeyKnown={false} />,
+    );
+    expect(screen.getByText('Locked by a second key')).toBeInTheDocument();
     expect(end()).toHaveClass('text-warning');
+    expect(end().querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  // WCAG 2.4.3 and 1.3.2: no CSS `order` moves a part of the row away from its place in the DOM, so Tab and a screen
+  // reader follow what is on screen at every width: line 1 (address, then the action and More at its end), then the
+  // warning line with Open Rescue, then the actions behind More.
+  it('focus follows the visual order: the address, the action and More, then the warning link, then the opened actions', async () => {
+    const user = userEvent.setup();
+    const { hook, searchHook } = memoryLocation({ path: '/app' });
+    render(
+      <Router hook={hook} searchHook={searchHook}>
+        <AccountRow
+          account={account(SECOND)}
+          activation="deactivating"
+          clock={CLOCK}
+          protection="protected"
+          managedByService
+          secondKeyKnown
+          rescueHref="/rescue?address=MAIN"
+          action={<button type="button">Extend</button>}
+          moreActions={<button type="button">Withdraw</button>}
+        />
+      </Router>,
+    );
+    const row = screen.getByRole('article');
+    await user.click(screen.getByRole('button', { name: 'More for stake account AYA...DfW' }));
+    const tabbable = [...row.querySelectorAll<HTMLElement>('a[href], button')].map(
+      (element) => element.getAttribute('aria-label') ?? element.textContent,
+    );
+    expect(tabbable).toEqual([
+      'Copy address AYA...DfW',
+      expect.stringMatching(/^View AYA...DfW on Solana Explorer/),
+      'Extend',
+      'More for stake account AYA...DfW',
+      'Open Rescue',
+      'Withdraw',
+    ]);
+    const orderClasses = [row, ...row.querySelectorAll('*')].flatMap((element) =>
+      [...element.classList].filter((name) => /(^|:)order-/.test(name)),
+    );
+    expect(orderClasses).toEqual([]);
   });
 });
 
@@ -267,7 +325,7 @@ describe('AccountList', () => {
     render(
       <AccountList label="Stake accounts">
         <AccountListItem>
-          <AccountRow account={account(SECOND)} activation="active" protection="protected" managedByService={false} secondKeyKnown />
+          <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService={false} secondKeyKnown />
         </AccountListItem>
         <AccountListItem>
           <AccountRowError address={OTHER} detail="HTTP 500" onRetry={vi.fn()} />
