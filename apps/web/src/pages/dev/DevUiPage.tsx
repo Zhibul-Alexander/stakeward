@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
+import { LayoutSection } from '@/pages/dev-ui/LayoutSection';
 import { PrimitivesSection } from '@/pages/dev-ui/PrimitivesSection';
 import { TokensSection } from '@/pages/dev-ui/TokensSection';
 
@@ -20,6 +21,7 @@ export const DEV_UI_MARKER = 'stakeward-dev-only:dev-ui';
 const SECTIONS = [
   ['tokens', 'devUi.tokens'],
   ['primitives', 'devUi.primitives'],
+  ['layout', 'devUi.layout'],
   ['components', 'devUi.productComponents'],
   ['signing', 'devUi.signing'],
   ['link', 'devUi.link'],
@@ -56,6 +58,7 @@ export default function DevUiPage() {
       </header>
       <TokensSection />
       <PrimitivesSection />
+      <LayoutSection />
       <Suspense fallback={<Loading />}>
         <ComponentsSection />
       </Suspense>

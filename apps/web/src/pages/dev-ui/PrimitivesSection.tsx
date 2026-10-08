@@ -44,6 +44,14 @@ export function PrimitivesSection() {
   return (
     <DevSection id="primitives" title={t('devUi.primitives')}>
       <DemoGroup title={t('devUi.buttons')}>
+        <Demo label={t('devUi.buttonHierarchy')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button>{t('devUi.sample.protectTwo')}</Button>
+            <Button variant="outline">{t('devUi.sample.extend')}</Button>
+            <Button variant="ghost">{t('common.back')}</Button>
+          </div>
+          <p className="max-w-prose text-sm text-muted">{t('devUi.buttonRule')}</p>
+        </Demo>
         <div className="flex flex-wrap items-center gap-2">
           {BUTTON_VARIANTS.map((variant) => (
             <Button key={variant} variant={variant}>

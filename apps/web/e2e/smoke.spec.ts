@@ -166,6 +166,14 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(
         page.getByRole('button', { name: text('components.walletSlot.connectAs', { role: text('common.roles.main') }) }),
       ).toBeVisible();
+      // The wizard's steps reach assistive technology at every width: below 640 px the list is screen-reader text next
+      // to a line and a bar, never display: none (D109), and still marks where you are.
+      const current = page
+        .getByRole('navigation', { name: text('components.steps.label') })
+        .getByRole('listitem')
+        .filter({ hasText: `${text('components.steps.current')} ${text('protect.steps.accounts')}` });
+      await expect(current).toHaveCount(1);
+      await expect(current).toHaveAttribute('aria-current', 'step');
     },
     noApi: true,
     screen: 'protect-start',

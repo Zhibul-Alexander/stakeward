@@ -14,6 +14,12 @@ const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
  * withdraw, rescue, unlock and one rejected link. The flows sections below it render more (signing panel phases).
  */
 const SUMMARIES = 7;
+/** SummaryBar samples: ready, loading, error, stale monitoring, new device, second key only, and the dark preview. */
+const SUMMARY_BARS = 7;
+/** AccountRow samples (samples.ts sampleRows): one per status and case, shown again in the dark preview. */
+const SAMPLE_ROWS = 8;
+/** RadioCardGroup samples: lock period (4 cards), extend with Remove (4) and the dark preview's extend (4). */
+const RADIO_CARDS = 12;
 
 test('/dev/ui shows every token and component without console errors, axe violations or horizontal scroll', async ({
   page,
@@ -113,8 +119,43 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(moreContent).toBeHidden();
   await expect(moreContent.locator('*')).toHaveCount(0);
 
-  // Keyboard: the wallet list opens from its button.
-  const connect = page.getByRole('button', { name: 'Connect a wallet as Main key' });
+  // The page frame (D109): one PageHeader sample with its back link, meta, progress and action; two ActionBars, one
+  // with a blocked step button whose first reason shows before any click.
+  await expect(page.locator('#layout [data-slot="page-header"]')).toHaveCount(1);
+  await expect(page.locator('#layout [data-slot="section"]')).toHaveCount(1);
+  await expect(page.locator('#layout [data-slot="action-bar"]')).toHaveCount(2);
+  const blocked = page.locator('#layout').getByRole('button', { name: 'Continue with 2 accounts' });
+  await expect(blocked).toHaveAttribute('aria-disabled', 'true');
+  await expect(blocked).toHaveAccessibleDescription('Connect your main key to continue.');
+
+  // The product samples (D109): the summary bar in six states and the dark preview, monitoring and Refresh in every
+  // one; every sample row in one list and once more in the dark preview; the lock period and extend choices as cards.
+  const bars = page.locator('#components [data-slot="summary-bar"]');
+  await expect(bars).toHaveCount(SUMMARY_BARS);
+  for (const bar of await bars.all()) {
+    await expect(bar.locator('[data-slot="monitoring"]')).toHaveCount(1);
+    await expect(bar.getByRole('button', { name: 'Refresh' })).toHaveCount(1);
+  }
+  await expect(page.locator('[data-dark-preview] article[data-slot="account-row"]')).toHaveCount(SAMPLE_ROWS);
+  await expect(page.locator('#components [data-slot="radio-card"]')).toHaveCount(RADIO_CARDS);
+  await expect(page.locator('#components [data-slot="radio-card"][data-tone="danger"]')).toHaveCount(2);
+  await expect(page.locator('#components [data-slot="disclosure"]')).not.toHaveCount(0);
+
+  // A row's More opens from the keyboard and shows the actions behind it; closed, they are not in the page.
+  const expiringRow = page.locator('#components article[data-slot="account-row"][data-status="expiring"]').first();
+  const rowMore = expiringRow.getByRole('button', { name: /^More for stake account / });
+  await expect(rowMore).toHaveAttribute('aria-expanded', 'false');
+  await expect(expiringRow.getByRole('button', { name: 'Withdraw' })).toHaveCount(0);
+  await rowMore.focus();
+  await page.keyboard.press('Enter');
+  await expect(rowMore).toHaveAttribute('aria-expanded', 'true');
+  await expect(expiringRow.getByRole('button', { name: 'Withdraw' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(expiringRow.getByRole('button', { name: 'Withdraw' })).toHaveCount(0);
+
+  // Keyboard: the wallet list opens from its button. Exact: the connectLabel sample is named "or connect a wallet as
+  // Main key".
+  const connect = page.getByRole('button', { name: 'Connect a wallet as Main key', exact: true });
   await connect.focus();
   await page.keyboard.press('Enter');
   await expect(connect).toHaveAttribute('aria-expanded', 'true');

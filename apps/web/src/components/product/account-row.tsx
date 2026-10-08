@@ -77,6 +77,8 @@ type AccountRowProps = {
   action?: ReactNode;
   /** Every other action (Withdraw, Recovery card, ...): behind the row's More, which opens them under the row. */
   moreActions?: ReactNode;
+  /** More starts open (the /dev/ui sample of an open row). */
+  defaultMoreOpen?: boolean | undefined;
   /** A selection checkbox at the start of the row, named by `label`. */
   select?:
     | { checked: boolean; onCheckedChange: (checked: boolean) => void; label: string; disabled?: boolean | undefined }
@@ -135,13 +137,14 @@ export function AccountRow({
   lockEndsSoon = false,
   action,
   moreActions,
+  defaultMoreOpen = false,
   select,
   meta,
   hint = true,
   serviceDetail = false,
   className,
 }: AccountRowProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(defaultMoreOpen);
   const lockInForce = protection !== 'unprotected';
   const status: StatusBadgeStatus = protection === 'unprotected' && wasProtected ? 'was-protected' : protection;
   // The end date only for a lock its timestamp alone holds (epoch 0, as Stakeward sets it): a lock with an epoch can

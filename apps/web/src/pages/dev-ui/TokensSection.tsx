@@ -77,7 +77,7 @@ export function TokensSection() {
         <p className="font-mono text-sm break-all">{t('devUi.monoSample')}</p>
       </DemoGroup>
 
-      <DemoGroup title={t('devUi.spacing')} note={t('devUi.spacingNote', { unit: TOKENS.spacing })}>
+      <DemoGroup title={t('devUi.spacing')} note={`${t('devUi.spacingNote', { unit: TOKENS.spacing })} ${t('devUi.spacingRule')}`}>
         <ul className="flex flex-col gap-2">
           {SPACING_STEPS.map(([step, widthClass]) => (
             <li key={step} className="flex items-center gap-3">
