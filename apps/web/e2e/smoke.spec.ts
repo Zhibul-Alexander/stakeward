@@ -4,6 +4,7 @@ import type { Locator, Page } from '@playwright/test';
 import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
 import { MAIN, mockApi, NOW, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
+import { recordScreenMetrics } from './screen-metrics.ts';
 import { text } from './texts.ts';
 
 /**
@@ -43,6 +44,7 @@ type SmokeRoute = {
 
 /** Writes docs/screens/<name>-<width>.png, on the devnet build with UPDATE_SCREENS=1 only. */
 async function screenshot(page: Page, name: string) {
+  if (DEVNET) await recordScreenMetrics(page, name);
   if (!UPDATE_SCREENS || !DEVNET) return;
   mkdirSync(SCREENS_DIR, { recursive: true });
   const width = page.viewportSize()?.width ?? 0;
@@ -64,6 +66,8 @@ async function landingShows(page: Page) {
   const network = page.locator('[data-slot="network"]');
   await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
   await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
+  // What a visitor first gets, before the answers below are opened.
+  if (DEVNET) await recordScreenMetrics(page, 'landing-initial');
   // Every answer open, so the overflow check and axe cover the whole FAQ.
   const questions = page.locator('#faq details');
   expect(await questions.count()).toBeGreaterThan(0);

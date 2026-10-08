@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures.ts';
 import { DAY, MAIN, mockApi, NOW, rememberOnDevice, SECOND, SOL, stakeJson, type ApiFixture } from './mock-api.ts';
+import { recordScreenMetrics } from './screen-metrics.ts';
 
 /**
  * /app on the built site with the worker's API mocked (CLAUDE.md section 13, layer 4; e2e/mock-api.ts): the stake
@@ -48,6 +49,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 async function screenshot(page: Page, name: string) {
+  await recordScreenMetrics(page, name);
   if (!UPDATE_SCREENS) return;
   await page.emulateMedia({ colorScheme: 'light' });
   await page.evaluate(async () => {
