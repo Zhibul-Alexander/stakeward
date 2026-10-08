@@ -881,6 +881,7 @@
       "protectGroupOther": "Protect {count} accounts",
       "extend": "Extend",
       "withdraw": "Withdraw",
+      "rescue": "Rescue",
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
       "more": "More for stake account {address}"

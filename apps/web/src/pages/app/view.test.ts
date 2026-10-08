@@ -144,6 +144,21 @@ describe('groups and the one filled button (D109)', () => {
     expect(view.primaryAction).toEqual({ kind: 'protect-again', accounts: [ended.address] });
   });
 
+  it('then Rescue when a stake key changed under the viewer\'s own lock, before any Protect or Extend', () => {
+    const view = buildAccountsView({ ...base, accounts: [open, expiring, stolenStakeKey] });
+    expect(view.primaryAction).toEqual({ kind: 'rescue', account: stolenStakeKey.address });
+    // Never another wallet's Extend while the viewer's own stake shows the warning.
+    const holdsSoon = stake(23, { sol: 1n, withdrawer: OWNER, lockDays: 3n, custodian: A });
+    expect(buildAccountsView({ ...base, accounts: [stolenStakeKey, holdsSoon] }).primaryAction).toEqual({
+      kind: 'rescue',
+      account: stolenStakeKey.address,
+    });
+    // A lock that ended (F6) still comes first: anyone with the main key can withdraw that one now.
+    expect(
+      buildAccountsView({ ...base, accounts: [ended, stolenStakeKey], rememberedProtected: [ended.address] }).primaryAction,
+    ).toEqual({ kind: 'protect-again', accounts: [ended.address] });
+  });
+
   it('then protecting Needs attention in one go, without accounts a staking service may manage', () => {
     const view = buildAccountsView({ ...base, accounts: [open, openBig, managed, expiring] });
     expect(view.primaryAction).toEqual({ kind: 'protect-group', accounts: [openBig.address, open.address] });

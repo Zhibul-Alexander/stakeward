@@ -1,6 +1,16 @@
 import type { Address } from '@solana/kit';
 import { formatSol, shortAddress, type ClockView } from '@stakeward/core';
-import { CalendarPlusIcon, FileTextIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
+import {
+  ArrowDownToLineIcon,
+  CalendarPlusIcon,
+  FileTextIcon,
+  LifeBuoyIcon,
+  LoaderCircleIcon,
+  RefreshCwIcon,
+  SendIcon,
+  ShieldCheckIcon,
+  ShieldXIcon,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { Section } from '@/components/layout/Section';
@@ -421,12 +431,31 @@ function ExtendLink({ account, primary }: { account: Address; primary: PrimaryAc
 }
 
 /**
- * Needs attention. Without a lock: Protect behind More, as the group's "Protect N accounts" covers it; a stake a service
- * may manage is left out of that and keeps its own Protect. Expiring: Extend. A changed stake key under the viewer's
- * own lock: the locked row's actions (its warning links Rescue).
+ * Needs attention. A changed stake key under the viewer's own lock: Rescue, the sign of a stolen main key (SECURITY-CHECK
+ * П6), with the lock's own actions behind More. Without a lock: Protect behind More, as the group's "Protect N
+ * accounts" covers it; a stake a service may manage is left out of that and keeps its own Protect. Expiring: Extend.
  */
 function attentionActions(row: AccountView, primary: PrimaryAction): RowActions {
   const account = row.account.address;
+  if (stakeKeyChanged(row)) {
+    return {
+      action: (
+        <ActionLink
+          href={appLinks.rescue(row.account.withdrawer)}
+          label={t('app.actions.rescue')}
+          icon={<LifeBuoyIcon aria-hidden="true" />}
+          variant={primary?.kind === 'rescue' && primary.account === account ? 'primary' : 'outline'}
+          account={account}
+        />
+      ),
+      more: (
+        <>
+          <ExtendLink account={account} primary={primary} />
+          <LockedRest account={account} />
+        </>
+      ),
+    };
+  }
   if (row.protection !== 'unprotected') return lockedActions(row, primary);
   const protect = (
     <ActionLink
@@ -447,13 +476,8 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
 function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
   const account = row.account.address;
   const extend = <ExtendLink account={account} primary={primary} />;
-  const rest = (
-    <>
-      <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
-      <RecoveryCardLink account={account} />
-    </>
-  );
-  if (row.protection === 'expiring' || stakeKeyChanged(row)) return { action: extend, more: rest };
+  const rest = <LockedRest account={account} />;
+  if (row.protection === 'expiring') return { action: extend, more: rest };
   return {
     more: (
       <>
@@ -462,6 +486,22 @@ function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
       </>
     ),
   };
+}
+
+/** Behind More on a lock the viewer holds: withdrawing with both keys, and the recovery card of the lock. */
+function LockedRest({ account }: { account: Address }) {
+  return (
+    <>
+      <ActionLink
+        href={appLinks.withdraw(account)}
+        label={t('app.actions.withdraw')}
+        icon={<ArrowDownToLineIcon aria-hidden="true" />}
+        variant="outline"
+        account={account}
+      />
+      <RecoveryCardLink account={account} />
+    </>
+  );
 }
 
 /** Second-key list: the second key can extend (or remove) the lock it holds, and keep the card of that lock. */

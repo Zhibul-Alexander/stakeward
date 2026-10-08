@@ -66,11 +66,13 @@ export type AccountGroups = {
 };
 
 /**
- * The screen's one filled button (D109), most urgent first: the F6 banner's Protect again, then protecting the
- * accounts of Needs attention in one go, then extending the lock that ends first.
+ * The screen's one filled button (D109), most urgent first: the F6 banner's Protect again, then Rescue on the first
+ * row whose stake key changed under the viewer's own lock (the sign of a stolen main key, SECURITY-CHECK П6), then
+ * protecting the accounts of Needs attention in one go, then extending the lock that ends first.
  */
 export type PrimaryAction =
   | { kind: 'protect-again'; accounts: Address[] }
+  | { kind: 'rescue'; account: Address }
   | { kind: 'protect-group'; accounts: Address[] }
   | { kind: 'extend'; account: Address }
   | null;
@@ -186,6 +188,9 @@ function groupAccounts(owned: readonly AccountView[], secondKeyFor: AccountView[
 
 function choosePrimaryAction(noLongerProtected: Address[], groups: AccountGroups): PrimaryAction {
   if (noLongerProtected.length > 0) return { kind: 'protect-again', accounts: noLongerProtected };
+  // Never a calm Extend, least of all on another wallet's stake, while the viewer's own stake shows this warning.
+  const changed = groups.attention.find(stakeKeyChanged);
+  if (changed !== undefined) return { kind: 'rescue', account: changed.account.address };
   const protectable = protectableInGroup(groups.attention);
   if (protectable.length > 0) return { kind: 'protect-group', accounts: protectable };
   // The lock that ends first, of the viewer's own stake or of a stake whose lock the address holds.

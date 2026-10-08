@@ -428,14 +428,32 @@ describe('/app on LiteSvmChain', () => {
     });
     await changeStaker(theftChain, { stake: account, withdrawer: owner, newStaker: thief });
     expect(theftChain.stakeAccount(account)?.staker).toBe(thief.address);
+    // Another wallet's stake whose lock A holds as second key, ending soon: its Extend must not outshine the warning.
+    const holds = await theftChain.createStakeAccount({
+      staker: otherOwner,
+      withdrawer: otherOwner,
+      lockup: { unixTimestamp: NOW + 5n * DAY, epoch: 0n, custodian: A },
+    });
     renderApp({ path: `/app?address=${A}`, chain: new LiteSvmChain(theftChain), rememberedSecondKeys: [K.address] }, chain);
 
     await findRow(account);
     expect(rowStatus(account)).toBe('protected');
+    expect(section('Needs attention')).toContainElement(row(account));
     const theRow = within(row(account));
     expect(theRow.getByText('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.')).toBeInTheDocument();
     expect(theRow.getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', `/rescue?address=${A}`);
     expect(theRow.queryByText('A staking service may manage this stake.')).toBeNull();
+
+    // Rescue is the row's visible action and the page's one filled button; Extend waits behind More, and the Extend of
+    // the stake A only holds the lock of stays outline.
+    const rescue = theRow.getByRole('link', { name: `Rescue stake account ${shortAddress(account)}` });
+    expect(rescue).toHaveAttribute('href', `/rescue?address=${A}`);
+    expect(rescue).toHaveAttribute('data-variant', 'primary');
+    expect(theRow.queryByRole('link', { name: /^Extend/ })).toBeNull();
+    await openMore(account);
+    expect(theRow.getByRole('link', { name: `Extend stake account ${shortAddress(account)}` })).toHaveAttribute('data-variant', 'outline');
+    expect(within(row(holds)).getByRole('link', { name: /^Extend/ })).toHaveAttribute('data-variant', 'outline');
+    expect(document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')).toHaveLength(1);
   });
 
   it('offers Rescue for a main key whose stake has no lock at all (D70 moves those too)', async () => {
