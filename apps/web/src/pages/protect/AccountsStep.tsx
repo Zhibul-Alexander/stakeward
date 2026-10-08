@@ -63,7 +63,7 @@ export function AccountsStep(props: AccountsStepProps) {
       ) : (
         <Choices {...props} mainKey={mainKey} clock={loaded.clock} />
       )}
-      <StepButtons blockers={props.blockers} onContinue={props.onContinue} />
+      <StepButtons label={t('common.continue')} blockers={props.blockers} onContinue={props.onContinue} />
     </section>
   );
 }

@@ -1,5 +1,7 @@
-import { CircleAlertIcon } from 'lucide-react';
+import { cn } from 'cn';
+import { CircleAlertIcon, InfoIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { ActionBar } from '@/components/product/action-bar';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { MAX_ACCOUNTS_PER_RUN, type Blocker } from './wizard.ts';
@@ -26,76 +28,97 @@ export function blockerText(blocker: Blocker): string {
   }
 }
 
-/** Continue and Back of a protect wizard step, with the texts of its blockers (ContinueButtons). */
+/** The step button and Back of a protect wizard step, with the texts of its blockers (ContinueButtons). */
 export function StepButtons({
+  label,
   blockers,
   onContinue,
   onBack,
 }: {
+  label: string;
   blockers: readonly Blocker[];
   onContinue: () => void;
   onBack?: (() => void) | undefined;
 }) {
-  return <ContinueButtons problems={blockers.map(blockerText)} onContinue={onContinue} onBack={onBack} />;
+  return <ContinueButtons label={label} problems={blockers.map(blockerText)} onContinue={onContinue} onBack={onBack} />;
 }
 
 /**
- * Continue and Back of a wizard step (UX rule 2: one main step per screen, Back keeps what was entered). Continue is
- * never disabled: pressed while something is missing (`problems`, the texts to show), it says what (inline, tied to
- * the button with aria-describedby) and moves focus to that text. The text goes away once the step is complete.
+ * The step button and Back of a wizard step (UX rule 2: one main step per screen, Back keeps what was entered), in an
+ * ActionBar. Ready, the step button is the screen's one filled button. While something is missing (`problems`, the
+ * texts to show) it is outline with aria-disabled, and the first problem stands under it in muted text before any
+ * click, tied to it with aria-describedby (DECISIONS.md D109). It still takes clicks: pressed, the line names every
+ * problem in danger text and takes focus. The line goes away once the step is complete.
  */
 export function ContinueButtons({
+  label,
   problems,
   onContinue,
   onBack,
 }: {
+  /** The step button's words: verb and object ("Continue with 2 accounts"). */
+  label: string;
   problems: readonly string[];
   onContinue: () => void;
   onBack?: (() => void) | undefined;
 }) {
   const [focusRequest, setFocusRequest] = useState(0);
-  const errorId = useId();
-  const errorRef = useRef<HTMLDivElement>(null);
-  const shown = focusRequest > 0 && problems.length > 0;
+  const reasonId = useId();
+  const reasonRef = useRef<HTMLDivElement>(null);
+  const blocked = problems.length > 0;
+  const pressed = focusRequest > 0 && blocked;
+  const shown = pressed ? problems : problems.slice(0, 1);
 
   useEffect(() => {
-    if (focusRequest > 0) errorRef.current?.focus();
+    if (focusRequest > 0) reasonRef.current?.focus();
   }, [focusRequest]);
 
   return (
-    <div className="flex flex-col gap-3">
-      {shown ? (
+    <div className="flex flex-col gap-2">
+      <ActionBar
+        primary={
+          <Button
+            variant={blocked ? 'outline' : 'primary'}
+            aria-disabled={blocked ? 'true' : undefined}
+            aria-describedby={blocked ? reasonId : undefined}
+            className="aria-disabled:pointer-events-auto aria-disabled:opacity-100"
+            onClick={() => {
+              if (blocked) setFocusRequest((value) => value + 1);
+              else onContinue();
+            }}
+          >
+            {label}
+          </Button>
+        }
+        secondary={
+          onBack === undefined ? undefined : (
+            <Button variant="ghost" onClick={onBack}>
+              {t('common.back')}
+            </Button>
+          )
+        }
+      />
+      {blocked ? (
         <div
-          id={errorId}
-          ref={errorRef}
+          id={reasonId}
+          ref={reasonRef}
           tabIndex={-1}
           data-slot="step-blockers"
-          className="flex items-start gap-2 rounded-md text-sm font-medium text-danger"
+          data-pressed={pressed ? 'true' : 'false'}
+          className={cn('flex items-start gap-2 rounded-md text-sm', pressed ? 'font-medium text-danger' : 'text-muted')}
         >
-          <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          {pressed ? (
+            <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          ) : (
+            <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          )}
           <div className="flex flex-col gap-1">
-            {problems.map((problem) => (
+            {shown.map((problem) => (
               <p key={problem}>{problem}</p>
             ))}
           </div>
         </div>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          aria-describedby={shown ? errorId : undefined}
-          onClick={() => {
-            if (problems.length > 0) setFocusRequest((value) => value + 1);
-            else onContinue();
-          }}
-        >
-          {t('common.continue')}
-        </Button>
-        {onBack === undefined ? null : (
-          <Button variant="ghost" onClick={onBack}>
-            {t('common.back')}
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

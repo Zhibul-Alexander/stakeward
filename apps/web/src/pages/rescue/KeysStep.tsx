@@ -110,7 +110,7 @@ export function KeysStep(props: KeysStepProps) {
         disabledLink={choices.length === 0 ? t('rescue.keys.noLockLink') : undefined}
       />
       {mainMode === 'link' && secondMode === 'link' ? <p className="max-w-prose text-sm font-medium">{t('rescue.keys.linkSame')}</p> : null}
-      <ContinueButtons problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
+      <ContinueButtons label={t('common.continue')} problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

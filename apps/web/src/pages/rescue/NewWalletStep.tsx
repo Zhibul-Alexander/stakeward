@@ -167,7 +167,7 @@ export function NewWalletStep(props: NewWalletStepProps) {
           )}
         </div>
       )}
-      <ContinueButtons problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
+      <ContinueButtons label={t('common.continue')} problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

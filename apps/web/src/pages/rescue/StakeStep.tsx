@@ -86,7 +86,7 @@ export function StakeStep(props: StakeStepProps) {
       ) : (
         <Accounts groups={props.groups} clock={loaded.clock} knownSecondKeys={props.knownSecondKeys} />
       )}
-      <ContinueButtons problems={props.problems} onContinue={props.onContinue} />
+      <ContinueButtons label={t('common.continue')} problems={props.problems} onContinue={props.onContinue} />
     </section>
   );
 }

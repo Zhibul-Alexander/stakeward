@@ -305,6 +305,7 @@
       "checkAccount": "Check the account",
       "connect": "Connect a wallet",
       "connectAs": "Connect a wallet as {role}",
+      "labelAs": "{label} as {role}",
       "chooseWallet": "Choose a wallet",
       "noWallets": "No Solana wallet found in this browser. Install a wallet such as Phantom, Solflare or Backpack, then reload this page.",
       "approve": "Approve the connection in {wallet}.",
@@ -590,9 +591,9 @@
     "where": {
       "legend": "Where does your {role} sign?",
       "here": "In this browser",
-      "hereHint": "Connect it here and approve here.",
+      "hereHint": "Connect it here and approve here. A phone wallet's browser holds only that wallet.",
       "link": "On another device, by link",
-      "linkHint": "You get a link and a QR code. The other device opens it, checks the transaction and signs. Needs a small deposit that comes back."
+      "linkHint": "Get a link and QR code for the other device. Needs a small deposit that comes back."
     }
   },
   "devUi": {

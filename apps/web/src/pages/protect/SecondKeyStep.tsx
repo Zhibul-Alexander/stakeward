@@ -145,7 +145,7 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           </p>
         </div>
       </div>
-      <ContinueButtons problems={problemTexts} onContinue={props.onContinue} onBack={props.onBack} />
+      <ContinueButtons label={t('common.continue')} problems={problemTexts} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

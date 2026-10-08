@@ -91,6 +91,7 @@ export function PeriodStep({ headingRef, period, blockerInput, onPeriod, onBack,
         </div>
       )}
       <StepButtons
+        label={t('common.continue')}
         blockers={blockers('period', { ...blockerInput, clockReady: lockUntil !== null })}
         onBack={onBack}
         onContinue={() => {

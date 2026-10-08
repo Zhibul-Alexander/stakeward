@@ -29,8 +29,10 @@ describe('SignWhere', () => {
     const here = screen.getByRole('radio', { name: 'In this browser' });
     const link = screen.getByRole('radio', { name: 'On another device, by link' });
     expect(here).toBeChecked();
-    expect(here).toHaveAccessibleDescription('Connect it here and approve here.');
-    expect(link).toHaveAccessibleDescription(/You get a link and a QR code/);
+    expect(here).toHaveAccessibleDescription("Connect it here and approve here. A phone wallet's browser holds only that wallet.");
+    expect(link).toHaveAccessibleDescription('Get a link and QR code for the other device. Needs a small deposit that comes back.');
+    // Two cards side by side from 640 px; the radios stay visible inside them.
+    expect(document.querySelectorAll('[data-slot="sign-where"] [data-slot="radio-card"]')).toHaveLength(2);
     await user.click(link);
     expect(onChange).toHaveBeenLastCalledWith('link');
     expect(link).toBeChecked();

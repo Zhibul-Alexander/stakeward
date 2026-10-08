@@ -36,6 +36,12 @@ type KeySlotProps = {
   expected?: Address | undefined;
   /** Called with the address once it fills the slot. */
   onConnected?: ((address: Address) => void) | undefined;
+  /** WalletSlot's Connect button: `primary` only when connecting is the step's main action (default `outline`). */
+  emphasis?: 'primary' | 'outline' | undefined;
+  /** WalletSlot's layout: `card` (default) or `inline` (one line; error and wrong-account still show the card). */
+  layout?: 'card' | 'inline' | undefined;
+  /** WalletSlot's Connect button text, e.g. "Connect main key". */
+  connectLabel?: string | undefined;
   className?: string | undefined;
 };
 
@@ -48,7 +54,17 @@ function option(wallet: WalletPort): WalletOption {
  * silent: it starts from the user's click. An account that already fills another role is refused with "switch to
  * your other account in the wallet, then press Continue"; Continue reads the wallet's accounts again.
  */
-export function KeySlot({ role, mainKey, description, expected, onConnected, className }: KeySlotProps) {
+export function KeySlot({
+  role,
+  mainKey,
+  description,
+  expected,
+  onConnected,
+  emphasis,
+  layout,
+  connectLabel,
+  className,
+}: KeySlotProps) {
   const { slots } = usePorts();
   const wallets = useWallets();
   const resolved = useSlot(role);
@@ -153,7 +169,8 @@ export function KeySlot({ role, mainKey, description, expected, onConnected, cla
     }
   }
 
-  const common = { role, description, className };
+  // The presentation props reach WalletSlot in every state; none of them changes what the slot connects.
+  const common = { role, description, emphasis, layout, connectLabel, className };
   const pendingWallet = pending.kind === 'idle' ? null : walletById(pending.walletId);
   if (pending.kind !== 'idle' && pendingWallet !== null) {
     const wallet = option(pendingWallet);

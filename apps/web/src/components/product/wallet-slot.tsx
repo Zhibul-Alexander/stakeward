@@ -30,6 +30,22 @@ type Common = {
   role: WalletRole;
   /** One line under the role name, e.g. what this key signs here. */
   description?: string | undefined;
+  /**
+   * The Connect button: `outline` (default), or `primary` when connecting is the step's main action (the screen's one
+   * filled button, DECISIONS.md D109).
+   */
+  emphasis?: 'primary' | 'outline' | undefined;
+  /**
+   * `card` (default): the role, a status badge and the body in a framed card. `inline`: empty, only the Connect button
+   * (with its wallet list); connected, one line "Main key · wallet · address · Disconnect"; connecting, one line with
+   * Cancel. Error and wrong-account always show the full card: they need their words.
+   */
+  layout?: 'card' | 'inline' | undefined;
+  /**
+   * The Connect button's visible text ("Connect main key", "or connect a wallet"). The accessible name always holds the
+   * visible text (WCAG 2.5.3): the label alone when it names the role, else the label followed by the role.
+   */
+  connectLabel?: string | undefined;
   className?: string | undefined;
 };
 
@@ -105,6 +121,9 @@ export function WalletSlot(props: WalletSlotProps) {
   const labelId = useId();
   const role = roleLabel(props.role);
   const chip = props.status === 'loading' ? null : CHIPS[props.status];
+  if (props.layout === 'inline' && props.status !== 'error' && props.status !== 'wrong-account') {
+    return <InlineSlot {...props} roleText={role} labelId={labelId} />;
+  }
   return (
     <div
       role="group"
@@ -132,6 +151,81 @@ export function WalletSlot(props: WalletSlotProps) {
   );
 }
 
+/** The inline layout of WalletSlot (empty, loading, connecting, connected): one line, no frame. */
+function InlineSlot(
+  props: Exclude<WalletSlotProps, { status: 'error' | 'wrong-account' }> & { roleText: string; labelId: string },
+): ReactNode {
+  const { roleText, labelId } = props;
+  const roleName =
+    props.status === 'empty' ? (
+      <span id={labelId} className="sr-only">
+        {roleText}
+      </span>
+    ) : (
+      <span id={labelId} className="text-sm font-semibold">
+        {roleText}
+      </span>
+    );
+  return (
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      data-slot="wallet-slot"
+      data-status={props.status}
+      data-layout="inline"
+      className={cn('flex flex-col gap-2', props.className)}
+    >
+      {props.status === 'empty' ? (
+        <>
+          {roleName}
+          <WalletPicker
+            wallets={props.wallets}
+            onConnect={props.onConnect}
+            defaultOpen={props.defaultPickerOpen ?? false}
+            roleText={roleText}
+            emphasis={props.emphasis}
+            connectLabel={props.connectLabel}
+          />
+        </>
+      ) : (
+        <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {roleName}
+          {props.status === 'loading' ? (
+            <Skeleton className="h-5 w-40" />
+          ) : props.status === 'connecting' ? (
+            <>
+              <span className="inline-flex items-center gap-2">
+                <Spinner className="size-4 text-muted" />
+                {t('components.walletSlot.approve', { wallet: props.wallet.name })}
+              </span>
+              <Button variant="outline" size="sm" onClick={props.onCancel}>
+                {t('common.cancel')}
+              </Button>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex min-w-0 items-center gap-2">
+                {/* Wallet Standard icons are data: URIs; the CSP allows img-src data:. The name next to it is the text. */}
+                <img src={props.wallet.icon} alt="" className="size-5 shrink-0 rounded-sm" />
+                <span className="truncate font-medium">{props.wallet.name}</span>
+              </span>
+              <AddressText address={props.address} />
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={t('components.walletSlot.disconnectLabel', { wallet: props.wallet.name, role: roleText })}
+                onClick={props.onDisconnect}
+              >
+                {t('components.walletSlot.disconnect')}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
   switch (props.status) {
     case 'loading':
@@ -151,6 +245,8 @@ function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
           onConnect={props.onConnect}
           defaultOpen={props.defaultPickerOpen ?? false}
           roleText={props.roleText}
+          emphasis={props.emphasis}
+          connectLabel={props.connectLabel}
         />
       );
     case 'connecting':
@@ -252,16 +348,30 @@ function WalletIdentity({ wallet, address }: { wallet: WalletOption; address: st
   );
 }
 
+/**
+ * The Connect button's accessible name. It holds the visible text (WCAG 2.5.3): without a label, "Connect a wallet as
+ * Main key"; a label that names the role is the name by itself; any other label is followed by the role.
+ */
+export function connectName(roleText: string, connectLabel?: string): string | undefined {
+  if (connectLabel === undefined) return t('components.walletSlot.connectAs', { role: roleText });
+  if (connectLabel.toLowerCase().includes(roleText.toLowerCase())) return undefined;
+  return t('components.walletSlot.labelAs', { label: connectLabel, role: roleText });
+}
+
 function WalletPicker({
   wallets,
   onConnect,
   defaultOpen,
   roleText,
+  emphasis = 'outline',
+  connectLabel,
 }: {
   wallets: readonly WalletOption[];
   onConnect: (walletId: string) => void;
   defaultOpen: boolean;
   roleText: string;
+  emphasis?: 'primary' | 'outline' | undefined;
+  connectLabel?: string | undefined;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const listId = useId();
@@ -269,15 +379,16 @@ function WalletPicker({
     <div className="flex flex-col gap-3">
       <div>
         <Button
+          variant={emphasis}
           aria-expanded={open}
           aria-controls={listId}
-          aria-label={t('components.walletSlot.connectAs', { role: roleText })}
+          aria-label={connectName(roleText, connectLabel)}
           onClick={() => {
             setOpen((value) => !value);
           }}
         >
           <WalletIcon aria-hidden="true" />
-          {t('components.walletSlot.connect')}
+          {connectLabel ?? t('components.walletSlot.connect')}
           <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
         </Button>
       </div>
