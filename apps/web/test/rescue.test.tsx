@@ -669,6 +669,35 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
 
 describe('/rescue: all three keys in one Phantom (D109)', () => {
   it(
+    'no lock: the second key connected at the keys step in the new wallet\'s Phantom keeps the keys step (D109 review)',
+    async () => {
+      const w = await world();
+      await stake(w);
+      const phantom = await createTestWalletPort({ name: 'Phantom', signers: [w.D, w.K], sticky: true });
+      const slots = createSlotStore(null);
+      const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [phantom], { slots });
+
+      await heading(en.rescue.stake.heading);
+      await click(user, 'Continue');
+      await heading(en.rescue.newWallet.heading);
+      phantom.select(w.D.address);
+      await connect(user, 'New wallet', 'Phantom');
+      await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
+      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      await click(user, 'Continue');
+      await heading(en.rescue.keys.heading);
+      // Phantom now offers the second key only: the new wallet chosen on the step before still counts.
+      phantom.select(w.K.address);
+      await connect(user, 'Second key', 'Phantom');
+      expect(slots.getSnapshot().second?.address).toBe(w.K.address);
+      expect(phantom.accounts).toEqual([w.K.address]);
+      expect(screen.getByRole('heading', { name: en.rescue.keys.heading })).toBeInTheDocument();
+      expect(await screen.findByText('Your new wallet and your second key are both in Phantom.', undefined, WAIT)).toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload',
     async () => {
       const w = await world();

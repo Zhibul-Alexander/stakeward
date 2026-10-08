@@ -72,7 +72,11 @@ function SlotCard({
 
   /** Fills the slot with the first offered account that is not the other role's; otherwise asks to switch. */
   function place(wallet: WalletPort, accounts: readonly Address[]) {
-    const candidate = accounts.find((address) => address !== other?.slot.address);
+    // The account this slot let go with Disconnect only when nothing else is offered: Phantom stays on it (D109).
+    const released = slots.released(role);
+    const candidate =
+      accounts.find((address) => address !== other?.slot.address && address !== released) ??
+      accounts.find((address) => address !== other?.slot.address);
     if (candidate === undefined) {
       const shown = accounts[0];
       if (shown === undefined) {
@@ -95,7 +99,9 @@ function SlotCard({
     pending.current = controller;
     setUi({ kind: 'connecting', wallet });
     try {
-      const fits = (accounts: readonly Address[]) => accounts.some((address) => address !== other?.slot.address);
+      const released = slots.released(role);
+      const fits = (accounts: readonly Address[]) =>
+        accounts.some((address) => address !== other?.slot.address && address !== released);
       // Connecting is always the user's own click; an already offered account needs no new prompt on Continue. A
       // wallet that keeps offering only the other role's account is reconnected once (Phantom, D109).
       const accounts =

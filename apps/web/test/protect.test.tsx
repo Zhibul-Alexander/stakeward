@@ -919,6 +919,28 @@ describe('/protect step gates', () => {
   );
 
   it(
+    'Phantom: Disconnect, select the other account, Connect: the slot gets the account selected now (D109 review)',
+    async () => {
+      const w = await world();
+      const { S1, S2 } = await twoAccounts(w);
+      const phantom = await createTestWalletPort({ name: 'Phantom', signers: [w.A, w.K], sticky: true });
+      const page = renderProtect(w, [S1, S2], [phantom]);
+      const { user } = page;
+
+      // Phantom is on the wrong account when the user connects the main key.
+      phantom.select(w.K.address);
+      await connect(user, 'Main key', 'Phantom');
+      expect(page.ports.slots.getSnapshot().main?.address).toBe(w.K.address);
+      const mainSlot = screen.getByRole('group', { name: 'Main key' });
+      await user.click(within(mainSlot).getByRole('button', { name: 'Disconnect Phantom from Main key' }));
+      phantom.select(w.A.address);
+      await connect(user, 'Main key', 'Phantom');
+      expect(page.ports.slots.getSnapshot().main?.address).toBe(w.A.address);
+    },
+    TIMEOUT,
+  );
+
+  it(
     'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload (D109)',
     async () => {
       const w = await world();

@@ -337,6 +337,26 @@ describe('/dev/cosign on LiteSvmChain', () => {
   );
 
   it(
+    'Phantom holding both roles: Disconnect the second key, select another account, Connect: that account (D109 review)',
+    async () => {
+      const base = await world();
+      const third = await generateKeyPairSigner();
+      const wallet = await createTestWalletPort({ name: 'Phantom', signers: [base.mainKey, base.secondKey, third], sticky: true });
+      const w = renderPage(base, [wallet]);
+      await connect(w.user, 'Main key', 'Phantom');
+      wallet.select(base.secondKey.address);
+      await connect(w.user, 'Second key', 'Phantom');
+      const secondSlot = screen.getByRole('group', { name: 'Second key' });
+      expect(within(secondSlot).getByText(shortAddress(base.secondKey.address))).toBeInTheDocument();
+      await w.user.click(within(secondSlot).getByRole('button', { name: 'Disconnect Phantom from Second key' }));
+      wallet.select(third.address);
+      await connect(w.user, 'Second key', 'Phantom');
+      expect(within(screen.getByRole('group', { name: 'Second key' })).getByText(shortAddress(third.address))).toBeInTheDocument();
+    },
+    TIMEOUT,
+  );
+
+  it(
     'Phantom keeps the site on the first account: select in the wallet, then Connect or Sign, without a reload (D109)',
     async () => {
       const base = await world();

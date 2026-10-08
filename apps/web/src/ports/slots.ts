@@ -34,6 +34,12 @@ export interface SlotStore {
   /** Fills `role`. Refused when the address already fills another role (clear that one first). */
   assign: (role: WalletRole, slot: WalletSlot) => AssignResult;
   clear: (role: WalletRole) => void;
+  /**
+   * The address `role` last let go with clear(), until the role is filled again; null otherwise. Kept in memory only.
+   * The wallet often stays on that account (Phantom, D109), so a new connect for the role asks the wallet again
+   * instead of taking it straight back.
+   */
+  released: (role: WalletRole) => Address | null;
 }
 
 export const SLOTS_STORAGE_KEY = 'stakeward:wallet-slots:v1';
@@ -43,6 +49,7 @@ const MAX_REMEMBERED_SECOND_KEYS = 20;
 
 export function createSlotStore(storage: StorageLike | null = browserStorage(), key = SLOTS_STORAGE_KEY): SlotStore {
   let slots = readSlots(storage, key);
+  const releasedByRole = new Map<WalletRole, Address>();
   const listeners = new Set<() => void>();
   const update = (next: WalletSlots) => {
     slots = next;
@@ -58,14 +65,19 @@ export function createSlotStore(storage: StorageLike | null = browserStorage(), 
     assign(role, slot) {
       const other = WALLET_ROLES.find((candidate) => candidate !== role && slots[candidate]?.address === slot.address);
       if (other !== undefined) return { ok: false, reason: 'address-in-other-role', role: other };
+      releasedByRole.delete(role);
       const current = slots[role];
       if (current?.address === slot.address && current.walletId === slot.walletId) return { ok: true };
       update({ ...slots, [role]: { walletId: slot.walletId, address: slot.address } });
       return { ok: true };
     },
     clear(role) {
-      if (slots[role] !== null) update({ ...slots, [role]: null });
+      const current = slots[role];
+      if (current === null) return;
+      releasedByRole.set(role, current.address);
+      update({ ...slots, [role]: null });
     },
+    released: (role) => releasedByRole.get(role) ?? null,
   };
 }
 

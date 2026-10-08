@@ -99,7 +99,11 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const accounts = useMemo(() => (loaded.status === 'ready' ? loaded.accounts : []), [loaded]);
   const clock = loaded.status === 'ready' ? loaded.clock : null;
   const choices = A === null || clock === null ? [] : secondKeyChoices(accounts, A, clock);
-  const secondSlotKey = secondSlot?.ready === true ? (slots.second?.address ?? null) : null;
+  // Before the keys step a key counts only while its wallet offers it; from the keys step on, the address the user
+  // connected counts even when the wallet now shows another account (Phantom offers one at a time, D109). Signing asks
+  // the wallet for each account again.
+  const keysOnward = state.step === 'keys' || state.step === 'move';
+  const secondSlotKey = secondSlot?.ready === true || keysOnward ? (slots.second?.address ?? null) : null;
   const K =
     choices.length === 0
       ? secondSlotKey
@@ -108,7 +112,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
         : (choices[0] ?? null);
   const groups = A === null || clock === null ? EMPTY_GROUPS : rescueGroups(accounts, A, K, clock);
   const runIds = groups.movable.slice(0, MAX_RESCUE_ACCOUNTS).map((account) => account.address);
-  const D = newSlot?.ready === true ? (slots.new?.address ?? null) : null;
+  const D = newSlot?.ready === true || keysOnward ? (slots.new?.address ?? null) : null;
   // The new wallet sits in the same wallet app as a key: probably the same seed phrase (SECURITY-CHECK П5). Checked on
   // every step that connects a key: the main key and the second key are often connected only at the keys or move step.
   // The keys: the main key; the second keys that lock this stake (any slot's key when none does) and the run's.

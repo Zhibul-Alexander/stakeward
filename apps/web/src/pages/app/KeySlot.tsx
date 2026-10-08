@@ -88,7 +88,10 @@ export function KeySlot({ role, mainKey, description, expected, onConnected, cla
   /** Whether the wallet offers an account this slot may take: the expected one, or one no other role holds. */
   function fits(accounts: readonly Address[]): boolean {
     if (expected !== undefined) return accounts.includes(expected);
-    return accounts.some((address) => roleOf(address) === undefined);
+    // The account this slot let go with Disconnect does not fit: the wallet often stays on it (Phantom, D109), so a
+    // Connect asks the wallet again rather than taking it straight back.
+    const released = slots.released(role);
+    return accounts.some((address) => address !== released && roleOf(address) === undefined);
   }
 
   function take(wallet: WalletPort, accounts: readonly Address[]) {
@@ -102,7 +105,12 @@ export function KeySlot({ role, mainKey, description, expected, onConnected, cla
       setPending({ kind: 'conflict', walletId: wallet.id, address: first, conflictRole: undefined, expected });
       return;
     }
-    const free = expected ?? accounts.find((address) => roleOf(address) === undefined);
+    // Prefer an account other than the one this slot just released; it is taken back only when it is all there is.
+    const released = slots.released(role);
+    const free =
+      expected ??
+      accounts.find((address) => address !== released && roleOf(address) === undefined) ??
+      accounts.find((address) => roleOf(address) === undefined);
     if (free === undefined || roleOf(free) !== undefined) {
       const shown = free ?? first;
       setPending({ kind: 'conflict', walletId: wallet.id, address: shown, conflictRole: roleOf(shown) });
