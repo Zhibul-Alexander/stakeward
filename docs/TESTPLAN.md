@@ -12,7 +12,7 @@
 | Аккаунт | Роль на сайте | Что это | Адрес |
 |---|---|---|---|
 | Acc 1 · Main key | Main key | основной кошелёк, владелец стейка; с него стейкаем | `KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` |
-| Acc 2 · Second key | Second key | ключ замка, из своей отдельной фразы; стейк на нём не лежит, он только подписывает | `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK` |
+| Acc 2 · Second key | Second key | ключ замка, из своей отдельной фразы; стейк на нём не лежит, он только подписывает | `GuY1kkv9Ket7kGX4FjTasycpBmNN1i1op7FgnEgxdo2G` |
 | Acc 3 · Backup | New wallet | запасной кошелёк для спасения: если Acc 1 украли, он становится новым владельцем стейка | `2VFhJxmyDPCYSjhaSddnLmjWdzYyvTnLVRKNgYcFXizR` |
 
 На сайте роль Acc 3 называется New wallet: настоящий пострадавший создаёт его в момент кражи из новой фразы. Наш Acc 3 сделан заранее из фразы Acc 1 только для теста.
@@ -25,6 +25,7 @@
 - [x] 08.10.2026: деплой dev 98a8bcf (version 0500d635), сделал владелец; `verify-deploy` PASS, 27 файлов, 5 заголовков на 26 ответах.
 - [x] Переезд на `stakeward.workers.dev`: поддомен сменил владелец, `SITE_ORIGIN`, вебхуки и описания обоих ботов обновил Claude по просьбе владельца; вебхуки без ошибок, проход монитора dev после переезда — `botCheck: ok`. Одна тревога bot-mismatch пришла в минуту переключения — ожидаемо.
 - [x] Devnet SOL: на спонсоре 8,7 SOL, на Second key 0,05 SOL — пополнять ничего не нужно.
+- [x] 08.10.2026: Acc 2 заменён новым кошельком из своей фразы, `GuY1kkv9Ket7kGX4FjTasycpBmNN1i1op7FgnEgxdo2G`; со спонсора на него 0,05 devnet SOL (транзакция `5uvhdDQm…`). Прежний второй ключ `2Fz9TU…` в тестах больше не участвует.
 
 ### Этап 1. Доступы — 15 минут
 
@@ -56,7 +57,7 @@
 
 ### Этап 4. Телефон и баннер — 30 минут (после адресов новых аккаунтов от Claude)
 
-1. Защита по ссылке: Phantom на Acc 1 → `/app` → Protect у нового неделегированного аккаунта → Continue. Шаг Second key: «On another device, by link», в поле «Second key address» вставить `2Fz9TUpSUQRqDdYMNu2kgxVTc7vy7WQcBt8sHYt2rxyK`, галочка про другую seed-фразу → Continue. Срок «1 hour (devnet test)». Если появится «Set up signing by link» — «Create the link-signing account» и подписать Main key. Затем «Sign in Phantom as Main key» → появятся QR-код и «Copy link». «Close it» сейчас не нажимать: link-signing account нужен в п. 3.
+1. Защита по ссылке: Phantom на Acc 1 → `/app` → Protect у нового неделегированного аккаунта → Continue. Шаг Second key: «On another device, by link», в поле «Second key address» вставить `GuY1kkv9Ket7kGX4FjTasycpBmNN1i1op7FgnEgxdo2G`, галочка про другую seed-фразу → Continue. Срок «1 hour (devnet test)». Если появится «Set up signing by link» — «Create the link-signing account» и подписать Main key. Затем «Sign in Phantom as Main key» → появятся QR-код и «Copy link». «Close it» сейчас не нажимать: link-signing account нужен в п. 3.
 2. Телефон (Phantom на Acc 2): открыть ссылку в браузере внутри Phantom (если камера открыла обычный браузер — отправить ссылку себе в Telegram и вставить в адресную строку браузера Phantom) → «Connect a wallet» → «Sign in Phantom as Second key». Галочки здесь нет. Компьютер сам покажет «Your stake account is protected».
 3. Вывод по ссылке: на компьютере Withdraw этого аккаунта → «Where does your Second key sign?» — **«On another device, by link»** → «Review and sign» → подписать Main key → ссылка → на телефоне галочка «I started this withdrawal myself, or the owner told me by voice or in person that they want it» → «Sign in Phantom as Second key». На компьютере «… went to your main key» → «Close the link-signing account» → «Close it».
 4. Снятие замка с телефона и баннер: второй новый аккаунт защитить на компьютере («1 hour (devnet test)», оба ключа в браузере) → на `/app` у него Extend → адрес открывшейся страницы отправить себе и открыть в браузере Phantom на телефоне (Second key) → «Remove the lock now» → галочка «I understand that after this, anyone with my main key can withdraw this stake right away» → «Review and sign» → подписать. В боте «The lock on stake … was removed …». На компьютере обновить `/app`: красный баннер «… no longer protected» с кнопкой «Protect again».
