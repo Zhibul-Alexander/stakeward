@@ -89,6 +89,15 @@ const section = (name: string) => {
   if (region === null) throw new Error(`no section for ${name}`);
   return region;
 };
+/** The answer at the top (D109): SOL and accounts protected, monitoring, Telegram, Refresh, Rescue. */
+const summary = () => screen.getByRole('region', { name: 'Summary' });
+/** A SOL amount as the summary's sentence says it, its unit once at the end. */
+const sol = (lamports: bigint) => formatSol(lamports).replace(/ SOL$/, '');
+/** The rows of the viewer's own stake (every section but "You are the second key for"), in page order. */
+const ownedRows = () => {
+  const secondKeyFor = screen.queryByRole('heading', { level: 2, name: 'You are the second key for' })?.closest('section');
+  return screen.getAllByRole('article').filter((article) => secondKeyFor?.contains(article) !== true);
+};
 
 describe('/app on LiteSvmChain', () => {
   let testChain: TestChain;
@@ -132,97 +141,124 @@ describe('/app on LiteSvmChain', () => {
   });
 
   const lamportsOf = (account: Address) => testChain.stakeAccount(account)?.lamports ?? 0n;
+  /** All SOL of the main key's own stake accounts. */
+  const ownedLamports = () =>
+    [stake.open, stake.locked, stake.expiring, stake.foreign, stake.service].map(lamportsOf).reduce((a, b) => a + b, 0n);
 
   it('shows every status of a main key with its second key connected', async () => {
     const second = await createTestWalletPort({ name: 'Second Wallet', signers: [K], connected: true });
     const { ports } = renderApp({ path: `/app?address=${main.address}`, wallets: [second], secondSlot: second }, chain);
 
     await findRow(stake.locked);
-    const mainList = section('Stake accounts');
 
-    // Most urgent first: expiring, then not protected (bigger first), protected, someone else's lock.
-    expect(within(mainList).getAllByRole('article').map((article) => article.getAttribute('aria-label'))).toEqual(
+    // Most urgent first: expiring, then not protected (bigger first), protected, someone else's lock. The groups keep
+    // that order (D109): Needs attention, Protected, Locked by another key.
+    expect(ownedRows().map((article) => article.getAttribute('aria-label'))).toEqual(
       [stake.expiring, stake.service, stake.open, stake.locked, stake.foreign].map((a) => `Stake account ${shortAddress(a)}`),
     );
+    const attention = section('Needs attention');
+    for (const account of [stake.expiring, stake.service, stake.open]) expect(attention).toContainElement(row(account));
+    expect(section('Protected')).toContainElement(row(stake.locked));
+    expect(section('Locked by another key')).toContainElement(row(stake.foreign));
 
-    // Not protected, staking: offered protection.
+    // Not protected, staking: offered protection, once for the group (the one filled button: no F6 banner here) and
+    // behind the row's More. The account a staking service may manage is left out of the group and keeps its own.
     expect(rowStatus(stake.open)).toBe('unprotected');
     expect(within(row(stake.open)).getByText('Not protected')).toBeInTheDocument();
     expect(within(row(stake.open)).getByText('Activating')).toBeInTheDocument();
+    expect(within(attention).getByText(en.status.unprotectedHint)).toBeInTheDocument();
+    const protectGroup = within(attention).getByRole('link', { name: 'Protect 1 account' });
+    expect(protectGroup).toHaveAttribute('href', `/protect?account=${stake.open}`);
+    expect(protectGroup).toHaveAttribute('data-variant', 'primary');
+    await openMore(stake.open);
     expect(within(row(stake.open)).getByRole('link', { name: `Protect stake account ${shortAddress(stake.open)}` })).toHaveAttribute(
       'href',
       `/protect?account=${stake.open}`,
     );
+    expect(within(row(stake.service)).getByRole('link', { name: `Protect stake account ${shortAddress(stake.service)}` })).toHaveAttribute(
+      'href',
+      `/protect?account=${stake.service}`,
+    );
 
-    // Protected by the connected second key: lock end date, extend (visible) and withdraw (behind More, D109).
+    // Protected by the connected second key: lock end date, the group says once what the lock does, extend and
+    // withdraw behind More (D109).
     const lockedRow = within(row(stake.locked));
     expect(lockedRow.getByText('Protected')).toBeInTheDocument();
     expect(lockedRow.getByText(`until ${formatUtcDate(NOW + 100n * DAY) ?? ''}`)).toBeInTheDocument();
+    expect(within(section('Protected')).getByText(en.app.groups.protectedNote)).toBeInTheDocument();
+    await openMore(stake.locked);
     expect(lockedRow.getByRole('link', { name: `Extend stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
       `/extend/${stake.locked}`,
     );
-    await openMore(stake.locked);
     expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
       `/withdraw/${stake.locked}`,
     );
     // The recovery card of the keys that lock it (D74): on protected and expiring rows, never on someone else's lock
-    // (nor on an open one: those rows have no More at all).
+    // (nor on an open one: its More holds only Protect).
     const recoveryLink = (account: Address) => within(row(account)).queryByRole('link', { name: `Recovery card stake account ${shortAddress(account)}` });
     await openMore(stake.expiring);
     expect(recoveryLink(stake.locked)).toHaveAttribute('href', `/recovery/${stake.locked}`);
     expect(recoveryLink(stake.expiring)).toHaveAttribute('href', `/recovery/${stake.expiring}`);
     expect(moreButton(stake.foreign)).toBeNull();
-    expect(moreButton(stake.open)).toBeNull();
     expect(recoveryLink(stake.foreign)).toBeNull();
     expect(recoveryLink(stake.open)).toBeNull();
 
-    // Less than 30 days left.
-    expect(within(row(stake.expiring)).getByText('Expiring soon')).toBeInTheDocument();
-    expect(
-      within(row(stake.expiring)).getByText(`The lock ends on ${formatUtcDate(NOW + 10n * DAY) ?? ''}. Extend it to stay protected.`),
-    ).toBeInTheDocument();
+    // Less than 30 days left: said by the badge and the end date in warning, with Extend on the row.
+    const expiringRow = within(row(stake.expiring));
+    expect(expiringRow.getByText('Expiring soon')).toBeInTheDocument();
+    expect(expiringRow.getByText(`until ${formatUtcDate(NOW + 10n * DAY) ?? ''}`)).toHaveClass('text-warning');
+    expect(expiringRow.getByRole('link', { name: `Extend stake account ${shortAddress(stake.expiring)}` })).toHaveAttribute(
+      'href',
+      `/extend/${stake.expiring}`,
+    );
 
     // Locked by a key that is not the connected second key (what a fake site leaves, D35): said plainly, view only, and
     // never the "connect it" of a lock this browser cannot judge.
     const foreignRow = within(row(stake.foreign));
+    const foreignGroup = section('Locked by another key');
     expect(rowStatus(stake.foreign)).toBe('locked-by-other');
     expect(foreignRow.getByText(en.status.lockedByAnother)).toHaveAttribute('data-tone', 'info');
-    expect(foreignRow.getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
-    expect(row(stake.foreign)).not.toHaveTextContent(en.status.lockedByOther);
-    expect(row(stake.foreign)).not.toHaveTextContent(/does not know this key|connect it/i);
+    expect(within(foreignGroup).getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
+    expect(foreignGroup).not.toHaveTextContent(en.status.lockedByOther);
+    expect(foreignGroup).not.toHaveTextContent(/does not know this key|connect it/i);
+    expect(within(foreignGroup).queryByRole('button', { name: 'Connect second key' })).toBeNull();
     expect(lockHolder(stake.foreign)).toBe(shortAddress(stranger));
     expect(within(row(stake.foreign)).queryAllByRole('link', { name: /stake account/ })).toEqual([]);
 
-    // Another staker than the main key: a service may manage it.
+    // Another staker than the main key: a service may manage it, and what a lock may do to the service.
     expect(within(row(stake.service)).getByText('A staking service may manage this stake.')).toBeInTheDocument();
+    expect(within(row(stake.service)).getByText(en.components.accountRow.managedByServiceDetail)).toBeInTheDocument();
     expect(within(row(stake.open)).queryByText('A staking service may manage this stake.')).toBeNull();
 
-    // The address as second key: a separate list, not mixed into the main one.
+    // The address as second key: a separate list, not mixed into the main one, with whose stake it is.
     const secondList = section('You are the second key for');
-    expect(within(mainList).queryByRole('article', { name: `Stake account ${shortAddress(stake.secondKeyFor)}` })).toBeNull();
+    expect(ownedRows()).not.toContain(row(stake.secondKeyFor));
     const secondKeyRow = within(secondList).getByRole('article', { name: `Stake account ${shortAddress(stake.secondKeyFor)}` });
     expect(within(secondKeyRow).getByText('Protected')).toBeInTheDocument();
+    expect(within(secondKeyRow).getByText('Main key')).toBeInTheDocument();
+    expect(secondKeyRow).toHaveTextContent(shortAddress(otherOwner));
+    expect(within(secondList).getByText(en.app.groups.secondKeyForNote)).toBeInTheDocument();
     expect(within(secondKeyRow).getByRole('link', { name: /^Extend/ })).toHaveAttribute('href', `/extend/${stake.secondKeyFor}`);
     await openMore(stake.secondKeyFor);
     expect(within(secondKeyRow).getByRole('link', { name: /^Recovery card/ })).toHaveAttribute('href', `/recovery/${stake.secondKeyFor}`);
 
-    // Totals of the main list: count, all SOL, SOL under a lock.
-    const all = [stake.open, stake.locked, stake.expiring, stake.foreign, stake.service].map(lamportsOf);
-    const totals = mainList.querySelector('[data-slot="totals"]');
-    expect(within(mainList).getByText('5 stake accounts')).toBeInTheDocument();
-    expect(totals).toHaveTextContent(`${formatSol(all.reduce((a, b) => a + b, 0n))} in total`);
-    expect(totals).toHaveTextContent(`${formatSol(lamportsOf(stake.locked) + lamportsOf(stake.expiring))} protected`);
+    // The answer: SOL under the viewer's own lock out of all SOL of the main key, and how many accounts.
+    expect(within(summary()).getByText(`${sol(lamportsOf(stake.locked) + lamportsOf(stake.expiring))} of ${sol(ownedLamports())} SOL protected`)).toBeInTheDocument();
+    expect(within(summary()).getByText('2 of 5 stake accounts')).toBeInTheDocument();
 
-    // Rescue for the whole main key; monitoring freshness; the second key slot shows the connected wallet.
-    expect(screen.getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute('href', `/rescue?address=${main.address}`);
-    expect(screen.getByText('Last checked 2 min ago')).toBeInTheDocument();
-    expect(within(section('Is this lock yours?')).getByText('Connected')).toBeInTheDocument();
+    // Rescue for the whole main key; monitoring freshness; the second key connected here is shown next to the lock it
+    // does not hold, to compare.
+    expect(within(summary()).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute('href', `/rescue?address=${main.address}`);
+    expect(within(summary()).getByText('Last checked 2 min ago')).toBeInTheDocument();
+    const secondSlot = within(foreignGroup).getByRole('group', { name: 'Second key' });
+    expect(secondSlot).toHaveTextContent('Second Wallet');
+    expect(secondSlot).toHaveTextContent(shortAddress(K.address));
     expect(screen.queryByRole('alert')).toBeNull();
 
     // Alerts for this address: the worker's redirect to the Telegram bot, in a new tab.
-    const telegram = screen.getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
+    const telegram = within(summary()).getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
     expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${main.address}`);
     expect(telegram).toHaveAttribute('target', '_blank');
     // noreferrer implies noopener (HTML standard): the bot page gets neither this page's address nor a handle to it.
@@ -249,15 +285,17 @@ describe('/app on LiteSvmChain', () => {
     const { ports } = renderApp({ path: `/app?address=${main.address}` }, chain);
     await findRow(stake.locked);
 
-    // The owner's own lock on a new device: not called someone else's, and the row says how to confirm it.
+    // The owner's own lock on a new device: not called someone else's, and its group says how to confirm it.
     const own = within(row(stake.locked));
+    const lockedGroup = section('Locked by a second key');
     expect(own.getByText('Locked by a second key')).toBeInTheDocument();
+    expect(lockedGroup).toContainElement(row(stake.locked));
     expect(
-      own.getByText(
+      within(lockedGroup).getByText(
         'This browser does not know this key yet. If it is your second key, connect it to manage the lock; if not, only that key can change it.',
       ),
     ).toBeInTheDocument();
-    expect(section('Stake accounts')).not.toHaveTextContent(en.status.lockedByAnother);
+    expect(document.body).not.toHaveTextContent(en.status.lockedByAnother);
 
     // The chain cannot say whose key holds a lock: none is called Protected or counted as protected SOL.
     for (const [account, holder] of [[stake.locked, K.address], [stake.expiring, K.address], [stake.foreign, stranger]] as const) {
@@ -265,16 +303,17 @@ describe('/app on LiteSvmChain', () => {
       expect(lockHolder(account)).toBe(shortAddress(holder));
       expect(within(row(account)).queryAllByRole('link', { name: /stake account/ })).toEqual([]);
     }
-    expect(within(section('Stake accounts')).queryByText('Protected')).toBeNull();
-    expect(section('Stake accounts').querySelector('[data-slot="totals"]')).toHaveTextContent(`${formatSol(0n)} protected`);
+    for (const owned of ownedRows()) expect(owned).not.toHaveTextContent('Protected');
+    expect(screen.queryByRole('heading', { level: 2, name: 'Protected' })).toBeNull();
+    const lockedSol = [stake.locked, stake.expiring, stake.foreign].map(lamportsOf).reduce((a, b) => a + b, 0n);
+    expect(within(summary()).getByText(`0 of ${sol(ownedLamports())} SOL protected`)).toBeInTheDocument();
+    // Said apart, never as protected: these may be the viewer's own locks, of a key not connected here.
+    expect(within(summary()).getByText(`${sol(lockedSol)} SOL locked by a second key not connected here`)).toBeInTheDocument();
     // Rescue all the same: the recovery card sends a victim to another computer, and that one knows no second key.
-    expect(within(section('Stake accounts')).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute(
-      'href',
-      `/rescue?address=${main.address}`,
-    );
+    expect(within(summary()).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute('href', `/rescue?address=${main.address}`);
     // A way to confirm: connect the second key (no wallets here, so the list says how to get one).
-    await userEvent.click(within(section('Is this lock yours?')).getByRole('button', { name: 'Connect a wallet as Second key' }));
-    expect(within(section('Is this lock yours?')).getByText(/No Solana wallet found in this browser/)).toBeVisible();
+    await userEvent.click(within(lockedGroup).getByRole('button', { name: 'Connect second key' }));
+    expect(within(lockedGroup).getByText(/No Solana wallet found in this browser/)).toBeVisible();
     // Locks not confirmed as the viewer's are not remembered for F6.
     expect(ports.protectedAccounts.getSnapshot()).toEqual([]);
   });
@@ -285,23 +324,28 @@ describe('/app on LiteSvmChain', () => {
     await findRow(stake.locked);
     // What a fake site's lock looks like to a browser that knows the real second key: the strong words, never the soft
     // "connect it if it is yours" that would point the victim to that key.
+    const lockedGroup = section('Locked by another key');
+    expect(within(lockedGroup).getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
+    expect(lockedGroup).not.toHaveTextContent(en.status.lockedByOther);
+    expect(lockedGroup).not.toHaveTextContent(/does not know this key|connect it/i);
+    // No second key connected here: nothing to compare, and no "connect" next to a lock that may be a fake site's.
+    expect(within(lockedGroup).queryByRole('button', { name: /connect/i })).toBeNull();
     for (const account of [stake.locked, stake.expiring, stake.foreign]) {
       expect(rowStatus(account)).toBe('locked-by-other');
+      expect(lockedGroup).toContainElement(row(account));
       const lockRow = within(row(account));
       expect(lockRow.getByText(en.status.lockedByAnother)).toHaveAttribute('data-tone', 'info');
-      expect(lockRow.getByText(en.status.lockedByAnotherHint)).toBeInTheDocument();
-      expect(row(account)).not.toHaveTextContent(en.status.lockedByOther);
-      expect(row(account)).not.toHaveTextContent(/does not know this key|connect it/i);
       expect(lockRow.queryAllByRole('link', { name: /stake account/ })).toEqual([]);
     }
     expect(lockHolder(stake.locked)).toBe(shortAddress(K.address));
-    // Last in the list, and no SOL counted as protected: as before.
-    expect(within(section('Stake accounts')).getAllByRole('article').slice(-3).map((article) => article.getAttribute('data-status'))).toEqual([
+    // Last in the list, and no SOL counted as protected (nor said apart: a second key is known): as before.
+    expect(ownedRows().slice(-3).map((article) => article.getAttribute('data-status'))).toEqual([
       'locked-by-other',
       'locked-by-other',
       'locked-by-other',
     ]);
-    expect(section('Stake accounts').querySelector('[data-slot="totals"]')).toHaveTextContent(`${formatSol(0n)} protected`);
+    expect(within(summary()).getByText(`0 of ${sol(ownedLamports())} SOL protected`)).toBeInTheDocument();
+    expect(summary()).not.toHaveTextContent('not connected here');
     expect(within(row(stake.open)).getByText('Not protected')).toBeInTheDocument();
   });
 
@@ -336,8 +380,13 @@ describe('/app on LiteSvmChain', () => {
     expect(banner).toHaveTextContent('1 stake account is no longer protected');
     // One account: said of "it", not "them".
     expect(banner).toHaveTextContent('This device saw it protected, but its lock has ended. Anyone with your main key can withdraw it now.');
-    expect(within(banner).getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${account}`);
+    const protectAgain = within(banner).getByRole('link', { name: 'Protect again' });
+    expect(protectAgain).toHaveAttribute('href', `/protect?account=${account}`);
+    // The banner's button is the page's one filled button (D109); the row says it with its badge only.
+    expect(protectAgain).toHaveAttribute('data-variant', 'danger');
+    expect(within(section('Needs attention')).getByRole('link', { name: 'Protect 1 account' })).toHaveAttribute('data-variant', 'outline');
     expect(within(row(account)).getByText('No longer protected')).toBeInTheDocument();
+    await openMore(account);
     expect(within(row(account)).getByRole('link', { name: `Protect again stake account ${shortAddress(account)}` })).toBeInTheDocument();
   });
 
@@ -371,7 +420,7 @@ describe('/app on LiteSvmChain', () => {
     renderApp({ path: `/app?address=${owner.address}` }, chain);
     await findRow(open);
     expect(rowStatus(open)).toBe('unprotected');
-    expect(within(section('Stake accounts')).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute(
+    expect(within(summary()).getByRole('link', { name: 'Rescue your stake' })).toHaveAttribute(
       'href',
       `/rescue?address=${owner.address}`,
     );
@@ -380,13 +429,16 @@ describe('/app on LiteSvmChain', () => {
   it('explains an address without stake accounts (UX rule 13)', async () => {
     const empty = (await generateKeyPairSigner()).address;
     renderApp({ path: `/app?address=${empty}` }, chain);
-    expect(await screen.findByRole('heading', { level: 3, name: 'No stake accounts found' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'No stake accounts found' })).toBeInTheDocument();
     expect(screen.getByText('Checked address:')).toBeInTheDocument();
     expect(screen.getByText(/Liquid staking tokens \(LSTs\)/)).toBeInTheDocument();
-    expect(document.querySelector('[data-slot="totals"]')).toBeNull();
+    expect(summary()).not.toHaveTextContent('SOL protected');
     expect(screen.queryByRole('heading', { name: 'You are the second key for' })).toBeNull();
-    // Nothing for a rescue to move.
+    // Nothing for a rescue to move, nothing to alert about; monitoring and Refresh stay.
     expect(screen.queryByRole('link', { name: 'Rescue your stake' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Telegram/ })).toBeNull();
+    expect(summary().querySelector('[data-slot="monitoring"]')).not.toBeNull();
+    expect(within(summary()).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
   });
 
   it('lists only the second-key accounts when the address is no main key', async () => {
@@ -395,6 +447,13 @@ describe('/app on LiteSvmChain', () => {
     expect(section('You are the second key for')).toContainElement(locked);
     expect(screen.getByText('No stake account has this address as its main key.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'No stake accounts found' })).toBeNull();
+    // The answer for a second-key holder: whose locks it holds, never "0 of 0 SOL protected"; alerts reach it too.
+    expect(within(summary()).getByText('Second key for 2 stake accounts')).toBeInTheDocument();
+    expect(summary()).not.toHaveTextContent('SOL protected');
+    expect(within(summary()).getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' })).toHaveAttribute(
+      'href',
+      `/api/telegram/link?wallet=${K.address}`,
+    );
     // A rescue moves the stake of a main key; this address is none.
     expect(screen.queryByRole('link', { name: 'Rescue your stake' })).toBeNull();
   });
@@ -408,6 +467,11 @@ describe('/app on LiteSvmChain', () => {
     expect(within(alert).getByText('Details')).toBeInTheDocument();
     expect(within(alert).getByText(/Failed to fetch/)).toBeInTheDocument();
     expect(screen.queryByRole('article')).toBeNull();
+    // "Last checked" and Refresh stay above the error (UX rule 12): the worker or the RPC may be the one down.
+    const bar = summary();
+    expect(bar.querySelector('[data-slot="monitoring"]')).not.toBeNull();
+    expect(within(bar).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+    expect(bar.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(await findRow(stake.locked)).toBeInTheDocument();
@@ -417,7 +481,7 @@ describe('/app on LiteSvmChain', () => {
   it('checks the pasted address before it reads anything and keeps it in the URL', async () => {
     const { location } = renderApp({ path: '/app' }, chain);
     expect(screen.queryByRole('article')).toBeNull();
-    const field = screen.getByRole('textbox', { name: 'Main key address' });
+    const field = screen.getByRole('textbox', { name: 'Wallet address' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Check' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Paste a wallet address first.');
@@ -441,7 +505,7 @@ describe('/app on LiteSvmChain', () => {
   it('flags a wrong address in the URL instead of reading it', () => {
     renderApp({ path: '/app?address=0OIl-not-base58' }, chain);
     expect(screen.getByRole('alert')).toHaveTextContent('This is not a Solana address.');
-    expect(screen.getByRole('textbox', { name: 'Main key address' })).toHaveValue('0OIl-not-base58');
+    expect(screen.getByRole('textbox', { name: 'Wallet address' })).toHaveValue('0OIl-not-base58');
     expect(screen.queryByText('Reading stake accounts from the network')).toBeNull();
   });
 
@@ -455,13 +519,28 @@ describe('/app on LiteSvmChain', () => {
     const wallet = await createTestWalletPort({ name: 'Main Wallet', signers: [main] });
     const { location, ports } = renderApp({ path: '/app', wallets: [wallet] }, chain);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Connect a wallet as Main key' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect main key' }));
     await userEvent.click(screen.getByRole('button', { name: 'Main Wallet' }));
 
     expect(await findRow(stake.locked)).toBeInTheDocument();
     expect(ports.slots.getSnapshot().main).toEqual({ walletId: 'Main Wallet', address: main.address });
     expect(location.history).toEqual(['/app', `/app?address=${main.address}`]);
-    expect(screen.getByRole('group', { name: 'Main key' })).toHaveTextContent('Connected');
+    // The slot says which wallet and account hold the Main key, and how to let go of it.
+    const slot = screen.getByRole('group', { name: 'Main key' });
+    expect(slot).toHaveTextContent('Main Wallet');
+    expect(slot).toHaveTextContent(shortAddress(main.address));
+    expect(within(slot).getByRole('button', { name: /^Disconnect/ })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Wallet address' })).toHaveValue(main.address);
+  });
+
+  it('puts the connected main key into the field when the URL names no address', async () => {
+    const wallet = await createTestWalletPort({ name: 'Main Wallet', signers: [main], connected: true });
+    const { location } = renderApp({ path: '/app', wallets: [wallet], mainSlot: wallet }, chain);
+    expect(await findRow(stake.locked)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Wallet address' })).toHaveValue(main.address);
+    expect(location.history).toEqual(['/app']);
+    // A result is shown: Check is no longer the screen's filled button (D109).
+    expect(screen.getByRole('button', { name: 'Check' })).toHaveAttribute('data-variant', 'outline');
   });
 
   it('refuses the main key as the second key and asks to switch accounts', async () => {
@@ -470,8 +549,8 @@ describe('/app on LiteSvmChain', () => {
     const { ports } = renderApp({ path: `/app?address=${main.address}`, wallets: [wallet], mainSlot: wallet }, chain);
     await findRow(stake.locked);
 
-    const confirm = section('Is this lock yours?');
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Connect a wallet as Second key' }));
+    const confirm = section('Locked by a second key');
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Connect second key' }));
     await userEvent.click(within(confirm).getByRole('button', { name: 'One Account' }));
     expect(await within(confirm).findByText('This account is already your Main key.')).toBeInTheDocument();
     expect(within(confirm).getByText('Switch to your second account in the wallet, then press Continue.')).toBeInTheDocument();

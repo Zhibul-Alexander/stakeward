@@ -116,6 +116,66 @@ describe('buildAccountsView', () => {
   });
 });
 
+describe('groups and the one filled button (D109)', () => {
+  const base = { address: A, clock, knownSecondKeys: [K], rememberedProtected: [] as Address[] };
+  const addresses = (rows: readonly { account: StakeAccount }[]) => rows.map((row) => row.account.address);
+  const managed = stake(20, { sol: 4n, staker: key(50) });
+  // A thief with the main key changed the stake key under the viewer's own lock (SECURITY-CHECK П6).
+  const stolenStakeKey = stake(21, { sol: 9n, staker: key(51), lockDays: 100n, custodian: K });
+
+  it('puts every owned row in one group: attention, protected or locked, most urgent first', () => {
+    const view = buildAccountsView({
+      ...base,
+      accounts: [locked, open, foreign, expiring, openBig, ended, managed, stolenStakeKey, asSecondKey],
+      rememberedProtected: [ended.address],
+    });
+    expect(addresses(view.groups.attention)).toEqual(
+      [ended, expiring, openBig, managed, open, stolenStakeKey].map((a) => a.address),
+    );
+    expect(addresses(view.groups.protected)).toEqual([locked.address]);
+    expect(addresses(view.groups.locked)).toEqual([foreign.address]);
+    expect(addresses(view.groups.secondKeyFor)).toEqual([asSecondKey.address]);
+    const grouped = [...view.groups.attention, ...view.groups.protected, ...view.groups.locked];
+    expect(addresses(grouped).sort()).toEqual(addresses(view.owned).sort());
+  });
+
+  it('F6 first: the banner\'s Protect again is the one filled button', () => {
+    const view = buildAccountsView({ ...base, accounts: [ended, open, expiring], rememberedProtected: [ended.address] });
+    expect(view.primaryAction).toEqual({ kind: 'protect-again', accounts: [ended.address] });
+  });
+
+  it('then protecting Needs attention in one go, without accounts a staking service may manage', () => {
+    const view = buildAccountsView({ ...base, accounts: [open, openBig, managed, expiring] });
+    expect(view.primaryAction).toEqual({ kind: 'protect-group', accounts: [openBig.address, open.address] });
+    // Only a managed account open: it keeps its own Protect, and the earliest lock to extend leads.
+    expect(buildAccountsView({ ...base, accounts: [managed, expiring, locked] }).primaryAction).toEqual({
+      kind: 'extend',
+      account: expiring.address,
+    });
+  });
+
+  it('then extending the lock that ends first, the viewer\'s own or one it holds as second key', () => {
+    const holdsSoon = stake(22, { sol: 1n, withdrawer: OWNER, lockDays: 3n, custodian: A });
+    const view = buildAccountsView({ ...base, accounts: [locked, expiring, holdsSoon] });
+    expect(view.primaryAction).toEqual({ kind: 'extend', account: holdsSoon.address });
+  });
+
+  it('none when nothing needs doing: the page stays quiet', () => {
+    expect(buildAccountsView({ ...base, accounts: [locked, foreign, asSecondKey] }).primaryAction).toBeNull();
+    expect(buildAccountsView({ ...base, accounts: [] }).primaryAction).toBeNull();
+  });
+
+  it('counts SOL under locks of a second key this browser does not know apart, never as protected (D14)', () => {
+    const none = buildAccountsView({ ...base, knownSecondKeys: [], accounts: [locked, foreign, open] });
+    expect(none.lockedUnconfirmedLamports).toBe(42n * SOL);
+    expect(none.totals.protectedLamports).toBe(0n);
+    expect(addresses(none.groups.locked).sort()).toEqual([locked.address, foreign.address].sort());
+    // With a second key known, a lock none of them holds is someone else's, not an unconfirmed own one (D35, D102).
+    const known = buildAccountsView({ ...base, accounts: [locked, foreign, open] });
+    expect(known.lockedUnconfirmedLamports).toBe(0n);
+  });
+});
+
 describe('appLinks', () => {
   it('builds the action routes of section 9', () => {
     expect(appLinks.protect([locked.address])).toBe(`/protect?account=${locked.address}`);

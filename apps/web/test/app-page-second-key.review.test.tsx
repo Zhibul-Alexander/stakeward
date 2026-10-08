@@ -1,4 +1,4 @@
-// Review (step 3, /app "Is this lock yours? Connect your second key"): KeySlot only refuses an address that already
+// Review (step 3, /app "Is this lock yours? Connect your second key"; since D109 the group "Locked by a second key"): KeySlot only refuses an address that already
 // fills another slot. On /app?address=A (UX rule 1: look first, no main key connected) the viewed main key A is in no
 // slot, so a wallet that offers A takes the Second key slot with A. Worse, KeySlot picks the wallet's FIRST free
 // account, so a wallet that shares both of the user's accounts (main A first, second K) always fills the slot with A.
@@ -56,9 +56,9 @@ describe('review: /app second key slot', () => {
     // No second key known yet: the lock is not called the viewer's (D14; fix round of step 3).
     expect(row).toHaveAttribute('data-status', 'locked-by-other');
 
-    const heading = screen.getByRole('heading', { level: 2, name: 'Is this lock yours?' });
+    const heading = screen.getByRole('heading', { level: 2, name: 'Locked by a second key' });
     const section = within(heading.closest('section') as HTMLElement);
-    await userEvent.click(section.getByRole('button', { name: 'Connect a wallet as Second key' }));
+    await userEvent.click(section.getByRole('button', { name: 'Connect second key' }));
     await userEvent.click(section.getByRole('button', { name: 'Both Accounts' }));
 
     await waitFor(() => {

@@ -1,12 +1,14 @@
 import type { Address } from '@solana/kit';
 import { formatSol, shortAddress, type ClockView } from '@stakeward/core';
 import { CalendarPlusIcon, FileTextIcon, LoaderCircleIcon, RefreshCwIcon, SendIcon, ShieldCheckIcon, ShieldXIcon } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
+import { Section } from '@/components/layout/Section';
 import { AccountList, AccountListItem, AccountListSkeleton, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { NoStakeAccounts } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
+import { SummaryBar } from '@/components/product/summary-bar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { Health } from '@/api/health';
@@ -17,15 +19,29 @@ import { useKnownSecondKeys, usePorts, useProtectedAccounts, useWalletSlots } fr
 import { useHealth, useNow, useStakeAccounts } from './hooks.ts';
 import { KeySlot } from './KeySlot.tsx';
 import { MonitoringStatus } from './MonitoringStatus.tsx';
-import { appLinks, buildAccountsView, type AccountView, type AccountsView } from './view.ts';
+import {
+  appLinks,
+  buildAccountsView,
+  protectableInGroup,
+  stakeKeyChanged,
+  type AccountView,
+  type AccountsView,
+  type PrimaryAction,
+} from './view.ts';
 
 /** "Last checked N min ago" moves on while the page is open. */
 const CLOCK_TICK_MS = 30_000;
 
+/** A SOL amount without its unit, for sentences that say "SOL" once: "1,293.25 of 1,490.45 SOL protected". */
+const solNumber = (lamports: bigint) => formatSol(lamports).replace(/ SOL$/, '');
+
+const sumOf = (rows: readonly AccountView[]) => rows.reduce((total, row) => total + row.account.lamports, 0n);
+
 /**
- * The stake of one main key: its accounts with their statuses, the accounts whose lock it holds as second key,
- * monitoring freshness and a way to read everything again. Everything comes from the chain on each read
- * (CLAUDE.md section 5: reload-safe); the device adds only the known second keys and the accounts it saw protected.
+ * The stake of one main key: first the answer (how much is protected, how fresh that is), then the accounts grouped by
+ * what they ask of the viewer, then the accounts whose lock it holds as second key (DECISIONS.md D109). Everything
+ * comes from the chain on each read (CLAUDE.md section 5: reload-safe); the device adds only the known second keys and
+ * the accounts it saw protected.
  */
 export function AccountsResults({ address, loadHealth }: { address: Address; loadHealth: () => Promise<Health> }) {
   const { chain, protectedAccounts, api } = usePorts();
@@ -89,41 +105,28 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
           : t('app.results.announceOther', { count: found });
 
   return (
-    <div data-slot="accounts-results" className="flex flex-col gap-6">
+    <div data-slot="accounts-results" className="flex flex-col gap-6 sm:gap-8">
       <p role="status" className="sr-only">
         {announcement}
       </p>
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 flex-col">
-          <span className="text-xs text-muted">{t('app.results.mainKey')}</span>
-          <AddressText address={address} />
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <MonitoringStatus state={health} now={now} />
-          <Button asChild variant="outline" size="sm">
-            <a
-              href={telegramLinkPath(address)}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${t('app.results.telegram')} ${t('common.opensInNewTab')}`}
-            >
-              <SendIcon aria-hidden="true" />
-              {t('app.results.telegram')}
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" onClick={reload}>
-            <RefreshCwIcon aria-hidden="true" />
-            {t('app.results.refresh')}
-          </Button>
-        </div>
-      </div>
+      {/* "Last checked" and Refresh in every state, the read error included: they matter most when the worker or the
+          RPC may be down (UX rule 12). Alerts reach a second-key holder too; only an address with nothing to watch
+          has no Telegram. */}
+      <Summary
+        address={address}
+        view={view}
+        state={state.status}
+        monitoring={<MonitoringStatus state={health} now={now} />}
+        telegram={view === null || found > 0}
+        onRefresh={reload}
+      />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="flex flex-col gap-3">
           <p role="status" className="flex items-center gap-2 text-sm text-muted">
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
             {t('app.results.loading')}
           </p>
-          <AccountListSkeleton />
+          <AccountListSkeleton rows={3} />
         </div>
       ) : state.status === 'error' ? (
         <ErrorState
@@ -139,32 +142,80 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
   );
 }
 
-function Loaded({ address, view, clock }: { address: Address; view: AccountsView; clock: ClockView }) {
-  const mainId = useId();
-  const secondId = useId();
-  const confirmId = useId();
-  return (
-    <>
-      {view.noLongerProtected.length === 0 ? null : <NoLongerProtectedBanner accounts={view.noLongerProtected} />}
-      <section aria-labelledby={mainId} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 id={mainId} className="text-lg font-semibold">
-            {t('app.lists.main')}
-          </h2>
-          {view.owned.length === 0 ? null : <p className="text-sm text-muted">{t('app.lists.mainNote')}</p>}
-        </div>
-        {view.owned.length === 0 ? null : <Totals totals={view.totals} />}
-        {view.owned.length > 0 ? (
-          <Rows label={t('app.lists.main')} rows={view.owned} clock={clock} actions={(row) => ownedActions(row)} />
-        ) : view.secondKeyFor.length === 0 ? (
-          <NoStakeAccounts address={address} headingLevel={3} />
-        ) : (
-          <p className="text-sm text-muted">{t('app.lists.noneOwned')}</p>
+function Summary({
+  address,
+  view,
+  state,
+  monitoring,
+  telegram,
+  onRefresh,
+}: {
+  address: Address;
+  view: AccountsView | null;
+  state: 'loading' | 'error' | 'ready';
+  monitoring: ReactNode;
+  telegram: boolean;
+  onRefresh: () => void;
+}) {
+  const owned = view === null ? 0 : view.owned.length;
+  const secondKeyFor = view === null ? 0 : view.secondKeyFor.length;
+  const protectedCount = view === null ? 0 : view.confirmedProtected.length;
+  const headline =
+    view === null || owned === 0
+      ? undefined
+      : t('app.summary.headline', { protected: solNumber(view.totals.protectedLamports), total: solNumber(view.totals.lamports) });
+  const detail =
+    view === null ? undefined : owned > 0 ? (
+      <>
+        <p>
+          {owned === 1
+            ? t('app.summary.accountsOne', { protected: protectedCount })
+            : t('app.summary.accounts', { protected: protectedCount, count: owned })}
+        </p>
+        {/* A new device: these may well be the viewer's own locks, but they are not counted until the key is here. */}
+        {view.lockedUnconfirmedLamports === 0n ? null : (
+          <p>{t('app.summary.unconfirmed', { amount: solNumber(view.lockedUnconfirmedLamports) })}</p>
         )}
-        {/* For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
-            knows no second key and so calls none of the locks Protected (D35). */}
-        {view.owned.length > 0 ? (
-          <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
+      </>
+    ) : secondKeyFor > 0 ? (
+      secondKeyFor === 1 ? (
+        t('app.summary.secondKeyForOne')
+      ) : (
+        t('app.summary.secondKeyForOther', { count: secondKeyFor })
+      )
+    ) : undefined;
+  return (
+    <SummaryBar
+      label={t('app.summary.label')}
+      state={state}
+      headline={headline}
+      detail={detail}
+      monitoring={monitoring}
+      tools={
+        <>
+          {telegram ? (
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={telegramLinkPath(address)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${t('app.results.telegram')} ${t('common.opensInNewTab')}`}
+              >
+                <SendIcon aria-hidden="true" />
+                {t('app.results.telegram')}
+              </a>
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="icon-sm" aria-label={t('app.results.refresh')} onClick={onRefresh}>
+            <RefreshCwIcon aria-hidden="true" />
+          </Button>
+        </>
+      }
+      // For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
+      // knows no second key and so calls none of the locks Protected (D35).
+      footer={
+        owned === 0 ? undefined : (
+          <p className="flex flex-wrap items-center gap-x-2">
             {t('app.results.rescueNote')}
             <Link
               href={appLinks.rescue(address)}
@@ -173,41 +224,104 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
               {t('app.results.rescue')}
             </Link>
           </p>
-        ) : null}
-      </section>
-      {view.unconfirmedLock ? (
-        <section aria-labelledby={confirmId} className="flex flex-col gap-3">
-          <h2 id={confirmId} className="text-lg font-semibold">
-            {t('app.connect.secondTitle')}
-          </h2>
-          <KeySlot role="second" mainKey={address} description={t('app.connect.secondDescription')} />
-        </section>
-      ) : null}
-      {view.secondKeyFor.length === 0 ? null : (
-        <section aria-labelledby={secondId} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 id={secondId} className="text-lg font-semibold">
-              {t('app.lists.secondKeyFor')}
-            </h2>
-            <p className="text-sm text-muted">{t('app.lists.secondKeyForNote')}</p>
-          </div>
-          <Rows label={t('app.lists.secondKeyFor')} rows={view.secondKeyFor} clock={clock} actions={(row) => secondKeyActions(row)} />
-        </section>
+        )
+      }
+    />
+  );
+}
+
+function Loaded({ address, view, clock }: { address: Address; view: AccountsView; clock: ClockView }) {
+  const { attention, protected: protectedRows, locked, secondKeyFor } = view.groups;
+  const primary = view.primaryAction;
+  const secondSlot = useWalletSlots().second;
+  if (view.owned.length === 0 && secondKeyFor.length === 0) return <NoStakeAccounts address={address} />;
+
+  const secondKeyForSection =
+    secondKeyFor.length === 0 ? null : (
+      <Section
+        title={t('app.groups.secondKeyFor')}
+        count={groupCount(secondKeyFor)}
+        description={t('app.groups.secondKeyForNote')}
+      >
+        <Rows
+          label={t('app.groups.secondKeyFor')}
+          rows={secondKeyFor}
+          clock={clock}
+          actions={(row) => secondKeyActions(row, primary)}
+          meta={(row) => <MainKeyMeta mainKey={row.account.withdrawer} />}
+        />
+      </Section>
+    );
+
+  // An address that is only someone's second key: their list first, and one line for the empty main list.
+  if (view.owned.length === 0) {
+    return (
+      <>
+        {secondKeyForSection}
+        <p className="text-sm text-muted">{t('app.lists.noneOwned')}</p>
+      </>
+    );
+  }
+
+  const protectable = protectableInGroup(attention);
+  // The groups' kind follows what this browser knows (D102): all locks of unknown keys are of one kind.
+  const lockedKnown = locked.some((row) => row.secondKeyKnown);
+  return (
+    <>
+      {view.noLongerProtected.length === 0 ? null : <NoLongerProtectedBanner accounts={view.noLongerProtected} />}
+      {attention.length === 0 ? null : (
+        <Section
+          title={t('app.groups.attention')}
+          count={groupCount(attention)}
+          // Said once for the group (D109), when it holds an account anyone with the main key can withdraw.
+          description={attention.some((row) => row.protection === 'unprotected') ? t('status.unprotectedHint') : undefined}
+          action={
+            protectable.length === 0 ? undefined : (
+              <Button asChild size="sm" variant={primary?.kind === 'protect-group' ? 'primary' : 'outline'}>
+                <Link href={appLinks.protect(protectable)}>
+                  <ShieldCheckIcon aria-hidden="true" />
+                  {protectable.length === 1
+                    ? t('app.actions.protectGroupOne')
+                    : t('app.actions.protectGroupOther', { count: protectable.length })}
+                </Link>
+              </Button>
+            )
+          }
+        >
+          <Rows label={t('app.groups.attention')} rows={attention} clock={clock} actions={(row) => attentionActions(row, primary)} />
+        </Section>
       )}
+      {protectedRows.length === 0 ? null : (
+        <Section title={t('app.groups.protected')} count={groupCount(protectedRows)} description={t('app.groups.protectedNote')}>
+          <Rows label={t('app.groups.protected')} rows={protectedRows} clock={clock} actions={(row) => lockedActions(row, primary)} />
+        </Section>
+      )}
+      {locked.length === 0 ? null : (
+        <Section
+          title={lockedKnown ? t('app.groups.locked') : t('app.groups.lockedUnknown')}
+          count={groupCount(locked)}
+          description={lockedKnown ? t('status.lockedByAnotherHint') : t('status.lockedByOtherHint')}
+          // With no second key known, "Connect second key": on a new device these are usually the viewer's own locks.
+          // With one known, a lock none of them holds may be a fake site's (D35): no "connect it", only a second key
+          // connected here, to compare with the holder.
+          action={
+            lockedKnown && secondSlot === null ? undefined : (
+              <KeySlot role="second" mainKey={address} layout="inline" connectLabel={t('app.connect.secondButton')} />
+            )
+          }
+        >
+          {/* Each row names the key that holds its lock (D35); none has an action (D102). */}
+          <Rows label={lockedKnown ? t('app.groups.locked') : t('app.groups.lockedUnknown')} rows={locked} clock={clock} actions={() => ({})} />
+        </Section>
+      )}
+      {secondKeyForSection}
     </>
   );
 }
 
-function Totals({ totals }: { totals: AccountsView['totals'] }) {
-  return (
-    <ul data-slot="totals" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-      <li className="font-medium">
-        {totals.count === 1 ? t('app.results.countOne') : t('app.results.countOther', { count: totals.count })}
-      </li>
-      <li className="text-muted tabular-nums">{t('app.results.total', { amount: formatSol(totals.lamports) })}</li>
-      <li className="text-muted tabular-nums">{t('app.results.protected', { amount: formatSol(totals.protectedLamports) })}</li>
-    </ul>
-  );
+/** "4 · 229.95 SOL": how many accounts a group holds and their SOL. */
+function groupCount(rows: readonly AccountView[]): string {
+  return t('app.groups.count', { count: rows.length, amount: formatSol(sumOf(rows)) });
 }
 
 /** A row's visible action and the ones behind its More. */
@@ -218,14 +332,16 @@ function Rows({
   rows,
   clock,
   actions,
+  meta,
 }: {
   label: string;
   rows: readonly AccountView[];
   /** The clock the statuses were computed with: a lock that ends within 30 days shows its date in warning. */
   clock: ClockView;
   actions: (row: AccountView) => RowActions;
+  meta?: ((row: AccountView) => ReactNode) | undefined;
 }) {
-  // Rescue for the account's own main key (its withdrawer): the address itself in the main list, the owner in the
+  // Rescue for the account's own main key (its withdrawer): the address itself in the main lists, the owner in the
   // second-key list. The row links it only under its warning that another key can stop or move the stake.
   return (
     <AccountList label={label}>
@@ -244,12 +360,24 @@ function Rows({
               rescueHref={appLinks.rescue(row.account.withdrawer)}
               action={action}
               moreActions={more}
+              meta={meta?.(row)}
+              hint={false}
               serviceDetail
             />
           </AccountListItem>
         );
       })}
     </AccountList>
+  );
+}
+
+/** For "You are the second key for": whose stake it is (copy, explorer: UX rule 9). */
+function MainKeyMeta({ mainKey }: { mainKey: Address }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1">
+      <span>{t('common.roles.main')}</span>
+      <AddressText address={mainKey} />
+    </span>
   );
 }
 
@@ -276,62 +404,68 @@ function ActionLink({
   );
 }
 
+const isPrimaryExtend = (primary: PrimaryAction, account: Address) => primary?.kind === 'extend' && primary.account === account;
+
+function ExtendLink({ account, primary }: { account: Address; primary: PrimaryAction }) {
+  return (
+    <ActionLink
+      href={appLinks.extend(account)}
+      label={t('app.actions.extend')}
+      icon={<CalendarPlusIcon aria-hidden="true" />}
+      variant={isPrimaryExtend(primary, account) ? 'primary' : 'outline'}
+      account={account}
+    />
+  );
+}
+
 /**
- * Main list: protect what is open, extend or withdraw what is locked, nothing on someone else's lock (view only). The
- * first action is the row's visible one; the others are behind its More.
+ * Needs attention. Without a lock: Protect behind More, as the group's "Protect N accounts" covers it; a stake a service
+ * may manage is left out of that and keeps its own Protect. Expiring: Extend. A changed stake key under the viewer's
+ * own lock: the locked row's actions (its warning links Rescue).
  */
-function ownedActions(row: AccountView): RowActions {
+function attentionActions(row: AccountView, primary: PrimaryAction): RowActions {
   const account = row.account.address;
-  switch (row.protection) {
-    case 'unprotected':
-      return {
-        action: (
-          <ActionLink
-            href={appLinks.protect([account])}
-            label={row.wasProtected ? t('app.actions.protectAgain') : t('app.actions.protect')}
-            icon={<ShieldCheckIcon aria-hidden="true" />}
-            variant="primary"
-            account={account}
-          />
-        ),
-      };
-    case 'protected':
-    case 'expiring':
-      return {
-        action: (
-          <ActionLink
-            href={appLinks.extend(account)}
-            label={t('app.actions.extend')}
-            icon={<CalendarPlusIcon aria-hidden="true" />}
-            variant={row.protection === 'expiring' ? 'primary' : 'outline'}
-            account={account}
-          />
-        ),
-        more: (
-          <>
-            <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
-            <RecoveryCardLink account={account} />
-          </>
-        ),
-      };
-    case 'locked-by-other':
-      // Whose key holds this lock is not known here, so no card speaks for it (D35).
-      return {};
-  }
+  if (row.protection !== 'unprotected') return lockedActions(row, primary);
+  const protect = (
+    <ActionLink
+      href={appLinks.protect([account])}
+      label={row.wasProtected ? t('app.actions.protectAgain') : t('app.actions.protect')}
+      icon={<ShieldCheckIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
+    />
+  );
+  return row.managedByService ? { action: protect } : { more: protect };
+}
+
+/**
+ * Locked by the viewer's own second key: nothing to do, so Extend is behind More with Withdraw and the recovery card;
+ * a lock that ends soon shows Extend.
+ */
+function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
+  const account = row.account.address;
+  const extend = <ExtendLink account={account} primary={primary} />;
+  const rest = (
+    <>
+      <ActionLink href={appLinks.withdraw(account)} label={t('app.actions.withdraw')} variant="outline" account={account} />
+      <RecoveryCardLink account={account} />
+    </>
+  );
+  if (row.protection === 'expiring' || stakeKeyChanged(row)) return { action: extend, more: rest };
+  return {
+    more: (
+      <>
+        {extend}
+        {rest}
+      </>
+    ),
+  };
 }
 
 /** Second-key list: the second key can extend (or remove) the lock it holds, and keep the card of that lock. */
-function secondKeyActions(row: AccountView): RowActions {
+function secondKeyActions(row: AccountView, primary: PrimaryAction): RowActions {
   return {
-    action: (
-      <ActionLink
-        href={appLinks.extend(row.account.address)}
-        label={t('app.actions.extend')}
-        icon={<CalendarPlusIcon aria-hidden="true" />}
-        variant={row.protection === 'expiring' ? 'primary' : 'outline'}
-        account={row.account.address}
-      />
-    ),
+    action: <ExtendLink account={row.account.address} primary={primary} />,
     more: <RecoveryCardLink account={row.account.address} />,
   };
 }
@@ -349,7 +483,10 @@ function RecoveryCardLink({ account }: { account: Address }) {
   );
 }
 
-/** F6: accounts this device saw protected now stand without a lock (red until they are protected again). */
+/**
+ * F6: accounts this device saw protected now stand without a lock. The page's only red block and, while it shows, the
+ * page's one filled button (D109).
+ */
 function NoLongerProtectedBanner({ accounts }: { accounts: readonly Address[] }) {
   return (
     <Alert tone="danger" data-slot="no-longer-protected">
@@ -359,9 +496,9 @@ function NoLongerProtectedBanner({ accounts }: { accounts: readonly Address[] })
           ? t('app.noLongerProtected.titleOne')
           : t('app.noLongerProtected.titleOther', { count: accounts.length })}
       </AlertTitle>
-      <AlertDescription className="flex flex-col gap-3 text-foreground">
+      <AlertDescription className="flex flex-col gap-3 text-foreground sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p>{accounts.length === 1 ? t('app.noLongerProtected.bodyOne') : t('app.noLongerProtected.body')}</p>
-        <div>
+        <div className="shrink-0">
           <Button asChild variant="danger" size="sm">
             <Link href={appLinks.protect(accounts)}>
               <ShieldCheckIcon aria-hidden="true" />
