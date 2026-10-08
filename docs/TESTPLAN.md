@@ -73,7 +73,7 @@ Claude правит найденное и пишет «готово к prod».
 ### Этап 6. Mainnet — по слову Claude, начать не позже 09.10
 
 0. Выключить Testnet Mode в Phantom на компьютере и на телефоне.
-1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd <папка, которую назовёт Claude>` → `pnpm deploy:prod --prod-confirm`. Деплой идёт из чистой папки на main (D111): в `/home/dev/workspace/stakeward` может работать другая сессия на своей ветке, тогда Claude подготовит отдельную копию. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
+1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd <папка, которую назовёт Claude>` → `pnpm deploy:prod --prod-confirm`. Деплой идёт из чистой папки на main (D111): сейчас это `/home/dev/workspace/stakeward-main`, а в `/home/dev/workspace/stakeward` работает сессия UI на своей ветке. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
    ```sh
    ( set -a; . ~/.config/stakeward/secrets.env; set +a
      exec env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
