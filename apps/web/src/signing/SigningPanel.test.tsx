@@ -456,9 +456,18 @@ describe('SigningView: signing by link', () => {
     return { spy, onBack, view };
   }
 
-  it('link (watching): the card with the link, the key that signs by link and the transaction; Stop waiting here', async () => {
+  it('link (watching): the card first, with the link, the key that signs by link and the transaction; Stop waiting here', async () => {
     const user = userEvent.setup();
     const { spy, onBack } = showLink(watching);
+    // The card leads the panel; the summary of what was signed here follows, folded, then who signs where.
+    const panel = document.querySelector('[data-slot="signing-panel"]') as HTMLElement;
+    expect(panel).toHaveAttribute('data-phase', 'link');
+    expect(panel.firstElementChild).toHaveAttribute('data-slot', 'link-card');
+    const folded = panel.querySelector('details[data-slot="disclosure"]') as HTMLDetailsElement;
+    expect(folded.open).toBe(false);
+    expect(within(folded).getByText('What the other device will sign')).toBeInTheDocument();
+    expect(folded.querySelector('[data-slot="transaction-summary"][data-kind="protect"]')).not.toBeNull();
+    expect(panel.querySelector('[data-slot="link-signers"]')).toHaveTextContent('Main key signed here · Second key signs on the other device');
     expect(screen.getByRole('heading', { level: 3, name: 'Send this link to your Second key' })).toBeInTheDocument();
     const url = screen.getByLabelText('Signing link');
     expect(url).toHaveAttribute('readonly');
@@ -472,12 +481,18 @@ describe('SigningView: signing by link', () => {
       'href',
       expect.stringContaining(`/tx/${TX_ID}`),
     );
-    expect(within(card).getByText(/Waiting for the other device to sign and send/)).toBeInTheDocument();
+    const status = card.querySelector('[data-slot="link-status"]');
+    expect(status).toHaveAttribute('role', 'status');
+    expect(status).toHaveTextContent('Waiting for the other device');
+    expect(within(card).getByText('This page checks the network every few seconds.')).toBeInTheDocument();
+    // Cancel opens inside the card (the page's slot), nothing else asks first.
+    expect(within(card).queryByRole('button', { name: 'Cancel the link (page slot)' })).not.toBeInTheDocument();
+    await user.click(within(card).getByRole('button', { name: 'Cancel the link' }));
+    expect(within(card).getByRole('button', { name: 'Cancel the link' })).toHaveAttribute('aria-expanded', 'true');
     expect(within(card).getByRole('button', { name: 'Cancel the link (page slot)' })).toBeInTheDocument();
-
-    const signers = within(screen.getByRole('list', { name: 'Signatures' })).getAllByRole('listitem');
-    expect(signers.map((item) => item.getAttribute('data-status'))).toEqual(['signed', 'link']);
-    expect(within(signers[1] as HTMLElement).getByText('Signs by link')).toBeInTheDocument();
+    // The one filled button is Copy link; the signing order list is replaced by the line above.
+    expect([...document.querySelectorAll('[data-slot="button"][data-variant="primary"]')].map((b) => b.textContent)).toEqual(['Copy link']);
+    expect(screen.queryByRole('list', { name: 'Signatures' })).not.toBeInTheDocument();
 
     expect(screen.queryByRole('button', { name: /Back|Stop here/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument();
@@ -490,10 +505,11 @@ describe('SigningView: signing by link', () => {
   it('link: a failed check says so; paused offers Check again (a new watch) and Stop waiting here', async () => {
     const user = userEvent.setup();
     const { view } = showLink(reduce(watching, { type: 'link-checked', ok: false }));
-    expect(screen.getByText('Could not reach the network. Still trying.')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="link-status"]')).toHaveTextContent('Network unreachable, still trying');
     view.unmount();
 
     const { spy } = showLink(reduce(watching, { type: 'link-paused' }));
+    expect(document.querySelector('[data-slot="link-status"]')).toHaveTextContent('Stopped checking');
     expect(screen.getByText('Stopped checking after 30 minutes. The link still works.')).toBeInTheDocument();
     expect(screen.queryByText(/Waiting for the other device/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Check again' }));

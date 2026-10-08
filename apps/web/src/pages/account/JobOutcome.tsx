@@ -1,7 +1,7 @@
 import type { Address } from '@solana/kit';
 import { CircleAlertIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
-import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
+import { JobStatusList, type JobStatus, type JobStatusItem } from '@/components/product/job-status-list';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import type { JobView } from '@/signing/machine';
@@ -10,7 +10,7 @@ import { isRetryable } from './check.ts';
 
 type JobOutcomeProps = {
   headingRef?: Ref<HTMLHeadingElement> | undefined;
-  /** The heading and the list's name, e.g. "Withdrawal". */
+  /** What was tried, e.g. "Withdrawal": the list's name, and the subject of the heading ("Withdrawal did not go through"). */
   title: string;
   /** A run's outcome for the page's stake account that did not land. */
   job: JobView;
@@ -28,7 +28,30 @@ type JobOutcomeProps = {
   onBack?: (() => void) | undefined;
   /** What the page adds below the outcome (e.g. "Ask the sender for a new link"). */
   children?: ReactNode;
+  /** The page's own way out, after the buttons above (e.g. /cosign's "Back to the start page"). */
+  exit?: ReactNode;
 };
+
+/**
+ * The heading names the outcome, not the action (DECISIONS.md D109): "Withdrawal did not go through", "Not confirmed
+ * yet", "Lock change expired, nothing changed", in the words of the status badge below it.
+ */
+function outcomeHeading(status: JobStatus, subject: string): string {
+  switch (status) {
+    case 'failed':
+      return t('components.jobs.heading.failed', { subject });
+    case 'expired':
+      return t('components.jobs.heading.expired', { subject });
+    case 'unknown':
+      return t('components.jobs.heading.unknown');
+    case 'not-sent':
+    case 'left-out':
+      return t('components.jobs.heading.notSent', { subject });
+    default:
+      // A run that ends here did not land, so only the cases above reach it; the subject alone is still true.
+      return subject;
+  }
+}
 
 /**
  * The outcome of a stake account page's run when it did not land (/withdraw, /extend, /cosign): the account with its status,
@@ -46,6 +69,7 @@ export function JobOutcome({
   onCheckAgain,
   onBack,
   children,
+  exit,
 }: JobOutcomeProps) {
   const headingId = useId();
   const { state } = job;
@@ -55,8 +79,8 @@ export function JobOutcome({
   if (state.kind === 'failed' || state.kind === 'sim-failed') item.detail = state.error.detail;
   return (
     <section aria-labelledby={headingId} data-slot="job-outcome" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-        {title}
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl text-balance">
+        {outcomeHeading(item.status, title)}
       </h2>
       <JobStatusList items={[item]} label={title} />
       {children}
@@ -84,6 +108,7 @@ export function JobOutcome({
             {t('common.back')}
           </Button>
         )}
+        {exit}
       </div>
     </section>
   );

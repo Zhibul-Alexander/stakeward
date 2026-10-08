@@ -5,7 +5,6 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AddressText } from '@/components/product/address-text';
 import { ErrorState } from '@/components/product/error-state';
 import { JobStatusList } from '@/components/product/job-status-list';
-import { LinkCard } from '@/components/product/link-card';
 import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import {
   TransactionSummary,
@@ -20,9 +19,10 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
+import { LinkPhase } from './LinkPhase.tsx';
 import { initialSigningState, type PrepareProblem, type SignStep, type SigningState, type StopReason } from './machine.ts';
 import type { SigningSession } from './session.ts';
-import { backKind, earlierSent, jobItems, linkView, roundProgress, sendProgress, signerItems } from './view.ts';
+import { backKind, earlierSent, jobItems, roundProgress, sendProgress, signerItems } from './view.ts';
 
 /** What the panel's buttons call: a SigningSession, or no-ops for the /dev/ui fixtures. */
 export type SigningActions = Pick<
@@ -96,6 +96,8 @@ export function SigningView({
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [linkOpen, actions]);
+  // The rest of the round signs on another device: the link card leads (LinkPhase.tsx).
+  if (linkOpen) return <LinkPhase state={state} actions={actions} knownRoles={knownRoles} renderLinkCancel={renderLinkCancel} />;
   const progress = roundProgress(state);
   const building = phase.kind === 'idle' || phase.kind === 'preparing';
   // A round that could not be prepared has nothing current to show (a failed rebuild must not show the old bytes).
@@ -138,7 +140,6 @@ export function SigningView({
           renderKeySlot={renderKeySlot}
           onBack={onBack}
           confirm={confirm}
-          renderLinkCancel={renderLinkCancel}
           risk={risk}
         />
       </div>
@@ -269,10 +270,10 @@ function Summaries({
   );
 }
 
-type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles' | 'summaryIntro' | 'hideSingleSigner'>;
+type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles' | 'summaryIntro' | 'hideSingleSigner' | 'renderLinkCancel'>;
 
 /** What happens now and the one way forward (UX rule 7: every wait is explained and has a way out). */
-function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLinkCancel, risk }: PhaseActionsProps) {
+function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, risk }: PhaseActionsProps) {
   const { phase, round } = state;
   const back = backKind(state);
   // The confirmation box (`confirm`): ticked once per round; pressing Sign before that says so and moves focus to it.
@@ -481,39 +482,9 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
       );
     }
 
-    case 'link': {
-      // The rest of the round signs on another device; this page watches the chain for the outcome.
-      const link = linkView(state, window.location.origin);
-      if (link === null) return null;
-      const stopWaiting = (
-        <Button
-          variant={phase.watching ? 'outline' : 'ghost'}
-          onClick={() => {
-            actions.stopWaiting();
-          }}
-          className="h-auto min-h-10 max-w-full whitespace-normal"
-        >
-          {t('signing.link.stopWaiting')}
-        </Button>
-      );
-      return (
-        <div className="flex flex-col gap-3">
-          <LinkCard {...link} cancel={renderLinkCancel?.()} />
-          <Buttons>
-            {phase.watching ? null : (
-              <Button
-                onClick={() => {
-                  actions.resumeLink();
-                }}
-              >
-                {t('signing.link.checkAgain')}
-              </Button>
-            )}
-            {stopWaiting}
-          </Buttons>
-        </div>
-      );
-    }
+    case 'link':
+      // SigningView renders the whole panel in this phase (LinkPhase.tsx).
+      return null;
 
     case 'sending':
       return (

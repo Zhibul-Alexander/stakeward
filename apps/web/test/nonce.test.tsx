@@ -114,7 +114,7 @@ describe('NonceGate', () => {
       const { user } = renderWith(w.chain, [w.main], gate(w));
 
       await screen.findByRole('heading', { level: 3, name: 'Set up signing by link' }, WAIT);
-      expect(screen.getByText(new RegExp(`Your Main key creates it and pays a deposit of ${formatSol(w.deposit)}`))).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(`Your Main key pays a ${formatSol(w.deposit)} deposit, returned when you close it`))).toBeInTheDocument();
       // Nothing is asked before the click (look first, UX rule 1).
       expect(w.main.requests).toHaveLength(0);
 
@@ -242,9 +242,12 @@ describe('NonceCloseCard', () => {
       const w = await world();
       await setUpNonce(w);
       renderWith(w.chain, [w.main], <NonceCloseCard authority={w.A.address} role="main" variant="cancel-link" signing={FAST_SIGNING} />);
-      await screen.findByRole('heading', { level: 4, name: 'Cancel the link' }, WAIT);
+      // Opened from the link card's "Cancel the link": a question, the deposit that comes back, then the confirmation.
+      const heading = await screen.findByRole('heading', { level: 4, name: 'Cancel the link?' }, WAIT);
       expect(screen.getByText(/so this link stops working\. Its deposit of .+ comes back to your Main key\./)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Cancel the link' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Yes, cancel the link' })).toBeInTheDocument();
+      // No frame of its own: the link card's inset holds it.
+      expect(heading.closest('[data-slot="nonce-step"]')).not.toHaveClass('border');
     },
     SCENARIO_TIMEOUT,
   );

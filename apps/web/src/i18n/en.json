@@ -465,6 +465,12 @@
         "notSent": "Not sent",
         "leftOut": "Left out"
       },
+      "heading": {
+        "failed": "{subject} did not go through",
+        "expired": "{subject} expired, nothing changed",
+        "unknown": "Not confirmed yet",
+        "notSent": "{subject} not sent"
+      },
       "unknown": {
         "timeout": "No confirmation within 2 minutes. It may still go through: check again.",
         "stopped": "You stopped waiting. It may still go through: check again.",
@@ -559,23 +565,30 @@
     "link": {
       "title": "Send this link to your {role}",
       "titleMany": "Send this link to the device with your {roles}",
-      "body": "The link holds this transaction and the signatures made here, never a key. Whoever opens it sees exactly what it does and can only complete it. It works until it is used or you cancel it.",
-      "scan": "Scan the code with the other device's camera, then open the page in the wallet app's own browser. Or copy the link and send it.",
+      "body": "Open it on the device with your {role}: scan the code or copy the link.",
+      "scan": "The link carries signatures, never a key.",
       "qrLabel": "QR code of the signing link",
       "url": "Signing link",
       "copy": "Copy link",
       "copied": "Link copied",
       "copyFailed": "Could not copy. Select the link and copy it by hand.",
       "txId": "Transaction",
-      "waiting": "Waiting for the other device to sign and send. This page checks the network every few seconds.",
-      "checkFailed": "Could not reach the network. Still trying.",
+      "statusWaiting": "Waiting for the other device",
+      "statusPaused": "Stopped checking",
+      "statusOffline": "Network unreachable, still trying",
+      "waiting": "This page checks the network every few seconds.",
       "paused": "Stopped checking after 30 minutes. The link still works.",
       "checkAgain": "Check again",
       "stopWaiting": "Stop waiting here",
       "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed.",
-      "cancelTitle": "Cancel the link",
+      "cancel": "Cancel the link",
+      "cancelTitle": "Cancel the link?",
       "cancelBody": "Cancelling closes your link-signing account, so this link stops working. Its deposit of {amount} comes back to your {role}. If the other device already sent the transaction, that change stays.",
-      "cancelAction": "Cancel the link"
+      "cancelAction": "Yes, cancel the link",
+      "otherDevice": "What the other device will sign",
+      "signedHere": "{roles} signed here",
+      "signsThereOne": "{role} signs on the other device",
+      "signsThereMany": "{roles} sign on the other device"
     },
     "prepare": {
       "nonce": {
@@ -777,6 +790,8 @@
       "jobStatusList": "JobStatusList",
       "qrCode": "QrCode",
       "linkCard": "LinkCard",
+      "cosignRequest": "CosignRequest",
+      "stopPanel": "StopPanel",
       "commandBlock": "CommandBlock",
       "supportBadge": "SupportBadge",
       "faqItem": "FaqItem",
@@ -1350,12 +1365,12 @@
     "loadError": "Could not read your link-signing account",
     "setup": {
       "title": "Set up signing by link",
-      "body": "Signing on another device needs a small account that keeps the transaction valid until it is signed, even hours later. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "body": "A link needs a small signing account so it stays valid for hours. Your {role} pays a {amount} deposit, returned when you close it.",
       "action": "Create the link-signing account"
     },
     "setupRescue": {
       "title": "Set up the link-signing account",
-      "body": "Rescue always uses a link-signing account: it keeps each transaction valid while three wallets sign, here or on another device. Your {role} creates it and pays a deposit of {amount}, which comes back when you close it.",
+      "body": "Rescue always signs through a small signing account, so three wallets have time to sign. Your {role} pays a {amount} deposit, returned when you close it.",
       "action": "Create the link-signing account"
     },
     "close": {
@@ -1369,12 +1384,27 @@
     "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address."
   },
   "cosign": {
-    "intro": "Someone asked you to co-sign this transaction. Stakeward reads it only from the link and checks it against the network. Sign only if you expected this request.",
+    "intro": "Someone sent you this link to approve a change with your wallet.",
     "whatIs": "What is Stakeward?",
     "reading": "Checking the link",
+    "from": "From: {role}",
+    "holds": "This stake account holds {amount}.",
     "bad": {
-      "title": "This link is broken",
-      "body": "It does not hold a transaction Stakeward can read. Ask the sender to send the whole link again. Nothing was signed."
+      "title": "This link is incomplete",
+      "body": "Ask the sender to send the whole link again. Nothing was signed."
+    },
+    "stop": {
+      "title": "Do not sign this link",
+      "goesTo": "SOL would go to",
+      "mainKey": "Main key of this stake",
+      "whatToDo": "What to do: tell the owner by phone or in person. Someone may have their Main key."
+    },
+    "ended": {
+      "title": "This link no longer works",
+      "body": "Ask the sender for a new link."
+    },
+    "unverifiable": {
+      "title": "Open this link in a current browser"
     },
     "problem": {
       "not-linkable-kind": "Stakeward never sends this kind of transaction by link.",
@@ -1382,22 +1412,38 @@
       "nonce-not-fee-payer": "This transaction uses someone else's link-signing account. Stakeward never makes such a link.",
       "unexpected-fee-payer": "An unexpected wallet pays for this transaction. Stakeward never makes such a link.",
       "fee-payer-unsigned": "The wallet that pays for this transaction has not signed it. Stakeward makes a link only after that.",
-      "foreign-recipient": "This sends SOL to a wallet that is not the stake's main key. Stakeward never does that.",
+      "foreign-recipient": "It sends {amount} to a wallet that is not this stake's Main key. Stakeward never does that.",
       "nothing-to-sign": "Every wallet has already signed this transaction. There is nothing for you to sign."
     },
     "ask": {
-      "protect": "The owner of this stake asks your wallet to become its second key until {date}. Until then, the owner cannot withdraw this stake or move it to a new wallet without your signature, and if you lose this wallet, they wait until {date}. Your wallet cannot take their SOL.",
-      "withdraw": "The SOL goes to the main key below. A thief who has that main key would send you exactly this request. Sign only if you started this withdrawal yourself, or the owner told you, by voice or in person, that they want to withdraw:",
-      "rescue": "This gives full control of the stake to the new wallet below. A thief who has the main key would send you exactly this request, with their own wallet. Sign only if you checked this address with the owner by voice or in person, not in the chat that sent you this link:"
+      "protect": {
+        "title": "Become the Second key for this stake until {date}",
+        "needs": "Until then, the owner needs your signature to withdraw or move this stake.",
+        "lose": "If you lose this wallet, the owner waits until {date}.",
+        "cannot": "Your wallet cannot take their SOL."
+      },
+      "withdraw": {
+        "title": "Approve a withdrawal of {amount} to the Main key",
+        "check": "Check before you sign",
+        "thief": "A thief with the Main key would send exactly this request.",
+        "only": "Sign only if you started it, or the owner confirmed it by voice or in person."
+      },
+      "rescue": {
+        "title": "Approve moving this stake to a New wallet",
+        "check": "Check this address before you sign",
+        "thief": "A thief with the Main key would send exactly this, with their own wallet.",
+        "only": "Check the address with the owner by voice or in person, not in the chat that sent this link."
+      }
     },
     "confirm": {
-      "withdraw": "I started this withdrawal myself, or the owner told me by voice or in person that they want it",
-      "rescue": "I checked this new wallet address with the owner by voice or in person, or it is mine"
+      "withdraw": "I started this withdrawal, or the owner confirmed it by voice or in person",
+      "rescue": "I checked this New wallet address with the owner by voice or in person, or it is mine"
     },
-    "stale": "A link works until it is used or cancelled. If you are not sure the owner still wants this, ask first.",
-    "tailHint": "This wallet changes transactions that another wallet already signed, so it cannot co-sign here. Use another wallet app for this key, or sign with every key in one browser.",
-    "openInWallet": "No wallet in this browser. Copy this page's link and open it in your wallet app's own browser.",
-    "copyPage": "Copy this page's link",
+    "stale": "Links work until used or cancelled. Not sure the owner still wants this? Ask first.",
+    "feeBalance": "The sender's {role} has {balance}, too little for the network fee. Ask the sender to add a little SOL, then press Try again.",
+    "tailHint": "This wallet changes transactions after another wallet signed, so it cannot co-sign here. Use another wallet app for this key.",
+    "openInWallet": "No wallet found here. Open this link in your wallet app's browser, or turn on your wallet extension.",
+    "copyPage": "Copy link",
     "done": {
       "title": "Signed and sent",
       "body": "The network confirmed it. The sender's page shows it too. You can close this page."
@@ -1406,13 +1452,13 @@
       "title": "Already done",
       "body": "This transaction already went through. There is nothing for you to sign."
     },
-    "newLink": "Ask the sender for a new link.",
+    "result": "This transaction",
     "refused": {
       "not-found": "The stake account in this link does not exist.",
       "not-stake-account": "The link points to an address that is not a stake account.",
       "link-used": "This link was already used or cancelled.",
       "stale": "The stake account has changed since this link was made.",
-      "already-locked": "This stake account is already locked, and this link would change when its lock ends. Stakeward never asks for that by link. Do not sign it."
+      "already-locked": "This stake account is already locked, and this link would change when its lock ends. Stakeward never asks for that by link."
     }
   },
   "rescue": {

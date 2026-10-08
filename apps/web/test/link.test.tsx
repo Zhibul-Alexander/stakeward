@@ -106,7 +106,7 @@ async function expectLinkBytes(w: World, url: string, main: TestWalletPort) {
 /** The other device: /cosign from the link with only the second key; it ticks the box, signs and sends. */
 async function cosign(w: World, url: string, second: TestWalletPort): Promise<CosignRoot> {
   const root = renderCosignPage(w.chain, new URL(url).hash, [second]);
-  await root.view.findByText(en.cosign.ask.withdraw, undefined, WAIT);
+  await root.view.findByText(en.cosign.ask.withdraw.check, undefined, WAIT);
   await connectAndContinue(root.user, 'Second key', 'Second Wallet', root.view);
   await root.user.click(await root.view.findByRole('checkbox', { name: en.cosign.confirm.withdraw }, WAIT));
   await click(root.user, 'Sign in Second Wallet as Second key', root.view);
@@ -192,7 +192,16 @@ describe('signing by link: /withdraw on the first device, /cosign on the second 
       const balanceBefore = w.testChain.balance(w.A.address);
       // A close needs a newer blockhash than the one the nonce holds (on a cluster time moves on by itself).
       w.chain.expireBlockhash();
+      // Cancel opens inside the card: what cancelling does and the deposit that comes back, before anything is signed.
       const card = document.querySelector<HTMLElement>('[data-slot="link-card"]') as HTMLElement;
+      await click(page.user, en.signing.link.cancel, within(card));
+      expect(
+        await within(card).findByText(
+          en.signing.link.cancelBody.replace('{amount}', formatSol(deposit)).replace('{role}', 'Main key'),
+          undefined,
+          WAIT,
+        ),
+      ).toBeInTheDocument();
       await click(page.user, en.signing.link.cancelAction, within(card));
       await click(page.user, 'Sign in Main Wallet as Main key', page.view);
 

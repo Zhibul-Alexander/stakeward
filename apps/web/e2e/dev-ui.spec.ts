@@ -55,6 +55,9 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#link figure')).toHaveCount(9);
   await expect(page.locator('#link svg[data-slot="qr-code"] path')).toHaveCount(2);
   await expect(page.locator('#components svg[data-slot="qr-code"] path')).toHaveCount(4);
+  // /cosign's request (protect, rescue with its check) and "Do not sign" panel (with addresses, rejected bytes).
+  await expect(page.locator('#components [data-slot="cosign-ask"]')).toHaveCount(2);
+  await expect(page.locator('#components [data-slot="stop-panel"]')).toHaveCount(2);
   await expect(page.getByText('This link is too long for a QR code. Copy it instead.')).toBeVisible();
   for (const d of await page.locator('svg[data-slot="qr-code"] path').evaluateAll((paths) => paths.map((p) => p.getAttribute('d')))) {
     expect(d).toMatch(/^M\d/);

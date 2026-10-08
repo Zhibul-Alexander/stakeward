@@ -1,4 +1,4 @@
-import { cliUrl, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
+import { cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
 import { RotateCcwIcon, SendIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -6,6 +6,7 @@ import { AccountList, AccountListItem, AccountListSkeleton, AccountRow, AccountR
 import { ActionBar } from '@/components/product/action-bar';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
 import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
+import { CosignRequest } from '@/components/product/cosign-request';
 import { Disclosure } from '@/components/product/disclosure';
 import { Countdown, CountdownSkeleton } from '@/components/product/countdown';
 import { NoStakeAccounts } from '@/components/product/empty-state';
@@ -20,6 +21,7 @@ import { SignerList, SignerListSkeleton } from '@/components/product/signer-list
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
 import { StatusBadge, StatusBadgeSkeleton, type StatusBadgeStatus } from '@/components/product/status-badge';
 import { StepProgress } from '@/components/product/step-progress';
+import { StopPanel } from '@/components/product/stop-panel';
 import { SummaryBar } from '@/components/product/summary-bar';
 import { SupportBadge, type SupportVerdict } from '@/components/product/support-badge';
 import {
@@ -679,6 +681,65 @@ export function ComponentsSection() {
             </Demo>
           </div>
         )}
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.cosignRequest')}>
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+          <Demo label={t('components.tx.kind.protect')}>
+            <CosignRequest
+              kind="protect"
+              title={t('components.tx.kind.protect')}
+              from="main"
+              ask={t('cosign.ask.protect.title', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' })}
+              lines={[
+                t('cosign.ask.protect.needs'),
+                t('cosign.ask.protect.lose', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' }),
+                t('cosign.ask.protect.cannot'),
+              ]}
+              meta={t('cosign.holds', { amount: formatSol(1_250_500_000_000n) })}
+            />
+          </Demo>
+          <Demo label={t('components.tx.kind.rescue')}>
+            <CosignRequest
+              kind="rescue"
+              title={t('components.tx.kind.rescue')}
+              from="new"
+              ask={t('cosign.ask.rescue.title')}
+              check={{
+                title: t('cosign.ask.rescue.check'),
+                lines: [t('cosign.ask.rescue.thief'), t('cosign.ask.rescue.only')],
+                role: 'new',
+                address: SAMPLE.newWallet,
+              }}
+            />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.stopPanel')}>
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+          <Demo label={t('devUi.states.withEverything')}>
+            <StopPanel
+              title={t('cosign.stop.title')}
+              reason={t('cosign.problem.foreign-recipient', { amount: formatSol(1_250_500_000_000n) })}
+              addresses={[
+                { label: t('cosign.stop.goesTo'), address: SAMPLE.newWallet },
+                { label: t('cosign.stop.mainKey'), address: SAMPLE.mainKey },
+              ]}
+              whatToDo={t('cosign.stop.whatToDo')}
+              action={<Button variant="outline">{t('common.backHome')}</Button>}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.rejected')}>
+            <StopPanel
+              title={t('cosign.stop.title')}
+              reason={t('components.tx.rejected.unknown-program')}
+              whatToDo={t('cosign.stop.whatToDo')}
+              detail={SAMPLE_ERROR_DETAIL.fetch}
+              action={<Button variant="outline">{t('common.backHome')}</Button>}
+            />
+          </Demo>
+        </div>
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.stepProgress')} note={t('devUi.stepProgressNote')}>

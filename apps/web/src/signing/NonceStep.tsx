@@ -3,6 +3,7 @@ import { formatSol, type WalletRole } from '@stakeward/core';
 import { cn } from 'cn';
 import { RotateCcwIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from 'react';
+import { ActionBar } from '@/components/product/action-bar';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { roleLabel } from '@/components/product/wallet-slot';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,10 @@ type FrameProps = {
   children: ReactNode;
 };
 
-/** The card around the step: its heading (h4 inside the link card, h3 elsewhere) and what comes below it. */
+/**
+ * The card around the step: its heading (h4 inside the link card, h3 elsewhere) and what comes below it. Inside the
+ * link card it has no frame of its own: the card's inset holds it (no frame in a frame, DECISIONS.md D109).
+ */
 function Frame({ mode, variant, headingRef, children }: FrameProps) {
   const headingId = useId();
   const Heading = variant === 'cancel-link' ? 'h4' : 'h3';
@@ -65,7 +69,7 @@ function Frame({ mode, variant, headingRef, children }: FrameProps) {
       data-slot="nonce-step"
       data-mode={mode}
       data-variant={variant}
-      className={cn('flex flex-col gap-3 rounded-md border bg-surface p-4', variant === 'cancel-link' ? 'border-border-strong' : 'border-border')}
+      className={cn('flex flex-col gap-3', variant === 'cancel-link' ? undefined : 'rounded-lg border border-border bg-surface p-4 sm:p-6')}
     >
       <Heading id={headingId} ref={headingRef} tabIndex={-1} className="text-base font-semibold">
         {t(textsOf(mode, variant).title)}
@@ -97,18 +101,20 @@ export function NonceStepView({ mode, variant = 'close', role, amount, outcome, 
   const texts = textsOf(mode, variant);
   return (
     <Frame mode={mode} variant={variant} headingRef={headingRef}>
-      <p className="text-sm">{t(texts.body, { amount: formatSol(amount), role: roleLabel(role) })}</p>
+      <p className="max-w-prose text-sm">{t(texts.body, { amount: formatSol(amount), role: roleLabel(role) })}</p>
       {outcome === undefined ? null : <JobStatusList items={[outcome]} label={t(texts.title)} />}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={mode === 'setup' && outcome === undefined ? 'primary' : 'outline'}
-          onClick={onStart}
-          className="h-auto min-h-10 max-w-full whitespace-normal"
-        >
-          {outcome === undefined ? null : <RotateCcwIcon aria-hidden="true" />}
-          {outcome === undefined ? t(texts.action) : t('common.tryAgain')}
-        </Button>
-      </div>
+      <ActionBar
+        primary={
+          <Button
+            variant={mode === 'setup' && outcome === undefined ? 'primary' : 'outline'}
+            onClick={onStart}
+            className="h-auto min-h-10 max-w-full whitespace-normal"
+          >
+            {outcome === undefined ? null : <RotateCcwIcon aria-hidden="true" />}
+            {outcome === undefined ? t(texts.action) : t('common.tryAgain')}
+          </Button>
+        }
+      />
     </Frame>
   );
 }

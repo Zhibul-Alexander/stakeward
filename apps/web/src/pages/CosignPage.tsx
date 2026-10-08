@@ -1,13 +1,15 @@
-import { CircleXIcon, LoaderCircleIcon } from 'lucide-react';
-import { Link } from 'wouter';
+import { formatSol, type CosignLinkProblem, type InspectError, type TransactionSummary } from '@stakeward/core';
+import { LoaderCircleIcon, TriangleAlertIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ErrorDetails } from '@/components/product/error-state';
+import { StopPanel, type StopPanelAddress } from '@/components/product/stop-panel';
+import { TransactionSummarySkeleton } from '@/components/product/transaction-summary';
 import { Page } from '@/components/layout/Page';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { TransactionSummaryError, TransactionSummarySkeleton } from '@/components/product/transaction-summary';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useLoad } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import type { SigningTestOptions } from '@/signing/create';
+import { BackHome, CosignHeader } from './cosign/CosignHeader.tsx';
 import { CosignSigning } from './cosign/CosignSigning.tsx';
 import { readLink, useLocationHash, type LinkRead } from './cosign/read.ts';
 
@@ -23,31 +25,24 @@ type CosignPageProps = {
  * link's bytes and the chain. The fragment never reaches the server; the inspector and the link-format rules read it
  * before any chain read, and nothing is signed or sent before the chain check (plan.ts) and the simulation pass. Every
  * remaining signer signs here (no chaining). Works in a phone wallet's own browser with one signer (UX rule 10).
+ * A link refused here gets "Do not sign" as the first thing under the h1 (StopPanel); a broken one says so in
+ * warning colours, since it is not hostile (DECISIONS.md D103).
  */
 export function CosignPage({ fragment: given, signing }: CosignPageProps) {
   const locationHash = useLocationHash();
   const fragment = given ?? locationHash;
   const read = useLoad(`link#${fragment}`, () => readLink(fragment));
+  if (read.status === 'ready' && read.value.kind === 'ok') {
+    // One session per link: a new fragment (hashchange) is a new page state. It renders its own header.
+    return (
+      <Page width="flow">
+        <CosignSigning key={fragment} bytes={read.value.bytes} summary={read.value.summary} fragment={fragment} signing={signing} />
+      </Page>
+    );
+  }
   return (
     <Page width="flow">
-      <PageHeader
-        title={t('common.pages.cosign')}
-        lead={t('cosign.intro')}
-        meta={
-          <>
-            <p>{t('common.neverSeedPhrase')}</p>
-            <p>
-              {/* Opens the landing on its card for someone who was sent a link to co-sign. */}
-              <Link
-                href="/#for-second-key"
-                className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-              >
-                {t('cosign.whatIs')}
-              </Link>
-            </p>
-          </>
-        }
-      />
+      <CosignHeader lead={false} />
       {read.status === 'idle' || read.status === 'loading' ? (
         <div aria-busy="true" className="flex flex-col gap-3">
           <p role="status" className="flex items-center gap-2 text-sm text-muted">
@@ -59,49 +54,78 @@ export function CosignPage({ fragment: given, signing }: CosignPageProps) {
       ) : read.status === 'error' ? (
         <BrokenLink />
       ) : (
-        <LinkContent read={read.value} fragment={fragment} signing={signing} />
+        <Refusal read={read.value} />
       )}
     </Page>
   );
 }
 
-function LinkContent({ read, fragment, signing }: { read: LinkRead; fragment: string; signing: SigningTestOptions | undefined }) {
+/** A link this page will not sign, read from its bytes alone: broken, unreadable here, or not one Stakeward makes. */
+function Refusal({ read }: { read: LinkRead }) {
   switch (read.kind) {
     case 'bad':
+    case 'ok':
+      // `ok` never gets here (CosignPage signs it); a bad link holds nothing to show.
       return <BrokenLink />;
     case 'rejected':
-      return <TransactionSummaryError error={read.error} action={<BackHome />} />;
+      return read.error.code === 'verification-unavailable' ? <Unverifiable error={read.error} /> : <Rejected error={read.error} />;
     case 'problem':
-      return (
-        <Alert tone="danger" data-slot="link-problem" data-problem={read.problem}>
-          <CircleXIcon aria-hidden="true" />
-          <h2 data-slot="alert-title" className="font-semibold">
-            {t('components.tx.rejectedTitle')}
-          </h2>
-          <AlertDescription className="flex flex-col gap-2 text-foreground">
-            <p className="font-medium">{t(`cosign.problem.${read.problem}`)}</p>
-            <div>
-              <BackHome />
-            </div>
-          </AlertDescription>
-        </Alert>
-      );
-    case 'ok':
-      // One session per link: a new fragment (hashchange) is a new page state.
-      return <CosignSigning key={fragment} bytes={read.bytes} summary={read.summary} fragment={fragment} signing={signing} />;
+      return <Problem problem={read.problem} summary={read.summary} />;
   }
 }
 
-/** The fragment holds no transaction Stakeward can read: say so, and that nothing was signed. */
-function BrokenLink() {
+/** Problems that a thief's link would have: the owner should hear of it. */
+const HOSTILE: ReadonlySet<CosignLinkProblem> = new Set(['foreign-recipient', 'unexpected-fee-payer', 'nonce-not-fee-payer']);
+
+/** Bytes the inspector refuses: "Do not sign", its reason, and its own words under Details. */
+function Rejected({ error }: { error: InspectError }) {
   return (
-    <Alert tone="danger" data-slot="link-broken">
-      <CircleXIcon aria-hidden="true" />
-      <h2 data-slot="alert-title" className="font-semibold">
-        {t('cosign.bad.title')}
-      </h2>
-      <AlertDescription className="flex flex-col gap-2 text-foreground">
-        <p>{t('cosign.bad.body')}</p>
+    <StopPanel
+      title={t('cosign.stop.title')}
+      reason={t(`components.tx.rejected.${error.code}`)}
+      whatToDo={t('cosign.stop.whatToDo')}
+      detail={error.message}
+      action={<BackHome />}
+      reasonCode={error.code}
+    />
+  );
+}
+
+/** A transaction Stakeward could read but never sends by link: "Do not sign" and why, with the addresses it is about. */
+function Problem({ problem, summary }: { problem: CosignLinkProblem; summary: TransactionSummary }) {
+  const { action } = summary;
+  let reason: ReactNode = t(`cosign.problem.${problem}`);
+  let addresses: StopPanelAddress[] = [];
+  if (problem === 'foreign-recipient' && action.kind === 'withdraw') {
+    reason = t('cosign.problem.foreign-recipient', { amount: formatSol(action.lamports) });
+    addresses = [
+      { label: t('cosign.stop.goesTo'), address: action.recipient },
+      { label: t('cosign.stop.mainKey'), address: action.mainKey },
+    ];
+  }
+  return (
+    <StopPanel
+      title={t('cosign.stop.title')}
+      reason={reason}
+      addresses={addresses}
+      whatToDo={HOSTILE.has(problem) ? t('cosign.stop.whatToDo') : undefined}
+      action={<BackHome />}
+      reasonCode={problem}
+    />
+  );
+}
+
+/** This browser cannot check signatures: the link may be fine, so open it elsewhere (not "Do not sign"). */
+function Unverifiable({ error }: { error: InspectError }) {
+  return (
+    <Alert tone="warning" data-slot="link-unverifiable">
+      <TriangleAlertIcon aria-hidden="true" />
+      <AlertTitle>
+        <h2 className="text-lg">{t('cosign.unverifiable.title')}</h2>
+      </AlertTitle>
+      <AlertDescription className="flex flex-col gap-3 text-foreground [&_p:not(:last-child)]:mb-0">
+        <p>{t('components.tx.rejected.verification-unavailable')}</p>
+        <ErrorDetails detail={error.message} />
         <div>
           <BackHome />
         </div>
@@ -110,10 +134,20 @@ function BrokenLink() {
   );
 }
 
-function BackHome() {
+/** The fragment holds no whole transaction (cut off, or not a link at all): ask for the whole link; nothing was signed. */
+function BrokenLink() {
   return (
-    <Button asChild variant="outline" size="sm">
-      <Link href="/">{t('common.backHome')}</Link>
-    </Button>
+    <Alert tone="warning" data-slot="link-broken">
+      <TriangleAlertIcon aria-hidden="true" />
+      <AlertTitle>
+        <h2 className="text-lg">{t('cosign.bad.title')}</h2>
+      </AlertTitle>
+      <AlertDescription className="flex flex-col gap-3 text-foreground [&_p:not(:last-child)]:mb-0">
+        <p>{t('cosign.bad.body')}</p>
+        <div>
+          <BackHome />
+        </div>
+      </AlertDescription>
+    </Alert>
   );
 }
