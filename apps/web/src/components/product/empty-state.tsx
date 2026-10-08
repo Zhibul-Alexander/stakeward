@@ -15,18 +15,18 @@ type EmptyStateProps = {
   className?: string | undefined;
 };
 
-/** A list with nothing in it, explained rather than blank (UX rule 13). */
+/**
+ * A list with nothing in it, explained rather than blank (UX rule 13): a soft panel without a frame, an icon, a title,
+ * at most two short lines and one action (DECISIONS.md D109).
+ */
 export function EmptyState({ icon: Icon = LayersIcon, title, headingLevel = 2, children, action, className }: EmptyStateProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
-    <div
-      data-slot="empty-state"
-      className={cn('flex flex-col items-start gap-3 rounded-lg border border-dashed border-border-strong bg-surface p-6', className)}
-    >
-      <span className="flex size-10 items-center justify-center rounded-full bg-subtle text-muted">
+    <div data-slot="empty-state" className={cn('flex flex-col items-start gap-3 rounded-lg bg-subtle p-6', className)}>
+      <span className="flex size-10 items-center justify-center rounded-full bg-primary-soft text-primary">
         <Icon aria-hidden="true" className="size-5" />
       </span>
-      <Heading className="text-lg font-semibold">{title}</Heading>
+      <Heading className="text-base font-semibold">{title}</Heading>
       {children === undefined ? null : <div className="flex max-w-prose flex-col gap-2 text-sm text-muted">{children}</div>}
       {action === undefined ? null : <div className="flex flex-wrap gap-2">{action}</div>}
     </div>

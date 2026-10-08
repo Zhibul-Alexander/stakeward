@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
+import { Disclosure } from './disclosure.tsx';
 
 /**
  * The raw error text under a native "Details" disclosure (UX rule 8): the screen says what happened and what to do
@@ -12,12 +13,9 @@ import { t } from '@/i18n';
 export function ErrorDetails({ detail, className }: { detail: string; className?: string | undefined }) {
   if (detail.trim() === '') return null;
   return (
-    <details className={cn('text-sm', className)}>
-      <summary className="w-fit cursor-pointer rounded-sm font-medium underline underline-offset-4">
-        {t('common.details')}
-      </summary>
-      <p className="mt-2 font-mono text-xs break-words whitespace-pre-wrap">{detail}</p>
-    </details>
+    <Disclosure summary={t('common.details')} className={cn('text-sm', className)}>
+      <p className="font-mono text-xs break-words whitespace-pre-wrap">{detail}</p>
+    </Disclosure>
   );
 }
 

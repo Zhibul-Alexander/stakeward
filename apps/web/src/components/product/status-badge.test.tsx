@@ -61,4 +61,12 @@ describe('StatusBadge', () => {
     const danger = EXPECTED.filter(([, , tone]) => tone === 'danger').map(([status]) => status);
     expect(danger).toEqual(['was-protected']);
   });
+
+  it('is small (text-xs) by default, for rows and lists, and md (text-sm) where it stands alone', () => {
+    const { unmount } = render(<StatusBadge status="protected" />);
+    expect(screen.getByText('Protected')).toHaveAttribute('data-size', 'sm');
+    unmount();
+    render(<StatusBadge status="protected" size="md" />);
+    expect(screen.getByText('Protected')).toHaveAttribute('data-size', 'md');
+  });
 });

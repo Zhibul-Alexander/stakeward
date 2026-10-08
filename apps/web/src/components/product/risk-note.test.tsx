@@ -29,4 +29,26 @@ describe('RiskNote', () => {
       'Whoever holds the second key can freeze this stake by moving the lock date. Keep it as safe as your main key.',
     );
   });
+
+  // The ActionBar's line right above the button it guards (D109): the same words and date, no fill, the tone's icon.
+  it.each([
+    ['warning', 'lose-second-key', 'If you lose the second key, you wait until 12 April 2027 to withdraw or rescue this stake.'],
+    ['danger', 'unlock-opens-window', null],
+  ] as const)('variant="inline" (%s): one line with the same text and an icon in the tone', (tone, risk, expected) => {
+    const { container } = render(
+      <RiskNote risk={risk} date={T} tone={tone} variant="inline">
+        <a href="/rescue">Rescue your stake instead</a>
+      </RiskNote>,
+    );
+    const note = screen.getByRole('note');
+    expect(note).toHaveAttribute('data-slot', 'risk-note');
+    expect(note).toHaveAttribute('data-variant', 'inline');
+    expect(note).toHaveAttribute('data-risk', risk);
+    expect(note).toHaveTextContent(expected ?? riskText(risk) ?? '');
+    expect(note).toHaveTextContent('Rescue your stake instead');
+    expect(container.querySelector('[data-slot="alert"]')).toBeNull();
+    const icon = note.querySelector('svg');
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+    expect(icon).toHaveClass(tone === 'danger' ? 'text-danger' : 'text-warning');
+  });
 });

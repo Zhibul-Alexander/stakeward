@@ -22,4 +22,27 @@ describe('StepProgress', () => {
     expect(items[3]).toHaveAttribute('data-state', 'failed');
     expect(items[3]).toHaveTextContent('Failed: Sign');
   });
+
+  // Below 640 px a line and a bar stand in for the dots; the list stays in the page for screen readers, never
+  // display: none, so assistive technology at 360 px still gets every step and where you are.
+  it('keeps the list for screen readers below 640 px, next to a decorative line and bar', () => {
+    render(<StepProgress steps={STEPS} current={1} />);
+    const nav = screen.getByRole('navigation', { name: 'Progress' });
+    const list = within(nav).getByRole('list');
+    expect(list).toHaveClass('sr-only', 'sm:not-sr-only');
+    expect(list.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+    const current = within(list).getAllByRole('listitem').find((item) => item.textContent.startsWith('2Current step:'));
+    expect(current).toHaveAttribute('aria-current', 'step');
+    expect(current).toHaveTextContent('Current step: Second key');
+    const line = within(nav).getByText('Step 2 of 4: Second key');
+    expect(line.closest('[aria-hidden="true"]')).not.toBeNull();
+    const segments = [...nav.querySelectorAll('[aria-hidden="true"] span[data-state]')];
+    expect(segments.map((segment) => segment.getAttribute('data-state'))).toEqual(['done', 'current', 'upcoming', 'upcoming']);
+  });
+
+  it('a failed step shows in the bar too', () => {
+    render(<StepProgress steps={STEPS} current={3} failed={3} />);
+    const segments = [...document.querySelectorAll('[aria-hidden="true"] span[data-state]')];
+    expect(segments.at(-1)).toHaveClass('bg-danger');
+  });
 });

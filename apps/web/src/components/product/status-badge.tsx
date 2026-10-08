@@ -51,13 +51,15 @@ type StatusBadgeProps = {
   status: StatusBadgeStatus;
   /** This browser knows a second key for the account's main key (only `locked-by-other` reads differently). */
   secondKeyKnown?: boolean | undefined;
+  /** `sm` (default, text-xs) in rows and lists; `md` (text-sm) where the badge stands on its own. */
+  size?: 'sm' | 'md' | undefined;
   className?: string | undefined;
 };
 
-export function StatusBadge({ status, secondKeyKnown = false, className }: StatusBadgeProps) {
+export function StatusBadge({ status, secondKeyKnown = false, size = 'sm', className }: StatusBadgeProps) {
   const { tone, icon: Icon } = LOOKS[status];
   return (
-    <Badge tone={tone} size="md" data-status={status} className={className}>
+    <Badge tone={tone} size={size} data-status={status} className={className}>
       <Icon aria-hidden="true" />
       {t(labelOf(status, secondKeyKnown))}
     </Badge>
@@ -66,5 +68,5 @@ export function StatusBadge({ status, secondKeyKnown = false, className }: Statu
 
 /** Loading state: the badge's footprint, decorative (the surrounding region announces loading). */
 export function StatusBadgeSkeleton({ className }: { className?: string | undefined }) {
-  return <Skeleton className={cn('h-6 w-28 rounded-full', className)} />;
+  return <Skeleton className={cn('h-5 w-24 rounded-full', className)} />;
 }
