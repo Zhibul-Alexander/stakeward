@@ -31,6 +31,27 @@ describe('ActionBar', () => {
     expect(sign.parentElement?.className).toContain('sm:[&>[data-slot=button]]:w-auto');
   });
 
+  // The step button's blocker line (StepButtons): under the main button below 640 px, where the buttons stack, so it
+  // is not read as Back's; from 640 px on its own line under both. It takes no Tab stop, so focus order is unchanged.
+  it('puts the reason right after the main button, before Back', () => {
+    render(
+      <ActionBar
+        primary={<Button aria-disabled="true">Continue with 2 accounts</Button>}
+        reason={<p>Connect your main key to continue.</p>}
+        secondary={<Button variant="ghost">Back</Button>}
+      />,
+    );
+    const step = screen.getByRole('button', { name: 'Continue with 2 accounts' });
+    const reason = screen.getByText('Connect your main key to continue.');
+    const back = screen.getByRole('button', { name: 'Back' });
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect(follows(step, reason)).toBe(true);
+    expect(follows(reason, back)).toBe(true);
+    const slot = reason.closest('[data-slot="action-bar-reason"]');
+    expect(slot).toHaveClass('w-full', 'sm:order-last');
+    expect(slot?.parentElement).toHaveClass('sm:flex-wrap');
+  });
+
   it('needs only the main button', () => {
     render(<ActionBar primary={<Button>Protect 2 accounts</Button>} />);
     expect(screen.getByRole('button', { name: 'Protect 2 accounts' })).toBeInTheDocument();

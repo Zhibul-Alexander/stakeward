@@ -23,7 +23,7 @@ describe('ContinueButtons', () => {
   it('blocked: outline and aria-disabled, the first reason under it before any click; a click names them all in danger', async () => {
     const user = userEvent.setup();
     const onContinue = vi.fn();
-    render(<ContinueButtons label="Continue" problems={PROBLEMS} onContinue={onContinue} />);
+    render(<ContinueButtons label="Continue" problems={PROBLEMS} onContinue={onContinue} onBack={vi.fn()} />);
     const step = screen.getByRole('button', { name: 'Continue' });
     expect(step).toHaveAttribute('data-variant', 'outline');
     expect(step).toHaveAttribute('aria-disabled', 'true');
@@ -34,8 +34,12 @@ describe('ContinueButtons', () => {
     expect(reason).toHaveClass('text-muted');
     expect(reason).toHaveAttribute('data-pressed', 'false');
     expect(screen.queryByText(PROBLEMS[1] ?? '')).toBeNull();
-    // The reason stands under the button.
+    // The reason stands under the button and above Back: below 640 px, where the buttons stack, it is not read as
+    // Back's (the ActionBar's reason slot puts it on its own line under both buttons from 640 px).
+    const back = screen.getByRole('button', { name: 'Back' });
     expect(step.compareDocumentPosition(reason as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((reason as Node).compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reason?.closest('[data-slot="action-bar-reason"]')).toHaveClass('w-full', 'sm:order-last');
 
     await user.click(step);
     expect(onContinue).not.toHaveBeenCalled();

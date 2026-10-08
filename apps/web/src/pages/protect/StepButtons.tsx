@@ -47,8 +47,9 @@ export function StepButtons({
  * The step button and Back of a wizard step (UX rule 2: one main step per screen, Back keeps what was entered), in an
  * ActionBar. Ready, the step button is the screen's one filled button. While something is missing (`problems`, the
  * texts to show) it is outline with aria-disabled, and the first problem stands under it in muted text before any
- * click, tied to it with aria-describedby (DECISIONS.md D109). It still takes clicks: pressed, the line names every
- * problem in danger text and takes focus. The line goes away once the step is complete.
+ * click (the ActionBar's reason: under the button, above Back, below 640 px), tied to it with aria-describedby
+ * (DECISIONS.md D109). It still takes clicks: pressed, the line names every problem in danger text and takes focus.
+ * The line goes away once the step is complete.
  */
 export function ContinueButtons({
   label,
@@ -74,51 +75,51 @@ export function ContinueButtons({
   }, [focusRequest]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <ActionBar
-        primary={
-          <Button
-            variant={blocked ? 'outline' : 'primary'}
-            aria-disabled={blocked ? 'true' : undefined}
-            aria-describedby={blocked ? reasonId : undefined}
-            className="aria-disabled:pointer-events-auto aria-disabled:opacity-100"
-            onClick={() => {
-              if (blocked) setFocusRequest((value) => value + 1);
-              else onContinue();
-            }}
-          >
-            {label}
-          </Button>
-        }
-        secondary={
-          onBack === undefined ? undefined : (
-            <Button variant="ghost" onClick={onBack}>
-              {t('common.back')}
-            </Button>
-          )
-        }
-      />
-      {blocked ? (
-        <div
-          id={reasonId}
-          ref={reasonRef}
-          tabIndex={-1}
-          data-slot="step-blockers"
-          data-pressed={pressed ? 'true' : 'false'}
-          className={cn('flex items-start gap-2 rounded-md text-sm', pressed ? 'font-medium text-danger' : 'text-muted')}
+    <ActionBar
+      primary={
+        <Button
+          variant={blocked ? 'outline' : 'primary'}
+          aria-disabled={blocked ? 'true' : undefined}
+          aria-describedby={blocked ? reasonId : undefined}
+          className="aria-disabled:pointer-events-auto aria-disabled:opacity-100"
+          onClick={() => {
+            if (blocked) setFocusRequest((value) => value + 1);
+            else onContinue();
+          }}
         >
-          {pressed ? (
-            <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          ) : (
-            <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          )}
-          <div className="flex flex-col gap-1">
-            {shown.map((problem) => (
-              <p key={problem}>{problem}</p>
-            ))}
+          {label}
+        </Button>
+      }
+      reason={
+        blocked ? (
+          <div
+            id={reasonId}
+            ref={reasonRef}
+            tabIndex={-1}
+            data-slot="step-blockers"
+            data-pressed={pressed ? 'true' : 'false'}
+            className={cn('flex items-start gap-2 rounded-md text-sm', pressed ? 'font-medium text-danger' : 'text-muted')}
+          >
+            {pressed ? (
+              <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            ) : (
+              <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+            )}
+            <div className="flex flex-col gap-1">
+              {shown.map((problem) => (
+                <p key={problem}>{problem}</p>
+              ))}
+            </div>
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : undefined
+      }
+      secondary={
+        onBack === undefined ? undefined : (
+          <Button variant="ghost" onClick={onBack}>
+            {t('common.back')}
+          </Button>
+        )
+      }
+    />
   );
 }
