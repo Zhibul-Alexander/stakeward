@@ -111,7 +111,11 @@ export function ExtendPage({ signing }: ExtendPageProps) {
   return (
     <Page width="flow">
       {/* Opened to remove the lock (`?remove`, from /withdraw's fallback): the title says so (DECISIONS.md D109). */}
-      <PageHeader title={removeParam ? t('extend.removeTitle') : t('common.pages.extend')} lead={t('extend.intro')} />
+      <PageHeader
+        title={removeParam ? t('extend.removeTitle') : t('common.pages.extend')}
+        lead={t('extend.intro')}
+        meta={<p>{t('common.neverSeedPhrase')}</p>}
+      />
       {account === null ? (
         <InvalidAccountParam />
       ) : (

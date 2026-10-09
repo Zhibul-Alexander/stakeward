@@ -1084,11 +1084,13 @@
   "extend": {
     "intro": "Your second key changes when the lock ends. It cannot move your SOL.",
     "removeTitle": "Remove the lock",
-    "now": "Now: locked until {date}",
     "notLocked": "This stake has no lock to change. Protect it first.",
     "protect": "Protect it",
+    "unsupportedLockTitle": "Stakeward cannot change this lock: it is held by the main key itself or by no key.",
+    "unsupportedLock": "If the main key holds it, the Solana command line can change it. The main key signs as the lock's key: solana stake-set-lockup --help names that option. Otherwise wait until the lock ends.",
     "epochLocked": "This lock is held until epoch {epoch}. Stakeward can only move a lock's date, so it cannot change this one.",
     "legend": "New end of the lock",
+    "removeLegend": "Remove the lock now, or extend it",
     "periods": {
       "1-month": "1 month",
       "3-months": "3 months",

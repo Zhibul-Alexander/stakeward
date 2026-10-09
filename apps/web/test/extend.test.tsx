@@ -97,7 +97,9 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       expect(screen.getByRole('radio', { name: 'Remove the lock now' })).toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: /^1 month/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: /^3 months/ })).not.toBeInTheDocument();
-      expect(screen.getByText(`Now: locked until ${formatUtcDate(T) ?? ''}`)).toBeInTheDocument();
+      // The lock's end now, on the account row right above the choices.
+      expect(document.querySelector('[data-slot="lock-end"]')).toHaveTextContent(`until ${formatUtcDate(T) ?? ''}`);
+      expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
       expect(document.querySelector('[data-risk="lose-second-key"]')).toHaveTextContent(formatUtcDate(SIX_MONTHS) ?? '');
 
       await user.click(screen.getByRole('radio', { name: '12 months' }));
@@ -257,6 +259,9 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       expect(remove).toBeChecked();
       // Opened to remove: the title says so, the option stands apart in danger, and its risk is right above the button.
       expect(screen.getByRole('heading', { level: 1, name: 'Remove the lock' })).toBeInTheDocument();
+      // The choice's heading names what the page was opened for, then the other way (not "New end of the lock").
+      expect(screen.getByRole('heading', { level: 2, name: 'Remove the lock now, or extend it' })).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: 'Remove the lock now, or extend it' })).toBeInTheDocument();
       expect(remove.closest('[data-slot="radio-card"]')).toHaveAttribute('data-tone', 'danger');
       const risk = document.querySelector('[data-risk="unlock-opens-window"]');
       expect(risk).toHaveAttribute('data-tone', 'danger');
@@ -389,6 +394,38 @@ describe('/extend/:account: gates', () => {
       expect(protect).toHaveAttribute('href', `/protect?account=${S}`);
       expect(protect).toHaveAttribute('data-variant', 'primary');
       expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'E4a2: a lock in force that no second key holds (the zero key): said so, the command line under Details, no Protect it',
+    async () => {
+      const w = await world(0n);
+      const S = await stake(w, { unixTimestamp: T, epoch: 0n, custodian: ZERO_ADDRESS });
+      renderStakePage(w.chain, `/extend/${S}`, []);
+      await screen.findByText('Stakeward cannot change this lock: it is held by the main key itself or by no key.', undefined, WAIT);
+      const details = screen.getByText('Details').closest('details') as HTMLElement;
+      expect(details).toHaveTextContent('solana stake-set-lockup --help names that option');
+      // Not "no lock", and no way into a wizard that would refuse this account.
+      expect(screen.queryByText('This stake has no lock to change. Protect it first.')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Protect it' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'E4a3: no period ends later than the lock: removing is offered without a lone radio card',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w, { unixTimestamp: START_UNIX_TIMESTAMP + 400n * DAY, epoch: 0n, custodian: w.K.address });
+      renderStakePage(w.chain, `/extend/${S}`, []);
+      await heading('Remove the lock now');
+      expect(screen.getByText('No period ends later than the current lock. You can still remove it.')).toBeInTheDocument();
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+      expect(document.querySelector('[data-risk="unlock-opens-window"]')).toHaveAttribute('data-tone', 'danger');
+      expect(screen.getByRole('button', { name: 'Review lock removal' })).toHaveAttribute('data-variant', 'danger');
     },
     SCENARIO_TIMEOUT,
   );

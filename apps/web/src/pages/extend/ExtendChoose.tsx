@@ -1,8 +1,9 @@
-import { formatUtcDate } from '@stakeward/core';
+import { formatUtcDate, isLockupInForce } from '@stakeward/core';
 import { TriangleAlertIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
 import { ActionBar } from '@/components/product/action-bar';
+import { Disclosure } from '@/components/product/disclosure';
 import { RadioCardGroup, type RadioCardOption } from '@/components/product/radio-card';
 import { RiskNote } from '@/components/product/risk-note';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -74,7 +75,19 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
         </Alert>
       );
     case 'not-locked':
-      return (
+      // A lock in force here is held by the main key itself or by no key: nothing to protect, nothing a second key can
+      // change. Protect it is offered only when there is no lock at all (the wizard would refuse the other).
+      return isLockupInForce(lockup, clock) ? (
+        <Alert tone="warning" role="note" data-slot="extend-unsupported">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertDescription className="flex flex-col gap-2 text-foreground">
+            <p className="font-medium">{t('extend.unsupportedLockTitle')}</p>
+            <Disclosure summary={t('common.details')} className="text-sm">
+              <p className="max-w-prose">{t('extend.unsupportedLock')}</p>
+            </Disclosure>
+          </AlertDescription>
+        </Alert>
+      ) : (
         <div className="flex flex-col items-start gap-3">
           <p className="max-w-prose">{t('extend.notLocked')}</p>
           <Button asChild>
@@ -86,25 +99,31 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
       const choices = extendOptions(lockup.unixTimestamp, clock, CLUSTER);
       const choice = choices.find((candidate) => choiceValue(candidate) === selected) ?? defaultChoice(choices, removeParam);
       const removing = choice.kind === 'remove';
+      const periods = choices.filter((candidate) => candidate.kind === 'period').length;
+      // Opened to remove (`?remove`), the heading names removing first; with no later period, removing is all there is.
+      const legend = periods === 0 ? t('extend.remove') : removeParam ? t('extend.removeLegend') : t('extend.legend');
       return (
         <section aria-labelledby={headingId} className="flex flex-col gap-5">
+          {/* The lock's end now stands on the account row right above (DECISIONS.md D109); the cards give the new ends. */}
           <div className="flex flex-col gap-1">
             <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
-              {t('extend.legend')}
+              {legend}
             </h2>
-            <p className="text-sm text-muted tabular-nums">{t('extend.now', { date: dateText(lockup.unixTimestamp) })}</p>
-            {choices.length === 1 ? <p className="max-w-prose text-sm text-muted">{t('extend.noLater')}</p> : null}
+            {periods === 0 ? <p className="max-w-prose text-sm text-muted">{t('extend.noLater')}</p> : null}
           </div>
-          <RadioCardGroup
-            legend={t('extend.legend')}
-            legendHidden
-            columns={2}
-            value={choiceValue(choice)}
-            onValueChange={(value) => {
-              if (choices.some((candidate) => choiceValue(candidate) === value)) onSelect(value);
-            }}
-            options={choices.map(choiceOption)}
-          />
+          {/* Only removing left: no choice to make, so no lone radio card. Two columns only for two periods or more. */}
+          {periods === 0 ? null : (
+            <RadioCardGroup
+              legend={legend}
+              legendHidden
+              columns={periods > 1 ? 2 : 1}
+              value={choiceValue(choice)}
+              onValueChange={(value) => {
+                if (choices.some((candidate) => choiceValue(candidate) === value)) onSelect(value);
+              }}
+              options={choices.map(choiceOption)}
+            />
+          )}
           <ActionBar
             risk={
               removing ? (
