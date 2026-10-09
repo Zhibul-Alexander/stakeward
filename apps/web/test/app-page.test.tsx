@@ -551,6 +551,33 @@ describe('/app on LiteSvmChain', () => {
     expect(screen.getByRole('button', { name: 'Check' })).toHaveFocus();
   });
 
+  it('says whose stake is shown while the field is edited without Check', async () => {
+    const { location } = renderApp({ path: `/app?address=${main.address}` }, chain);
+    await findRow(stake.locked);
+    const field = screen.getByRole('textbox', { name: 'Wallet address' });
+    // As checked: the field is the address shown, nothing more to say.
+    expect(screen.queryByText('Shown below:')).toBeNull();
+
+    // Another address pasted, Check not pressed: the results, Telegram and Rescue are still the first address's.
+    await userEvent.clear(field);
+    await userEvent.paste(K.address);
+    const pending = screen.getByText('Shown below:').closest('p');
+    if (pending === null) throw new Error('no pending line');
+    expect(pending).toHaveTextContent('Press Check to show this address.');
+    expect(pending.querySelector('[data-slot="address-text"]')).toHaveTextContent(shortAddress(main.address));
+    expect(field.getAttribute('aria-describedby')?.split(' ')).toContain(pending.id);
+    expect(within(summary()).getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' })).toHaveAttribute(
+      'href',
+      `/api/telegram/link?wallet=${main.address}`,
+    );
+
+    // Check shows the new address, and the line goes.
+    await userEvent.click(screen.getByRole('button', { name: 'Check' }));
+    expect(location.history.at(-1)).toBe(`/app?address=${K.address}`);
+    expect(await screen.findByText('Second key for 2 stake accounts')).toBeInTheDocument();
+    expect(screen.queryByText('Shown below:')).toBeNull();
+  });
+
   it('flags a wrong address in the URL instead of reading it', () => {
     renderApp({ path: '/app?address=0OIl-not-base58' }, chain);
     expect(screen.getByRole('alert')).toHaveTextContent('This is not a Solana address.');

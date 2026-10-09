@@ -830,8 +830,10 @@
     "form": {
       "label": "Wallet address",
       "hint": "The wallet you staked from, or your second key.",
-      "placeholder": "Paste a wallet address",
+      "placeholder": "Paste an address",
       "submit": "Check",
+      "pending": "Press Check to show this address.",
+      "shownBelow": "Shown below:",
       "empty": "Paste a wallet address first.",
       "invalid": "This is not a Solana address. Check it: it should be 32 to 44 letters and digits.",
       "zero": "This is the System Program, not a wallet. Paste the address of the wallet that holds the stake."

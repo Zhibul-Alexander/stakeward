@@ -41,6 +41,7 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
         <AddressForm
           // The address shown, also when it comes from the connected main key rather than the URL.
           value={query ?? address ?? ''}
+          resultsFor={address}
           onSubmit={show}
           emphasis={address === null ? 'primary' : 'outline'}
           aside={<KeySlot role="main" layout="inline" connectLabel={t('app.connect.mainButton')} onConnected={show} />}
