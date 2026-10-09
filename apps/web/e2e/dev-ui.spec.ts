@@ -92,6 +92,12 @@ test('/dev/ui shows every token and component without console errors, axe violat
   expect(dark).toHaveLength(light.length);
   expect(swatches.filter((s) => s.colour === 'rgba(0, 0, 0, 0)' || s.colour === 'transparent')).toEqual([]);
   expect(light.map((s) => s.colour)).not.toEqual(dark.map((s) => s.colour));
+  // The grid column templates, each drawn with its own class: four columns, so the build has the utility (a missing
+  // one would leave a single column, `none`).
+  const gridColumns = await page
+    .locator('#tokens [data-slot="grid-columns-token"] [data-grid-columns]')
+    .evaluateAll((grids) => grids.map((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length));
+  expect(gridColumns).toEqual([4, 4]);
 
   // The recovery card's pieces: three command blocks (idle, copied, copy failed), every support verdict, and a
   // FAQ item that the browser opens and closes from the keyboard (a native <details>, DECISIONS.md D3; jsdom cannot
@@ -129,6 +135,20 @@ test('/dev/ui shows every token and component without console errors, axe violat
   // with a blocked step button whose first reason shows before any click.
   await expect(page.locator('#layout [data-slot="page-header"]')).toHaveCount(1);
   await expect(page.locator('#layout [data-slot="section"]')).toHaveCount(1);
+  // A Section reads in its DOM order at both widths (WCAG 1.3.2): the title, its action (beside the title from 640 px,
+  // under it below), then the description.
+  const sectionOrder = await page.locator('#layout [data-slot="section"]').evaluate((section) => {
+    const action = section.querySelector('button');
+    const description = section.querySelector(':scope > p');
+    if (action === null || description === null) return null;
+    return {
+      actionFirst: (action.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      actionBottom: action.getBoundingClientRect().bottom,
+      descriptionTop: description.getBoundingClientRect().top,
+    };
+  });
+  expect(sectionOrder?.actionFirst).toBe(true);
+  expect(sectionOrder?.actionBottom ?? Infinity).toBeLessThanOrEqual((sectionOrder?.descriptionTop ?? 0) + 1);
   await expect(page.locator('#layout [data-slot="action-bar"]')).toHaveCount(2);
   const blocked = page.locator('#layout').getByRole('button', { name: 'Continue with 2 accounts' });
   await expect(blocked).toHaveAttribute('aria-disabled', 'true');

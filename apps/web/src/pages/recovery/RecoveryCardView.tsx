@@ -22,6 +22,7 @@ import type { ReactNode } from 'react';
 import { ActivationText } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { CommandBlock } from '@/components/product/command-block';
+import { keepTogether } from '@/components/product/countdown';
 import { RiskNote } from '@/components/product/risk-note';
 import { SolAmount } from '@/components/product/sol-amount';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -63,6 +64,11 @@ const BEFORE_CLI_ANCHOR = 'recovery-before-cli';
 /** A lock end as the card says it: date and time in UTC (the reader may live in any time zone, DECISIONS.md D74). */
 function dateTime(unixSeconds: bigint): string {
   return formatUtcDateTime(unixSeconds) ?? String(unixSeconds);
+}
+
+/** The same inside a sentence, on one line: a narrow screen must not split "before 29" / "October 2026". */
+function dateTimeInSentence(unixSeconds: bigint): string {
+  return keepTogether(dateTime(unixSeconds));
 }
 
 /** A `--lockup-date` that extends the earliest lock by 6 months, as the extend wizard would (RFC 3339, UTC). */
@@ -303,7 +309,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         </Alert>
 
         <Case id="stolen">
-          <p>{t('recovery.cases.stolen.body', { date: dateTime(card.earliestEnd) })}</p>
+          <p>{t('recovery.cases.stolen.body', { date: dateTimeInSentence(card.earliestEnd) })}</p>
           <Steps>
             <li>{t('recovery.cases.stolen.time')}</li>
             <li className="space-y-2">
@@ -335,7 +341,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         </Case>
 
         <Case id="ending">
-          <p>{t('recovery.cases.ending.body', { date: dateTime(card.earliestEnd) })}</p>
+          <p>{t('recovery.cases.ending.body', { date: dateTimeInSentence(card.earliestEnd) })}</p>
           <p>
             {t('recovery.cases.ending.stakeward')} <PrintedLink href={appLinks.extend(card.route)} label={t('recovery.links.extend')} />
           </p>

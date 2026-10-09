@@ -239,6 +239,10 @@ describe('TransactionSummary', () => {
       />,
     );
     expect(screen.getByText('This makes the lock end sooner: on 1 January 2027 instead of 12 April 2027.')).toBeInTheDocument();
+    // Each date stays on one line (no-break spaces): at 360 px "on 1" / "January 2027" would read as two facts.
+    expect(screen.getByText(/makes the lock end sooner/).textContent).toBe(
+      'This makes the lock end sooner: on 1\u00a0January\u00a02027 instead of 12\u00a0April\u00a02027.',
+    );
   });
 
   it('unlock says the risk before signing', async () => {

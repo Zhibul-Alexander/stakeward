@@ -349,7 +349,7 @@ export function ComponentsSection() {
       <DemoGroup title={t('devUi.names.accountRow')}>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <Demo label={t('devUi.states.inList')} className="lg:col-span-2">
-            <AccountList label={t('devUi.states.inList')}>
+            <AccountList label={t('devUi.states.inList')} actionColumns>
               {rows.map((row) => (
                 <AccountListItem key={row.key}>
                   <SampleAccountRow row={row} />

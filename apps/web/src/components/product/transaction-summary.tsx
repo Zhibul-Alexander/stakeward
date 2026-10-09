@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
+import { keepTogether } from './countdown.tsx';
 import { Disclosure } from './disclosure.tsx';
 import { ErrorDetails } from './error-state.tsx';
 import { RiskNote } from './risk-note.tsx';
@@ -542,11 +543,12 @@ function stateWarnings(action: TransactionAction, current: OnChainContext | unde
   }
   const shortened = shortenedTo(action, current, clock);
   if (shortened !== null && current !== undefined) {
+    // Each date on one line: at 360 px "on 1" / "January 2027" would read as two facts.
     notes.push(
       <Warning key="shortens" tone="warning">
         {t('components.tx.warn.shortens', {
-          date: dateText(shortened),
-          current: dateText(current.lockup.unixTimestamp),
+          date: keepTogether(dateText(shortened)),
+          current: keepTogether(dateText(current.lockup.unixTimestamp)),
         })}
       </Warning>,
     );

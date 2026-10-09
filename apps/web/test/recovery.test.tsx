@@ -213,6 +213,13 @@ describe('/recovery/:account on LiteSvmChain', () => {
       // Each case says what to do in Stakeward before the command line.
       expect(follows(within(stolen).getByRole('link', { name: 'Rescue in Stakeward' }), block('List the stake accounts of the main key'))).toBe(true);
       expect(follows(within(caseOf('The lock is about to end')).getByRole('link', { name: 'Extend in Stakeward' }), block('Extend the lock'))).toBe(true);
+      // A date inside a sentence stays on one line (no-break spaces): a narrow screen must not split "before 29" /
+      // "October 2026, 14:30 UTC".
+      const dateOnOneLine = (formatUtcDateTime(T) ?? '').replaceAll(' ', '\u00a0');
+      expect(within(stolen).getByText(/^Without the second key, the thief cannot withdraw/).textContent).toContain(` ${dateOnOneLine}.`);
+      expect(within(caseOf('The lock is about to end')).getByText(/^Extend it with the second key before/).textContent).toContain(
+        ` ${dateOnOneLine};`,
+      );
       expect(follows(within(caseOf('You want to withdraw')).getByRole('link', { name: 'Withdraw in Stakeward' }), block('Stop staking'))).toBe(
         true,
       );

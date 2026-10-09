@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseTokens, TEXT_CLASS } from '@/pages/dev-ui/tokens';
+import { GRID_COLUMNS_CLASS, parseTokens, TEXT_CLASS } from '@/pages/dev-ui/tokens';
 
 /**
  * CLAUDE.md section 9: colours, sizes and other raw design values live only in src/styles/tokens.css. Components and
@@ -349,5 +349,19 @@ describe('type scale', () => {
   it('the /dev/ui type scale shows every size, each with its class', () => {
     expect(parseTokens(css).textSizes.map((size) => size.name)).toEqual(TYPE_SCALE);
     expect(Object.keys(TEXT_CLASS).sort()).toEqual([...TYPE_SCALE].sort());
+  });
+});
+
+describe('layout tokens', () => {
+  const css = readFileSync(TOKENS_FILE, 'utf8');
+
+  // CLAUDE.md section 9: /dev/ui shows every token. A grid column template without a row there (or without its class,
+  // which Tailwind generates only when it finds it written out) would be missing from the page and from /design-sync.
+  it('the /dev/ui grid columns table shows every template, each with its class', () => {
+    const declared = [...css.matchAll(/--grid-template-columns-([\w-]+)\s*:/g)].map((m) => m[1] ?? '');
+    expect(declared).toContain('account-row');
+    expect(parseTokens(css).gridColumns.map((token) => token.name)).toEqual(declared);
+    expect(Object.keys(GRID_COLUMNS_CLASS).sort()).toEqual([...declared].sort());
+    for (const name of declared) expect(GRID_COLUMNS_CLASS[name]).toBe(`grid-cols-${name}`);
   });
 });

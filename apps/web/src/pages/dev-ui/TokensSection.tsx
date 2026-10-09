@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
-import { t } from '@/i18n';
+import { t, type MessageKey } from '@/i18n';
 import tokensCss from '@/styles/tokens.css?raw';
 import { DemoGroup, DevSection } from './layout.tsx';
 import {
+  GRID_COLUMNS_CLASS,
   parseTokens,
   RADIUS_CLASS,
   SHADOW_CLASS,
@@ -14,6 +15,14 @@ import {
 } from './tokens.ts';
 
 const TOKENS = parseTokens(tokensCss);
+
+/** The columns of an account row, one sample cell each, in the order of the grid column templates. */
+const ROW_COLUMNS: readonly MessageKey[] = [
+  'devUi.gridColumnNames.address',
+  'devUi.gridColumnNames.sol',
+  'devUi.gridColumnNames.action',
+  'devUi.gridColumnNames.more',
+];
 
 /**
  * A panel that renders with one theme's colours whatever the browser prefers: it re-declares every --color-*
@@ -83,6 +92,26 @@ export function TokensSection() {
             <li key={step} className="flex items-center gap-3">
               <span className="w-12 shrink-0 font-mono text-xs text-muted">{step}</span>
               <span aria-hidden="true" className={`h-3 rounded-sm bg-primary ${widthClass}`} />
+            </li>
+          ))}
+        </ul>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.gridColumns')} note={t('devUi.gridColumnsNote')}>
+        <ul className="flex flex-col gap-4">
+          {TOKENS.gridColumns.map((token) => (
+            <li key={token.name} data-slot="grid-columns-token" className="flex flex-col gap-2">
+              <span className="font-mono text-xs break-all text-muted">
+                {GRID_COLUMNS_CLASS[token.name] ?? token.name} · {token.value}
+              </span>
+              {/* Drawn with the token's own class: a template Tailwind did not generate would leave one column. */}
+              <div aria-hidden="true" data-grid-columns={token.name} className={`grid gap-1 ${GRID_COLUMNS_CLASS[token.name] ?? ''}`}>
+                {ROW_COLUMNS.map((key) => (
+                  <span key={key} className="truncate rounded-sm bg-subtle px-2 py-1 text-xs text-muted">
+                    {t(key)}
+                  </span>
+                ))}
+              </div>
             </li>
           ))}
         </ul>

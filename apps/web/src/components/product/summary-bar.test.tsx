@@ -30,7 +30,8 @@ describe('SummaryBar', () => {
     const bar = screen.getByRole('region', { name: 'Summary' });
     expect(bar).toHaveAttribute('data-slot', 'summary-bar');
     const headline = within(bar).getByText('1,293.25 of 1,490.45 SOL protected');
-    expect(headline).toHaveClass('text-2xl', 'tabular-nums');
+    // Balanced lines: at 360 px no lone "protected" on a line of its own.
+    expect(headline).toHaveClass('text-2xl', 'tabular-nums', 'text-balance');
     expect(within(bar).getByText('2 of 6 stake accounts')).toBeInTheDocument();
     expect(within(bar).getByText('Last checked 2 min ago')).toBeInTheDocument();
     expect(within(bar).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();

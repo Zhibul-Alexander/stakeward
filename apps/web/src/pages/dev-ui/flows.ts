@@ -66,8 +66,11 @@ function sampleStake(address: Address, sol: bigint, lockup: Lockup = NO_LOCK): S
 const locked = (address: Address, sol: bigint) =>
   sampleStake(address, sol, { unixTimestamp: SAMPLE_LOCK_END, epoch: 0n, custodian: SAMPLE.secondKey });
 
-/** `confirm`: the panel asks to tick a box with this label before the wallet is asked (SigningView `confirm`). */
-export type SigningSample = { key: string; label: MessageKey; state: SigningState; confirm?: MessageKey };
+/**
+ * `confirm`: the panel asks to tick a box with this label before the wallet is asked (SigningView `confirm`).
+ * `cosign`: the panel as /cosign shows it (CosignSigning): no summary intro, no signing order for the one signer left.
+ */
+export type SigningSample = { key: string; label: MessageKey; state: SigningState; confirm?: MessageKey; cosign?: boolean };
 
 /** The signing panel of a protect round over two stake accounts, in every phase the panel explains. */
 export async function sampleSigningStates(clock: ClockView): Promise<SigningSample[]> {
@@ -270,7 +273,7 @@ export async function sampleLinkStates(clock: ClockView): Promise<SigningSample[
   return [
     { key: 'link-watching', label: 'devUi.flows.linkWatching', state: linkOpen },
     { key: 'link-paused', label: 'devUi.flows.linkPaused', state: reduce(linkOpen, { type: 'link-paused' }) },
-    { key: 'cosign-confirm', label: 'devUi.flows.cosignConfirm', state: cosign, confirm: 'devUi.sample.confirmRescue' },
+    { key: 'cosign-confirm', label: 'devUi.flows.cosignConfirm', state: cosign, confirm: 'devUi.sample.confirmRescue', cosign: true },
   ];
 }
 

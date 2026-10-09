@@ -165,6 +165,8 @@ describe('AccountRow', () => {
     );
     const line = screen.getByText('A staking service may manage this stake.').closest('[data-slot="row-warning"]') as HTMLElement;
     expect(within(line).getByText(detail)).toBeInTheDocument();
+    // Two sentences on a narrow row: no lone word on the last line.
+    expect(line).toHaveClass('text-pretty');
   });
 
   it('one visible action; the rest behind More, which is closed and empty until opened', async () => {
@@ -335,6 +337,31 @@ describe('AccountList', () => {
     const list = screen.getByRole('list', { name: 'Stake accounts' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
     expect(within(list).getAllByRole('article')).toHaveLength(2);
+  });
+
+  // jsdom has no layout: the widths are checked on the built site (e2e/app.spec.ts, every list of /app); here, which
+  // columns a list asks for.
+  it('actionColumns keeps the action and More columns in every list, so lists on one page line up', () => {
+    render(
+      <>
+        <AccountList label="Fitted">
+          <AccountListItem>
+            <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService={false} secondKeyKnown />
+          </AccountListItem>
+        </AccountList>
+        <AccountList label="Lined up" actionColumns>
+          <AccountListItem>
+            <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService={false} secondKeyKnown />
+          </AccountListItem>
+        </AccountList>
+      </>,
+    );
+    const fitted = screen.getByRole('list', { name: 'Fitted' });
+    const linedUp = screen.getByRole('list', { name: 'Lined up' });
+    expect(fitted).toHaveClass('sm:grid-cols-account-row');
+    expect(fitted).not.toHaveClass('sm:grid-cols-account-row-actions');
+    expect(linedUp).toHaveClass('sm:grid-cols-account-row-actions');
+    expect(linedUp).not.toHaveClass('sm:grid-cols-account-row');
   });
 
   it('the error row: one line saying the account could not be read, its address, Try again and Details', async () => {

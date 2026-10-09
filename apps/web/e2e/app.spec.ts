@@ -130,6 +130,30 @@ test('/app?address= shows every status, the red banner and the second-key list',
   const secondList = section('You are the second key for');
   await expect(secondList.getByRole('article')).toHaveCount(1);
 
+  // The SOL of every row on the page stands in one column, in every list, whether a row has an action, More, both or
+  // neither: right-aligned from 640 px, first on its own line below. From 640 px the actions end in one column too,
+  // next to More.
+  const wide = (page.viewportSize()?.width ?? 0) >= 640;
+  const edgesOf = (selector: string) =>
+    page.locator('[data-slot="account-list"]').evaluateAll(
+      (lists, { selector, right }) =>
+        lists.map((list) =>
+          [...list.querySelectorAll(`article[data-slot="account-row"] ${selector}`)].map((element) => {
+            const box = element.getBoundingClientRect();
+            return Math.round(right ? box.right : box.left);
+          }),
+        ),
+      { selector, right: wide },
+    );
+  const amountEdges = await edgesOf('> [data-slot="sol-amount"]');
+  expect(amountEdges.map((edges) => edges.length)).toEqual([4, 1, 1, 1]);
+  expect(new Set(amountEdges.flat()).size, amountEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
+  if (wide) {
+    const actionEdges = await edgesOf('[data-slot="row-action"]');
+    expect(actionEdges.map((edges) => edges.length)).toEqual([2, 0, 0, 1]);
+    expect(new Set(actionEdges.flat()).size, actionEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
+  }
+
   // The answer first: SOL and accounts under the viewer's own lock, out of all of them.
   const summary = page.getByRole('region', { name: 'Summary' });
   await expect(summary).toContainText('1,293.25 of 1,490.45 SOL protected');

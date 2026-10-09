@@ -122,6 +122,17 @@
   /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
   --spacing: 0.25rem;
 
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   * account-row-actions keeps the action and More columns in every list, used or not, so that the SOL of separate
+   * lists on one page (/app) stands in one column too: the action column fits the widest row action, Protect again
+   * (8.75rem, and its 0.75rem margin), and grows for a wider one; More is its 2rem button, its 0.5rem margin and the
+   * 1rem padding of the list item, which a subgrid adds to its edge columns.
+   */
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
   /* Radii */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
