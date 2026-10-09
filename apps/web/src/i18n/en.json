@@ -113,7 +113,7 @@
       "items": {
         "scope": "Protect liquid staking tokens, exchange stake, SOL in your wallet balance or vote accounts.",
         "mainKeyActions": "Stop a thief with your main key from unstaking or moving your stake.",
-        "split": "Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most {max}, so act early and extend the lock first.",
+        "split": "Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most {max} stake accounts, so act early and extend the lock first.",
         "afterEnd": "Keep a thief out after the lock ends. Rescue before that date.",
         "lostKey": "Undo a lost key. Without your main key you cannot withdraw. Without your second key, you wait for the end date.",
         "freeze": "Stop whoever holds your second key from keeping your stake locked.",
@@ -190,7 +190,7 @@
         "chain": "The lock lives in your stake accounts on Solana. It works without Stakeward.",
         "browser": "Your browser builds each transaction and your wallets sign it. Stakeward never holds SOL, sees a key or signs for you.",
         "server": "Stakeward's server only passes Stakeward transactions to the network. If it is down, you lose alerts, not SOL. The same server delivers this website.",
-        "site": "So a hacked site could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
+        "site": "If this site were hacked, it could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
         "programs": "Only Solana's own stake and system programs and fee settings. Stakeward has no program or token of its own.",
         "open": "Open source under MIT, no warranty. No accounts, cookies or analytics."
       },
@@ -198,7 +198,7 @@
     },
     "recover": {
       "title": "If Stakeward disappears",
-      "body": "Each protected account has a printable recovery card with Solana CLI steps that work without this site.",
+      "body": "Each protected account has a printable recovery card with Solana CLI steps. They need keys on a Ledger or in keypair files.",
       "cards": "Find your recovery cards",
       "guideLink": "Recovery guide on GitHub",
       "onChain": "What changes on the network"

@@ -35,11 +35,15 @@ export function Section({ id, title, intro, children, className }: SectionProps)
   );
 }
 
-/** A titled block inside a section (`#second-key`, `#recover`): its own anchor, named by its h3. */
+/**
+ * A titled block inside a section (`#second-key`, `#recover`): its own anchor, named by its h3. `text-base` at every
+ * width, like the landing's other h3s, so it never outsizes an h2 (the co-sign callout and the closing call are
+ * `text-lg`).
+ */
 export function SubSection({ id, title, children, className }: Omit<SectionProps, 'intro'>) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-3', className)}>
-      <h3 id={`${id}-title`} className="text-base font-semibold text-balance sm:text-lg">
+      <h3 id={`${id}-title`} className="text-base font-semibold text-balance">
         {title}
       </h3>
       {children}

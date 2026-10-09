@@ -1,19 +1,35 @@
 import { ShieldCheckIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { README_RECOVERY_URL, SOURCE_CODE_URL } from '@/config';
 import { t, type Messages } from '@/i18n';
 import { ExternalLink, HashLink, PageLink, Section, SubSection } from './Section.tsx';
 
 type SecurityItem = keyof Messages['landing']['security']['items'];
 
-/** `site` follows `server`: it starts with "So", the consequence of the same server delivering this website. */
+/** `site` follows `server` (the same server delivers this website), and each item stands alone in either column. */
 const ITEMS: readonly SecurityItem[] = ['chain', 'browser', 'server', 'site', 'programs', 'open'];
 
-/** The separator between two links of a row: for the eye only. */
+/** The separator between two links of the row from 640 px: for the eye only. Below, the links stand one per line. */
 function Dot() {
   return (
-    <span aria-hidden="true" className="px-2 text-muted">
+    <span aria-hidden="true" className="hidden pr-1 pl-2 text-muted sm:inline">
       ·
     </span>
+  );
+}
+
+/**
+ * One link of the recovery links: one per line on a phone; from 640 px a row that flows like a sentence. Each link with
+ * its dot never breaks inside, so a line ends between two links (the space after the dot).
+ */
+function RecoverLink({ children, last = false }: { children: ReactNode; last?: boolean }) {
+  return (
+    <li className="sm:inline">
+      <span className="whitespace-nowrap">
+        {children}
+        {last ? null : <Dot />}
+      </span>{' '}
+    </li>
   );
 }
 
@@ -34,23 +50,19 @@ export function Security() {
       </ul>
       <SubSection id="recover" title={t('landing.recover.title')} className="mt-3">
         <p className="max-w-prose text-sm text-pretty sm:text-base">{t('landing.recover.body')}</p>
-        {/* One row of links that flows like a sentence, so on a phone it takes lines, not one line per link. */}
-        <ul className="text-sm leading-6">
-          <li className="inline">
+        <ul className="flex flex-col gap-1 text-sm sm:block sm:leading-6">
+          <RecoverLink>
             <PageLink href="/app">{t('landing.recover.cards')}</PageLink>
-            <Dot />
-          </li>
-          <li className="inline">
+          </RecoverLink>
+          <RecoverLink>
             <ExternalLink href={README_RECOVERY_URL} label={t('landing.recover.guideLink')} />
-            <Dot />
-          </li>
-          <li className="inline">
+          </RecoverLink>
+          <RecoverLink>
             <ExternalLink href={SOURCE_CODE_URL} label={t('landing.security.sourceLink')} />
-            <Dot />
-          </li>
-          <li className="inline">
+          </RecoverLink>
+          <RecoverLink last>
             <HashLink href="#faq-on-chain">{t('landing.recover.onChain')}</HashLink>
-          </li>
+          </RecoverLink>
         </ul>
       </SubSection>
     </Section>

@@ -58,8 +58,8 @@ export function Protects() {
           </RiskNote>
           <div className="flex flex-col gap-2 text-sm">
             <ul className="flex list-disc flex-col gap-1 pl-5 marker:text-muted">
-              <li>{t('landing.secondKey.differentSeed')}</li>
-              <li>{t('landing.secondKey.apart')}</li>
+              <li className="text-pretty">{t('landing.secondKey.differentSeed')}</li>
+              <li className="text-pretty">{t('landing.secondKey.apart')}</li>
             </ul>
             <p>
               <HashLink href="#faq-good-second-key">{t('landing.secondKey.more')}</HashLink>

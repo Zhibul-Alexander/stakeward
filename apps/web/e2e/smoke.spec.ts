@@ -95,6 +95,28 @@ async function landingShows(page: Page) {
   await questions.evaluateAll((items) => {
     for (const item of items) (item as HTMLDetailsElement).open = true;
   });
+  // The type holds its levels at both widths: no h3 outsizes an h2, an FAQ group's name outsizes its questions, and an
+  // answer keeps a reading measure. "What Stakeward cannot do" stands on its panel at every width, and no recovery link
+  // breaks inside its label.
+  const layout = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const all = (selector: string) => [...(main?.querySelectorAll(selector) ?? [])];
+    const size = (element: Element) => parseFloat(getComputedStyle(element).fontSize);
+    return {
+      smallestH2: Math.min(...all('h2').map(size)),
+      largestH3: Math.max(...all('h3').map(size)),
+      smallestGroup: Math.min(...all('[data-slot="faq-group"] > summary h3').map(size)),
+      largestQuestion: Math.max(...all('[data-slot="faq-item"] > summary').map(size)),
+      widestAnswer: Math.max(...all('[data-slot="faq-item"] > div').map((answer) => answer.getBoundingClientRect().width)),
+      cannotDoPanel: getComputedStyle(all('#cannot-do ul')[0] ?? document.body).backgroundColor,
+      brokenLinks: all('#recover a').filter((link) => link.getClientRects().length !== 1).map((link) => link.textContent),
+    };
+  });
+  expect(layout.largestH3).toBeLessThanOrEqual(layout.smallestH2);
+  expect(layout.smallestGroup).toBeGreaterThan(layout.largestQuestion);
+  expect(layout.widestAnswer).toBeLessThanOrEqual(720);
+  expect(layout.cannotDoPanel).not.toBe('rgba(0, 0, 0, 0)');
+  expect(layout.brokenLinks).toEqual([]);
 }
 
 /**

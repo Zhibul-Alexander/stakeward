@@ -75,7 +75,8 @@ function Extra({ item }: { item: FaqId }) {
  * Questions and answers (en.json `faq`, the one place besides the recovery card where the program's words custodian,
  * withdrawer and staker appear, D81), in five closed groups. A group is a native <details> whose summary holds its h3
  * and how many questions it has; inside, each question is a <details> with the id `faq-<question>`, so a link to
- * `/#faq-ledger` opens it and its group (useHashTarget).
+ * `/#faq-ledger` opens it and its group (useHashTarget). From 640 px the group's h3 is `text-lg` and a question
+ * `text-sm`, so an open group's questions do not read as more groups.
  */
 export function Faq({ params }: { params: Readonly<Record<string, string>> }) {
   return (
@@ -84,7 +85,7 @@ export function Faq({ params }: { params: Readonly<Record<string, string>> }) {
         {FAQ_GROUPS.map((group) => (
           <details key={group.id} data-slot="faq-group" className="group/faq-group px-4 sm:px-6">
             <summary className="summary-plain relative flex cursor-pointer flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-sm py-2.5 pr-8 sm:py-3">
-              <h3 className="text-base font-semibold">{t(`faq.groups.${group.id}`)}</h3>
+              <h3 className="text-base font-semibold text-pretty sm:text-lg">{t(`faq.groups.${group.id}`)}</h3>
               {/* Below 640 px the count is read out but not shown: it would take a line of its own under long names. */}
               <span className="sr-only text-sm text-muted tabular-nums sm:not-sr-only">{t('faq.groupCount', { count: group.items.length })}</span>
               <ChevronDownIcon

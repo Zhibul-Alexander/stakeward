@@ -134,6 +134,8 @@ describe('landing page structure', () => {
     const recover = section('recover');
     expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
     expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
+    // The promise of recovery without Stakeward carries its condition where it is made.
+    expect(recover).toHaveTextContent('Solana CLI steps. They need keys on a Ledger or in keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
     expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
@@ -386,7 +388,7 @@ describe('landing words and numbers', () => {
     const cannotDo = section('cannot-do');
     expect(cannotDo).toHaveTextContent('Stop a thief with your main key from unstaking or moving your stake.');
     expect(cannotDo).toHaveTextContent(
-      'Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most 10, so act early and extend the lock first.',
+      'Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most 10 stake accounts, so act early and extend the lock first.',
     );
     const mainStolen = section('faq-main-stolen');
     expect(mainStolen).toHaveTextContent('They may also split it into many small stake accounts. Each part keeps the lock.');
@@ -424,6 +426,8 @@ describe('landing words and numbers', () => {
     const server = within(security).getByText(/you lose alerts, not SOL/);
     expect(server.textContent).toMatch(/If it is down, you lose alerts, not SOL\./);
     expect(server.textContent).toMatch(/The same server delivers this website/);
+    // Each point stands alone: from md the list has two columns, so none may lean on the point before it.
+    for (const point of security.querySelectorAll(':scope > ul > li')) expect(point.textContent).not.toMatch(/^(So|Then|This|That)\b/);
     await depositShown();
   });
 

@@ -12,7 +12,7 @@ export function CoSignCallout() {
     <section id="for-second-key" aria-labelledby="for-second-key-title" className="scroll-mt-4">
       <Alert tone="info" role="note" className="sm:px-6 sm:py-4">
         <LinkIcon aria-hidden="true" />
-        <h2 id="for-second-key-title" className="text-base font-semibold text-foreground">
+        <h2 id="for-second-key-title" className="text-lg font-semibold text-foreground">
           {t('landing.coSign.title')}
         </h2>
         <AlertDescription className="max-w-prose text-foreground sm:text-base">

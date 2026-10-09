@@ -43,7 +43,7 @@ export function Alerts({ params }: { params: Readonly<Record<string, string>> })
           <figure className="flex max-w-md flex-col gap-2">
             <figcaption className="text-sm font-medium text-muted">{t('landing.alerts.exampleTitle')}</figcaption>
             <div className="flex flex-col overflow-hidden rounded-lg rounded-tl-sm border border-border bg-surface-raised">
-              <p className="px-4 py-3 text-sm">{SAMPLE_ALERT.text}</p>
+              <p className="px-4 py-3 text-sm text-pretty">{SAMPLE_ALERT.text}</p>
               {/* The bot's link button, drawn: an example to look at, not a control. */}
               <span className="border-t border-border px-4 py-2 text-center text-sm font-medium text-muted">{SAMPLE_ALERT.buttonLabel}</span>
             </div>
