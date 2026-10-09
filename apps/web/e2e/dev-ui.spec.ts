@@ -129,6 +129,20 @@ test('/dev/ui shows every token and component without console errors, axe violat
   // with a blocked step button whose first reason shows before any click.
   await expect(page.locator('#layout [data-slot="page-header"]')).toHaveCount(1);
   await expect(page.locator('#layout [data-slot="section"]')).toHaveCount(1);
+  // A Section reads in its DOM order at both widths (WCAG 1.3.2): the title, its action (beside the title from 640 px,
+  // under it below), then the description.
+  const sectionOrder = await page.locator('#layout [data-slot="section"]').evaluate((section) => {
+    const action = section.querySelector('button');
+    const description = section.querySelector(':scope > p');
+    if (action === null || description === null) return null;
+    return {
+      actionFirst: (action.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      actionBottom: action.getBoundingClientRect().bottom,
+      descriptionTop: description.getBoundingClientRect().top,
+    };
+  });
+  expect(sectionOrder?.actionFirst).toBe(true);
+  expect(sectionOrder?.actionBottom ?? Infinity).toBeLessThanOrEqual((sectionOrder?.descriptionTop ?? 0) + 1);
   await expect(page.locator('#layout [data-slot="action-bar"]')).toHaveCount(2);
   const blocked = page.locator('#layout').getByRole('button', { name: 'Continue with 2 accounts' });
   await expect(blocked).toHaveAttribute('aria-disabled', 'true');
