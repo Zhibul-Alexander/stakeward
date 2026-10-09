@@ -21,3 +21,11 @@ test-results/
 
 # local Playwright system libraries (scripts/playwright-local-libs.sh)
 .cache/
+
+# /design-sync: staged converter scripts, built bundle, the design-system package build, machine state
+.ds-sync/
+ds-bundle/
+apps/web/.ds-pkg/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

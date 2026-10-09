@@ -1,0 +1,218 @@
+{
+  "shape": "package",
+  "pkg": "@stakeward/design-system",
+  "globalName": "Stakeward",
+  "buildCmd": "node .design-sync/build-package.mjs",
+  "entry": "apps/web/.ds-pkg/dist/index.js",
+  "srcDir": "../src",
+  "cssEntry": "dist/stakeward.css",
+  "extraFonts": [
+    "../node_modules/@fontsource-variable/geist/index.css",
+    "../node_modules/@fontsource-variable/geist-mono/index.css"
+  ],
+  "componentSrcMap": {
+    "AccountList": "../src/components/product/account-row.tsx",
+    "AccountListItem": "../src/components/product/account-row.tsx",
+    "AccountListSkeleton": "../src/components/product/account-row.tsx",
+    "AccountRowError": "../src/components/product/account-row.tsx",
+    "AccountRowSkeleton": "../src/components/product/account-row.tsx",
+    "ActivationText": "../src/components/product/account-row.tsx",
+    "AddressTextSkeleton": "../src/components/product/address-text.tsx",
+    "CommandBlockSkeleton": "../src/components/product/command-block.tsx",
+    "CountdownSkeleton": "../src/components/product/countdown.tsx",
+    "ErrorDetails": "../src/components/product/error-state.tsx",
+    "KeyListSkeleton": "../src/components/product/key-list.tsx",
+    "NoStakeAccounts": "../src/components/product/empty-state.tsx",
+    "RadioCardGroup": "../src/components/product/radio-card.tsx",
+    "SignerListSkeleton": "../src/components/product/signer-list.tsx",
+    "SolAmountSkeleton": "../src/components/product/sol-amount.tsx",
+    "StatusBadgeSkeleton": "../src/components/product/status-badge.tsx",
+    "TransactionSummaryError": "../src/components/product/transaction-summary.tsx",
+    "TransactionSummarySkeleton": "../src/components/product/transaction-summary.tsx"
+  },
+  "docsMap": {
+    "Alert": "../../../.design-sync/docs/primitives.md",
+    "AlertDescription": "../../../.design-sync/docs/primitives.md",
+    "AlertTitle": "../../../.design-sync/docs/primitives.md",
+    "Badge": "../../../.design-sync/docs/primitives.md",
+    "Button": "../../../.design-sync/docs/primitives.md",
+    "Card": "../../../.design-sync/docs/primitives.md",
+    "CardContent": "../../../.design-sync/docs/primitives.md",
+    "CardDescription": "../../../.design-sync/docs/primitives.md",
+    "CardFooter": "../../../.design-sync/docs/primitives.md",
+    "CardHeader": "../../../.design-sync/docs/primitives.md",
+    "CardTitle": "../../../.design-sync/docs/primitives.md",
+    "Checkbox": "../../../.design-sync/docs/primitives.md",
+    "Collapsible": "../../../.design-sync/docs/primitives.md",
+    "CollapsibleContent": "../../../.design-sync/docs/primitives.md",
+    "CollapsibleTrigger": "../../../.design-sync/docs/primitives.md",
+    "Input": "../../../.design-sync/docs/primitives.md",
+    "Label": "../../../.design-sync/docs/primitives.md",
+    "Progress": "../../../.design-sync/docs/primitives.md",
+    "RadioGroup": "../../../.design-sync/docs/primitives.md",
+    "RadioGroupItem": "../../../.design-sync/docs/primitives.md",
+    "Separator": "../../../.design-sync/docs/primitives.md",
+    "Skeleton": "../../../.design-sync/docs/primitives.md",
+    "Spinner": "../../../.design-sync/docs/primitives.md",
+    "Tooltip": "../../../.design-sync/docs/primitives.md",
+    "TooltipContent": "../../../.design-sync/docs/primitives.md",
+    "TooltipProvider": "../../../.design-sync/docs/primitives.md",
+    "TooltipTrigger": "../../../.design-sync/docs/primitives.md"
+  },
+  "overrides": {
+    "AccountRow": {
+      "cardMode": "column"
+    },
+    "TransactionSummary": {
+      "cardMode": "column",
+      "viewport": "900x1500"
+    },
+    "SummaryBar": {
+      "cardMode": "column"
+    },
+    "AccountList": {
+      "cardMode": "column"
+    },
+    "AccountListItem": {
+      "cardMode": "column"
+    },
+    "AccountListSkeleton": {
+      "cardMode": "column"
+    },
+    "AccountRowError": {
+      "cardMode": "column"
+    },
+    "AccountRowSkeleton": {
+      "cardMode": "column"
+    },
+    "JobStatusList": {
+      "cardMode": "column"
+    },
+    "LinkCard": {
+      "cardMode": "column",
+      "viewport": "900x760"
+    },
+    "CosignRequest": {
+      "cardMode": "column"
+    },
+    "StopPanel": {
+      "cardMode": "column"
+    },
+    "ActionBar": {
+      "cardMode": "column"
+    },
+    "StepProgress": {
+      "cardMode": "column"
+    },
+    "RadioCardGroup": {
+      "cardMode": "column"
+    },
+    "Page": {
+      "cardMode": "column"
+    },
+    "PageHeader": {
+      "cardMode": "column"
+    },
+    "Section": {
+      "cardMode": "column"
+    },
+    "EmptyState": {
+      "cardMode": "column"
+    },
+    "NoStakeAccounts": {
+      "cardMode": "column"
+    },
+    "ErrorState": {
+      "cardMode": "column"
+    },
+    "KeyList": {
+      "cardMode": "column"
+    },
+    "KeyListSkeleton": {
+      "cardMode": "column"
+    },
+    "SignerList": {
+      "cardMode": "column"
+    },
+    "SignerListSkeleton": {
+      "cardMode": "column"
+    },
+    "WalletSlot": {
+      "cardMode": "column"
+    },
+    "FaqItem": {
+      "cardMode": "column"
+    },
+    "CommandBlock": {
+      "cardMode": "column"
+    },
+    "CommandBlockSkeleton": {
+      "cardMode": "column"
+    },
+    "Disclosure": {
+      "cardMode": "column"
+    },
+    "TransactionSummaryError": {
+      "cardMode": "column"
+    },
+    "TransactionSummarySkeleton": {
+      "cardMode": "column"
+    },
+    "Card": {
+      "cardMode": "column"
+    },
+    "Tooltip": {
+      "cardMode": "single"
+    },
+    "TooltipContent": {
+      "cardMode": "single"
+    },
+    "TooltipProvider": {
+      "cardMode": "single"
+    },
+    "TooltipTrigger": {
+      "cardMode": "single"
+    },
+    "Collapsible": {
+      "cardMode": "column"
+    },
+    "CollapsibleContent": {
+      "cardMode": "column"
+    },
+    "CollapsibleTrigger": {
+      "cardMode": "column"
+    },
+    "Skeleton": {
+      "cardMode": "column"
+    },
+    "SolAmount": {
+      "cardMode": "column"
+    },
+    "SolAmountSkeleton": {
+      "cardMode": "column"
+    },
+    "SupportBadge": {
+      "cardMode": "column"
+    },
+    "Alert": {
+      "cardMode": "column"
+    }
+  },
+  "dtsPropsFor": {
+    "AccountRow": "  account: { /** Stake account address (base58). */ address: string; lamports: bigint; lockup: { /** Lock end, unix seconds; 0 = no lock. */ unixTimestamp: bigint; epoch: bigint; /** The Second key that holds the lock (base58). */ custodian: string } };\n  activation: \"inactive\" | \"activating\" | \"active\" | \"deactivating\";\n  /** From core `scannerStatus`. */\n  protection: \"unprotected\" | \"protected\" | \"expiring\" | \"locked-by-other\";\n  /** From core `scannerStatus`: staker != withdrawer. Without a lock of the viewer's second key a service may manage the stak */\n  managedByService: boolean;\n  /** This browser knows a second key for the account's main key: the list core `scannerStatus` got was not empty. With one, a */\n  secondKeyKnown: boolean;\n  /** F6: this account was protected and its lock is gone. With `protection: 'unprotected'` its badge is red. */\n  wasProtected?: boolean;\n  /** Rescue for this account's main key (`/rescue?address=`): linked from the stake-key warning. Left out on the rescue pages */\n  rescueHref?: string;\n  /** The cluster clock the statuses were computed with. A lock that ends within 30 days of it (core's Expiring threshold) sho */\n  clock: { /** Cluster time, unix seconds. */ unixTimestamp: bigint; epoch: bigint };\n  /** The one visible button: `<Button variant=\"outline\" size=\"sm\">`, primary only when it is the screen's one filled button ( */\n  action?: React.ReactNode;\n  /** Every other action (Withdraw, Recovery card, ...): behind the row's More, which opens them under the row. */\n  moreActions?: React.ReactNode;\n  /** More starts open (the /dev/ui sample of an open row). */\n  defaultMoreOpen?: boolean;\n  /** A selection checkbox at the start of the row, named by `label`. */\n  select?: { checked: boolean; onCheckedChange: (checked: boolean) => void; label: string; disabled?: boolean | undefined; };\n  /** More muted facts on the second line. An address in it is always an AddressText (copy and explorer), e.g. \"Main key\" and  */\n  meta?: React.ReactNode;\n  /** The status hint sentence under the row; default true. A list that says it once for its group passes false. */\n  hint?: boolean;\n  /** The second sentence of the staking-service warning, what a lock may do to the service; default false. */\n  serviceDetail?: boolean;\n  className?: string;",
+    "CosignRequest": "  /** The link's transaction kind (`data-kind`): protect, withdraw or rescue. */\n  kind: string;\n  /** Who sent it: the role of the fee payer, who signed before the link was made. */\n  from: \"main\" | \"second\" | \"new\";\n  /** The h2, the ask in one line: \"Become the Second key for this stake until 3 April 2027\". */\n  ask: string;\n  /** One to three short lines under the ask. */\n  lines?: readonly string[];\n  /** One muted line, e.g. how much the stake account holds once it is read. */\n  meta?: React.ReactNode;\n  /** The check before signing, a warning callout with the address in full. */\n  check?: { title: string; lines: readonly string[]; /** The role of the address to check. */ role: \"main\" | \"second\" | \"new\"; /** The address, shown in full. */ address: string };\n  className?: string;",
+    "EmptyState": "  icon?: React.ComponentType<{ className?: string }> /* a lucide-react icon, e.g. LayersIcon */;\n  title: string;\n  headingLevel?: 2 | 3;\n  /** Explanation: why it is empty and what the user can do (UX rule 13). */\n  children?: React.ReactNode;\n  /** Next step, e.g. a button to check another address. */\n  action?: React.ReactNode;\n  className?: string;",
+    "JobStatusList": "  items: readonly { /** The stake account (base58). */ address: string; status: \"waiting\" | \"sending\" | \"confirming\" | \"checking\" | \"done\" | \"failed\" | \"expired\" | \"unknown\" | \"not-sent\" | \"left-out\"; /** What happened and what to do next, in plain words. */ reason?: string; /** Original error text, under \"Details\". */ detail?: string; /** The transaction signature once known (explorer link). */ signature?: string | null }[];\n  /** Accessible name of the list, e.g. \"Stake accounts\". */\n  label: string;\n  className?: string;",
+    "KeyList": "  items: readonly { role: \"main\" | \"second\" | \"new\"; /** Shown in full with copy and explorer. */ address: string; /** What this key does here, in one line. */ note?: React.ReactNode }[];\n  className?: string;",
+    "LinkCard": "  /** The /cosign link (the partly signed transaction in its fragment). */\n  url: string;\n  /** The transaction id (the fee payer's signature): the explorer shows it once the other device sends it. */\n  signature: string;\n  /** The keys that sign through the link, in signing order; shown in full (DECISIONS.md D23). */\n  signers: readonly { role: \"main\" | \"second\" | \"new\"; address: string; }[];\n  /** This page is checking the network for the outcome; false once the watch paused. */\n  watching: boolean;\n  /** The latest check could not reach the network (it keeps trying). */\n  lastCheckFailed: boolean;\n  /** Stop waiting on this page (the link keeps working). Without it the card shows no Stop button. */\n  onStopWaiting?: () => void;\n  /** A new watch after the pause. Without it the paused card offers no Check again. */\n  onCheckAgain?: () => void;\n  /** The page's way to cancel the link (closing the link-signing account), shown inline under \"Cancel the link\". It stays mou */\n  cancel?: React.ReactNode;\n  className?: string;",
+    "RadioCardGroup": "  legend: string;\n  /** The legend only for screen readers, when a heading right above says the same. */\n  legendHidden?: boolean;\n  value: string;\n  onValueChange: (value: string) => void;\n  options: readonly { value: string; /** The option's name (its accessible name). */ title: string; /** One muted line, e.g. \"until 10 April 2027\". */ meta?: React.ReactNode; /** e.g. <Badge tone=\"success\">Recommended</Badge>. */ badge?: React.ReactNode; description?: string; /** danger: an option that removes protection, set apart after a separator. */ tone?: \"default\" | \"danger\"; /** Why it cannot be chosen; disables the option. */ disabledReason?: string }[];\n  /** 2: two columns from 640 px. */\n  columns?: 1 | 2;\n  className?: string;",
+    "SignerList": "  items: readonly { role: \"main\" | \"second\" | \"new\"; /** The wallet app holding this key here; null when none offers it. */ walletName: string | null; address: string; /** Transactions this key approves in its one request. */ count: number; status: \"waiting\" | \"current\" | \"signed\" | \"switch\" | \"stopped\" | \"missing\" | \"link\" }[];\n  /** `full` (default): a card per key with its full address. `compact`: one line per key, its number, role, wallet and status */\n  variant?: \"full\" | \"compact\";\n  className?: string;",
+    "StopPanel": "  /** The h2: \"Do not sign this link\". */\n  title: string;\n  /** Why, in one line. */\n  reason: React.ReactNode;\n  /** Addresses the reason is about, labelled and in full (DECISIONS.md D23): where the SOL would go, whose stake it is. */\n  addresses?: readonly { label: string; /** Shown in full. */ address: string }[];\n  /** \"What to do: ...\" when the link may come from a thief. */\n  whatToDo?: string;\n  /** The inspector's own words, under Details (UX rule 8). */\n  detail?: string;\n  /** The one way out, an outline button (\"Back to the start page\"). */\n  action?: React.ReactNode;\n  /** Pages that move focus to the panel's heading when it replaces what was there. */\n  headingRef?: React.Ref<HTMLHeadingElement>;\n  /** What the panel refuses, for tests and styling hooks (`data-reason`). */\n  reasonCode?: string;\n  className?: string;",
+    "TransactionSummary": "  /** From core `inspectTransaction(bytes)` on the exact bytes about to be signed (CLAUDE.md section 3). */\n  summary: {\n    /** What the transaction does. */\n    action:\n    | { kind: \"protect\"; stakeAccount: string; mainKey: string; secondKey: string; /** unix seconds */ lockUntil: bigint }\n    | { kind: \"extend\"; stakeAccount: string; secondKey: string; lockUntil: bigint }\n    | { kind: \"unlock\"; stakeAccount: string; secondKey: string }\n    | { kind: \"withdraw\"; stakeAccount: string; mainKey: string; secondKey: string | null; recipient: string; lamports: bigint }\n    | { kind: \"deactivate\"; stakeAccount: string; staker: string }\n    | { kind: \"delegate\"; stakeAccount: string; staker: string; voteAccount: string }\n    | { kind: \"rescue\"; stakeAccount: string; mainKey: string; secondKey: string; newWallet: string }\n    | { kind: \"nonce-setup\"; nonceAccount: string; nonceAuthority: string; seed: string; lamports: bigint }\n    | { kind: \"nonce-close\"; nonceAccount: string; nonceAuthority: string; recipient: string; lamports: bigint };\n    feePayer: string;\n    lifetime: { kind: \"blockhash\"; blockhash: string } | { kind: \"nonce\"; nonceAccount: string; nonceAuthority: string; nonceValue: string };\n    computeBudget: { unitLimit: number; microLamportsPerUnit: bigint };\n    /** Upper bound of the network fee in lamports. */\n    networkFeeLamports: bigint;\n    /** Every address that must sign, fee payer first. */\n    requiredSigners: readonly string[];\n    /** Required signers whose signature is already present and valid. */\n    presentSignatures: readonly string[];\n    /** Lighthouse assertions a wallet appended, or null. */\n    lighthouseTail: { instructionCount: number; addedAccounts: readonly string[] } | null;\n  };\n  /** Ignored with `batch`: each account there carries its own. */\n  current?: { lockup: { /** Lock end, unix seconds; 0 = no lock. */ unixTimestamp: bigint; epoch: bigint; /** The Second key that holds the lock (base58). */ custodian: string }; clock?: { /** Cluster time, unix seconds. */ unixTimestamp: bigint; epoch: bigint } };\n  /** Addresses the page knows by role (its wallet slots), to name signers the action itself does not name. */\n  knownRoles?: Partial<Record<\"main\" | \"second\" | \"new\", string>>;\n  /** Several transactions summarised at once: the stake account block becomes the list of accounts (each with its balance and */\n  batch?: { accounts: readonly { address: string; lamports: bigint | null; current?: { lockup: { /** Lock end, unix seconds; 0 = no lock. */ unixTimestamp: bigint; epoch: bigint; /** The Second key that holds the lock (base58). */ custodian: string }; clock?: { /** Cluster time, unix seconds. */ unixTimestamp: bigint; epoch: bigint } } }[]; totalFeeLamports: bigint };\n  /** The line under the title that says the summary is read from the bytes; /cosign leaves it out (default true). */\n  intro?: boolean;\n  headingLevel?: 2 | 3;\n  className?: string;",
+    "TransactionSummaryError": "  error: { code: \"malformed\" | \"unsupported-version\" | \"address-lookup-table\" | \"unknown-program\" | \"unknown-instruction\" | \"bad-layout\" | \"multiple-stake-accounts\" | \"bad-lighthouse-tail\" | \"invalid-signature\" | \"verification-unavailable\"; /** Plain English for \"Details\". */ message: string };\n  headingLevel?: 2 | 3;\n  /** The way forward, e.g. \"Back to your accounts\". */\n  action?: React.ReactNode;\n  className?: string;"
+  },
+  "extraEntries": [
+    "./icons.js"
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
+}

@@ -17,6 +17,12 @@ export default defineConfig([
     // system libraries). Neither is part of this checkout's code; `eslint .` from the main checkout walked into both.
     '.claude/**',
     '.cache/**',
+    // /design-sync (DECISIONS.md D113): the converter's staged scripts and output, the design-system package build, and
+    // the preview inputs the converter compiles with esbuild. None of it ships in the site.
+    '.ds-sync/**',
+    'ds-bundle/**',
+    'apps/web/.ds-pkg/**',
+    '.design-sync/**',
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
