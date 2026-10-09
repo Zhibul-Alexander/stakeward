@@ -2,19 +2,24 @@ import type { Address, Signature } from '@solana/kit';
 import {
   actionRoles,
   actionTarget,
+  formatSol,
   formatUtcDate,
+  missingSignatures,
   scannerStatus,
   stakeActivationStatus,
   type ChainClock,
   type TransactionSummary,
   type WalletRole,
 } from '@stakeward/core';
-import { CircleCheckIcon, CopyIcon, InfoIcon, TriangleAlertIcon } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type Ref } from 'react';
+import { CircleCheckIcon, CopyIcon, InfoIcon, Link2OffIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { AccountRow, SINGLE_ROW_FRAME } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
+import { CosignRequest, type CosignCheck } from '@/components/product/cosign-request';
 import { RiskNote } from '@/components/product/risk-note';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { StopPanel } from '@/components/product/stop-panel';
+import { roleLabel } from '@/components/product/wallet-slot';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
@@ -26,6 +31,8 @@ import type { JobView, SigningState } from '@/signing/machine';
 import { slotSignerResolver } from '@/signing/resolve';
 import { PageSigningPanel } from '@/signing/SigningPanel';
 import { useSigningSession } from '@/signing/use-signing-session';
+import { defaultJobReason } from '@/signing/view';
+import { BackHome, CosignHeader } from './CosignHeader.tsx';
 import { cosignPlan, cosignRefusalText, cosignResolver } from './plan.ts';
 
 type CosignSigningProps = {
@@ -36,13 +43,25 @@ type CosignSigningProps = {
   signing?: SigningTestOptions | undefined;
 };
 
-/** Outcomes this link cannot get past: the sender has to make a new one (nothing was sent from here, or it failed). */
-const NEEDS_NEW_LINK: readonly JobView['state']['kind'][] = ['refused', 'failed', 'sim-failed', 'expired'];
+/**
+ * Outcomes this link cannot get past: the sender has to make a new one. The same bytes again would fail the same way
+ * (the program refused them) or cannot land (the nonce moved on), so /cosign offers no Try again for them.
+ */
+const NEEDS_NEW_LINK: readonly JobView['state']['kind'][] = ['failed', 'sim-failed', 'expired'];
 
-/** A new link helps, unless no link could do it: a protect over a lock in force is refused whatever link carries it. */
-function asksForNewLink(job: JobView): boolean {
-  const { state } = job;
-  return NEEDS_NEW_LINK.includes(state.kind) && !(state.kind === 'refused' && state.reason === 'already-locked');
+/**
+ * Why the run did not land, in words that fit "Ask the sender for a new link." (the engine's error texts say "try
+ * again", which this link cannot). The program's own words stay under Details.
+ */
+function cosignReason(job: JobView): string | undefined {
+  switch (job.state.kind) {
+    case 'sim-failed':
+      return t('cosign.outcome.simFailed');
+    case 'failed':
+      return t('cosign.outcome.failed');
+    default:
+      return defaultJobReason(job);
+  }
 }
 
 /** A finished run: its outcome for the link's stake account and the cluster clock it was read at. */
@@ -81,7 +100,8 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
     });
   const { session, snapshot } = useSigningSession(create, `cosign#${fragment}#${String(run)}`);
 
-  // Focus follows the page (UX rule 2): the outcome's heading once the run ends, never on the first render.
+  // Focus follows the page (UX rule 2): the outcome's heading once the run ends, also when the chain answers on load
+  // (refused, already done). Those headings draw no focus ring: they are not controls.
   const headingRef = useRef<HTMLHeadingElement>(null);
   const finished = outcome !== null && outcome.run === run;
   // A Check again that finds the landing swaps the outcome for the Done heading: focus follows it too.
@@ -107,25 +127,65 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
 
   if (finished) {
     const { job } = outcome;
-    if (isLanded(job)) return <CosignDone headingRef={headingRef} job={job} clock={outcome.clock} />;
+    const { state } = job;
+    if (isLanded(job)) {
+      return (
+        <>
+          <CosignHeader lead />
+          <CosignDone headingRef={headingRef} job={job} clock={outcome.clock} />
+        </>
+      );
+    }
+    if (state.kind === 'refused') {
+      // The chain says no before anything was asked: a protect over a lock in force is "Do not sign" (a new link would
+      // be refused the same way); anything else means this link no longer fits the chain.
+      return (
+        <>
+          <CosignHeader lead={false} />
+          {state.reason === 'already-locked' ? (
+            <StopPanel
+              headingRef={headingRef}
+              title={t('cosign.stop.title')}
+              reason={cosignRefusalText(state.reason)}
+              whatToDo={t('cosign.stop.whatToDo')}
+              action={<BackHome />}
+              reasonCode={state.reason}
+            />
+          ) : (
+            <LinkEnded headingRef={headingRef} reason={cosignRefusalText(state.reason)} refusal={state.reason} />
+          )}
+        </>
+      );
+    }
+    const needsNewLink = NEEDS_NEW_LINK.includes(state.kind);
     return (
-      <JobOutcome
-        headingRef={headingRef}
-        title={t(`components.tx.kind.${action.kind}`)}
-        job={job}
-        refusalText={cosignRefusalText}
-        checking={checking}
-        checkFailed={checkFailed}
-        onRetry={() => {
-          checkOp.current += 1;
-          setChecking(false);
-          setCheckFailed(false);
-          setRun((value) => value + 1);
-        }}
-        onCheckAgain={() => void checkAgain(outcome)}
-      >
-        {asksForNewLink(job) ? <p className="text-sm font-medium">{t('cosign.newLink')}</p> : null}
-      </JobOutcome>
+      <>
+        <CosignHeader lead />
+        <JobOutcome
+          headingRef={headingRef}
+          title={t('cosign.result')}
+          job={job}
+          refusalText={cosignRefusalText}
+          reasonText={cosignReason}
+          checking={checking}
+          checkFailed={checkFailed}
+          // A link that failed needs a new link: "Ask the sender for a new link" is the one instruction, Back the way out.
+          onRetry={
+            needsNewLink
+              ? undefined
+              : () => {
+                  checkOp.current += 1;
+                  setChecking(false);
+                  setCheckFailed(false);
+                  setRun((value) => value + 1);
+                }
+          }
+          onCheckAgain={() => void checkAgain(outcome)}
+          exit={<BackHome variant="ghost" />}
+        >
+          {needsNewLink ? <p className="text-sm font-medium">{t('cosign.ended.body')}</p> : null}
+        </JobOutcome>
+      </>
     );
   }
 
@@ -137,71 +197,121 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
       : action.kind === 'rescue'
         ? { label: t('cosign.confirm.rescue') }
         : undefined;
-  const renderKeySlot = (role: WalletRole, address: Address) => <KeySlot role={role} mainKey={mainKey} expected={address} />;
+  // The key this step needs, connected here; with no wallet in this browser, the way to open the link in one.
+  const renderKeySlot = (role: WalletRole, address: Address) =>
+    wallets.length === 0 ? (
+      <OpenInWallet />
+    ) : (
+      <KeySlot role={role} mainKey={mainKey} expected={address} emphasis="primary" />
+    );
+  // Right above the sign button: the risk this wallet takes on (protect), and that the link may be old.
+  const risk = (
+    <div className="flex flex-col gap-2">
+      {action.kind === 'protect' ? <RiskNote risk="second-key-can-freeze" variant="inline" /> : null}
+      <p className="text-sm text-muted">{t('cosign.stale')}</p>
+    </div>
+  );
+  const before = snapshot?.jobs[target]?.before ?? null;
+  const feeShort = phase?.kind === 'prepare-failed' && phase.problem.kind === 'fee-balance' ? phase.problem : null;
   return (
-    <div className="flex flex-col gap-6">
-      <AskBlock summary={summary} />
-      <p className="max-w-prose text-sm text-muted">{t('cosign.stale')}</p>
-      {wallets.length === 0 ? <OpenInWallet /> : null}
+    <>
+      <CosignHeader lead />
+      <Request summary={summary} lamports={before?.lamports ?? null} />
       {tailStop ? (
         <Alert tone="info" role="note" data-slot="cosign-tail-hint">
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="text-foreground">{t('cosign.tailHint')}</AlertDescription>
         </Alert>
       ) : null}
-      <PageSigningPanel
-        session={session}
-        state={snapshot}
-        ids={ids}
-        roundSize={1}
-        // The link's action names every key; this device's slots never rename them.
-        knownRoles={actionRoles(action)}
-        renderKeySlot={renderKeySlot}
-        confirm={confirm}
-      />
-    </div>
+      {feeShort === null ? (
+        <PageSigningPanel
+          session={session}
+          state={snapshot}
+          ids={ids}
+          roundSize={1}
+          // The link's action names every key; this device's slots never rename them.
+          knownRoles={actionRoles(action)}
+          renderKeySlot={renderKeySlot}
+          confirm={confirm}
+          risk={risk}
+          summaryIntro={false}
+          hideSingleSigner
+        />
+      ) : (
+        // The fee payer is the sender's key, on their device: they add the SOL, this page tries again. Not red: nothing
+        // is wrong with the link (red on /cosign means "Do not sign").
+        <Alert tone="warning" data-slot="cosign-fee-short">
+          <TriangleAlertIcon aria-hidden="true" />
+          <AlertTitle>{t('cosign.feeShortTitle')}</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 text-foreground [&_p:not(:last-child)]:mb-0">
+            <p>{t('cosign.feeBalance', { role: roleLabel(feeShort.role), balance: formatSol(feeShort.balance) })}</p>
+            <AddressText address={feeShort.payer} variant="full" />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  session?.retryPrepare();
+                }}
+              >
+                <RotateCcwIcon aria-hidden="true" />
+                {t('common.tryAgain')}
+              </Button>
+              <BackHome variant="ghost" />
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
   );
 }
 
-/** What the link asks of this wallet, before anything else: the risk in plain words and the address it is about. */
-function AskBlock({ summary }: { summary: TransactionSummary }) {
+/** The role of the key that paid and signed before the link was made: who sent it. */
+function senderRole(summary: TransactionSummary): WalletRole {
+  const roles = actionRoles(summary.action);
+  const found = (Object.entries(roles) as [WalletRole, Address | undefined][]).find(([, address]) => address === summary.feePayer);
+  return found?.[0] ?? 'main';
+}
+
+/** What the link asks of this wallet, before anything else: the ask in plain words and the one address to check. */
+function Request({ summary, lamports }: { summary: TransactionSummary; lamports: bigint | null }) {
   const { action } = summary;
+  const common = { kind: action.kind, from: senderRole(summary) };
   switch (action.kind) {
-    case 'protect':
+    case 'protect': {
       // The holder of the second key learns, with the date, what they take on: the owner then needs their signature.
+      const date = formatUtcDate(action.lockUntil) ?? action.lockUntil.toString();
       return (
-        <div className="flex flex-col gap-3">
-          <Alert tone="info" role="note" data-slot="cosign-ask" data-kind="protect">
-            <InfoIcon aria-hidden="true" />
-            <AlertDescription className="text-foreground">
-              <p className="font-medium">
-                {t('cosign.ask.protect', { date: formatUtcDate(action.lockUntil) ?? action.lockUntil.toString() })}
-              </p>
-            </AlertDescription>
-          </Alert>
-          <RiskNote risk="second-key-can-freeze" />
-        </div>
+        <CosignRequest
+          {...common}
+          ask={t('cosign.ask.protect.title', { date })}
+          lines={[t('cosign.ask.protect.needs'), t('cosign.ask.protect.lose', { date }), t('cosign.ask.protect.cannot')]}
+          meta={lamports === null ? undefined : t('cosign.holds', { amount: formatSol(lamports) })}
+        />
       );
-    case 'withdraw':
-      return (
-        <Alert tone="danger" role="note" data-slot="cosign-ask" data-kind="withdraw">
-          <TriangleAlertIcon aria-hidden="true" />
-          <AlertDescription className="flex flex-col gap-2 text-foreground">
-            <p className="font-medium">{t('cosign.ask.withdraw')}</p>
-            <AddressText address={action.recipient} variant="full" />
-          </AlertDescription>
-        </Alert>
-      );
-    case 'rescue':
-      return (
-        <Alert tone="danger" role="note" data-slot="cosign-ask" data-kind="rescue">
-          <TriangleAlertIcon aria-hidden="true" />
-          <AlertDescription className="flex flex-col gap-2 text-foreground">
-            <p className="font-medium">{t('cosign.ask.rescue')}</p>
-            <AddressText address={action.newWallet} variant="full" />
-          </AlertDescription>
-        </Alert>
-      );
+    }
+    case 'withdraw': {
+      const check: CosignCheck = {
+        title: t('cosign.ask.withdraw.check'),
+        lines: [t('cosign.ask.withdraw.thief'), t('cosign.ask.withdraw.only')],
+        role: 'main',
+        address: action.recipient,
+      };
+      return <CosignRequest {...common} ask={t('cosign.ask.withdraw.title', { amount: formatSol(action.lamports) })} check={check} />;
+    }
+    case 'rescue': {
+      // A rescue link can leave the Main key to sign here (rescue/KeysStep.tsx `mainMode`): then the reader is the
+      // owner, who checks that the New wallet is their own, not someone who must ask the owner.
+      const mainSigns = missingSignatures(summary).includes(action.mainKey);
+      const check: CosignCheck = {
+        title: t('cosign.ask.rescue.check'),
+        lines: mainSigns
+          ? [t('cosign.ask.rescue.mine'), t('cosign.ask.rescue.mineOnly')]
+          : [t('cosign.ask.rescue.thief'), t('cosign.ask.rescue.only')],
+        role: 'new',
+        address: action.newWallet,
+      };
+      return <CosignRequest {...common} ask={t('cosign.ask.rescue.title')} check={check} />;
+    }
     default:
       // The link-format rules let only protect, withdraw and rescue through (read.ts).
       return null;
@@ -210,7 +320,7 @@ function AskBlock({ summary }: { summary: TransactionSummary }) {
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
-/** No wallet in this browser: the link has to be opened in the wallet app's own browser. */
+/** No wallet in this browser: the link has to be opened where one is (the wallet app's own browser, or an extension). */
 function OpenInWallet() {
   const [copyState, setCopyState] = useState<CopyState>('idle');
   async function copyPage() {
@@ -227,10 +337,10 @@ function OpenInWallet() {
     <div data-slot="cosign-no-wallet" className="flex flex-col items-start gap-2">
       <p className="text-sm font-medium">{t('cosign.openInWallet')}</p>
       <Button
-        variant="outline"
         onClick={() => {
           void copyPage();
         }}
+        className="w-full sm:w-auto"
       >
         <CopyIcon aria-hidden="true" />
         {t('cosign.copyPage')}
@@ -242,45 +352,70 @@ function OpenInWallet() {
   );
 }
 
+/**
+ * The chain no longer fits the link (used or cancelled, the stake changed or is gone): nothing was asked or signed.
+ * Says so and how to get a new link, with the way back (UX rule 8).
+ */
+function LinkEnded({ headingRef, reason, refusal }: { headingRef: Ref<HTMLHeadingElement>; reason: string; refusal: string }) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} data-slot="link-ended" data-reason={refusal} className="flex flex-col gap-3">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl text-balance outline-none">
+        <Link2OffIcon aria-hidden="true" className="size-6 shrink-0 text-muted" />
+        {t('cosign.ended.title')}
+      </h2>
+      <p className="max-w-prose font-medium">{reason}</p>
+      <p className="max-w-prose">{t('cosign.ended.body')}</p>
+      <div className="mt-1">
+        <BackHome />
+      </div>
+    </section>
+  );
+}
+
 /** The chain shows the change: sent from here (`done`), or already there before this device signed. */
 function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingElement>; job: JobView; clock: ChainClock | null }) {
   const headingId = useId();
   const knownSecondKeys = useKnownSecondKeys();
   const { state } = job;
-  if (state.kind === 'already-done') {
-    return (
-      <section aria-labelledby={headingId} data-slot="cosign-done" data-outcome="already" className="flex flex-col gap-3">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-          {t('cosign.already.title')}
-        </h2>
-        <p className="max-w-prose">{t('cosign.already.body')}</p>
-      </section>
-    );
-  }
+  const already = state.kind === 'already-done';
   const after = state.kind === 'done' ? state.after : null;
   const secondKey = job.action !== null ? actionRoles(job.action).second : undefined;
   const secondKeys = secondKey === undefined ? knownSecondKeys : [...knownSecondKeys, secondKey];
   const view = after === null || clock === null ? null : scannerStatus(after, secondKeys, clock);
+  let row: ReactNode = null;
+  if (after !== null && view !== null && clock !== null) {
+    row = (
+      <AccountRow
+        account={after}
+        activation={stakeActivationStatus(after.delegation, clock.epoch)}
+        clock={clock}
+        protection={view.status}
+        managedByService={view.managedByService}
+        secondKeyKnown={secondKeys.length > 0}
+        hint={false}
+        serviceDetail
+        className={SINGLE_ROW_FRAME}
+      />
+    );
+  }
   return (
-    <section aria-labelledby={headingId} data-slot="cosign-done" data-outcome="done" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold">
+    <section
+      aria-labelledby={headingId}
+      data-slot="cosign-done"
+      data-outcome={already ? 'already' : 'done'}
+      className="flex flex-col gap-4"
+    >
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl outline-none">
         <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
-        {t('cosign.done.title')}
+        {already ? t('cosign.already.title') : t('cosign.done.title')}
       </h2>
-      <p className="max-w-prose">{t('cosign.done.body')}</p>
-      <TransactionLink signature={job.signature} />
-      {after === null || view === null || clock === null ? null : (
-        <AccountRow
-          account={after}
-          activation={stakeActivationStatus(after.delegation, clock.epoch)}
-          clock={clock}
-          protection={view.status}
-          managedByService={view.managedByService}
-          secondKeyKnown={secondKeys.length > 0}
-          serviceDetail
-          className={SINGLE_ROW_FRAME}
-        />
-      )}
+      <p className="max-w-prose">{already ? t('cosign.already.body') : t('cosign.done.body')}</p>
+      {already ? null : <TransactionLink signature={job.signature} />}
+      {already ? null : row}
+      <div>
+        <BackHome variant="ghost" />
+      </div>
     </section>
   );
 }

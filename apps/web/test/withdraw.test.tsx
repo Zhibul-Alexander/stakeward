@@ -259,7 +259,7 @@ describe('/withdraw/:account: an uncertain outcome', () => {
       await screen.findByText('Waiting for the network to confirm. This usually takes a few seconds, at most 2 minutes.', undefined, WAIT);
       await user.click(screen.getByRole('button', { name: 'Stop waiting' }));
 
-      await heading('Withdrawal');
+      await heading('Not confirmed yet');
       const list = screen.getByRole('list', { name: 'Withdrawal' });
       expect(within(list).getByText('You stopped waiting. It may still go through: check again.')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
@@ -380,7 +380,7 @@ describe('/withdraw/:account: gates', () => {
       expect((await w.testChain.send(bytes, [w.A])).ok).toBe(true);
 
       await click(user, 'Review and sign');
-      await heading('Withdrawal');
+      await heading('Withdrawal not sent');
       const list = screen.getByRole('list', { name: 'Withdrawal' });
       expect(within(list).getByText('This stake is still staked or stopping. Wait until it is inactive.')).toBeInTheDocument();
       expect(main.requests).toHaveLength(0);

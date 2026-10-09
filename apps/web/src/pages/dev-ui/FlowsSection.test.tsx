@@ -56,27 +56,31 @@ describe('/dev/ui flows', () => {
     for (const path of qrPaths) expect(path.getAttribute('d')).toMatch(/^M\d/);
     expect(screen.getByText('Stopped checking after 30 minutes. The link still works.')).toBeInTheDocument();
     const [watching] = linkPanels();
-    expect(
-      [...(watching?.querySelectorAll('[data-slot="signer-list"] li') ?? [])].map((item) => item.getAttribute('data-status')),
-    ).toEqual(['signed', 'signed', 'link']);
+    // The link card leads; who signed here and who signs on the other device is one line under the folded summary.
+    expect(watching?.firstElementChild).toHaveAttribute('data-slot', 'link-card');
+    expect(watching?.querySelector('[data-slot="link-signers"]')).toHaveTextContent(
+      'New wallet and Main key signed here · Second key signs on the other device',
+    );
     expect(screen.getByLabelText('I checked this new wallet address with the owner by voice or in person, or it is mine')).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Sign in Sample Wallet as Second key' })).toHaveAttribute('aria-disabled', 'true');
-    // The link card's cancel slot, then the link-signing account's cards: set up (by link, for a rescue), close, cancel,
-    // refused, gate blocked.
+    // The link card's cancel opens inline (closed here: its card stays mounted but hidden until then), then the
+    // link-signing account's cards: set up (by link, for a rescue), close, cancel, refused, gate blocked.
     await waitFor(() => {
       expect(document.querySelectorAll('#link > div:last-child > figure')).toHaveLength(6);
     });
-    const cards = [...document.querySelectorAll('#link [data-slot="nonce-step"]')];
+    for (const inset of document.querySelectorAll('#link [data-slot="link-card"] [data-slot="nonce-step"]')) {
+      expect(inset.closest('[hidden]')).not.toBeNull();
+    }
+    const cards = [...document.querySelectorAll('#link > div:last-child [data-slot="nonce-step"]')];
     expect(cards.map((card) => `${card.getAttribute('data-mode') ?? ''}/${card.getAttribute('data-variant') ?? ''}`)).toEqual([
-      'close/cancel-link',
-      'close/cancel-link',
       'setup/close',
       'setup/rescue',
       'close/close',
       'close/cancel-link',
       'setup/close',
     ]);
-    expect(screen.getAllByRole('button', { name: 'Cancel the link' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Cancel the link' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Yes, cancel the link' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Create the link-signing account' })).toHaveLength(2);
     expect(screen.getByRole('heading', { name: 'Set up the link-signing account' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Close it' })).toBeInTheDocument();

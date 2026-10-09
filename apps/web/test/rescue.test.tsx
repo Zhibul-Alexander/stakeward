@@ -434,9 +434,9 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       // not that the account is for signing on another device.
       const setup = (await heading('Set up the link-signing account')).closest('section') as HTMLElement;
       expect(setup).toHaveTextContent(
-        'Rescue always uses a link-signing account: it keeps each transaction valid while three wallets sign, here or on another device.',
+        'Rescue always signs through a small signing account, so three wallets have time to sign.',
       );
-      expect(screen.queryByText(/^Signing on another device needs/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^A link needs a small signing account/)).not.toBeInTheDocument();
       await setUpNonce(user);
       const nonceD = await deriveNonceAccountAddress(w.D.address);
       await signRound(user, 1, 3);
@@ -569,7 +569,7 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
         // The other device: only the second key's wallet, its own key slots.
         const other = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K] });
         const cosign = renderCosignPage(w.chain, new URL(url).hash, [other]);
-        await cosign.view.findByText(en.cosign.ask.rescue, undefined, WAIT);
+        await cosign.view.findByText(en.cosign.ask.rescue.title, undefined, WAIT);
         expect(cosign.view.getAllByText(w.D.address).length).toBeGreaterThan(0);
         await connectAndContinue(cosign.user, 'Second key', 'Second Wallet', cosign.view);
         if (account === S1) {

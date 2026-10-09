@@ -42,7 +42,7 @@ describe('ProtectDoneView with a link still open', () => {
     expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'A link is still open, so the rest waits for it. When the other device has sent it, or you cancelled it by closing your link-signing account, press Check again, then try the rest.',
+        'A link is still open, so the rest waits for it. Once the other device sent it, or you cancelled it by closing your link-signing account, press Check again. Then try the rest.',
       ),
     ).toBeInTheDocument();
   });

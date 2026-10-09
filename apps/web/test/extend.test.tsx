@@ -428,7 +428,7 @@ describe('/extend/:account: gates', () => {
       await user.click(await radio(period('10 minutes (devnet test)', T2)));
       w.testChain.advanceTime(545n); // past T2 - 60, the lock still in force
       await click(user, 'Review and sign');
-      await heading('Lock change');
+      await heading('Lock change not sent');
       const list = screen.getByRole('list', { name: 'Lock change' });
       expect(within(list).getByText('The chosen end is too close or has passed. Choose again.')).toBeInTheDocument();
       expect(second.requests).toHaveLength(0);
