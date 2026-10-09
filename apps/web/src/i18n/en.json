@@ -436,9 +436,9 @@
     "empty": {
       "noAccountsTitle": "No stake accounts found",
       "noAccountsFor": "Checked address:",
-      "nativeStake": "Stakeward protects native stake: SOL you delegated to a validator from your own wallet, held in a stake account that your keys control.",
-      "notStake": "Liquid staking tokens (LSTs), stake on an exchange and SOL in your wallet balance are not stake accounts, so there is nothing here to lock.",
-      "checkMainKey": "If you do stake from a wallet, enter the address of its main key: the wallet that can withdraw the stake."
+      "nativeStake": "Stakeward protects native stake: SOL you staked from your own wallet.",
+      "notStake": "Liquid staking tokens (LSTs), exchange stake and wallet balance have nothing to lock.",
+      "checkMainKey": "Staked from a wallet? Paste the wallet that can withdraw it."
     },
     "signerList": {
       "title": "{n}. {role} in {wallet}",
@@ -849,51 +849,66 @@
   },
   "app": {
     "title": "Your stake accounts",
-    "intro": "Check the native stake of any wallet by its address. Looking needs no wallet and signs nothing.",
+    "intro": "Paste any wallet address to see its stake. Looking and connecting sign nothing.",
     "form": {
-      "label": "Main key address",
-      "hint": "The wallet that can withdraw the stake.",
-      "placeholder": "Paste a wallet address",
+      "label": "Wallet address",
+      "hint": "The wallet you staked from, or your second key.",
+      "placeholder": "Paste an address",
       "submit": "Check",
+      "pending": "Press Check to show this address.",
+      "shownBelow": "Shown below:",
       "empty": "Paste a wallet address first.",
       "invalid": "This is not a Solana address. Check it: it should be 32 to 44 letters and digits.",
       "zero": "This is the System Program, not a wallet. Paste the address of the wallet that holds the stake."
     },
     "connect": {
-      "mainTitle": "Or connect your main key",
-      "mainDescription": "Shows the stake of the connected wallet. Connecting signs nothing.",
-      "secondTitle": "Is this lock yours?",
-      "secondDescription": "Connect your second key to see which locks it holds. Connecting signs nothing.",
+      "mainButton": "Connect main key",
+      "secondButton": "Connect second key",
       "noAccount": "The wallet did not share an account. Unlock it, then try again."
     },
     "results": {
-      "mainKey": "Main key",
       "refresh": "Refresh",
       "telegram": "Get alerts in Telegram",
       "loading": "Reading stake accounts from the network",
       "errorTitle": "Could not load the stake accounts",
-      "countOne": "1 stake account",
-      "countOther": "{count} stake accounts",
       "announceNone": "No stake accounts found",
       "announceOne": "Found 1 stake account",
       "announceOther": "Found {count} stake accounts",
-      "total": "{amount} in total",
-      "protected": "{amount} protected",
-      "rescueNote": "Main key stolen or seen by someone else?",
+      "rescueNote": "Main key stolen?",
       "rescue": "Rescue your stake"
     },
-    "lists": {
-      "main": "Stake accounts",
-      "mainNote": "This address is their main key: it can withdraw them.",
-      "noneOwned": "No stake account has this address as its main key.",
+    "summary": {
+      "label": "Summary",
+      "headline": "{protected} of {total} SOL protected",
+      "accountsOne": "{protected} of 1 stake account",
+      "accounts": "{protected} of {count} stake accounts",
+      "unconfirmed": "{amount} SOL locked by a second key not connected here",
+      "secondKeyForOne": "Second key for 1 stake account",
+      "secondKeyForOther": "Second key for {count} stake accounts"
+    },
+    "groups": {
+      "attention": "Needs attention",
+      "protected": "Protected",
+      "locked": "Locked by another key",
+      "lockedUnknown": "Locked by a second key",
       "secondKeyFor": "You are the second key for",
-      "secondKeyForNote": "This address holds the lock on these accounts. It can extend or remove the lock; the SOL stays with their main key."
+      "count": "{count} · {amount}",
+      "attentionEnding": "Once a lock ends, anyone with your main key can withdraw the stake.",
+      "attentionOpenOrEnding": "Without a lock, or once it ends, anyone with your main key can withdraw the stake.",
+      "protectedNote": "Withdrawing or changing the owner needs your second key until the date shown.",
+      "secondKeyForNote": "This wallet holds their lock. It can extend or remove it. It cannot move their SOL."
+    },
+    "lists": {
+      "noneOwned": "No stake account has this address as its main key."
     },
     "actions": {
       "protect": "Protect",
       "protectAgain": "Protect again",
+      "protectGroupOne": "Protect 1 account",
+      "protectGroupOther": "Protect {count} accounts",
       "extend": "Extend",
       "withdraw": "Withdraw",
+      "rescue": "Rescue",
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
       "more": "More for stake account {address}"

@@ -43,6 +43,10 @@ function fixture(searches: string[] = []): ApiFixture {
   return { accounts: [...BY_MAIN_KEY, ...BY_SECOND_KEY], searches };
 }
 
+/** Visible filled buttons (primary and danger), as e2e/screen-metrics.ts counts them. */
+const filledButtons = (page: Page) =>
+  page.locator('[data-slot="button"][data-variant="primary"]:visible, [data-slot="button"][data-variant="danger"]:visible');
+
 async function noHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBe(0);
@@ -65,8 +69,11 @@ test('/app without an address: a form, then the stake of the address it checked'
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/app');
   await expect(page.getByRole('heading', { level: 1, name: 'Your stake accounts' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Main key address' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect a wallet as Main key' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Wallet address' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Main key' }).getByRole('button', { name: 'Connect main key' })).toBeVisible();
+  // One filled button: Check, while nothing is shown yet (D109).
+  await expect(filledButtons(page)).toHaveCount(1);
+  await expect(filledButtons(page)).toHaveText('Check');
   expect(requests).toEqual([]);
 
   await noHorizontalScroll(page);
@@ -76,7 +83,7 @@ test('/app without an address: a form, then the stake of the address it checked'
   await screenshot(page, 'app-empty');
 
   // A wrong paste is caught on the page; a right one goes into the URL and is read.
-  const field = page.getByRole('textbox', { name: 'Main key address' });
+  const field = page.getByRole('textbox', { name: 'Wallet address' });
   await field.fill('not an address');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('alert')).toContainText('This is not a Solana address.');
@@ -107,10 +114,38 @@ test('/app?address= shows every status, the red banner and the second-key list',
   await expect(banner).toContainText('1 stake account is no longer protected');
   await expect(banner.getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${STAKE.ended}`);
 
-  const secondList = page.locator('section', { has: page.getByRole('heading', { name: 'You are the second key for' }) });
+  // The banner is the page's one filled button; the group's "Protect 2 accounts" (the F6 account and the open one, not
+  // the one a staking service may manage) is outline while it shows (D109).
+  await expect(filledButtons(page)).toHaveCount(1);
+  await expect(filledButtons(page)).toHaveText('Protect again');
+  const section = (name: string) => page.locator('section', { has: page.getByRole('heading', { level: 2, name, exact: true }) });
+  const attention = section('Needs attention');
+  await expect(attention.getByRole('article')).toHaveCount(4);
+  await expect(attention.getByRole('link', { name: 'Protect 2 accounts' })).toHaveAttribute(
+    'href',
+    `/protect?account=${STAKE.ended}&account=${STAKE.open}`,
+  );
+  await expect(section('Protected').getByRole('article')).toHaveCount(1);
+  await expect(section('Locked by another key').getByRole('article')).toHaveCount(1);
+  const secondList = section('You are the second key for');
   await expect(secondList.getByRole('article')).toHaveCount(1);
-  await expect(page.getByText('6 stake accounts', { exact: true })).toBeVisible();
+
+  // The answer first: SOL and accounts under the viewer's own lock, out of all of them.
+  const summary = page.getByRole('region', { name: 'Summary' });
+  await expect(summary).toContainText('1,293.25 of 1,490.45 SOL protected');
+  await expect(summary.getByText('2 of 6 stake accounts', { exact: true })).toBeVisible();
+  // The answer starts on the first screen of a phone, without scrolling (D109).
+  const headline = await summary.getByText('1,293.25 of 1,490.45 SOL protected').boundingBox();
+  expect(headline?.y ?? Infinity).toBeLessThan(740);
   await expect(page.locator('[data-slot="monitoring"]')).toHaveText('Last checked 2 min ago');
+  // "Main key stolen? Rescue your stake" in one line: beside the answer from 640 px, under it at 360.
+  const rescueLines = await summary.getByRole('link', { name: 'Rescue your stake' }).evaluate((link) => {
+    const line = link.parentElement ?? link;
+    const style = getComputedStyle(line);
+    const content = line.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    return Math.round(content / parseFloat(style.lineHeight));
+  });
+  expect(rescueLines).toBe(1);
   // Alerts for this main key: the worker redirects to its bot with /start <address>, in a new tab.
   const telegram = page.getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
   await expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${MAIN}`);
@@ -123,7 +158,8 @@ test('/app?address= shows every status, the red banner and the second-key list',
   await expectNoA11yViolations();
   await screenshot(page, 'app-accounts');
 
-  // Actions are links to their pages.
+  // Actions are links to their pages; a row's own Protect is behind its More, as the group's button covers it.
+  await row(STAKE.open).getByRole('button', { name: /^More for stake account/ }).click();
   await row(STAKE.open).getByRole('link', { name: /^Protect stake account/ }).click();
   await expect(page).toHaveURL(`/protect?account=${STAKE.open}`);
   await expect(page.getByRole('heading', { level: 1, name: 'Protect your stake' })).toBeVisible();

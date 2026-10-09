@@ -125,6 +125,6 @@ describe('/app reads fresh state behind the cached stake account search', () => 
     );
     await screen.findByRole('article', { name: `Stake account ${shortAddress(kept)}` });
     expect(screen.getAllByRole('article')).toHaveLength(1);
-    expect(screen.getByText('1 stake account')).toBeInTheDocument();
+    expect(screen.getByText('0 of 1 stake account')).toBeInTheDocument();
   });
 });

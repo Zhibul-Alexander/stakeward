@@ -196,10 +196,11 @@ describe('/app "Is this lock yours?" by address (CLAUDE.md section 6, F1: K must
     const { ports } = renderApp(`/app?address=${A}`, stubChain(accounts), () => Promise.resolve({ lastMonitorRunAt: new Date() }), [
       wallet,
     ]);
-    const heading = await screen.findByRole('heading', { level: 2, name: 'Is this lock yours?' });
+    // Since D109 the Second key slot heads the group "Locked by a second key" (it was "Is this lock yours?").
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Locked by a second key' });
     const confirm = heading.closest('section');
     if (confirm === null) throw new Error('no section');
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Connect a wallet as Second key' }));
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Connect second key' }));
     await userEvent.click(within(confirm).getByRole('button', { name: 'Main Wallet' }));
 
     // Fails today: A fills the Second key slot, and the owner's own lock (held by K) flips to "Locked by another key".

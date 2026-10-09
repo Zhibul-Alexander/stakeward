@@ -23,7 +23,7 @@ function Line({ state, icon: Icon, tone, children }: { state: string; icon: Luci
     <p
       data-slot="monitoring"
       data-state={state}
-      className={cn('flex items-center gap-1.5 text-sm', tone === 'danger' ? 'font-medium text-danger' : 'text-muted')}
+      className={cn('flex items-center gap-1.5 text-sm text-pretty', tone === 'danger' ? 'font-medium text-danger' : 'text-muted')}
     >
       <Icon aria-hidden="true" className="size-4 shrink-0" />
       {children}

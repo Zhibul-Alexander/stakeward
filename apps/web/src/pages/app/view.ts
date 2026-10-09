@@ -37,7 +37,45 @@ export type AccountsView = {
    * offer to connect the second key.
    */
   unconfirmedLock: boolean;
+  /**
+   * SOL of owned accounts locked by a second key while this browser knows none (a new device): said next to the total,
+   * never added to the protected SOL (D14, D35, D102).
+   */
+  lockedUnconfirmedLamports: bigint;
+  /** The rows grouped by what they ask of the viewer, each group most urgent first (DECISIONS.md D109). */
+  groups: AccountGroups;
+  /** The screen's one filled button, or none when nothing needs doing (D109). */
+  primaryAction: PrimaryAction;
 };
+
+/**
+ * The page's groups. Every owned row is in exactly one of the first three; the fourth is `secondKeyFor`.
+ */
+export type AccountGroups = {
+  /**
+   * What to act on: locks that ended (F6), locks that end soon, accounts without a lock, and locked accounts whose stake
+   * key is another key (a thief with the main key changes it first, SECURITY-CHECK П6).
+   */
+  attention: AccountView[];
+  /** Locked by a second key this browser knows, nothing to do. */
+  protected: AccountView[];
+  /** Locked by a key this browser does not hold: view only (D14, D35, D102). */
+  locked: AccountView[];
+  /** The address holds their lock as second key. */
+  secondKeyFor: AccountView[];
+};
+
+/**
+ * The screen's one filled button (D109), most urgent first: the F6 banner's Protect again, then Rescue on the first
+ * row whose stake key changed under the viewer's own lock (the sign of a stolen main key, SECURITY-CHECK П6), then
+ * protecting the accounts of Needs attention in one go, then extending the lock that ends first.
+ */
+export type PrimaryAction =
+  | { kind: 'protect-again'; accounts: Address[] }
+  | { kind: 'rescue'; account: Address }
+  | { kind: 'protect-group'; accounts: Address[] }
+  | { kind: 'extend'; account: Address }
+  | null;
 
 export type AccountsViewInput = {
   /** The main key whose stake is shown. */
@@ -103,6 +141,8 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
 
   // Protected or Expiring means the lock is held by a known second key (core `scannerStatus`, D14).
   const isLocked = (view: AccountView) => view.protection === 'protected' || view.protection === 'expiring';
+  const groups = groupAccounts(ownedViews, secondKeyViews);
+  const noLongerProtected = ownedViews.filter((view) => view.wasProtected).map((view) => view.account.address);
   return {
     owned: ownedViews,
     secondKeyFor: secondKeyViews,
@@ -111,10 +151,68 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
       lamports: sum(ownedViews),
       protectedLamports: sum(ownedViews.filter(isLocked)),
     },
-    noLongerProtected: ownedViews.filter((view) => view.wasProtected).map((view) => view.account.address),
+    noLongerProtected,
     confirmedProtected: ownedViews.filter(isLocked).map((view) => view.account.address),
     unconfirmedLock: ownedViews.some((view) => view.protection === 'locked-by-other'),
+    lockedUnconfirmedLamports: sum(groups.locked.filter((view) => !view.secondKeyKnown)),
+    groups,
+    primaryAction: choosePrimaryAction(noLongerProtected, groups),
   };
+}
+
+/** Another stake key under the viewer's own lock: what a thief with the main key does first (SECURITY-CHECK П6). */
+export function stakeKeyChanged(view: AccountView): boolean {
+  return view.managedByService && (view.protection === 'protected' || view.protection === 'expiring');
+}
+
+/**
+ * The accounts of Needs attention that "Protect N accounts" takes to the wizard: every one without a lock, except
+ * those a staking service may manage (the lock may stop the service; their own row keeps its Protect).
+ */
+export function protectableInGroup(attention: readonly AccountView[]): Address[] {
+  return attention
+    .filter((view) => view.protection === 'unprotected' && !view.managedByService)
+    .map((view) => view.account.address);
+}
+
+/**
+ * What Needs attention says once for its rows (D109), worded so it is true of every row it covers: without a lock the
+ * main key alone withdraws now (`open`); a lock that ends soon allows it once it ends (`ending`); both kinds, or open
+ * rows next to a changed stake key, get the sentence that covers both (`open-or-ending`). A changed stake key alone
+ * says its own warning on the row (null).
+ */
+export function attentionNote(attention: readonly AccountView[]): 'open' | 'ending' | 'open-or-ending' | null {
+  const open = attention.some((view) => view.protection === 'unprotected');
+  const locked = attention.some((view) => view.protection !== 'unprotected');
+  if (open) return locked ? 'open-or-ending' : 'open';
+  return attention.some((view) => view.protection === 'expiring') ? 'ending' : null;
+}
+
+/** Groups keep the order of their input, which is already most urgent first. */
+function groupAccounts(owned: readonly AccountView[], secondKeyFor: AccountView[]): AccountGroups {
+  const groups: AccountGroups = { attention: [], protected: [], locked: [], secondKeyFor };
+  for (const view of owned) {
+    if (view.protection === 'locked-by-other') groups.locked.push(view);
+    else if (view.protection === 'protected' && !stakeKeyChanged(view)) groups.protected.push(view);
+    else groups.attention.push(view);
+  }
+  return groups;
+}
+
+function choosePrimaryAction(noLongerProtected: Address[], groups: AccountGroups): PrimaryAction {
+  if (noLongerProtected.length > 0) return { kind: 'protect-again', accounts: noLongerProtected };
+  // Never a calm Extend, least of all on another wallet's stake, while the viewer's own stake shows this warning.
+  const changed = groups.attention.find(stakeKeyChanged);
+  if (changed !== undefined) return { kind: 'rescue', account: changed.account.address };
+  const protectable = protectableInGroup(groups.attention);
+  if (protectable.length > 0) return { kind: 'protect-group', accounts: protectable };
+  // The lock that ends first, of the viewer's own stake or of a stake whose lock the address holds.
+  let first: AccountView | null = null;
+  for (const view of [...groups.attention, ...groups.secondKeyFor]) {
+    if (view.protection !== 'expiring') continue;
+    if (first === null || view.account.lockup.unixTimestamp < first.account.lockup.unixTimestamp) first = view;
+  }
+  return first === null ? null : { kind: 'extend', account: first.account.address };
 }
 
 function byUrgency(a: AccountView, b: AccountView): number {

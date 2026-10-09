@@ -1,7 +1,8 @@
 import { isAddress, type Address } from '@solana/kit';
 import { ZERO_ADDRESS } from '@stakeward/core';
 import { SearchIcon } from 'lucide-react';
-import { useId, useRef, useState } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
+import { AddressText } from '@/components/product/address-text';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,11 +25,29 @@ export function isCheckableAddress(text: string): text is Address {
 /** An address from the URL that is not one says so right away; an empty field only after a submit. */
 const initialProblem = (value: string) => (value === '' ? null : problemOf(value));
 
+type AddressFormProps = {
+  /** The address in the URL: when it changes (history back and forth, a connected main key) the field follows it. */
+  value: string;
+  /**
+   * The address whose stake the page shows under the form, if any. While the field is edited away from it, a muted line
+   * names it and says to press Check: the results, Telegram and Rescue are still that address's.
+   */
+  resultsFor?: Address | null | undefined;
+  onSubmit: (address: Address) => void;
+  /** Check is the screen's one filled button only while nothing is shown yet (DECISIONS.md D109). */
+  emphasis?: 'primary' | 'outline' | undefined;
+  /**
+   * Beside the field, outside the form (its buttons must not submit it): the other way to show stake, connecting the
+   * main key. Next to the field from 768 px, under it below.
+   */
+  aside?: ReactNode;
+};
+
 /**
- * Paste an address, check it, show its stake (UX rule 1: look first, connect later). `value` is the address in the
- * URL: when it changes (history back and forth, a connected main key) the field follows it.
+ * Paste an address, check it, show its stake (UX rule 1: look first, connect later). The label and hint sit above the
+ * field and `aside`, so the field and the connect button start on one line.
  */
-export function AddressForm({ value, onSubmit }: { value: string; onSubmit: (address: Address) => void }) {
+export function AddressForm({ value, resultsFor, onSubmit, emphasis = 'primary', aside }: AddressFormProps) {
   const [text, setText] = useState(value);
   const [problem, setProblem] = useState<Problem | null>(() => initialProblem(value));
   const [shown, setShown] = useState(value);
@@ -41,57 +60,81 @@ export function AddressForm({ value, onSubmit }: { value: string; onSubmit: (add
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
+  const pendingId = `${id}-pending`;
+  const typed = text.trim();
+  const pending = resultsFor !== undefined && resultsFor !== null && typed !== resultsFor;
+  const describedBy = [hintId, pending ? pendingId : null, problem === null ? null : errorId]
+    .filter((part) => part !== null)
+    .join(' ');
 
   return (
-    <form
-      noValidate
-      className="flex flex-col gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const address = text.trim();
-        const found = problemOf(address);
-        setProblem(found);
-        if (found !== null) {
-          input.current?.focus();
-          return;
-        }
-        setText(address);
-        onSubmit(address as Address);
-      }}
-    >
-      <Label htmlFor={id}>{t('app.form.label')}</Label>
-      <p id={hintId} className="text-sm text-muted">
-        {t('app.form.hint')}
-      </p>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
-          ref={input}
-          id={id}
-          name="address"
-          type="text"
-          value={text}
-          placeholder={t('app.form.placeholder')}
-          autoComplete="off"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-invalid={problem !== null}
-          aria-describedby={problem === null ? hintId : `${hintId} ${errorId}`}
-          className="font-mono"
-          onChange={(event) => {
-            setText(event.target.value);
-          }}
-        />
-        <Button type="submit" className="sm:w-auto">
-          <SearchIcon aria-hidden="true" />
-          {t('app.form.submit')}
-        </Button>
-      </div>
-      {problem === null ? null : (
-        <p id={errorId} role="alert" className="text-sm font-medium text-danger">
-          {t(problem === 'empty' ? 'app.form.empty' : problem === 'zero' ? 'app.form.zero' : 'app.form.invalid')}
+    <div className="flex flex-col gap-2">
+      {/* Label and hint share a line where they fit: the answer starts a line higher. */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <Label htmlFor={id}>{t('app.form.label')}</Label>
+        <p id={hintId} className="text-sm text-muted">
+          {t('app.form.hint')}
         </p>
-      )}
-    </form>
+      </div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+        <form
+          noValidate
+          className="flex min-w-0 flex-1 flex-col gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const address = text.trim();
+            const found = problemOf(address);
+            setProblem(found);
+            if (found !== null) {
+              input.current?.focus();
+              return;
+            }
+            setText(address);
+            onSubmit(address as Address);
+          }}
+        >
+          {/* Field and Check share a line at every width: the answer starts higher on a phone. */}
+          <div className="flex gap-2">
+            <Input
+              ref={input}
+              id={id}
+              name="address"
+              type="text"
+              value={text}
+              placeholder={t('app.form.placeholder')}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={problem !== null}
+              aria-describedby={describedBy}
+              className="font-mono"
+              onChange={(event) => {
+                setText(event.target.value);
+              }}
+            />
+            <Button type="submit" variant={emphasis}>
+              <SearchIcon aria-hidden="true" />
+              {t('app.form.submit')}
+            </Button>
+          </div>
+          {problem === null ? null : (
+            <p id={errorId} role="alert" className="text-sm font-medium text-danger">
+              {t(problem === 'empty' ? 'app.form.empty' : problem === 'zero' ? 'app.form.zero' : 'app.form.invalid')}
+            </p>
+          )}
+          {pending ? (
+            <p id={pendingId} data-slot="field-pending" className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
+              {typed === '' ? null : <span>{t('app.form.pending')}</span>}
+              <span className="inline-flex flex-wrap items-center gap-x-1">
+                <span>{t('app.form.shownBelow')}</span>
+                <AddressText address={resultsFor} />
+              </span>
+            </p>
+          ) : null}
+        </form>
+        {aside === undefined ? null : <div className="shrink-0">{aside}</div>}
+      </div>
+    </div>
   );
 }
