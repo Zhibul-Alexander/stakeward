@@ -4,7 +4,6 @@ import { CircleCheckIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AddressText } from '@/components/product/address-text';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { isLanded } from '@/pages/account/check';
@@ -75,23 +74,22 @@ export function WithdrawDone(props: WithdrawDoneProps) {
     // activation epoch = deactivation epoch), so the withdrawal is open now, not at the epoch's end.
     const after = job.state.kind === 'done' || job.state.kind === 'already-done' ? job.state.after : null;
     const stoppedAtOnce = after?.delegation !== null && after?.delegation !== undefined && after.delegation.activationEpoch === after.delegation.deactivationEpoch;
+    // One line with its transaction (DECISIONS.md D109): the stage below says what comes next, from a fresh read.
     return (
-      <Alert tone="success" role="status" data-slot="withdraw-done">
-        <CircleCheckIcon aria-hidden="true" />
-        <AlertDescription className="flex flex-col gap-2 text-foreground">
-          <h2 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
-            {stoppedAtOnce ? t('withdraw.done.deactivatedNow') : t('withdraw.done.deactivated')}
-          </h2>
-          <TransactionLink signature={job.signature} />
-        </AlertDescription>
-      </Alert>
+      <div role="status" data-slot="withdraw-done" className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <h2 ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-base font-medium">
+          <CircleCheckIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-success" />
+          {stoppedAtOnce ? t('withdraw.done.deactivatedNow') : t('withdraw.done.deactivated')}
+        </h2>
+        <TransactionLink signature={job.signature} />
+      </div>
     );
   }
   const amount = job.action?.kind === 'withdraw' ? job.action.lamports : (job.before?.lamports ?? null);
   return (
     <section aria-labelledby={headingId} data-slot="withdraw-done" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold">
-        <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl font-semibold">
+        <CircleCheckIcon aria-hidden="true" className="mt-1 size-6 shrink-0 text-success" />
         {t('withdraw.done.title', { amount: amount === null ? '' : formatSol(amount) })}
       </h2>
       <TransactionLink signature={job.signature} />

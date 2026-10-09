@@ -1,4 +1,5 @@
-import { scannerStatus, stakeActivationStatus, type StakeAccount } from '@stakeward/core';
+import type { Address } from '@solana/kit';
+import { scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
 import { CircleAlertIcon, LoaderCircleIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { AccountListSkeleton, AccountRow, SINGLE_ROW_FRAME } from '@/components/product/account-row';
@@ -21,6 +22,15 @@ export function loadedAccount(load: Load<AccountState>): LoadedAccount | null {
   if (load.status !== 'ready') return null;
   const { account } = load.value;
   return account === null ? null : { ...load.value, account };
+}
+
+/**
+ * The account is under the viewer's own lock (a second key this device knows): then another staking key is a sign of
+ * theft, which the row says with its own warning line (SECURITY-CHECK П6), not a staking service.
+ */
+export function underOwnLock(account: StakeAccount, knownSecondKeys: readonly Address[], clock: ClockView): boolean {
+  const { status } = scannerStatus(account, knownSecondKeys, clock);
+  return status === 'protected' || status === 'expiring';
 }
 
 /** `/app`, the way out of a stake account page with nothing to act on. */
@@ -53,14 +63,22 @@ type AccountViewProps = {
   onRetry: () => void;
   /** Say nothing about a missing account (a page whose Done screen already says the account is gone). */
   hideNotFound?: boolean | undefined;
+  /**
+   * The row's staking-service line (default true). False while the page's own block says who manages staking, with the
+   * way out (/withdraw's `service-staker` stage): the row leaves out its service line and the Rescue link of its theft
+   * line, so the page has one warning block and one Rescue. The sign of theft itself (another stake key under the
+   * viewer's own lock) always stays.
+   */
+  service?: boolean | undefined;
 };
 
 /**
  * The account part of /withdraw/:account and /extend/:account (step 6 spec 4.3), the same on both pages: the read's
- * states (loading, error with Try again, no account, not a stake account), then the account's row with its staking
- * state and its protection as this device knows it.
+ * states (loading, error with Try again and the way back, no account, not a stake account), then the account as one
+ * compact row under the page's title (DECISIONS.md D109): its status, staking state and SOL, with no hint, actions or
+ * More, since the page below is the action.
  */
-export function AccountView({ load, onRetry, hideNotFound = false }: AccountViewProps) {
+export function AccountView({ load, onRetry, hideNotFound = false, service = true }: AccountViewProps) {
   const knownSecondKeys = useKnownSecondKeys();
   switch (load.status) {
     case 'idle':
@@ -82,6 +100,11 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
           message={errorMessage(load.error)}
           detail={load.error.detail}
           onRetry={onRetry}
+          actions={
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/app">{t('common.backToAccounts')}</Link>
+            </Button>
+          }
         />
       );
     case 'ready': {
@@ -103,15 +126,19 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
         );
       }
       const view = scannerStatus(account, knownSecondKeys, clock);
+      // Under the viewer's own lock, staker != withdrawer is a sign of theft (AccountRow says so): it stays on every
+      // page. Without one it is a staking service, which /withdraw's service-staker block says itself.
+      const ownLock = underOwnLock(account, knownSecondKeys, clock);
       return (
         <AccountRow
           account={account}
           activation={stakeActivationStatus(account.delegation, clock.epoch)}
           clock={clock}
           protection={view.status}
-          managedByService={view.managedByService}
+          managedByService={view.managedByService && (service || ownLock)}
           secondKeyKnown={knownSecondKeys.length > 0}
-          rescueHref={appLinks.rescue(account.withdrawer)}
+          rescueHref={service ? appLinks.rescue(account.withdrawer) : undefined}
+          hint={false}
           serviceDetail
           className={SINGLE_ROW_FRAME}
         />

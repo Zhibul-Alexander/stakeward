@@ -70,15 +70,18 @@ export function ExtendSigning({
   const restartable = snapshot !== null && backKind(snapshot) !== null;
   const mainPays = feePayer !== undefined && feePayer !== secondKey && rent0.status === 'ready' && restartable;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
         {title}
       </h2>
       {mainPays ? (
         <Alert tone="info" role="note">
           <InfoIcon aria-hidden="true" />
           <AlertDescription className="flex flex-col gap-3 text-foreground">
-            <p>{t('extend.mainPays', { amount: formatSol(networkFeeFor(1) + rent0.value) })}</p>
+            <div>
+              <p>{t('extend.mainPays')}</p>
+              <p>{t('extend.mainPaysAlone', { amount: formatSol(networkFeeFor(1) + rent0.value) })}</p>
+            </div>
             <p className="font-medium">{t('extend.mainPaysStolen')}</p>
             <div>
               <Button variant="outline" size="sm" onClick={onCheckAgain}>

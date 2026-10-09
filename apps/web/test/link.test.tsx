@@ -60,9 +60,9 @@ async function openLink(w: World, page: StakePage): Promise<string> {
   await view.findByRole('heading', { name: `Withdraw ${formatSol(lamports)} to your main key` }, WAIT);
   const where = view.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
   await user.click(within(where).getByRole('radio', { name: 'On another device, by link' }));
-  // The phone note stays, now with the link as one more way (UX rule 10).
-  expect(view.getByText(en.withdraw.desktop)).toBeInTheDocument();
-  await click(user, 'Review and sign', view);
+  // The phone note stays (UX rule 10), now on the "In this browser" option itself, next to the link as one more way.
+  expect(within(where).getByRole('radio', { name: 'In this browser' })).toHaveAccessibleDescription(en.signing.where.hereHint);
+  await click(user, 'Review withdrawal', view);
 
   // The link-signing account first: the main key creates it, nothing else is built before it exists.
   await view.findByRole('heading', { name: en.nonce.setup.title }, WAIT);

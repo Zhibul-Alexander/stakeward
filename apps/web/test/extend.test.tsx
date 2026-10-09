@@ -64,7 +64,13 @@ function secondWallet(w: World): Promise<TestWalletPort> {
 
 const radio = (name: string | RegExp) => screen.findByRole('radio', { name }, WAIT);
 const heading = (name: string | RegExp) => screen.findByRole('heading', { name }, WAIT);
-const period = (label: string, until: bigint) => `${label}: until ${formatUtcDate(until) ?? ''}`;
+
+/** A period's radio card: named by its period, described by its end date (DECISIONS.md D109). */
+async function periodRadio(title: string, until: bigint): Promise<HTMLElement> {
+  const found = await radio(title);
+  expect(found).toHaveAccessibleDescription(`until ${formatUtcDate(until) ?? ''}`);
+  return found;
+}
 
 async function theSummary(): Promise<HTMLElement> {
   return waitFor(() => {
@@ -83,24 +89,29 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const second = await secondWallet(w);
       const { user, ports } = renderStakePage(w.chain, `/extend/${S}`, [second]);
 
-      // Only the periods that end later than the lock now.
-      expect(await radio(period('6 months', SIX_MONTHS))).toBeChecked();
-      expect(screen.getByRole('radio', { name: period('12 months', TWELVE_MONTHS) })).toBeInTheDocument();
+      // Only the periods that end later than the lock now; 6 months is the default and says it is recommended.
+      const six = await periodRadio('6 months', SIX_MONTHS);
+      expect(six).toBeChecked();
+      expect(within(six.closest('[data-slot="radio-card"]') as HTMLElement).getByText('Recommended')).toBeInTheDocument();
+      await periodRadio('12 months', TWELVE_MONTHS);
       expect(screen.getByRole('radio', { name: 'Remove the lock now' })).toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: /^1 month/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: /^3 months/ })).not.toBeInTheDocument();
-      expect(screen.getByText(`Locked until ${formatUtcDate(T) ?? ''}. Held by this second key:`)).toBeInTheDocument();
-      expect(screen.getAllByText(w.K.address).length).toBeGreaterThan(0);
+      // The lock's end now, on the account row right above the choices.
+      expect(document.querySelector('[data-slot="lock-end"]')).toHaveTextContent(`until ${formatUtcDate(T) ?? ''}`);
+      expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
       expect(document.querySelector('[data-risk="lose-second-key"]')).toHaveTextContent(formatUtcDate(SIX_MONTHS) ?? '');
 
-      await user.click(screen.getByRole('radio', { name: period('12 months', TWELVE_MONTHS) }));
+      await user.click(screen.getByRole('radio', { name: '12 months' }));
       expect(document.querySelector('[data-risk="lose-second-key"]')).toHaveTextContent(formatUtcDate(TWELVE_MONTHS) ?? '');
       const balanceBefore = w.testChain.balance(w.K.address);
-      await click(user, 'Review and sign');
+      await click(user, 'Review new end date');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await screen.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT);
       const summary = await theSummary();
       expect(summary).toHaveAttribute('data-kind', 'extend');
+      // The second key in full before it signs (UX rule 9): in the summary's signers.
+      expect(within(summary).getAllByText(w.K.address).length).toBeGreaterThan(0);
       expect(summarySigners(summary)).toEqual(['second']);
       expect(within(summary.querySelector('[data-signer="second"]') as HTMLElement).getByText('Pays the network fee')).toBeInTheDocument();
       expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
@@ -109,6 +120,11 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await heading(`The lock now ends on ${formatUtcDate(TWELVE_MONTHS) ?? ''}`);
       expect(w.testChain.stakeAccount(S)?.lockup).toEqual({ unixTimestamp: TWELVE_MONTHS, epoch: 0n, custodian: w.K.address });
       expect(w.testChain.balance(w.K.address)).toBe(balanceBefore - ONE_SIGNER_FEE);
+      // Nothing urgent after a longer lock: the ways on are quiet (no filled button), with an updated recovery card.
+      const done = document.querySelector<HTMLElement>('[data-slot="extend-done"]') as HTMLElement;
+      expect(within(done).getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
+      expect(within(done).getByRole('link', { name: 'Print the updated recovery card' })).toHaveAttribute('href', `/recovery/${S}`);
+      expect(done.querySelectorAll('[data-variant="primary"], [data-variant="danger"]')).toHaveLength(0);
       expect(second.requests).toHaveLength(1);
       expect(ports.secondKeys.getSnapshot()).toContain(w.K.address);
       // Nothing else is written on this device (D37).
@@ -126,13 +142,12 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
       const rent0 = await w.chain.getMinimumBalanceForRentExemption(0);
 
-      await radio(period('6 months', SIX_MONTHS));
-      await click(user, 'Review and sign');
-      await screen.findByText(
-        `Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least ${formatSol(ONE_SIGNER_FEE + rent0)}, then press Check again.`,
-        undefined,
-        WAIT,
-      );
+      await periodRadio('6 months', SIX_MONTHS);
+      await click(user, 'Review new end date');
+      await screen.findByText('Your second key has too little SOL for the fee, so your main key pays and signs too.', undefined, WAIT);
+      expect(
+        screen.getByText(`To sign with the second key alone, send it ${formatSol(ONE_SIGNER_FEE + rent0)}, then press Check again.`),
+      ).toBeInTheDocument();
       // SECURITY-CHECK П16: never a reason to fund a main key that may be stolen.
       expect(screen.getByText('If your main key may be stolen, send SOL to the second key instead.')).toBeInTheDocument();
       expect(summarySigners(await theSummary())).toEqual(['main', 'second']);
@@ -161,8 +176,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
 
-      await radio(period('6 months', SIX_MONTHS));
-      await click(user, 'Review and sign');
+      await periodRadio('6 months', SIX_MONTHS);
+      await click(user, 'Review new end date');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       await screen.findByText(/so your main key pays and signs too/, undefined, WAIT);
       expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
@@ -191,8 +206,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
 
-      await radio(period('6 months', SIX_MONTHS));
-      await click(user, 'Review and sign');
+      await periodRadio('6 months', SIX_MONTHS);
+      await click(user, 'Review new end date');
       const error = await screen.findByText(/^Your Second key has 0 SOL\. It needs at least .* Add a little SOL to it, then press Try again\.$/, undefined, WAIT);
       expect(error.closest('[role="alert"]') ?? error.parentElement).toHaveTextContent(w.K.address);
       expect(screen.queryByText(/so your main key pays and signs too/)).not.toBeInTheDocument();
@@ -212,8 +227,8 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
       const mainBefore = w.testChain.balance(w.A.address);
 
-      await radio(period('6 months', SIX_MONTHS));
-      await click(user, 'Review and sign');
+      await periodRadio('6 months', SIX_MONTHS);
+      await click(user, 'Review new end date');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await theSummary();
       expect(summarySigners(summary)).toEqual(['main', 'second']);
@@ -240,15 +255,21 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const lamports = w.testChain.account(S)?.lamports ?? 0n;
       const { user, location } = renderStakePage(w.chain, `/extend/${S}?remove`, [main, second]);
 
-      expect(await radio('Remove the lock now')).toBeChecked();
-      expect(screen.getByRole('radio', { name: 'Remove the lock now' })).toHaveAccessibleDescription(
-        'Anyone with your main key can then withdraw this stake.',
-      );
+      const remove = await radio('Remove the lock now');
+      expect(remove).toBeChecked();
+      // Opened to remove: the title says so, the option stands apart in danger, and its risk is right above the button.
+      expect(screen.getByRole('heading', { level: 1, name: 'Remove the lock' })).toBeInTheDocument();
+      // The choice's heading names what the page was opened for, then the other way (not "New end of the lock").
+      expect(screen.getByRole('heading', { level: 2, name: 'Remove the lock now, or extend it' })).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: 'Remove the lock now, or extend it' })).toBeInTheDocument();
+      expect(remove.closest('[data-slot="radio-card"]')).toHaveAttribute('data-tone', 'danger');
       const risk = document.querySelector('[data-risk="unlock-opens-window"]');
       expect(risk).toHaveAttribute('data-tone', 'danger');
       expect(document.querySelector('[data-risk="lose-second-key"]')).toBeNull();
+      const bar = (risk as HTMLElement).closest<HTMLElement>('[data-slot="action-bar"]') as HTMLElement;
+      expect(within(bar).getByRole('button', { name: 'Review lock removal' })).toHaveAttribute('data-variant', 'danger');
 
-      await click(user, 'Review and sign');
+      await click(user, 'Review lock removal');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       const sign = await screen.findByRole('button', { name: 'Sign in Second Wallet as Second key' }, WAIT);
       expect((await theSummary()).getAttribute('data-kind')).toBe('unlock');
@@ -274,7 +295,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       await user.click(withdrawNow);
       expect(location.history.at(-1)).toBe(`/withdraw/${S}`);
       await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       expect(summarySigners(await theSummary())).toEqual(['main']);
       await click(user, 'Sign in Main Wallet as Main key');
@@ -297,7 +318,7 @@ describe('/extend/:account: after a removal (SECURITY-CHECK П9)', () => {
       const { user, location } = renderStakePage(w.chain, `/extend/${S}?remove`, [main, second]);
 
       expect(await radio('Remove the lock now')).toBeChecked();
-      await click(user, 'Review and sign');
+      await click(user, 'Review lock removal');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await user.click(
         await screen.findByRole(
@@ -351,11 +372,11 @@ describe('/extend/:account: gates', () => {
       );
       expect(alert).toHaveTextContent('They differ by 172800 seconds; at most 86400 are allowed.');
       expect(screen.queryByRole('radio')).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull();
 
       ahead = 0n;
       await user.click(within(alert).getByRole('button', { name: 'Try again' }));
-      expect(await radio(period('6 months', SIX_MONTHS))).toBeChecked();
+      expect(await periodRadio('6 months', SIX_MONTHS)).toBeChecked();
       expect(screen.queryByText('The network time does not match this device')).toBeNull();
       expect(second.requests).toHaveLength(0);
     },
@@ -368,9 +389,43 @@ describe('/extend/:account: gates', () => {
       const w = await world(0n);
       const S = await stake(w, { unixTimestamp: 0n, epoch: 0n, custodian: ZERO_ADDRESS });
       renderStakePage(w.chain, `/extend/${S}`, []);
-      await screen.findByText('This stake account has no lock that a second key holds.', undefined, WAIT);
-      expect(screen.getByRole('link', { name: 'Protect it' })).toHaveAttribute('href', `/protect?account=${S}`);
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).not.toBeInTheDocument();
+      await screen.findByText('This stake has no lock to change. Protect it first.', undefined, WAIT);
+      const protect = screen.getByRole('link', { name: 'Protect it' });
+      expect(protect).toHaveAttribute('href', `/protect?account=${S}`);
+      expect(protect).toHaveAttribute('data-variant', 'primary');
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'E4a2: a lock in force that no second key holds (the zero key): said so, the command line under Details, no Protect it',
+    async () => {
+      const w = await world(0n);
+      const S = await stake(w, { unixTimestamp: T, epoch: 0n, custodian: ZERO_ADDRESS });
+      renderStakePage(w.chain, `/extend/${S}`, []);
+      await screen.findByText('Stakeward cannot change this lock: it is held by the main key itself or by no key.', undefined, WAIT);
+      const details = screen.getByText('Details').closest('details') as HTMLElement;
+      expect(details).toHaveTextContent('solana stake-set-lockup --help names that option');
+      // Not "no lock", and no way into a wizard that would refuse this account.
+      expect(screen.queryByText('This stake has no lock to change. Protect it first.')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Protect it' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'E4a3: no period ends later than the lock: removing is offered without a lone radio card',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w, { unixTimestamp: START_UNIX_TIMESTAMP + 400n * DAY, epoch: 0n, custodian: w.K.address });
+      renderStakePage(w.chain, `/extend/${S}`, []);
+      await heading('Remove the lock now');
+      expect(screen.getByText('No period ends later than the current lock. You can still remove it.')).toBeInTheDocument();
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+      expect(document.querySelector('[data-risk="unlock-opens-window"]')).toHaveAttribute('data-tone', 'danger');
+      expect(screen.getByRole('button', { name: 'Review lock removal' })).toHaveAttribute('data-variant', 'danger');
     },
     SCENARIO_TIMEOUT,
   );
@@ -387,7 +442,7 @@ describe('/extend/:account: gates', () => {
         WAIT,
       );
       expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
     },
     SCENARIO_TIMEOUT,
   );
@@ -403,8 +458,8 @@ describe('/extend/:account: gates', () => {
       expect(slots.assign('second', { walletId: other.id, address: K2.address }).ok).toBe(true);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [other], { slots });
 
-      await radio(period('6 months', SIX_MONTHS));
-      await click(user, 'Review and sign');
+      await periodRadio('6 months', SIX_MONTHS);
+      await click(user, 'Review new end date');
       await screen.findByText('Connect your Second key to sign.', undefined, WAIT);
       const slot = screen.getByRole('group', { name: 'Second key' });
       expect(within(slot).getByText('This step needs this account. Disconnect, then connect again with this account:')).toBeInTheDocument();
@@ -425,9 +480,9 @@ describe('/extend/:account: gates', () => {
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [second]);
 
       const T2 = START_UNIX_TIMESTAMP + 600n;
-      await user.click(await radio(period('10 minutes (devnet test)', T2)));
+      await user.click(await periodRadio('10 minutes (devnet test)', T2));
       w.testChain.advanceTime(545n); // past T2 - 60, the lock still in force
-      await click(user, 'Review and sign');
+      await click(user, 'Review new end date');
       await heading('Lock change not sent');
       const list = screen.getByRole('list', { name: 'Lock change' });
       expect(within(list).getByText('The chosen end is too close or has passed. Choose again.')).toBeInTheDocument();
@@ -446,14 +501,14 @@ describe('/extend/:account: gates', () => {
       const second = await secondWallet(w);
       const { user, ports } = renderStakePage(w.chain, `/extend/${S}`, [second]);
 
-      await user.click(await radio(period('12 months', TWELVE_MONTHS)));
+      await user.click(await periodRadio('12 months', TWELVE_MONTHS));
       const { bytes } = buildTransaction(
         { kind: 'extend', stakeAccount: S, secondKey: w.K.address, lockUntil: TWELVE_MONTHS },
         { feePayer: w.K.address, lifetime: w.testChain.blockhashLifetime() },
       );
       expect((await w.testChain.send(bytes, [w.K])).ok).toBe(true);
 
-      await click(user, 'Review and sign');
+      await click(user, 'Review new end date');
       await heading(`The lock now ends on ${formatUtcDate(TWELVE_MONTHS) ?? ''}`);
       expect(second.requests).toHaveLength(0);
       expect(ports.secondKeys.getSnapshot()).toContain(w.K.address);

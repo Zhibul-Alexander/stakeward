@@ -42,16 +42,21 @@ export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, sameW
   const headingId = useId();
   const count = run.ids.length;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
           {t('rescue.move.heading')}
         </h2>
-        <p className="text-sm font-medium">{t('rescue.move.newOwner')}</p>
-        <AddressText address={run.newWallet} variant="full" />
+        {/* The new owner in full before anything is signed (F4, UX rule 9). */}
+        <div className="flex flex-col gap-1 rounded-lg bg-subtle px-4 py-3">
+          <p className="text-sm font-medium">{t('rescue.move.newOwner')}</p>
+          <AddressText address={run.newWallet} variant="full" explorer />
+        </div>
         {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="sign" />}
-        <p className="max-w-prose text-muted">{count === 1 ? t('rescue.move.countOne') : t('rescue.move.countOther', { count })}</p>
-        <p className="max-w-prose text-sm text-muted">{t('rescue.move.ledger')}</p>
+        <div className="flex flex-col gap-1">
+          <p className="max-w-prose text-pretty">{count === 1 ? t('rescue.move.countOne') : t('rescue.move.countOther', { count })}</p>
+          <p className="max-w-prose text-sm text-muted">{t('rescue.move.ledger')}</p>
+        </div>
       </div>
       <NonceGate
         authority={run.newWallet}

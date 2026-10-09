@@ -58,11 +58,9 @@ function renderStage(delegation: Delegation) {
 describe('StageBlock: epoch waits at the measured slot time', () => {
   it('an active stake: the time until it stops', () => {
     renderStage({ voter: VOTE, stake: 2_000_000_000n, activationEpoch: 800n, deactivationEpoch: U64_MAX });
-    expect(
-      screen.getByText(
-        'This stake is earning rewards. Stop staking first: it stops at the end of the current epoch, in about 1 d 0 h. Then come back to withdraw. Only your main key signs.',
-      ),
-    ).toBeInTheDocument();
+    const body = screen.getByText('Staking stops at the end of this epoch, in about 1 d 0 h. Then you can withdraw.');
+    // The time never breaks across lines (no-break spaces, which read as spaces).
+    expect(body.textContent).toContain('in about 1\u00a0d\u00a00\u00a0h.');
   });
 
   it('a deactivating stake: the countdown ends when the epoch does', () => {

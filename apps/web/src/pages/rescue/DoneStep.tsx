@@ -8,14 +8,28 @@ import {
   type StakeAccount,
   type WalletRole,
 } from '@stakeward/core';
-import { CircleAlertIcon, FileTextIcon, LoaderCircleIcon, RotateCcwIcon, SearchIcon, SendIcon, ShieldCheckIcon } from 'lucide-react';
+import { cn } from 'cn';
+import {
+  CircleAlertIcon,
+  CircleCheckIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  LoaderCircleIcon,
+  RotateCcwIcon,
+  SearchIcon,
+  SendIcon,
+  ShieldCheckIcon,
+  TrendingUpIcon,
+  TriangleAlertIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
+import { Section } from '@/components/layout/Section';
 import { AccountList, AccountListItem, AccountRow } from '@/components/product/account-row';
 import { AddressText } from '@/components/product/address-text';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { telegramLinkPath } from '@/api/telegram';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
@@ -63,9 +77,11 @@ function movedAccountOf(job: JobView): StakeAccount | null | undefined {
 }
 
 /**
- * Step 5 (F4 step 6): what the chain now shows moved to the new wallet, what did not move yet and the way forward for
- * it, then what comes after a rescue: use the new wallet from now on, delegate again what stopped staking, close the
- * link-signing account, alerts for the new wallet, and a fresh look for stake accounts split off meanwhile.
+ * Step 5 (F4 step 6): what the chain now shows moved to the new wallet (its address once, in full), what did not move
+ * yet and the way forward for it, then the next steps after a rescue as one checklist (DECISIONS.md D109): use the new
+ * wallet from now on, delegate again what stopped staking, print a new recovery card, alerts for the new wallet, close
+ * the link-signing account, and a fresh look for stake accounts split off meanwhile. One filled button: Try again
+ * while something can be retried, else the new wallet's stake.
  */
 export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, checking, checkFailed, actions, signing }: DoneStepProps) {
   const headingId = useId();
@@ -84,6 +100,8 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
         : done === 1
           ? t('rescue.done.titleOne')
           : t('rescue.done.titleOther', { count: done });
+  const TitleIcon = done === 0 ? CircleAlertIcon : done < total ? TriangleAlertIcon : CircleCheckIcon;
+  const titleTone = done === 0 ? 'text-danger' : done < total ? 'text-warning' : 'text-success';
   const retryable = retryableOutcomes(others);
   // A link still open holds back Try again for the rest (retryableOutcomes): say why.
   const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
@@ -95,27 +113,37 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
     return activation === 'inactive' || activation === 'deactivating' ? [after] : [];
   });
   const locks = lockSummary(moved, clock, secondKey);
+  const closeCard = <NonceCloseCard authority={newWallet} role="new" signing={signing} />;
 
   return (
     <section aria-labelledby={headingId} data-slot="rescue-done" className="flex flex-col gap-8">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-        {title}
-      </h2>
+      <div className="flex flex-col gap-3">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl">
+          <TitleIcon aria-hidden="true" className={cn('mt-1 size-6 shrink-0', titleTone)} />
+          {title}
+        </h2>
+        {done === 0 ? null : (
+          <div data-slot="rescue-new-owner" className="flex flex-col gap-1">
+            <p className="text-sm text-muted">{t('rescue.done.owner')}</p>
+            <AddressText address={newWallet} variant="full" explorer />
+          </div>
+        )}
+      </div>
 
       {moved.length === 0 ? null : (
-        <List title={t('rescue.done.movedList')}>
+        <Section title={t('rescue.done.movedList')} headingLevel={3} count={moved.length}>
           <AccountList label={t('rescue.done.movedList')}>
             {moved.map(({ job, after }) => (
               <AccountListItem key={job.id}>
-                <MovedRow job={job} after={after} clock={clock} newWallet={newWallet} secondKey={secondKey} />
+                <MovedRow job={job} after={after} clock={clock} secondKey={secondKey} />
               </AccountListItem>
             ))}
           </AccountList>
-        </List>
+        </Section>
       )}
 
       {others.length === 0 ? null : (
-        <List title={t('rescue.done.notMovedList')}>
+        <Section title={t('rescue.done.notMovedList')} headingLevel={3} count={others.length}>
           <JobStatusList items={others.map(notMovedItem)} label={t('rescue.done.notMovedList')} />
           {checkFailed ? (
             <p role="status" className="flex items-start gap-2 text-sm font-medium text-danger">
@@ -125,7 +153,7 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
           ) : null}
           {waitsForLink ? <p className="max-w-prose text-sm">{t('components.jobs.retryAfterLink')}</p> : null}
           {retryable.length === 0 && uncertain.length === 0 ? null : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {retryable.length === 0 ? null : (
                 <Button onClick={actions.retry}>
                   <RotateCcwIcon aria-hidden="true" />
@@ -140,77 +168,77 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
               )}
             </div>
           )}
-        </List>
+        </Section>
       )}
 
-      {done === 0 ? null : (
-        <div className="flex max-w-prose flex-col gap-2">
-          <p className="font-medium">{t('rescue.done.useNew')}</p>
-          {locks.held === 0 ? null : <p>{t('rescue.done.lockKept')}</p>}
-          {locks.noLock.length === 0 ? null : (
-            <p>
-              {locks.noLock.length === 1
-                ? t('rescue.done.noLockOne')
-                : t('rescue.done.noLockOther', { count: locks.noLock.length })}
-            </p>
-          )}
-          {locks.ended.length === 0 ? null : (
-            <p>
-              {locks.ended.length === 1
-                ? t('rescue.done.lockEndedOne')
-                : t('rescue.done.lockEndedOther', { count: locks.ended.length })}
-            </p>
-          )}
-          {locks.open.length === 0 ? null : (
-            <div>
-              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
-                <Link href={appLinks.protect(locks.open)}>
-                  <ShieldCheckIcon aria-hidden="true" />
-                  {locks.open.length === 1
-                    ? t('rescue.done.protectOne')
-                    : t('rescue.done.protectOther', { count: locks.open.length })}
-                </Link>
-              </Button>
-            </div>
-          )}
-        </div>
+      {done === 0 ? (
+        closeCard
+      ) : (
+        <Section title={t('rescue.done.nextSteps')} headingLevel={3}>
+          <ol className="flex flex-col gap-5">
+            <NextStep icon={TriangleAlertIcon} tone="warning" slot="use-new-wallet">
+              <p className="max-w-prose font-medium">{t('rescue.done.useNew')}</p>
+              {locks.held === 0 ? null : <p className="max-w-prose text-sm text-muted">{t('rescue.done.lockKept')}</p>}
+              {locks.noLock.length === 0 ? null : (
+                <p className="max-w-prose text-sm text-muted">
+                  {locks.noLock.length === 1 ? t('rescue.done.noLockOne') : t('rescue.done.noLockOther', { count: locks.noLock.length })}
+                </p>
+              )}
+              {locks.ended.length === 0 ? null : (
+                <p className="max-w-prose text-sm text-muted">
+                  {locks.ended.length === 1
+                    ? t('rescue.done.lockEndedOne')
+                    : t('rescue.done.lockEndedOther', { count: locks.ended.length })}
+                </p>
+              )}
+              {locks.open.length === 0 ? null : (
+                <div>
+                  <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                    <Link href={appLinks.protect(locks.open)}>
+                      <ShieldCheckIcon aria-hidden="true" />
+                      {locks.open.length === 1
+                        ? t('rescue.done.protectOne')
+                        : t('rescue.done.protectOther', { count: locks.open.length })}
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </NextStep>
+            {idle.length === 0 ? null : <DelegateStep accounts={idle} newWallet={newWallet} signing={signing} />}
+            {locks.card === null ? null : (
+              // A card printed before names the old main key; one new card covers every account of the pair (D74).
+              <NextStep icon={FileTextIcon} title={t('rescue.done.recovery.title')} slot="recovery-card">
+                <p className="max-w-prose text-sm text-muted">{t('rescue.done.recovery.body')}</p>
+                <div>
+                  <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                    <Link href={appLinks.recovery(locks.card)}>{t('rescue.done.recovery.open')}</Link>
+                  </Button>
+                </div>
+              </NextStep>
+            )}
+            <NextStep icon={SendIcon} title={t('rescue.done.telegram')} slot="telegram">
+              <div>
+                <Button asChild variant="outline">
+                  <a
+                    href={telegramLinkPath(newWallet)}
+                    target="_blank"
+                    rel={NEW_TAB_REL}
+                    aria-label={`${t('rescue.done.telegramAction')} ${t('common.opensInNewTab')}`}
+                  >
+                    {t('rescue.done.telegramAction')}
+                    <ExternalLinkIcon aria-hidden="true" />
+                  </a>
+                </Button>
+              </div>
+            </NextStep>
+          </ol>
+          {/* The link-signing account: shown only while it holds the deposit (NonceCloseCard). */}
+          {closeCard}
+        </Section>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-        {idle.length === 0 ? null : <DelegateCard accounts={idle} newWallet={newWallet} signing={signing} />}
-        {locks.card === null ? null : (
-          // A card printed before names the old main key; one new card covers every account of the pair (D74).
-          <DoneCard title={t('rescue.done.recovery.title')} description={t('rescue.done.recovery.body')}>
-            <div>
-              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
-                <Link href={appLinks.recovery(locks.card)}>
-                  <FileTextIcon aria-hidden="true" />
-                  {t('rescue.done.recovery.open')}
-                </Link>
-              </Button>
-            </div>
-          </DoneCard>
-        )}
-        <NonceCloseCard authority={newWallet} role="new" signing={signing} />
-        <DoneCard title={t('rescue.done.telegram')}>
-          <div>
-            <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
-              <a
-                href={telegramLinkPath(newWallet)}
-                target="_blank"
-                rel={NEW_TAB_REL}
-                aria-label={`${t('rescue.done.telegram')} ${t('common.opensInNewTab')}`}
-              >
-                <SendIcon aria-hidden="true" />
-                {t('rescue.done.telegram')}
-              </a>
-            </Button>
-          </div>
-        </DoneCard>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Button asChild>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button asChild variant={retryable.length > 0 ? 'outline' : 'primary'}>
           <Link href={`/app?${new URLSearchParams({ address: newWallet }).toString()}`}>{t('rescue.done.view')}</Link>
         </Button>
         <Button variant="outline" onClick={actions.lookAgain}>
@@ -219,6 +247,35 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
         </Button>
       </div>
     </section>
+  );
+}
+
+type NextStepProps = {
+  icon: LucideIcon;
+  /** The step's h4; a step without one says its sentence in its body. */
+  title?: string | undefined;
+  tone?: 'default' | 'warning' | undefined;
+  slot: string;
+  children: ReactNode;
+};
+
+/** One item of the Done checklist: an icon tile, its title, one or two lines and at most one outline action. */
+function NextStep({ icon: Icon, title, tone = 'default', slot, children }: NextStepProps) {
+  return (
+    <li data-slot="next-step" data-step={slot} className="flex items-start gap-3">
+      <span
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-full',
+          tone === 'warning' ? 'bg-warning-soft text-warning' : 'bg-primary-soft text-primary',
+        )}
+      >
+        <Icon aria-hidden="true" className="size-4" />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 pt-1">
+        {title === undefined ? null : <h4 className="text-base font-semibold">{title}</h4>}
+        {children}
+      </div>
+    </li>
   );
 }
 
@@ -261,65 +318,19 @@ function lockSummary(moved: readonly { after: StakeAccount | null }[], clock: Cl
   return summary;
 }
 
-function List({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-  return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h3 id={id} className="text-lg font-semibold">
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
-}
-
-function DoneCard({ title, description, children }: { title: string; description?: string | undefined; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle asChild>
-          <h3>{title}</h3>
-        </CardTitle>
-        {description === undefined ? null : <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">{children}</CardContent>
-    </Card>
-  );
-}
-
-function MovedRow({
-  job,
-  after,
-  clock,
-  newWallet,
-  secondKey,
-}: {
-  job: JobView;
-  after: StakeAccount | null;
-  clock: ClockView;
-  newWallet: Address;
-  secondKey: Address;
-}) {
-  const details = (
-    <span className="flex w-full flex-col gap-2 text-sm">
-      <span className="flex flex-col gap-1">
-        <span className="font-medium">{t('rescue.done.owner')}</span>
-        <AddressText address={newWallet} variant="full" />
+function MovedRow({ job, after, clock, secondKey }: { job: JobView; after: StakeAccount | null; clock: ClockView; secondKey: Address }) {
+  const transaction =
+    job.signature === null ? null : (
+      <span className="inline-flex flex-wrap items-center gap-x-1">
+        <span>{t('components.jobs.transaction')}</span>
+        <AddressText address={job.signature} kind="tx" />
       </span>
-      {job.signature === null ? null : (
-        <span className="flex flex-wrap items-center gap-x-2">
-          <span className="text-muted">{t('components.jobs.transaction')}</span>
-          <AddressText address={job.signature} kind="tx" />
-        </span>
-      )}
-    </span>
-  );
+    );
   if (after === null) {
     // Applied on the chain but not readable as a stake account now: the outcome without the row.
     return (
       <div className="flex flex-col gap-2">
         <JobStatusList items={[{ address: job.id as Address, status: 'done', signature: job.signature }]} label={t('rescue.done.movedList')} />
-        {details}
       </div>
     );
   }
@@ -332,8 +343,9 @@ function MovedRow({
       protection={view.status}
       managedByService={view.managedByService}
       secondKeyKnown
+      hint={false}
       serviceDetail
-      meta={details}
+      meta={transaction}
     />
   );
 }
@@ -352,9 +364,10 @@ type DelegateState = { kind: 'idle' } | { kind: 'sign'; key: number } | { kind: 
 
 /**
  * "Earn rewards again" (F4 step 6): the moved accounts that stopped staking, each with the validator it was delegated
- * to, and one request to the new wallet that delegates them all back to it.
+ * to, and one request to the new wallet that delegates them all back to it. An outline action: the screen's one filled
+ * button stays the way on.
  */
-function DelegateCard({ accounts, newWallet, signing }: { accounts: readonly StakeAccount[]; newWallet: Address; signing?: SigningTestOptions | undefined }) {
+function DelegateStep({ accounts, newWallet, signing }: { accounts: readonly StakeAccount[]; newWallet: Address; signing?: SigningTestOptions | undefined }) {
   const [state, setState] = useState<DelegateState>({ kind: 'idle' });
   const runs = useRef(0);
   const start = () => {
@@ -363,7 +376,7 @@ function DelegateCard({ accounts, newWallet, signing }: { accounts: readonly Sta
   };
   const ids = accounts.map((account) => account.address);
   return (
-    <DoneCard title={t('rescue.done.delegate.title')} description={t('rescue.done.delegate.body')}>
+    <NextStep icon={TrendingUpIcon} title={t('rescue.done.delegate.title')} slot="delegate">
       {state.kind === 'sign' ? (
         <DelegateSigning
           ids={ids}
@@ -379,13 +392,14 @@ function DelegateCard({ accounts, newWallet, signing }: { accounts: readonly Sta
         />
       ) : (
         <>
+          <p className="max-w-prose text-sm text-muted">{t('rescue.done.delegate.body')}</p>
           <ul className="flex flex-col gap-3">
             {accounts.map((account) =>
               account.delegation === null ? null : (
-                <li key={account.address} className="flex flex-col gap-1 text-sm">
+                <li key={account.address} className="flex flex-col gap-0.5 text-sm">
                   <span className="font-medium">{t('components.accountRow.label', { address: shortAddress(account.address) })}</span>
                   <span className="text-muted">{t('components.tx.validator')}</span>
-                  <AddressText address={account.delegation.voter} variant="full" />
+                  <AddressText address={account.delegation.voter} variant="full" explorer />
                 </li>
               ),
             )}
@@ -393,7 +407,7 @@ function DelegateCard({ accounts, newWallet, signing }: { accounts: readonly Sta
           {state.kind === 'done' ? <JobStatusList items={state.jobs.map(notMovedItem)} label={t('rescue.done.delegate.title')} /> : null}
           {state.kind === 'done' && state.jobs.every((job) => movedAccountOf(job) !== undefined) ? null : (
             <div>
-              <Button onClick={start}>
+              <Button variant="outline" onClick={start}>
                 {state.kind === 'done' ? <RotateCcwIcon aria-hidden="true" /> : null}
                 {state.kind === 'done' ? t('common.tryAgain') : t('rescue.done.delegate.action')}
               </Button>
@@ -401,7 +415,7 @@ function DelegateCard({ accounts, newWallet, signing }: { accounts: readonly Sta
           )}
         </>
       )}
-    </DoneCard>
+    </NextStep>
   );
 }
 

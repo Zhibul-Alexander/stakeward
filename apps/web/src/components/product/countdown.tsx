@@ -52,6 +52,14 @@ export function formatRemaining(seconds: number, coarse: boolean): string {
   return t('components.countdown.seconds', { value: secs });
 }
 
+/**
+ * `text` with no-break spaces, so a time inside a sentence ("in about 1 d 23 h") never breaks across lines. Screen
+ * readers and text search read a no-break space as a space.
+ */
+export function keepTogether(text: string): string {
+  return text.replace(/ /g, '\u00a0');
+}
+
 /** Screen readers hear the countdown only when it crosses one of these (seconds left), and when it ends. */
 const MILESTONES = [3_600, 1_800, 600, 300, 60] as const;
 
@@ -147,7 +155,7 @@ export function Countdown({ to, label, onEnd, clock = Date.now, className }: Cou
         role="timer"
         aria-labelledby={labelId}
         dateTime={dateTime}
-        className="text-2xl font-semibold tabular-nums"
+        className="text-2xl font-semibold whitespace-nowrap tabular-nums"
       >
         {left <= 0 ? t('components.countdown.ended') : formatRemaining(left, reducedMotion)}
       </time>

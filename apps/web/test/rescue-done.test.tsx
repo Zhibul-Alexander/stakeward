@@ -139,9 +139,9 @@ describe('rescue Done: a new recovery card', () => {
   it('says the old card names the old main key and opens the new card of the locked accounts', () => {
     const [N1, L1, L2] = ids as [Address, Address, Address];
     show([moved(N1, noLock()), moved(L1, lockedBySecond()), moved(L2, lockedBySecond())]);
-    const card = screen.getByRole('heading', { name: 'Print a new recovery card' }).closest('[data-slot="card"]') as HTMLElement;
+    const card = screen.getByRole('heading', { name: 'Print a new recovery card' }).closest('[data-slot="next-step"]') as HTMLElement;
     expect(card).toHaveTextContent(
-      'Your new wallet is now the main key of these stake accounts. A recovery card printed before names your old main key, and its commands no longer work for them.',
+      'Your old card names the old main key, so its commands no longer work. Print the new one and keep it with your second key. It holds no secrets.',
     );
     // One card covers every stake account of the pair (D74): the first locked one opens it.
     expect(screen.getByRole('link', { name: 'Open the new recovery card' })).toHaveAttribute('href', `/recovery/${L1}`);
@@ -152,5 +152,20 @@ describe('rescue Done: a new recovery card', () => {
     show([moved(P1, { unixTimestamp: 0n, epoch: 900n, custodian: SECOND })]);
     expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Print a new recovery card' })).not.toBeInTheDocument();
+  });
+});
+
+describe('rescue Done: the answer, then one way on (DECISIONS.md D109)', () => {
+  it('names the new owner in full once, lists the next steps, and fills only "View your stake"', () => {
+    const [L1, N1] = ids as [Address, Address];
+    show([moved(L1, lockedBySecond()), moved(N1, noLock())]);
+    expect(screen.getByRole('heading', { level: 2, name: '2 stake accounts are safe' })).toBeInTheDocument();
+    expect(screen.getAllByText(NEW)).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 3, name: 'Next steps' })).toBeInTheDocument();
+    expect(
+      screen.getByText('From now on, use your new wallet. Stop using the old main key: anything sent to it may be taken.'),
+    ).toBeInTheDocument();
+    const filled = document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]');
+    expect([...filled].map((button) => button.textContent)).toEqual(['View your stake with your new wallet']);
   });
 });

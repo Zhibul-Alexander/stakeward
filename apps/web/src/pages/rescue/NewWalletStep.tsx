@@ -1,8 +1,9 @@
 import type { Address } from '@solana/kit';
 import { formatSol } from '@stakeward/core';
-import { LoaderCircleIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
+import { CircleAlertIcon, CircleCheckIcon, LoaderCircleIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, useState, type Ref } from 'react';
 import { AddressText } from '@/components/product/address-text';
+import { keepTogether } from '@/components/product/countdown';
 import { ErrorState } from '@/components/product/error-state';
 import { QrCode } from '@/components/product/qr-code';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -101,14 +102,15 @@ export function NewWalletStep(props: NewWalletStepProps) {
   };
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
           {t('rescue.newWallet.heading')}
         </h2>
-        <p className="max-w-prose text-muted">{t('rescue.newWallet.body')}</p>
+        <p className="max-w-prose text-pretty">{t('rescue.newWallet.body')}</p>
       </div>
-      <KeySlot role="new" mainKey={mainKey} description={t('rescue.newWallet.slot')} />
+      {/* Connecting is this step's main action until the new wallet is here (DECISIONS.md D109). */}
+      <KeySlot role="new" mainKey={mainKey} description={t('rescue.newWallet.slot')} emphasis={newWallet === null ? 'primary' : 'outline'} />
       {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="continue" />}
       {problems.length === 0 ? null : (
         <Alert tone="danger" role="note" data-slot="new-wallet-problems">
@@ -122,17 +124,6 @@ export function NewWalletStep(props: NewWalletStepProps) {
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex items-start gap-3">
-        <Checkbox
-          id={seedId}
-          checked={seedConfirmed}
-          className="mt-0.5"
-          onCheckedChange={(value) => {
-            props.onSeed(value === true);
-          }}
-        />
-        <Label htmlFor={seedId}>{t('rescue.newWallet.seedCheck')}</Label>
-      </div>
       {newWallet === null || problems.length > 0 ? null : funds.status === 'idle' || funds.status === 'loading' ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted">
           <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
@@ -147,15 +138,23 @@ export function NewWalletStep(props: NewWalletStepProps) {
         />
       ) : ready === null || needed === null ? null : (
         <div data-slot="new-wallet-funds" className="flex flex-col gap-3">
-          <p role="status" className="text-sm font-medium">
-            {t('rescue.newWallet.balance', {
-              balance: formatSol(ready.balance),
-              needed: formatSol(needed),
-              suggested: formatSol(needed > SUGGESTED_RESCUE_LAMPORTS ? needed : SUGGESTED_RESCUE_LAMPORTS),
-            })}
+          <p role="status" className="flex items-start gap-2 text-sm tabular-nums">
+            {ready.balance >= needed ? (
+              <CircleCheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
+            ) : (
+              <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
+            )}
+            {/* An amount never breaks from its unit ("0.01" / "SOL"). */}
+            <span className="text-pretty">
+              {t('rescue.newWallet.balance', {
+                balance: keepTogether(formatSol(ready.balance)),
+                needed: keepTogether(formatSol(needed)),
+                suggested: keepTogether(formatSol(needed > SUGGESTED_RESCUE_LAMPORTS ? needed : SUGGESTED_RESCUE_LAMPORTS)),
+              })}
+            </span>
           </p>
           {ready.balance >= needed ? null : (
-            <div className="flex flex-col items-start gap-3">
+            <div className="flex flex-col items-start gap-3 rounded-lg bg-subtle p-4">
               <p className="max-w-prose text-sm">{t('rescue.newWallet.fund')}</p>
               <QrCode value={newWallet} label={t('rescue.newWallet.qr')} />
               <AddressText address={newWallet} variant="full" />
@@ -167,7 +166,19 @@ export function NewWalletStep(props: NewWalletStepProps) {
           )}
         </div>
       )}
-      <ContinueButtons label={t('common.continue')} problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
+      {/* The seed check right above the button it unlocks. */}
+      <div className="flex items-start gap-3">
+        <Checkbox
+          id={seedId}
+          checked={seedConfirmed}
+          className="mt-0.5"
+          onCheckedChange={(value) => {
+            props.onSeed(value === true);
+          }}
+        />
+        <Label htmlFor={seedId}>{t('rescue.newWallet.seedCheck')}</Label>
+      </div>
+      <ContinueButtons label={t('rescue.next.keys')} problems={blockers.map(blockerText)} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

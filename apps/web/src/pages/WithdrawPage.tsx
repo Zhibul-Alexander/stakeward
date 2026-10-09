@@ -1,22 +1,21 @@
 import type { Address } from '@solana/kit';
 import { isLockupInForce } from '@stakeward/core';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'wouter';
+import { useParams } from 'wouter';
 import { Page } from '@/components/layout/Page';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { RiskNote } from '@/components/product/risk-note';
 import { useThrottledCall } from '@/hooks/use-throttled-call';
 import { t } from '@/i18n';
-import { AccountView, InvalidAccountParam, loadedAccount, type LoadedAccount } from '@/pages/account/AccountView';
+import { AccountView, InvalidAccountParam, loadedAccount, underOwnLock, type LoadedAccount } from '@/pages/account/AccountView';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
-import { appLinks } from '@/pages/app/view';
-import { useChain } from '@/ports';
+import { useChain, useKnownSecondKeys } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
 import type { JobView, SigningState } from '@/signing/machine';
 import type { SignMode } from '@/signing/SignWhere';
 import { StageBlock, withdrawTitle } from './withdraw/StageBlock.tsx';
 import { WithdrawDone } from './withdraw/WithdrawDone.tsx';
+import { withdrawStage } from './withdraw/stage.ts';
 import { WithdrawSigning, type WithdrawWhat } from './withdraw/WithdrawSigning.tsx';
 
 type WithdrawPageProps = {
@@ -50,6 +49,7 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const params = useParams<{ account: string }>();
   const account = parseAccountParam(params.account);
   const chain = useChain();
+  const knownSecondKeys = useKnownSecondKeys();
   const [attempt, setAttempt] = useState(0);
   const load = useAccountState(chain, account, attempt);
   const loaded = loadedAccount(load);
@@ -124,26 +124,18 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   }
 
   const landedDeactivate = page.kind === 'done' && page.run.what === 'deactivate' && isLanded(page.job);
+  const stageShown = loaded !== null && (page.kind === 'view' || landedDeactivate);
+  // The service-staker stage is one block that says who manages staking, with Rescue: while it shows, the row leaves
+  // out its own service line and Rescue link (DECISIONS.md D109). Every other stage keeps the row's line.
+  const serviceBlock = stageShown && withdrawStage(loaded.account, loaded.clock) === 'service-staker';
   return (
     <Page width="flow">
-      <PageHeader title={t('common.pages.withdraw')} lead={t('withdraw.intro')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
+      <PageHeader title={t('common.pages.withdraw')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (
-        <div className="flex flex-col gap-6">
-          <AccountView load={load} onRetry={reread} hideNotFound={page.kind === 'done'} />
-          {loaded === null ? null : (
-            <RiskNote risk="withdraw-compromised">
-              <p>
-                <Link
-                  href={appLinks.rescue(loaded.account.withdrawer)}
-                  className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-                >
-                  {t('withdraw.rescueLink')}
-                </Link>
-              </p>
-            </RiskNote>
-          )}
+        <div className="flex flex-col gap-5">
+          <AccountView load={load} onRetry={reread} hideNotFound={page.kind === 'done'} service={!serviceBlock} />
           {page.kind === 'sign' ? (
             <WithdrawSigning
               headingRef={headingRef}
@@ -179,7 +171,7 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
               onBack={back}
             />
           ) : null}
-          {loaded !== null && (page.kind === 'view' || landedDeactivate) ? (
+          {stageShown ? (
             <StageBlock
               headingRef={page.kind === 'view' ? headingRef : null}
               loaded={loaded}
@@ -195,6 +187,7 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
                 reread();
               }}
               onCountdownEnd={autoReread}
+              ownLock={underOwnLock(loaded.account, knownSecondKeys, loaded.clock)}
             />
           ) : null}
         </div>
