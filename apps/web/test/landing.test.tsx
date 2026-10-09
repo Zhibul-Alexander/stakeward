@@ -135,7 +135,7 @@ describe('landing page structure', () => {
     expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
     expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
     // The promise of recovery without Stakeward carries its condition where it is made.
-    expect(recover).toHaveTextContent('Solana CLI steps. They need keys on a Ledger or in keypair files.');
+    expect(recover).toHaveTextContent('Its Solana CLI steps need a Ledger or keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
     expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
@@ -167,10 +167,9 @@ describe('landing fees', () => {
   it('shows the network fees from core and the deposit read from the network, once', async () => {
     const { chain } = renderLanding();
     const fees = section('fees');
-    // All in view, nothing folded (spec [landing] Must stay): free, network fees only, the fee per signature, and the
-    // fee for each action with who pays it.
-    expect(within(fees).getByText(/^Stakeward is free: no token, no subscription\./)).toBeVisible();
-    expect(within(fees).getByText(/^The network charges 0\.000005 SOL for each signature/)).toBeVisible();
+    // All in view, nothing folded (spec [landing] Must stay): free, the network fee per signature, and the fee for each
+    // action with who pays it.
+    expect(within(fees).getByText(/^Stakeward is free\. Network fees: 0\.000005 SOL per signature/)).toBeVisible();
     expect(fees.querySelector('details')).toBeNull();
     const rows = [...fees.querySelectorAll('dl > div')];
     expect(rows.map((row) => row.querySelector('dt')?.textContent)).toEqual([
@@ -182,7 +181,7 @@ describe('landing fees', () => {
     ]);
     for (const row of rows) expect(row).toBeVisible();
     for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(within(fees).getAllByText(amount)[0]).toBeVisible();
-    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key signs too and pays 0.0000106 SOL.')).toBeVisible();
+    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key pays 0.0000106 SOL.')).toBeVisible();
     expect(within(fees).getByText('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.')).toBeVisible();
     // CLAUDE.md section 5: the new wallet pays for a rescue, never the stolen main key.
     expect(within(fees).getByText('Paid by your new wallet.')).toBeVisible();

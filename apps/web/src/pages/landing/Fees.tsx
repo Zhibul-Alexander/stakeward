@@ -37,33 +37,32 @@ function Deposit({ deposit }: { deposit: Load<bigint> }) {
 }
 
 /**
- * What it costs (CLAUDE.md section 2, rule 4): free, network fees only, the fee per signature, then the fee for each
+ * What it costs (CLAUDE.md section 2, rule 4): free, the network fee per signature in the intro, then the fee for each
  * action and who pays it, all in view (spec [landing] Must stay: the amounts and who pays are what a visitor decides
  * on; CLAUDE.md section 5: a stolen main key never pays, the new wallet pays for a rescue). The amounts come from the
  * same formula the signing screens use (core networkFeeFor: 5000 lamports per signature plus the fixed priority fee),
  * the link-signing deposit is read from the network (D22). Every signing screen shows its fee again before it signs.
  */
 export function Fees({ deposit }: { deposit: Load<bigint> }) {
+  // The fee per signature never breaks between its number and "SOL".
+  const perSignature = formatSol(LAMPORTS_PER_SIGNATURE).replaceAll(' ', '\u00a0');
   return (
-    <Section id="fees" title={t('landing.fees.title')} intro={t('landing.fees.intro')}>
-      <div className="flex flex-col gap-2 sm:gap-3">
-        <p className="max-w-prose text-sm text-pretty sm:text-base">{t('landing.fees.perSignature', { amount: formatSol(LAMPORTS_PER_SIGNATURE) })}</p>
-        <dl className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
-          <FeeRow label={t('landing.fees.protect')} amount={<SolAmount lamports={networkFeeFor(2)} />} payer={t('landing.fees.protectPayer')} />
-          <FeeRow
-            label={t('landing.fees.extend')}
-            amount={<SolAmount lamports={networkFeeFor(1)} />}
-            payer={t('landing.fees.extendPayer', { amount: formatSol(networkFeeFor(2)) })}
-          />
-          <FeeRow
-            label={t('landing.fees.withdraw')}
-            amount={<SolAmount lamports={networkFeeFor(2)} />}
-            payer={t('landing.fees.withdrawPayer', { amount: formatSol(networkFeeFor(1)) })}
-          />
-          <FeeRow label={t('landing.fees.rescue')} amount={<SolAmount lamports={networkFeeFor(3)} />} payer={t('landing.fees.rescuePayer')} />
-          <FeeRow label={t('landing.fees.deposit')} amount={<Deposit deposit={deposit} />} payer={t('landing.fees.depositPayer')} />
-        </dl>
-      </div>
+    <Section id="fees" title={t('landing.fees.title')} intro={t('landing.fees.intro', { amount: perSignature })}>
+      <dl className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+        <FeeRow label={t('landing.fees.protect')} amount={<SolAmount lamports={networkFeeFor(2)} />} payer={t('landing.fees.protectPayer')} />
+        <FeeRow
+          label={t('landing.fees.extend')}
+          amount={<SolAmount lamports={networkFeeFor(1)} />}
+          payer={t('landing.fees.extendPayer', { amount: formatSol(networkFeeFor(2)) })}
+        />
+        <FeeRow
+          label={t('landing.fees.withdraw')}
+          amount={<SolAmount lamports={networkFeeFor(2)} />}
+          payer={t('landing.fees.withdrawPayer', { amount: formatSol(networkFeeFor(1)) })}
+        />
+        <FeeRow label={t('landing.fees.rescue')} amount={<SolAmount lamports={networkFeeFor(3)} />} payer={t('landing.fees.rescuePayer')} />
+        <FeeRow label={t('landing.fees.deposit')} amount={<Deposit deposit={deposit} />} payer={t('landing.fees.depositPayer')} />
+      </dl>
     </Section>
   );
 }

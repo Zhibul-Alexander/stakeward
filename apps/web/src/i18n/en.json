@@ -69,24 +69,24 @@
       "mainnet": "Solana mainnet",
       "mainnetNote": "This site works with real SOL.",
       "devnet": "Solana devnet",
-      "devnetNote": "Test version: devnet SOL has no value."
+      "devnetNote": "Test network: no real SOL."
     },
     "how": {
       "title": "How it works",
       "intro": "Every Solana stake account has a lock built in. Stakeward turns it on.",
       "step1": {
         "title": "Lock it with a second key",
-        "body": "Pick a wallet from a different seed phrase. Both keys sign the lock. Your stake keeps earning."
+        "body": "Pick a wallet from a different seed phrase. Your stake keeps earning."
       },
       "step2": {
         "title": "Get alerts",
-        "body": "Stakeward checks every few minutes. Telegram tells you when anything changes, and before the lock ends."
+        "body": "Telegram tells you when anything changes, and before the lock ends."
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Main key stolen? Your two keys and a new wallet move the stake out of reach. Withdrawing also takes both keys."
+        "body": "Main key stolen? Your two keys move the stake to a new wallet."
       },
-      "period": "A lock lasts 1, 3, 6 or 12 months. Your second key can extend it.",
+      "period": "A lock lasts 1, 3, 6 or 12 months.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
     },
     "protects": {
@@ -101,15 +101,15 @@
       "mainAlone": {
         "deactivate": "Stop staking",
         "redelegate": "Move the stake to another validator",
-        "split": "Split it into smaller accounts, each with the same lock",
+        "split": "Split it into smaller accounts",
         "manager": "Change the wallet that manages staking"
       },
-      "thief": "So a thief with only your main key cannot take the SOL. If an alert surprises you, rescue before the lock ends."
+      "thief": "A thief with only your main key gets no SOL."
     },
     "secondKey": {
       "title": "Before you pick a second key",
       "freeze": "It cannot take your SOL, but it can keep it locked, even for years.",
-      "differentSeed": "Make it from a different seed phrase. One phrase for both keys stops nothing.",
+      "differentSeed": "Make it from a different seed phrase.",
       "apart": "Keep it apart from your main key: a hardware wallet, another device or a person you trust.",
       "more": "What makes a good second key"
     },
@@ -117,21 +117,21 @@
       "title": "What Stakeward cannot do",
       "intro": "Read this before you protect your stake.",
       "items": {
-        "scope": "Protect liquid staking tokens, exchange stake, SOL in your wallet balance or vote accounts.",
+        "scope": "Protect liquid staking tokens, exchange stake, SOL in a wallet or vote accounts.",
         "mainKeyActions": "Stop a thief with your main key from unstaking or moving your stake.",
         "split": "Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most {max} stake accounts, so act early and extend the lock first.",
         "afterEnd": "Keep a thief out after the lock ends. Rescue before that date.",
         "lostKey": "Undo a lost key. Without your main key you cannot withdraw. Without your second key, you wait for the end date.",
         "freeze": "Stop whoever holds your second key from keeping your stake locked.",
-        "sameSeed": "Protect you if one seed phrase makes both keys.",
+        "sameSeed": "Help if both keys share a seed phrase.",
         "newAccounts": "Lock stake accounts you create later. Protect each new one.",
-        "cliKeys": "Recover without Stakeward from a browser-only wallet. The Solana CLI needs a Ledger or keypair files.",
+        "cliKeys": "Recover without Stakeward from a browser-only wallet.",
         "alerts": "Promise alerts. If Stakeward is down, they come late; the lock keeps working."
       }
     },
     "alerts": {
       "title": "Alerts in Telegram",
-      "intro": "Stakeward messages you in Telegram when:",
+      "intro": "Stakeward checks every few minutes and messages you in Telegram when:",
       "events": {
         "deactivated": "your stake stops staking",
         "delegation": "your stake moves to another validator",
@@ -143,16 +143,15 @@
         "reminders": "the lock ends soon: {days} days before, and when it ends"
       },
       "exampleTitle": "Example",
-      "howTo": "Turn alerts on from your accounts page. Send /stop to the bot to turn them off. The bot never asks for your seed phrase."
+      "howTo": "Turn alerts on from your accounts page. The bot never asks for your seed phrase."
     },
     "fees": {
       "title": "What it costs",
-      "intro": "Stakeward is free: no token, no subscription. You pay only network fees, and Stakeward gets none of them.",
-      "perSignature": "The network charges {amount} for each signature, plus a tiny fixed priority fee:",
+      "intro": "Stakeward is free. Network fees: {amount} per signature, plus a tiny priority fee.",
       "protect": "Protect a stake account",
       "protectPayer": "Paid by your main key.",
       "extend": "Extend or remove a lock",
-      "extendPayer": "Paid by your second key. If it has no SOL, your main key signs too and pays {amount}.",
+      "extendPayer": "Paid by your second key. If it has no SOL, your main key pays {amount}.",
       "withdraw": "Withdraw",
       "withdrawPayer": "Paid by your main key, plus {amount} if the stake must stop staking first.",
       "rescue": "Rescue a stake account",
@@ -188,23 +187,23 @@
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer."
       },
       "ledgerLink": "What will my Ledger show?",
-      "phone": "In a phone wallet's browser you can check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
+      "phone": "On a phone: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
     },
     "security": {
       "title": "How Stakeward keeps you safe",
       "items": {
         "chain": "The lock lives in your stake accounts on Solana. It works without Stakeward.",
-        "browser": "Your browser builds each transaction and your wallets sign it. Stakeward never holds SOL, sees a key or signs for you.",
-        "server": "Stakeward's server only passes Stakeward transactions to the network. If it is down, you lose alerts, not SOL. The same server delivers this website.",
+        "browser": "Your browser builds each transaction and your wallets sign it.",
+        "server": "Stakeward's server only relays Stakeward transactions. If it is down, you lose alerts, not SOL. The same server delivers this website.",
         "site": "If this site were hacked, it could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
-        "programs": "Only Solana's own stake and system programs and fee settings. Stakeward has no program or token of its own.",
+        "programs": "Transactions use only Solana's own programs. Stakeward has no program or token of its own.",
         "open": "Open source under MIT, no warranty. No accounts, cookies or analytics."
       },
       "sourceLink": "Read the source code"
     },
     "recover": {
       "title": "If Stakeward disappears",
-      "body": "Each protected account has a printable recovery card with Solana CLI steps. They need keys on a Ledger or in keypair files.",
+      "body": "Print a recovery card for each account. Its Solana CLI steps need a Ledger or keypair files.",
       "cards": "Find your recovery cards",
       "guideLink": "Recovery guide on GitHub",
       "onChain": "What changes on the network"
@@ -1811,7 +1810,7 @@
     "rescueLink": "Rescue your stake",
     "groups": {
       "basics": "The basics",
-      "keys": "Your keys, and what can go wrong",
+      "keys": "Keys and what can go wrong",
       "signing": "Wallets and signing",
       "costs": "Costs, alerts and privacy",
       "developers": "For validators and developers"
