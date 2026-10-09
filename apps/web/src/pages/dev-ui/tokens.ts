@@ -16,6 +16,8 @@ export type Tokens = {
   radii: SizeToken[];
   shadows: string[];
   spacing: string;
+  /** Grid column templates (`--grid-template-columns-<name>`, the class `grid-cols-<name>`). */
+  gridColumns: SizeToken[];
 };
 
 function block(css: string, start: number, end: number): string {
@@ -37,7 +39,7 @@ export function parseTokens(css: string): Tokens {
   const themeStart = css.indexOf('@theme');
   const darkStart = css.indexOf('@media screen and (prefers-color-scheme: dark)');
   const darkEnd = css.indexOf('@media', darkStart + 1);
-  if (themeStart < 0 || darkStart < 0) return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '' };
+  if (themeStart < 0 || darkStart < 0) return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '', gridColumns: [] };
   const light = block(css, themeStart, darkStart);
   const dark = new Map(declarations(block(css, darkStart, darkEnd), 'color-'));
   const isValue = ([, value]: [string, string]) => value !== 'initial';
@@ -56,6 +58,9 @@ export function parseTokens(css: string): Tokens {
       .filter(isValue)
       .map(([name]) => name),
     spacing: declarations(light, '').find(([name]) => name === 'spacing')?.[1] ?? '',
+    gridColumns: declarations(light, 'grid-template-columns-')
+      .filter(isValue)
+      .map(([name, value]) => ({ name, value })),
   };
 }
 
@@ -129,6 +134,12 @@ export const SHADOW_CLASS: Record<string, string> = {
   sm: 'shadow-sm',
   md: 'shadow-md',
   lg: 'shadow-lg',
+};
+
+/** Class per grid column template; /dev/ui draws each with it, one cell per column. */
+export const GRID_COLUMNS_CLASS: Record<string, string> = {
+  'account-row': 'grid-cols-account-row',
+  'account-row-actions': 'grid-cols-account-row-actions',
 };
 
 /** Spacing steps shown on the page (multiples of the spacing unit) and their width classes. */

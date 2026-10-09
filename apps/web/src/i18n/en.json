@@ -606,6 +606,14 @@
     "spacing": "Spacing",
     "spacingNote": "One unit is {unit}. Classes such as p-4 and gap-2 are multiples of it.",
     "spacingRule": "Pages put gap-8 between blocks (gap-12 from 640 px). A section puts gap-4 between its rows. Panels pad p-4 (p-6 from 640 px).",
+    "gridColumns": "Grid columns",
+    "gridColumnsNote": "The columns of an account row from 640 px. A list shares them with its rows, so their SOL stands in one column; account-row-actions also keeps room for an action and More, so separate lists on one page line up.",
+    "gridColumnNames": {
+      "address": "Status and address",
+      "sol": "SOL",
+      "action": "Action",
+      "more": "More"
+    },
     "radii": "Radii",
     "shadows": "Shadows",
     "primitives": "Primitives",

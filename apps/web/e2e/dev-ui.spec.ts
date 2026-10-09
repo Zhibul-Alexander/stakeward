@@ -92,6 +92,12 @@ test('/dev/ui shows every token and component without console errors, axe violat
   expect(dark).toHaveLength(light.length);
   expect(swatches.filter((s) => s.colour === 'rgba(0, 0, 0, 0)' || s.colour === 'transparent')).toEqual([]);
   expect(light.map((s) => s.colour)).not.toEqual(dark.map((s) => s.colour));
+  // The grid column templates, each drawn with its own class: four columns, so the build has the utility (a missing
+  // one would leave a single column, `none`).
+  const gridColumns = await page
+    .locator('#tokens [data-slot="grid-columns-token"] [data-grid-columns]')
+    .evaluateAll((grids) => grids.map((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length));
+  expect(gridColumns).toEqual([4, 4]);
 
   // The recovery card's pieces: three command blocks (idle, copied, copy failed), every support verdict, and a
   // FAQ item that the browser opens and closes from the keyboard (a native <details>, DECISIONS.md D3; jsdom cannot
