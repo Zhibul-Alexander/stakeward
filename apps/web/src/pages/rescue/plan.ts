@@ -1,0 +1,151 @@
+import { address, type Address } from '@solana/kit';
+import { decodeStakeAccount, isLockupInForce, U64_MAX, ZERO_ADDRESS, type StakeAccount } from '@stakeward/core';
+import { t } from '@/i18n';
+import type { JobPlan, SigningPlan } from '@/signing/types';
+
+/** Why the plan will not move an account to the new wallet (the Done screen says it with `rescueRefusalText`). */
+export type RescueRefusal = 'not-found' | 'not-stake-account' | 'not-main-key' | 'other-second-key' | 'unsupported-lock' | 'key-rule';
+
+/** Why the plan will not delegate a moved account again. */
+export type DelegateRefusal = 'not-found' | 'not-stake-account' | 'not-new-wallet' | 'no-validator';
+
+const REFUSALS: readonly (RescueRefusal | DelegateRefusal)[] = [
+  'not-found',
+  'not-stake-account',
+  'not-main-key',
+  'other-second-key',
+  'unsupported-lock',
+  'key-rule',
+  'not-new-wallet',
+  'no-validator',
+];
+
+type Decoded = { kind: 'refused'; plan: JobPlan } | { kind: 'account'; account: StakeAccount };
+
+/** The account of one id as read now, or the refusal for a missing or foreign account. */
+function decodeOrRefuse(raw: Parameters<typeof decodeStakeAccount>[0] | null): Decoded {
+  if (raw === null) return { kind: 'refused', plan: { kind: 'refused', reason: 'not-found', before: null } };
+  const decoded = decodeStakeAccount(raw);
+  if (!decoded.ok) return { kind: 'refused', plan: { kind: 'refused', reason: 'not-stake-account', before: null } };
+  return { kind: 'account', account: decoded.account };
+}
+
+/**
+ * F4 step 4: per stake account, AuthorizeChecked(Staker -> D) and AuthorizeChecked(Withdrawer -> D) in one transaction,
+ * signed by the main key A, the new wallet D and the second key K; D pays, always on D's durable nonce (F4.3: three
+ * signatures never race a blockhash; the compromised key never pays nor owns the nonce). `remote` are the keys that
+ * sign on another device by link. Every round reads the accounts and the clock again; the first match decides:
+ * 1. no account -> not-found (merged or closed); 2. not a stake account -> not-stake-account;
+ * 3. both keys are D already -> done; 4. A no longer withdraws -> not-main-key;
+ * 5. a lock in force held by A itself or by no key -> unsupported-lock; 6. one held by another key than K ->
+ * other-second-key; 7. A, K, D and the account not all different -> key-rule; 8. otherwise build.
+ * A staker a thief changed needs nothing special: A is still the withdrawer, and the program lets it name the staker.
+ */
+export function rescuePlan(input: {
+  mainKey: Address;
+  secondKey: Address;
+  newWallet: Address;
+  nonce: { nonceAccount: Address; nonceAuthority: Address };
+  remote: readonly Address[];
+}): SigningPlan {
+  const { mainKey, secondKey, newWallet, nonce, remote } = input;
+  return {
+    nonce,
+    remote,
+    async prepare(chain, ids) {
+      const addresses = ids.map((id) => address(id));
+      const [{ accounts }, clock] = await Promise.all([chain.getAccounts(addresses), chain.getClock()]);
+      const jobs: Record<string, JobPlan> = {};
+      addresses.forEach((id, index) => {
+        const read = decodeOrRefuse(accounts[index] ?? null);
+        if (read.kind === 'refused') {
+          jobs[id] = read.plan;
+          return;
+        }
+        const { account } = read;
+        const refuse = (reason: RescueRefusal) => {
+          jobs[id] = { kind: 'refused', reason, before: account };
+        };
+        if (account.staker === newWallet && account.withdrawer === newWallet) {
+          jobs[id] = { kind: 'done', after: account };
+          return;
+        }
+        if (account.withdrawer !== mainKey) {
+          refuse('not-main-key');
+          return;
+        }
+        const inForce = isLockupInForce(account.lockup, clock);
+        const custodian = account.lockup.custodian;
+        if (inForce && (custodian === mainKey || custodian === ZERO_ADDRESS)) {
+          refuse('unsupported-lock');
+          return;
+        }
+        if (inForce && custodian !== secondKey) {
+          refuse('other-second-key');
+          return;
+        }
+        if (new Set([mainKey, secondKey, newWallet, id]).size !== 4) {
+          refuse('key-rule');
+          return;
+        }
+        jobs[id] = {
+          kind: 'build',
+          action: { kind: 'rescue', stakeAccount: id, mainKey, secondKey, newWallet },
+          feePayer: newWallet,
+          before: account,
+        };
+      });
+      return { clock, jobs };
+    },
+  };
+}
+
+/**
+ * F4 step 6: delegate moved accounts that stopped staking to the same validator again, signed and paid by the new
+ * wallet D on a recent blockhash, all in one request. Per account, the first match decides:
+ * 1. no account -> not-found; not a stake account -> not-stake-account; 2. D does not manage staking -> not-new-wallet;
+ * 3. never delegated -> no-validator; 4. staking (not deactivating) -> done; 5. otherwise build.
+ */
+export function delegatePlan(input: { newWallet: Address }): SigningPlan {
+  const { newWallet } = input;
+  return {
+    async prepare(chain, ids) {
+      const addresses = ids.map((id) => address(id));
+      const [{ accounts }, clock] = await Promise.all([chain.getAccounts(addresses), chain.getClock()]);
+      const jobs: Record<string, JobPlan> = {};
+      addresses.forEach((id, index) => {
+        const read = decodeOrRefuse(accounts[index] ?? null);
+        if (read.kind === 'refused') {
+          jobs[id] = read.plan;
+          return;
+        }
+        const { account } = read;
+        const { delegation } = account;
+        if (account.staker !== newWallet) {
+          jobs[id] = { kind: 'refused', reason: 'not-new-wallet', before: account };
+        } else if (delegation === null) {
+          jobs[id] = { kind: 'refused', reason: 'no-validator', before: account };
+        } else if (delegation.deactivationEpoch === U64_MAX) {
+          jobs[id] = { kind: 'done', after: account };
+        } else {
+          jobs[id] = {
+            kind: 'build',
+            action: { kind: 'delegate', stakeAccount: id, staker: newWallet, voteAccount: delegation.voter },
+            feePayer: newWallet,
+            before: account,
+          };
+        }
+      });
+      return { clock, jobs };
+    },
+  };
+}
+
+function isRefusal(reason: string): reason is RescueRefusal | DelegateRefusal {
+  return (REFUSALS as readonly string[]).includes(reason);
+}
+
+/** The refusal in plain words; an unknown reason reads as an unknown error. */
+export function rescueRefusalText(reason: string): string {
+  return isRefusal(reason) ? t(`rescue.refused.${reason}`) : t('errors.unknown');
+}

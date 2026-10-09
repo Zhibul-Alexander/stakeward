@@ -1,0 +1,41 @@
+{
+  "name": "delegated-staker-ne-withdrawer",
+  "cluster": "mainnet-beta",
+  "address": "9kzSEgLWnSDx6hH7p8NxNSyptxC2VvHz2iZVeRaEe8jv",
+  "slot": 452563572,
+  "fetchedAt": "2026-10-02T09:01:15.273Z",
+  "epochAtFetch": 1047,
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 7,
+    "method": "getAccountInfo",
+    "params": [
+      "9kzSEgLWnSDx6hH7p8NxNSyptxC2VvHz2iZVeRaEe8jv",
+      {
+        "encoding": "base64",
+        "commitment": "confirmed"
+      }
+    ]
+  },
+  "response": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "apiVersion": "4.3.0",
+        "slot": 452563572
+      },
+      "value": {
+        "data": [
+          "AgAAAIDVIgAAAAAAbXFqbH8JlJ4aCqxKEX6gB7ZFrJRJCf7lyBGL/NzaIQLfDMxYMiL7W9gjIU2yaFvS/5PpDkLGpF73SwflbyE9owAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOJKeb2NAnNBx0wVuAifR65Cs8KBSBhfy4XuHtGj89F0gr2b1gL1AQC8AwAAAAAAAP//////////AAAAAAAA0D/vKX5HAAAAAAAAAAA=",
+          "base64"
+        ],
+        "executable": false,
+        "lamports": 551122033849780,
+        "owner": "Stake11111111111111111111111111111111111111",
+        "rentEpoch": 18446744073709552000,
+        "space": 200
+      }
+    },
+    "id": 7
+  }
+}

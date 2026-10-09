@@ -1,0 +1,34 @@
+{
+  "name": "@stakeward/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./test/craft": "./test/craft.ts",
+    "./test/support": "./test/support.ts",
+    "./test/litesvm-chain": "./test/litesvm-chain.ts",
+    "./test/svm": "./test/svm.ts",
+    "./test/test-wallet-port": "./test/test-wallet-port.ts",
+    "./test/thief": "./test/thief.ts",
+    "./test/wallet": "./test/wallet.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@solana-program/compute-budget": "0.19.0",
+    "@solana-program/stake": "0.10.0",
+    "@solana-program/system": "0.15.0",
+    "@solana/kit": "8.4.0"
+  },
+  "devDependencies": {
+    "@solana/kit-plugin-litesvm": "0.19.0",
+    "@types/node": "24.19.1",
+    "litesvm": "1.5.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

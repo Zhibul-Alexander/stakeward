@@ -1,0 +1,10 @@
+{
+  // Test harness and integration tests: LiteSVM and fixtures need Node. Kit's signer types refer to the Web Crypto
+  // globals (CryptoKeyPair), which @types/node only has under `webcrypto`, hence the DOM lib.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["."]
+}

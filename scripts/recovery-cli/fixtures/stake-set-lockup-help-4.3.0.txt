@@ -1,0 +1,72 @@
+solana-stake-set-lockup 
+Set Lockup for the stake account
+
+USAGE:
+    solana stake-set-lockup [FLAGS] [OPTIONS] <STAKE_ACCOUNT_ADDRESS> <--lockup-epoch <NUMBER>|--lockup-date <RFC3339 DATETIME>|--new-custodian <PUBKEY>>
+
+FLAGS:
+        --dump-transaction-message       Display the base64 encoded binary transaction message in sign-only mode
+    -h, --help                           Prints help information
+        --no-address-labels              Do not use address labels in the output
+        --sign-only                      Sign the transaction offline
+        --skip-preflight                 Skip the preflight check when sending transactions
+        --skip-seed-phrase-validation    Skip validation of seed phrases. Use this if your phrase does not use the BIP39
+                                         official English word list
+        --use-tpu-client                 Use TPU client when sending transactions.
+    -V, --version                        Prints version information
+    -v, --verbose                        Show additional information
+
+OPTIONS:
+        --blockhash <BLOCKHASH>                           Use the supplied blockhash
+        --commitment <COMMITMENT_LEVEL>
+            Return information at the selected commitment level [possible values: processed, confirmed, finalized]
+
+        --with-compute-unit-price <COMPUTE-UNIT-PRICE>
+            Set compute unit price for transaction, in increments of 0.000001 lamports per compute unit.
+
+    -C, --config <FILEPATH>
+            Configuration file to use [default: /home/user/.config/solana/cli/config.yml]
+
+        --custodian <KEYPAIR>                             Keypair of the existing custodian [default: cli config pubkey]
+        --fee-payer <KEYPAIR>
+            Specify the fee-payer account. This may be a keypair file, the ASK keyword or the pubkey of an offline
+            signer, provided an appropriate --signer argument is also passed. Defaults to the client keypair.
+    -u, --url <URL_OR_MONIKER>
+            URL for Solana's JSON RPC or moniker (or their first letter): [mainnet-beta, testnet, devnet, localhost]
+
+    -k, --keypair <KEYPAIR>                               Filepath or URL to a keypair
+        --lockup-date <RFC3339 DATETIME>
+            The date and time at which this account will be available for withdrawal
+
+        --lockup-epoch <NUMBER>
+            The epoch height at which this account will be available for withdrawal
+
+        --with-memo <MEMO>                                Specify a memo string to include in the transaction.
+        --new-custodian <PUBKEY>
+            New lockup custodian. Address is one of:
+              * a base58-encoded public key
+              * a path to a keypair file
+              * a hyphen; signals a JSON-encoded keypair on stdin
+              * the 'ASK' keyword; to recover a keypair via its seed phrase
+              * a hardware wallet keypair URL (i.e. usb://ledger)
+        --nonce <PUBKEY>
+            Provide the nonce account to use when creating a nonced 
+            transaction. Nonced transactions are useful when a transaction 
+            requires a lengthy signing process. Learn more about nonced 
+            transactions at https://docs.anza.xyz/cli/examples/durable-nonce
+        --nonce-authority <KEYPAIR>
+            Provide the nonce authority keypair to use when signing a nonced transaction
+
+        --output <FORMAT>
+            Return information in specified output format [possible values: json, json-compact]
+
+        --signer <PUBKEY=SIGNATURE>...                    Provide a public-key/signature pair for the transaction
+        --ws <URL>                                        WebSocket URL for the solana cluster
+
+ARGS:
+    <STAKE_ACCOUNT_ADDRESS>    Stake account for which to set lockup parameters. Address is one of:
+                                 * a base58-encoded public key
+                                 * a path to a keypair file
+                                 * a hyphen; signals a JSON-encoded keypair on stdin
+                                 * the 'ASK' keyword; to recover a keypair via its seed phrase
+                                 * a hardware wallet keypair URL (i.e. usb://ledger)

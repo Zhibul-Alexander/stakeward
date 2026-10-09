@@ -1,0 +1,41 @@
+{
+  "name": "delegated-lockup",
+  "cluster": "mainnet-beta",
+  "address": "14ss8zTNioPxXPVG2K7KtS252wDCkKQ711Lgon3ESP7S",
+  "slot": 452563565,
+  "fetchedAt": "2026-10-02T09:01:13.399Z",
+  "epochAtFetch": 1047,
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "getAccountInfo",
+    "params": [
+      "14ss8zTNioPxXPVG2K7KtS252wDCkKQ711Lgon3ESP7S",
+      {
+        "encoding": "base64",
+        "commitment": "confirmed"
+      }
+    ]
+  },
+  "response": {
+    "jsonrpc": "2.0",
+    "result": {
+      "context": {
+        "apiVersion": "4.3.0",
+        "slot": 452563565
+      },
+      "value": {
+        "data": [
+          "AgAAAIDVIgAAAAAAZypzvMiHz77gkh3mwGnlBDEr0rl06t+AsN00KIaAztpnKnO8yIfPvuCSHebAaeUEMSvSuXTq34Cw3TQohoDO2oCdz2wAAAAAAAAAAAAAAAAlj7WY8b7rW/SHo/O3/rDM5hTOJU5eikPgikgz8ic+kQfwRVph5rBLIC6N10dXPj5OhC/980KrcYjVKf3oeJdmhp39nVABAAB0AgAAAAAAAP//////////AAAAAAAA0D/RnomPAAAAAAAAAAA=",
+          "base64"
+        ],
+        "executable": false,
+        "lamports": 1468841692445,
+        "owner": "Stake11111111111111111111111111111111111111",
+        "rentEpoch": 18446744073709552000,
+        "space": 200
+      }
+    },
+    "id": 3
+  }
+}

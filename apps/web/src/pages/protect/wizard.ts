@@ -1,0 +1,258 @@
+import { isAddress, type Address } from '@solana/kit';
+import {
+  DEFAULT_LOCK_PERIOD,
+  protectBlock,
+  validateSecondKey,
+  ZERO_ADDRESS,
+  type ChainClock,
+  type ClockView,
+  type LockPeriod,
+  type ProtectBlock,
+  type SecondKeyViolation,
+  type StakeAccount,
+} from '@stakeward/core';
+import { retryableOutcomes } from '@/pages/account/check';
+import { parseAddressInput } from '@/signing/AddressField';
+import type { JobState, JobView } from '@/signing/machine';
+import type { SignMode } from '@/signing/SignWhere';
+
+/**
+ * The protect wizard's rules and state (F1, DECISIONS.md D48), pure. The selection lives only in the URL
+ * (`?account=` repeated); step, period, lock end, the seed checkbox and the outcomes live in React state, so Back keeps
+ * them and a reload starts again from the URL with fresh reads.
+ */
+
+/** Live signing asks each wallet for one round of every selected account (RPC proxy limit, DECISIONS.md D40). */
+export const MAX_ACCOUNTS_PER_RUN = 10;
+
+/** A lock end closer than this to the cluster clock is refused: it would be over before the transaction lands. */
+export const LOCK_END_MARGIN_SECONDS = 60n;
+
+export type WizardStep = 'accounts' | 'second-key' | 'period' | 'sign' | 'done';
+
+/** The order StepProgress shows. */
+export const WIZARD_STEPS: readonly WizardStep[] = ['accounts', 'second-key', 'period', 'sign', 'done'];
+
+/** The stake accounts of `?account=` (repeated): valid addresses only, never the zero address, each once, in order. */
+export function parseAccountParams(params: URLSearchParams): Address[] {
+  const accounts: Address[] = [];
+  for (const value of params.getAll('account')) {
+    if (!isAddress(value) || value === ZERO_ADDRESS || accounts.includes(value)) continue;
+    accounts.push(value);
+  }
+  return accounts;
+}
+
+/** `?account=A&account=B` for the selection. */
+export function accountParams(accounts: readonly Address[]): URLSearchParams {
+  return new URLSearchParams(accounts.map((account) => ['account', account]));
+}
+
+/** A stake account of the main key, and why it cannot be protected now (null: it can). */
+export type Candidate = { account: StakeAccount; block: ProtectBlock | null };
+
+/** The main key's stake accounts with their protect block (core `protectBlock`); others' accounts are not candidates. */
+export function candidates(
+  accounts: readonly StakeAccount[],
+  mainKey: Address,
+  knownSecondKeys: readonly Address[],
+  clock: ClockView,
+): Candidate[] {
+  return accounts
+    .filter((account) => account.withdrawer === mainKey)
+    .map((account) => ({ account, block: protectBlock(account, mainKey, knownSecondKeys, clock) }));
+}
+
+/** What the run will protect: the selected candidates that are not blocked, in the selection's order. */
+export function effectiveSelection(selected: readonly Address[], cands: readonly Candidate[]): Address[] {
+  return selected.filter((address) => cands.some((candidate) => candidate.account.address === address && candidate.block === null));
+}
+
+/** Selected accounts the main key does not hold (a link names accounts; the chain decides, DECISIONS.md D36). */
+export function leftOut(selected: readonly Address[], cands: readonly Candidate[]): Address[] {
+  return selected.filter((address) => !cands.some((candidate) => candidate.account.address === address));
+}
+
+export type SecondKeyProblem = { account: Address; violations: SecondKeyViolation[] };
+
+/** Every selected account the second key cannot lock (CLAUDE.md section 5: not A, not its staker, not itself, not zero). */
+export function secondKeyProblems(second: Address, mainKey: Address, accounts: readonly StakeAccount[]): SecondKeyProblem[] {
+  return accounts.flatMap((account) => {
+    const violations = validateSecondKey({ second, mainKey, staker: account.staker, stakeAccount: account.address });
+    return violations.length === 0 ? [] : [{ account: account.address, violations }];
+  });
+}
+
+/**
+ * The chosen accounts whose lock `second` held before: a lock that ended or that the second key removed keeps naming
+ * its second key. Protecting them again with it is allowed (a normal end may reuse it), but after a "second key may be
+ * stolen" alert the old key is the one to replace, so the step warns (SECURITY-CHECK П9). Never for the empty address,
+ * which every account that never had a lock names.
+ */
+export function previouslyHeldBy(second: Address, accounts: readonly StakeAccount[]): Address[] {
+  if (second === ZERO_ADDRESS) return [];
+  return accounts.filter((account) => account.lockup.custodian === second).map((account) => account.address);
+}
+
+export type Blocker =
+  | 'need-main'
+  | 'need-one'
+  | 'too-many'
+  /** Steps 2 and 3: every chosen account was left out ("Leave … out"); only the accounts step can add one. */
+  | 'none-left'
+  | 'need-second'
+  | 'second-key-problem'
+  | 'need-seed-check'
+  | 'need-clock';
+
+export type BlockerInput = {
+  mainReady: boolean;
+  /** Accounts in the effective selection. */
+  selection: number;
+  secondReady: boolean;
+  /** Accounts with a second-key problem. */
+  problems: number;
+  seedConfirmed: boolean;
+  clockReady: boolean;
+};
+
+/** What keeps Continue from going on at a step, in the order the screen lists them; empty = go on. */
+export function blockers(step: 'accounts' | 'second-key' | 'period', input: BlockerInput): Blocker[] {
+  const found: Blocker[] = [];
+  switch (step) {
+    case 'accounts':
+      if (!input.mainReady) found.push('need-main');
+      else if (input.selection === 0) found.push('need-one');
+      else if (input.selection > MAX_ACCOUNTS_PER_RUN) found.push('too-many');
+      return found;
+    case 'second-key':
+      if (input.selection === 0) return ['none-left'];
+      if (!input.secondReady) found.push('need-second');
+      else if (input.problems > 0) found.push('second-key-problem');
+      if (!input.seedConfirmed) found.push('need-seed-check');
+      return found;
+    case 'period':
+      if (input.selection === 0) return ['none-left'];
+      if (!input.clockReady) found.push('need-clock');
+      return found;
+  }
+}
+
+export type WizardState = {
+  step: WizardStep;
+  seedConfirmed: boolean;
+  /** Where the second key signs: connected in this browser, or on another device by link (step 7 spec 10.1). */
+  secondMode: SignMode;
+  /** The second key's address as typed or pasted for signing by link (kept while the user goes back and forth). */
+  linkKey: string;
+  period: LockPeriod;
+  /** T, fixed when the period step's Continue is pressed; reused by every retry of the run. */
+  lockUntil: bigint | null;
+  /** The signing run; a new key is a new signing session. */
+  run: { key: number; ids: readonly Address[] } | null;
+  /** Each account's last outcome, across runs. */
+  outcomes: Readonly<Record<string, JobView>>;
+  /** Accounts in the order they were first signed. */
+  order: readonly Address[];
+  clock: ChainClock | null;
+};
+
+export type WizardAction =
+  | { type: 'go'; step: 'accounts' | 'second-key' | 'period' }
+  | { type: 'confirm-seed'; value: boolean }
+  | { type: 'second-mode'; value: SignMode }
+  | { type: 'link-key'; text: string }
+  | { type: 'period'; value: LockPeriod }
+  | { type: 'sign'; lockUntil: bigint; ids: readonly Address[] }
+  | { type: 'finished'; jobs: readonly JobView[]; clock: ChainClock | null }
+  | { type: 'retry'; ids: readonly Address[] }
+  | { type: 'checked'; states: Readonly<Record<string, JobState>> };
+
+export function initialWizardState(): WizardState {
+  return {
+    step: 'accounts',
+    seedConfirmed: false,
+    secondMode: 'here',
+    linkKey: '',
+    period: DEFAULT_LOCK_PERIOD,
+    lockUntil: null,
+    run: null,
+    outcomes: {},
+    order: [],
+    clock: null,
+  };
+}
+
+export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
+  switch (action.type) {
+    case 'go':
+      return { ...state, step: action.step };
+    case 'confirm-seed':
+      return { ...state, seedConfirmed: action.value };
+    case 'second-mode':
+      return { ...state, secondMode: action.value };
+    case 'link-key':
+      return { ...state, linkKey: action.text };
+    case 'period':
+      return { ...state, period: action.value };
+    case 'sign':
+      return { ...state, step: 'sign', lockUntil: action.lockUntil, run: nextRun(state, action.ids) };
+    case 'finished': {
+      const outcomes: Record<string, JobView> = { ...state.outcomes };
+      const order = [...state.order];
+      for (const job of action.jobs) {
+        outcomes[job.id] = job;
+        if (!order.includes(job.id as Address)) order.push(job.id as Address);
+      }
+      return { ...state, step: 'done', outcomes, order, clock: action.clock ?? state.clock };
+    }
+    case 'retry':
+      return { ...state, step: 'sign', run: nextRun(state, action.ids) };
+    case 'checked': {
+      const outcomes: Record<string, JobView> = { ...state.outcomes };
+      for (const [id, next] of Object.entries(action.states)) {
+        const job = outcomes[id];
+        if (job !== undefined) outcomes[id] = { ...job, state: next };
+      }
+      return { ...state, outcomes };
+    }
+  }
+}
+
+/**
+ * The second key of the run: the second key slot's address when it signs here, the typed address when it signs by link
+ * (null until that is a valid address). The joint signature on the chain proves only that the typed address signed,
+ * not whose it is: a scammer's address signs too (SECURITY-CHECK П14), so the field's hint says to paste only a wallet
+ * the owner or someone they trust created (F1.4).
+ */
+export function chosenSecondKey(state: Pick<WizardState, 'secondMode' | 'linkKey'>, slotAddress: Address | null): Address | null {
+  if (state.secondMode === 'here') return slotAddress;
+  const parsed = parseAddressInput(state.linkKey);
+  return parsed.ok ? parsed.address : null;
+}
+
+function nextRun(state: WizardState, ids: readonly Address[]): { key: number; ids: readonly Address[] } {
+  return { key: (state.run?.key ?? 0) + 1, ids: [...ids] };
+}
+
+function idsWhere(state: WizardState, kinds: readonly JobState['kind'][]): Address[] {
+  return state.order.filter((id) => {
+    const kind = state.outcomes[id]?.state.kind;
+    return kind !== undefined && kinds.includes(kind);
+  });
+}
+
+/** Protected on the chain: landed in a run, or already showing this lock when a run read it. */
+export function protectedIds(state: WizardState): Address[] {
+  return idsWhere(state, ['done', 'already-done']);
+}
+
+/** Known not to have landed: a new run may try them again (none while a link is still open, retryableOutcomes). */
+export function retryableIds(state: WizardState): Address[] {
+  return retryableOutcomes(state.order.flatMap((id) => state.outcomes[id] ?? [])).map((job) => job.id as Address);
+}
+
+/** Sent, outcome not known yet: only a fresh read may tell (Check again). */
+export function uncertainIds(state: WizardState): Address[] {
+  return idsWhere(state, ['unknown']);
+}

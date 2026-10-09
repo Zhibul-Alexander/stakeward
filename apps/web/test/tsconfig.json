@@ -1,0 +1,11 @@
+{
+  // Vitest tests that run in Node (file scans, builds, LiteSVM): Node types on top of the site's settings.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "paths": { "@/*": ["../src/*"] }
+  },
+  "include": [".", "../src/vite-env.d.ts"]
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-labelledby="title desc">
+  <title id="title">Stakeward</title>
+  <desc id="desc">A shield in two halves with a keyhole: a lock on staked SOL that answers to two keys.</desc>
+  <!--
+    Stakeward mark. Original artwork, no third-party assets. Colours are tokens from apps/web/src/styles/tokens.css:
+    primary #4338ca (left half), primary-hover #3730a3 (right half), on-primary #ffffff (keyhole).
+    The two halves stand for the main key and the second key; the keyhole is the lockup built into the stake account.
+    apps/web/public/favicon.svg uses the same geometry.
+  -->
+  <path fill="#4338ca" d="M32 3 9 11v18c0 15 9.5 26.5 23 32Z"/>
+  <path fill="#3730a3" d="M32 3l23 8v18c0 15-9.5 26.5-23 32Z"/>
+  <circle cx="32" cy="26" r="6.5" fill="#ffffff"/>
+  <path fill="#ffffff" d="M29 29.5h6l2.5 15.3a1.5 1.5 0 0 1-1.5 1.7h-8a1.5 1.5 0 0 1-1.5-1.7Z"/>
+</svg>
