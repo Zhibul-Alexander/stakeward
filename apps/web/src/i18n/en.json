@@ -334,7 +334,7 @@
         "nonce-setup": "Set up signing by link",
         "nonce-close": "Close the link-signing account"
       },
-      "intro": "Read from the exact bytes your wallets will sign.",
+      "intro": "Read from the exact bytes you sign.",
       "stakeAccount": "Stake account",
       "changes": "What changes",
       "now": "Now",
@@ -407,7 +407,7 @@
           "protect": "Protect {count} stake accounts"
         },
         "now": "Now: {lock}",
-        "fee": "Up to {total} in total ({amount} each)"
+        "fee": "Up to {total} ({amount} each)"
       }
     },
     "steps": {
@@ -522,6 +522,9 @@
     "stopWaiting": "Stop waiting",
     "needWallet": "Connect your {role} to sign.",
     "useWallet": "Use this wallet",
+    "connectFirst": "No wallet here holds your {role} yet. Connect it above, then press Use this wallet.",
+    "leftOutOne": "1 stake account is not in this request:",
+    "leftOutOther": "{count} stake accounts are not in this request:",
     "accountNotOffered": "{wallet} does not offer this account right now:",
     "stillNotOffered": "{wallet} still does not offer this account. Switch to it in {wallet}, then press Continue.",
     "backNothingSent": "Stop and go back. Nothing was sent.",
@@ -990,8 +993,6 @@
     },
     "sign": {
       "heading": "Review and sign",
-      "countOne": "Your Main key and Second key each approve it once.",
-      "countOther": "Your Main key and Second key each approve all {count} in one request.",
       "linkOne": "1 transaction. Your main key signs here; your second key signs it from the link.",
       "linkOther": "{count} transactions, one link each, one after another. Your main key signs here; your second key signs each link."
     },

@@ -13,7 +13,7 @@ import { NonceGate } from '@/signing/NonceGate';
 import { PageSigningPanel } from '@/signing/SigningPanel';
 import type { SignMode } from '@/signing/SignWhere';
 import { useSigningSession } from '@/signing/use-signing-session';
-import { protectPlan } from './plan.ts';
+import { protectPlan, refusalText } from './plan.ts';
 
 type SignStepProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -41,20 +41,16 @@ export function SignStep(props: SignStepProps) {
   const headingId = useId();
   const count = run.ids.length;
   const byLink = mode === 'link';
-  const countText = byLink
-    ? count === 1
-      ? t('protect.sign.linkOne')
-      : t('protect.sign.linkOther', { count })
-    : count === 1
-      ? t('protect.sign.countOne')
-      : t('protect.sign.countOther', { count });
+  // By link the line says how the transactions travel. Live it would only repeat the signing order's "Approves N in one
+  // request", which counts the round actually built (an account read again and left out is named there).
+  const linkText = count === 1 ? t('protect.sign.linkOne') : t('protect.sign.linkOther', { count });
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
           {t('protect.sign.heading')}
         </h2>
-        <p className="max-w-prose text-muted">{countText}</p>
+        {byLink ? <p className="max-w-prose text-pretty text-muted">{linkText}</p> : null}
       </div>
       {byLink ? (
         <NonceGate
@@ -109,6 +105,7 @@ function ProtectRun({
       knownRoles={knownRoles}
       renderKeySlot={renderKeySlot}
       risk={<RiskNote risk="lose-second-key" date={lockUntil} variant="inline" />}
+      refusalText={refusalText}
       renderLinkCancel={
         link === undefined
           ? undefined

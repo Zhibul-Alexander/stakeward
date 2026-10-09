@@ -8,7 +8,7 @@ import {
   type NonceLifetime,
   type StakeAccount,
 } from '@stakeward/core';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi, type Mock } from 'vitest';
 import { initialSigningState, signingReducer, type RoundTx, type SigningEvent, type SigningState } from './machine.ts';
@@ -50,6 +50,8 @@ async function roundTx(stakeAccount: Address): Promise<RoundTx> {
 }
 
 let ready: SigningState;
+/** Two accounts chosen; the read before building refused one, so the round holds one transaction. */
+let oneLeftOut: SigningState;
 /** Round 2 of a run in rounds of one: round 1 (S1) landed, S2 is ready to sign. */
 let roundTwo: SigningState;
 
@@ -100,6 +102,23 @@ beforeAll(async () => {
     ],
   };
   ready = [{ type: 'start' } as const, prepared].reduce(signingReducer, initialSigningState([S1, S2], 2));
+  const [first] = txs as [RoundTx, RoundTx];
+  oneLeftOut = [
+    { type: 'start' } as const,
+    {
+      type: 'prepared',
+      clock: CLOCK,
+      jobs: {
+        [S1]: { id: S1, state: { kind: 'ready' }, before: before(S1), action: first.summary.action, lifetime: LIFETIME, signature: null, bytes: first.bytes },
+        [S2]: { id: S2, state: { kind: 'refused', reason: 'locked-by-other' }, before: before(S2), action: null, lifetime: null, signature: null, bytes: null },
+      },
+      txs: [first],
+      steps: [
+        { address: MAIN, role: 'main', walletName: 'Main Wallet', count: 1, status: 'pending', local: true },
+        { address: SECOND, role: 'second', walletName: 'Second Wallet', count: 1, status: 'pending', local: true },
+      ],
+    } as const,
+  ].reduce(signingReducer, initialSigningState([S1, S2], 2));
 });
 
 const reduce = (state: SigningState, ...events: SigningEvent[]): SigningState => events.reduce(signingReducer, state);
@@ -174,13 +193,17 @@ describe('SigningView', () => {
     expect(signers.map((item) => item.getAttribute('data-status'))).toEqual(['current', 'waiting']);
     expect(within(order).queryByText(MAIN)).not.toBeInTheDocument();
     expect(within(summary).getByText(MAIN)).toBeInTheDocument();
-    // The action bar after the summary: the risk, the hint, then Sign (the one filled button) and Back.
+    // After the summary: the hint, then the action bar with the risk right above Sign (the one filled button) and Back.
     const bar = document.querySelector('[data-slot="action-bar"]') as HTMLElement;
     expect(precedes(summary, bar)).toBe(true);
     const sign = screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' });
-    expect(within(bar).getByTestId('risk')).toBeInTheDocument();
-    expect(precedes(screen.getByTestId('risk'), sign)).toBe(true);
-    expect(within(bar).getByText('Check the summary above, then approve the request in Main Wallet.')).toBeInTheDocument();
+    const risk = within(bar).getByTestId('risk');
+    expect(precedes(risk, sign)).toBe(true);
+    const hint = screen.getByText('Check the summary above, then approve the request in Main Wallet.');
+    expect(precedes(summary, hint)).toBe(true);
+    expect(precedes(hint, risk)).toBe(true);
+    // Nothing stands between the risk and the Sign button.
+    expect(risk.nextElementSibling).toContainElement(sign);
     expect(filledButtons()).toEqual([sign]);
     expect(sign).toHaveAttribute('data-size', 'lg');
     await userEvent.click(sign);
@@ -246,8 +269,39 @@ describe('SigningView', () => {
     expect(use).toHaveAttribute('data-variant', 'outline');
     expect(filledButtons()).toEqual([]);
     expect(screen.queryByTestId('risk')).not.toBeInTheDocument();
+    // Before a press it says nothing more; pressed while no wallet here holds the key (the session changes nothing),
+    // it says why under the button instead of seeming dead.
+    expect(screen.queryByText(/^No wallet here holds your/)).not.toBeInTheDocument();
     await userEvent.click(use);
     expect(spy.continueWithWallet).toHaveBeenCalledTimes(1);
+    const why = screen.getByText('No wallet here holds your Main key yet. Connect it above, then press Use this wallet.');
+    expect(why.closest('[data-slot="action-bar-reason"]')).not.toBeNull();
+  });
+
+  it('names a chosen stake account that is not in the round, with the page\'s reason, before anyone signs', () => {
+    render(
+      <SigningView
+        state={oneLeftOut}
+        actions={actions()}
+        knownRoles={{ main: MAIN, second: SECOND }}
+        renderKeySlot={() => null}
+        refusalText={(reason) => `Refused: ${reason}`}
+      />,
+    );
+    const left = document.querySelector('[data-slot="left-out-of-round"]') as HTMLElement;
+    expect(left).toHaveTextContent('1 stake account is not in this request:');
+    const items = within(left).getAllByRole('listitem');
+    expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['left-out']);
+    expect(items[0]).toHaveTextContent('Refused: locked-by-other');
+    // It comes before the signing order and the summary of the one transaction that is signed.
+    const order = screen.getByRole('list', { name: 'Signatures' });
+    expect(precedes(left, order)).toBe(true);
+    expect(within(order.parentElement as HTMLElement).getByText('Approves 1 transaction')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in Main Wallet as Main key' })).toBeInTheDocument();
+    // With every chosen account in the round there is no such list.
+    cleanup();
+    show(ready);
+    expect(document.querySelector('[data-slot="left-out-of-round"]')).toBeNull();
   });
 
   it('summaryIntro={false} and hideSingleSigner: no intro line, and no signing order while one signer is left', () => {
@@ -255,7 +309,7 @@ describe('SigningView', () => {
     const lastOne = reduce(ready, { type: 'asking', step: 0 }, { type: 'signed', step: 0, txs: signedTxs });
     const props = { actions: actions(), knownRoles: { main: MAIN, second: SECOND }, renderKeySlot: () => null };
     const { rerender } = render(<SigningView state={lastOne} {...props} summaryIntro={false} hideSingleSigner />);
-    expect(screen.queryByText('Read from the exact bytes your wallets will sign.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Read from the exact bytes you sign.')).not.toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Signatures' })).not.toBeInTheDocument();
     // "Who signs" still lists both keys and who already signed.
     const summary = document.querySelector('[data-slot="transaction-summary"]') as HTMLElement;
@@ -267,7 +321,7 @@ describe('SigningView', () => {
     expect(screen.getByRole('list', { name: 'Signatures' })).toBeInTheDocument();
     // By default the intro line is there.
     rerender(<SigningView state={ready} {...props} />);
-    expect(screen.getByText('Read from the exact bytes your wallets will sign.')).toBeInTheDocument();
+    expect(screen.getByText('Read from the exact bytes you sign.')).toBeInTheDocument();
   });
 
   it('signing: explains the wait and offers Stop waiting, no Back', async () => {

@@ -70,7 +70,7 @@ describe('TransactionSummary', () => {
     render(<TransactionSummary summary={await inspected(protect, MAIN)} current={{ lockup: NO_LOCK, clock: NOW }} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
-    expect(screen.getByText('Read from the exact bytes your wallets will sign.')).toBeInTheDocument();
+    expect(screen.getByText('Read from the exact bytes you sign.')).toBeInTheDocument();
     expect(screen.getByText(STAKE)).toBeInTheDocument();
     expect(screen.getByText('No lock')).toBeInTheDocument();
     expect(screen.getByText('Locked until 12 April 2027')).toBeInTheDocument();
@@ -105,7 +105,23 @@ describe('TransactionSummary', () => {
   it('intro={false} leaves out the line about the bytes (/cosign says who sent it instead)', async () => {
     render(<TransactionSummary summary={await inspected(protect, MAIN)} intro={false} />);
     expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
-    expect(screen.queryByText('Read from the exact bytes your wallets will sign.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Read from the exact bytes you sign.')).not.toBeInTheDocument();
+  });
+
+  it('What changes: a Now of a word or two gives the After the room for a full address; a Now with an address keeps three equal columns', async () => {
+    const { unmount } = render(<TransactionSummary summary={await inspected(protect, MAIN)} current={{ lockup: NO_LOCK, clock: NOW }} />);
+    const rows = () => [...document.querySelectorAll('dl > [data-layout]')].map((row) => row.getAttribute('data-layout'));
+    // Lock: No lock -> date; Second key: None -> the full address.
+    expect(rows()).toEqual(['wide-after', 'wide-after']);
+    unmount();
+    // A second key in force is replaced: its Now is a full address too.
+    render(
+      <TransactionSummary
+        summary={await inspected(protect, MAIN)}
+        current={{ lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: OTHER }, clock: NOW }}
+      />,
+    );
+    expect(rows()).toEqual(['columns', 'columns']);
   });
 
   it('protect over a lock held by another key warns that it replaces that key, before anything else', async () => {
@@ -271,7 +287,7 @@ describe('TransactionSummary', () => {
     // "What changes" shows the After values only: each account's "now" is in its own line above.
     expect(screen.queryByText('Now')).not.toBeInTheDocument();
     expect(screen.getAllByText('After')).toHaveLength(2);
-    expect(screen.getByText('Up to 0.0000212 SOL in total (0.0000106 SOL each)')).toBeInTheDocument();
+    expect(screen.getByText('Up to 0.0000212 SOL (0.0000106 SOL each)')).toBeInTheDocument();
     expect(screen.queryByText('Up to 0.0000106 SOL')).not.toBeInTheDocument();
     expect(signers()).toEqual([
       `Main keyNot signed yetPays the network fee${MAIN}`,

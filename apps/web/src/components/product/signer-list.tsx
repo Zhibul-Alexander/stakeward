@@ -117,7 +117,8 @@ function CompactSignerList({ items, className }: { items: readonly SignerListIte
   const sameCount = first !== undefined && items.every((item) => item.count === first.count);
   return (
     <div data-slot="signer-list" data-variant="compact" className={cn('flex flex-col gap-2', className)}>
-      <ol aria-label={t('signing.signers')} className="flex flex-col gap-2">
+      {/* From 640 px the keys stand side by side when each line is that short (the same count for all). */}
+      <ol aria-label={t('signing.signers')} className={cn('flex flex-col gap-2', sameCount && 'sm:flex-row sm:flex-wrap sm:gap-x-6')}>
         {items.map((item, index) => {
           const current = item.status === 'current';
           return (

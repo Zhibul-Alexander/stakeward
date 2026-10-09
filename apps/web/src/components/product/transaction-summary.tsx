@@ -171,6 +171,11 @@ export function TransactionSummary({
   const TitleTag: Heading = headingLevel === 2 ? 'h2' : 'h3';
   const SectionTag: Heading = headingLevel === 2 ? 'h3' : 'h4';
   const changes = changeRows(action, current, clock);
+  // When every "Now" is a word or two and an "After" holds an address, the After column takes the room the Now column
+  // does not need, so the address wraps less.
+  const afterWide =
+    changes.every((row) => row.before === undefined || typeof row.before === 'string') &&
+    changes.some((row) => typeof row.after !== 'string');
   // The warnings that depend on an account's state go with that account when a batch's accounts differ.
   const warnings = [
     ...(batch === undefined || shared !== undefined ? stateWarnings(action, current, clock) : []),
@@ -188,7 +193,7 @@ export function TransactionSummary({
       data-slot="transaction-summary"
       data-kind={action.kind}
       className={cn(
-        '@container flex flex-col divide-y divide-border rounded-lg border border-border bg-surface px-4 py-1 sm:px-6 sm:py-2',
+        '@container flex flex-col divide-y divide-border rounded-lg border border-border bg-surface px-4 py-1 text-pretty sm:px-6 sm:py-2',
         '*:py-3 sm:*:py-4',
         className,
       )}
@@ -217,7 +222,7 @@ export function TransactionSummary({
       <Part title={t('components.tx.changes')} tag={SectionTag}>
         <dl className="flex flex-col gap-3">
           {changes.map((row) => (
-            <ChangeRow key={row.label} {...row} />
+            <ChangeRow key={row.label} {...row} afterWide={afterWide} />
           ))}
         </dl>
       </Part>
@@ -339,8 +344,9 @@ function BatchAccounts({
             <li key={account.address} data-account={account.address} className="flex flex-col gap-1">
               <div className="flex flex-col @md:flex-row @md:items-start @md:gap-4">
                 <AddressText address={account.address} variant="full" className="min-w-0 flex-1" />
+                {/* A column of one width, right-aligned, so the copy buttons line up whatever the amounts. */}
                 {account.lamports === null ? null : (
-                  <SolAmount lamports={account.lamports} className="text-sm font-medium @md:py-1.5" />
+                  <SolAmount lamports={account.lamports} className="text-sm font-medium @md:min-w-36 @md:py-1.5 @md:text-right" />
                 )}
               </div>
               {shared || account.current === undefined ? null : (
@@ -372,12 +378,49 @@ type Row = { label: string; before?: ReactNode; after: ReactNode; note?: string 
 /**
  * One line of "What changes": what, now, after. In a receipt 576 px wide or more (a container query, so a narrow column
  * on a wide screen stacks too) three columns, the After value after an arrow; narrower, stacked, each value with its
- * word in front. The After value sits on a subtle inset: it is what the signature makes
- * true.
+ * word in front. The After value sits on a subtle inset: it is what the signature makes true.
+ *
+ * `afterWide` (every Now is a word or two, an After holds an address): narrow, the label and its Now share one line and
+ * the After goes below; from 576 px the label and Now columns are narrow and the After takes the rest, so a full
+ * address fits on one line next to its copy button.
  */
-function ChangeRow({ label, before, after, note }: Row) {
+function ChangeRow({ label, before, after, note, afterWide }: Row & { afterWide: boolean }) {
+  const afterValue = (
+    <div className="flex items-baseline gap-2 @xl:flex-col @xl:items-start @xl:gap-0.5">
+      <span className="w-10 shrink-0 text-xs text-muted @xl:w-auto">{t('components.tx.after')}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1 @xl:w-full">
+        <div className="min-w-0 font-medium">{after}</div>
+        {note === undefined ? null : <p className="text-xs text-muted">{note}</p>}
+      </div>
+    </div>
+  );
+  // The arrow stands in the gap between the columns, so the After value keeps its width.
+  const arrow = <ArrowRightIcon aria-hidden="true" className="absolute top-2.5 -left-5 hidden size-4 text-muted @xl:block" />;
+  if (afterWide) {
+    return (
+      <div
+        data-layout="wide-after"
+        className="grid grid-cols-3 gap-x-3 gap-y-1.5 @xl:flex @xl:flex-row @xl:items-start @xl:gap-0"
+      >
+        <dt className="col-start-1 row-start-1 text-sm font-semibold @xl:w-20 @xl:shrink-0 @xl:py-2">{label}</dt>
+        {before === undefined ? (
+          // Keeps the After column in place when there is no Now (an empty dd: a span is not allowed in a dl group).
+          <dd aria-hidden="true" className="hidden @xl:ml-3 @xl:block @xl:w-24 @xl:shrink-0" />
+        ) : (
+          <dd className="col-span-2 col-start-2 row-start-1 flex min-w-0 items-baseline gap-2 text-sm @xl:ml-3 @xl:w-24 @xl:shrink-0 @xl:flex-col @xl:items-start @xl:gap-0.5 @xl:py-2">
+            <span className="shrink-0 text-xs text-muted">{t('components.tx.now')}</span>
+            <div className="min-w-0 flex-1">{before}</div>
+          </dd>
+        )}
+        <dd className="relative col-span-3 col-start-1 row-start-2 min-w-0 rounded-md bg-subtle px-2 py-1.5 text-sm @xl:ml-6 @xl:flex-1 @xl:py-2">
+          {arrow}
+          {afterValue}
+        </dd>
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-col gap-1.5 @xl:flex-row @xl:items-start @xl:gap-6">
+    <div data-layout="columns" className="flex flex-col gap-1.5 @xl:flex-row @xl:items-start @xl:gap-6">
       <dt className="text-sm font-semibold @xl:w-24 @xl:shrink-0 @xl:py-2">{label}</dt>
       {before === undefined ? (
         // Keeps the After column in place when there is no Now (an empty dd: a span is not allowed in a dl group).
@@ -389,15 +432,8 @@ function ChangeRow({ label, before, after, note }: Row) {
         </dd>
       )}
       <dd className="relative min-w-0 rounded-md bg-subtle px-2 py-1.5 text-sm @xl:flex-1 @xl:basis-0 @xl:py-2">
-        {/* The arrow stands in the gap between the columns, so the After value keeps its width. */}
-        <ArrowRightIcon aria-hidden="true" className="absolute top-2.5 -left-5 hidden size-4 text-muted @xl:block" />
-        <div className="flex items-baseline gap-2 @xl:flex-col @xl:items-start @xl:gap-0.5">
-          <span className="w-10 shrink-0 text-xs text-muted @xl:w-auto">{t('components.tx.after')}</span>
-          <div className="flex min-w-0 flex-1 flex-col gap-1 @xl:w-full">
-            <div className="min-w-0 font-medium">{after}</div>
-            {note === undefined ? null : <p className="text-xs text-muted">{note}</p>}
-          </div>
-        </div>
+        {arrow}
+        {afterValue}
       </dd>
     </div>
   );

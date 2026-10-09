@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ActionBar } from '@/components/product/action-bar';
 import { AddressText } from '@/components/product/address-text';
 import { ErrorState } from '@/components/product/error-state';
-import { JobStatusList } from '@/components/product/job-status-list';
+import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { LinkCard } from '@/components/product/link-card';
 import { SignerList, SignerListSkeleton } from '@/components/product/signer-list';
 import {
@@ -23,7 +23,7 @@ import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { initialSigningState, type PrepareProblem, type SignStep, type SigningState, type StopReason } from './machine.ts';
 import type { SigningSession } from './session.ts';
-import { backKind, earlierSent, jobItems, linkView, roundProgress, sendProgress, signerItems } from './view.ts';
+import { backKind, defaultJobReason, earlierSent, jobItems, jobStatus, linkView, roundProgress, sendProgress, signerItems } from './view.ts';
 
 /** What the panel's buttons call: a SigningSession, or no-ops for the /dev/ui fixtures. */
 export type SigningActions = Pick<
@@ -71,6 +71,11 @@ type SigningViewProps = {
    * next). The summary's "Who signs" still lists every signer. Default false.
    */
   hideSingleSigner?: boolean | undefined;
+  /**
+   * The page's words for why its plan left a stake account out (a refused job), said in the list of accounts that are
+   * not in this request. Without it such a row shows its status only.
+   */
+  refusalText?: ((reason: string) => string) | undefined;
 };
 
 /**
@@ -90,6 +95,7 @@ export function SigningView({
   risk,
   summaryIntro = true,
   hideSingleSigner = false,
+  refusalText,
 }: SigningViewProps) {
   const { phase } = state;
   const linkOpen = phase.kind === 'link';
@@ -114,8 +120,9 @@ export function SigningView({
   const singleLeft = signers.filter((signer) => signer.status !== 'signed').length === 1;
   const showOrder = signers.length > 0 && !(hideSingleSigner && singleLeft);
   const earlier = earlierSent(state);
+  const leftOut = shown ? leftOutItems(state, refusalText) : [];
   return (
-    <div data-slot="signing-panel" data-phase={phase.kind} className="flex flex-col gap-5">
+    <div data-slot="signing-panel" data-phase={phase.kind} className="flex flex-col gap-4 text-pretty">
       {progress.total > 1 ? (
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">{t('signing.roundOf', progress)}</p>
@@ -126,6 +133,11 @@ export function SigningView({
           )}
         </div>
       ) : null}
+      {leftOut.length === 0 ? null : (
+        // Chosen, but not in the round being signed (read again and refused, failed its simulation, or already done):
+        // the screen names them before anyone signs, so the count on the Sign button matches what was chosen.
+        <LeftOutOfRound items={leftOut} />
+      )}
       {building ? <SignerListSkeleton variant="compact" /> : showOrder ? <SignerList items={signers} variant="compact" /> : null}
       {building ? (
         <TransactionSummarySkeleton />
@@ -248,7 +260,35 @@ function Summaries({
   );
 }
 
-type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles' | 'summaryIntro' | 'hideSingleSigner'>;
+type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles' | 'summaryIntro' | 'hideSingleSigner' | 'refusalText'>;
+
+function LeftOutOfRound({ items }: { items: JobStatusItem[] }) {
+  const title = items.length === 1 ? t('signing.leftOutOne') : t('signing.leftOutOther', { count: items.length });
+  return (
+    <div data-slot="left-out-of-round" className="flex flex-col gap-2">
+      <p className="text-sm font-medium">{title}</p>
+      <JobStatusList items={items} label={title} />
+    </div>
+  );
+}
+
+/** The stake accounts of this round that have no transaction in it, each with its outcome and why. */
+function leftOutItems(state: SigningState, refusalText: ((reason: string) => string) | undefined): JobStatusItem[] {
+  const { round } = state;
+  if (round === null) return [];
+  const inRound = new Set(round.txs.map((tx) => tx.id));
+  return round.ids.flatMap((id) => {
+    const job = state.jobs[id];
+    if (inRound.has(id) || job === undefined) return [];
+    const { state: jobState } = job;
+    if (jobState.kind !== 'refused' && jobState.kind !== 'sim-failed' && jobState.kind !== 'already-done') return [];
+    const item: JobStatusItem = { address: id as Address, status: jobStatus(jobState), signature: job.signature };
+    const reason = jobState.kind === 'refused' ? refusalText?.(jobState.reason) : defaultJobReason(job);
+    if (reason !== undefined) item.reason = reason;
+    if (jobState.kind === 'sim-failed') item.detail = jobState.error.detail;
+    return [item];
+  });
+}
 
 /** What happens now and the one way forward (UX rule 7: every wait is explained and has a way out). */
 function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLinkCancel, risk }: PhaseActionsProps) {
@@ -260,6 +300,9 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
   const confirmBox = useRef<HTMLButtonElement>(null);
   const confirmId = useId();
   const confirmErrorId = useId();
+  // "Use this wallet" pressed while no wallet here holds the key (the session then does nothing): the step it was pressed
+  // at, so the screen says why instead of a button that seems dead.
+  const [walletAskedAt, setWalletAskedAt] = useState<number | null>(null);
   // After an earlier round was sent, "Nothing was sent" is about this round only.
   const roundOnly = earlierSent(state) > 0;
   const backButton =
@@ -296,6 +339,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
         step.walletName !== null && (round?.steps.some((other) => other !== step && other.walletName === step.walletName) ?? false);
       const mustConfirm = confirm !== undefined && !confirmed;
       const confirmError = confirmAsked && mustConfirm;
+      const firstHint = phase.step === 0 ? t('signing.firstHint', { wallet }) : null;
       return (
         <div className="flex flex-col gap-3">
           {phase.refreshed ? (
@@ -330,9 +374,10 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
               ) : null}
             </div>
           )}
+          {/* The hint comes before the risk, so the Sign button stands right under the risk it guards. */}
+          {firstHint === null ? null : <p className="text-sm text-muted">{firstHint}</p>}
           <ActionBar
             risk={risk}
-            note={phase.step === 0 ? t('signing.firstHint', { wallet }) : undefined}
             primary={
               <Button
                 size="lg"
@@ -347,7 +392,7 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
                   }
                   actions.sign();
                 }}
-                className="h-auto min-h-12 max-w-full whitespace-normal aria-disabled:pointer-events-auto"
+                className="h-auto min-h-12 max-w-full whitespace-normal text-balance aria-disabled:pointer-events-auto"
               >
                 {step.count === 1
                   ? t('signing.signWith', { wallet, role })
@@ -360,10 +405,12 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
       );
     }
 
-    case 'needs-wallet':
+    case 'needs-wallet': {
       if (step === undefined) return null;
       // The key slot's Connect is the screen's one filled button (the page passes emphasis="primary"); the button
-      // under it only goes on once a wallet here holds the key (the session checks), so it stays outline.
+      // under it only goes on once a wallet here holds the key (the session checks), so it stays outline. Pressed
+      // before that, the session changes nothing and the line under it says why.
+      const notYet = walletAskedAt === phase.step;
       return (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium">{t('signing.needWallet', { role })}</p>
@@ -374,15 +421,25 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
                 variant="outline"
                 onClick={() => {
                   actions.continueWithWallet();
+                  setWalletAskedAt(phase.step);
                 }}
               >
                 {t('signing.useWallet')}
               </Button>
             }
+            reason={
+              notYet ? (
+                <p className="flex items-start gap-2 text-sm font-medium text-danger">
+                  <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                  <span>{t('signing.connectFirst', { role })}</span>
+                </p>
+              ) : undefined
+            }
             secondary={backButton ?? undefined}
           />
         </div>
       );
+    }
 
     case 'switch-account':
       if (step === undefined) return null;

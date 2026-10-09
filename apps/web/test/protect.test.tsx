@@ -204,6 +204,14 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
 
       // One summary for both transactions, each stake account in full.
       await screen.findByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' }, WAIT);
+      // UX rule 6: the risk of losing the second key, with the chosen date, stands right above the Sign button.
+      const bar = document.querySelector('[data-slot="action-bar"]') as HTMLElement;
+      const risk = bar.querySelector('[data-risk="lose-second-key"]') as HTMLElement;
+      expect(risk).toHaveTextContent(`If you lose the second key, you wait until ${formatUtcDate(T) ?? ''} to withdraw or rescue this stake.`);
+      const signButton = within(bar).getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' });
+      expect(risk.nextElementSibling).toContainElement(signButton);
+      // The count is said once, by the signing order; the step's lead does not repeat it.
+      expect(screen.queryByText(/each approve/)).toBeNull();
       const summaries = document.querySelectorAll('[data-slot="transaction-summary"]');
       expect(summaries).toHaveLength(1);
       const summary = summaries[0] as HTMLElement;
