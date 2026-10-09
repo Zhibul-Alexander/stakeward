@@ -814,26 +814,6 @@ export function ComponentsSection() {
         <ErrorState title={t('devUi.states.error')} message={t('errors.network')} detail={SAMPLE_ERROR_DETAIL.fetch} onRetry={noop} />
       </DemoGroup>
 
-      <DemoGroup title={t('devUi.names.keyList')}>
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <Demo label={t('devUi.states.normal')}>
-            <KeyList
-              items={[
-                { role: 'main', address: SAMPLE.mainKey, note: t('withdraw.keys.main') },
-                {
-                  role: 'second',
-                  address: SAMPLE.secondKey,
-                  note: t('withdraw.keys.second', { lock: t('status.lockedUntil', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' }) }),
-                },
-              ]}
-            />
-          </Demo>
-          <Demo label={t('devUi.states.loading')}>
-            <KeyListSkeleton />
-          </Demo>
-        </div>
-      </DemoGroup>
-
       <DemoGroup title={t('devUi.darkPreview')} note={t('devUi.darkPreviewNote')}>
         <DarkPreview>
           <SummaryBar
@@ -866,6 +846,26 @@ export function ComponentsSection() {
           />
           <NoStakeAccounts headingLevel={3} />
         </DarkPreview>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.keyList')}>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <Demo label={t('devUi.states.normal')}>
+            <KeyList
+              items={[
+                { role: 'main', address: SAMPLE.mainKey, note: t('withdraw.keys.main') },
+                {
+                  role: 'second',
+                  address: SAMPLE.secondKey,
+                  note: t('withdraw.keys.second', { lock: t('status.lockedUntil', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' }) }),
+                },
+              ]}
+            />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <KeyListSkeleton />
+          </Demo>
+        </div>
       </DemoGroup>
     </DevSection>
   );
