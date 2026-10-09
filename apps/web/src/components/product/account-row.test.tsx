@@ -165,6 +165,8 @@ describe('AccountRow', () => {
     );
     const line = screen.getByText('A staking service may manage this stake.').closest('[data-slot="row-warning"]') as HTMLElement;
     expect(within(line).getByText(detail)).toBeInTheDocument();
+    // Two sentences on a narrow row: no lone word on the last line.
+    expect(line).toHaveClass('text-pretty');
   });
 
   it('one visible action; the rest behind More, which is closed and empty until opened', async () => {

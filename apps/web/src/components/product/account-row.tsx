@@ -116,7 +116,12 @@ const HINTS: Record<StatusBadgeStatus, MessageKey | null> = {
 /** One warning line of a row: the tone's icon and text, no frame (the row stays one compact block). */
 function RowWarning({ children }: { children: ReactNode }) {
   return (
-    <div role="note" data-slot="row-warning" data-tone="warning" className="flex w-full items-start gap-2 text-sm text-foreground">
+    <div
+      role="note"
+      data-slot="row-warning"
+      data-tone="warning"
+      className="flex w-full items-start gap-2 text-sm text-pretty text-foreground sm:col-span-full"
+    >
       <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
       <div className="flex min-w-0 flex-col gap-0.5">{children}</div>
     </div>
@@ -125,8 +130,10 @@ function RowWarning({ children }: { children: ReactNode }) {
 
 /**
  * One stake account as a compact row (DECISIONS.md D109), usually inside an AccountList:
- * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. Below
- *   640 px the badge and address keep line 1 to themselves, and SOL with the action and More take the next line;
+ * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. From
+ *   640 px the row is a grid of four columns (grid-cols-account-row); in an AccountList the rows share the list's
+ *   columns, so SOL stands in one column whichever rows have an action or More. Below 640 px the badge and address keep
+ *   line 1 to themselves, and SOL with the action and More take the next line;
  * - then, muted: the lock end date (warning with a clock icon when it ends within 30 days), the staking state, for a
  *   lock of an unknown key the key that holds it (D35), then the caller's meta;
  * - always visible, one line each: the warning that another stake key works under the viewer's own lock (with Rescue,
@@ -189,20 +196,30 @@ export function AccountRow({
         <StatusBadge status={status} secondKeyKnown={secondKeyKnown} size="sm" />
         <AddressText address={account.address} />
       </div>
-      <SolAmount lamports={account.lamports} className="shrink-0 text-base font-semibold sm:text-lg" />
+      {/* From 640 px its line box is as tall as the address's icon buttons, so its text stays centred on the
+          bottom-aligned line. */}
+      <SolAmount
+        lamports={account.lamports}
+        className="shrink-0 text-base font-semibold sm:col-start-2 sm:ml-3 sm:justify-self-end sm:text-lg sm:leading-8"
+      />
       {hasActions ? (
-        <div data-slot="row-actions" className="ml-auto flex shrink-0 items-center gap-2">
-          {action}
+        // From 640 px its parts take the grid's last two columns (display: contents), in the same order.
+        <div data-slot="row-actions" className="ml-auto flex shrink-0 items-center gap-2 sm:contents">
+          {action === undefined ? null : (
+            <div data-slot="row-action" className="flex sm:col-start-3 sm:ml-3">
+              {action}
+            </div>
+          )}
           {moreActions === undefined ? null : (
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={t('app.actions.more', { address: short })}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('app.actions.more', { address: short })} className="sm:col-start-4 sm:ml-2">
                 <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', moreOpen && 'rotate-180')} />
               </Button>
             </CollapsibleTrigger>
           )}
         </div>
       ) : null}
-      <div data-slot="row-meta" className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+      <div data-slot="row-meta" className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted sm:col-span-full">
         {date === null ? null : (
           <span data-slot="lock-end" className={cn('inline-flex items-center gap-1', endsSoon && 'text-warning')}>
             {endsSoon ? <ClockIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
@@ -242,9 +259,9 @@ export function AccountRow({
           {serviceDetail ? <p>{t('components.accountRow.managedByServiceDetail')}</p> : null}
         </RowWarning>
       ) : null}
-      {!hint || hintText === null ? null : <p className="w-full text-sm text-muted">{hintText}</p>}
+      {!hint || hintText === null ? null : <p className="w-full text-sm text-muted sm:col-span-full">{hintText}</p>}
       {moreActions === undefined ? null : (
-        <CollapsibleContent className="mt-1 flex w-full flex-wrap items-center gap-2 rounded-md bg-subtle p-3">
+        <CollapsibleContent className="mt-1 flex w-full flex-wrap items-center gap-2 rounded-md bg-subtle p-3 sm:col-span-full">
           {moreActions}
         </CollapsibleContent>
       )}
@@ -256,7 +273,9 @@ export function AccountRow({
       aria-label={t('components.accountRow.label', { address: short })}
       data-slot="account-row"
       data-status={status}
-      className={cn('flex flex-wrap items-center gap-x-3 gap-y-1', className)}
+      // Grid cells sit at the bottom of their line: where a narrow list wraps the address under the badge, SOL, the
+      // action and More stay on the address line, so the row still reads (and tabs) left to right, then down.
+      className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 sm:grid sm:grid-cols-account-row sm:items-end sm:gap-x-0', className)}
     >
       {body}
     </article>
@@ -281,6 +300,9 @@ type AccountListProps = {
 /**
  * Rows of stake accounts in one panel, divided by hairlines instead of a card per account (DECISIONS.md D109). Items
  * are AccountListItem. role="list" keeps the list in the accessibility tree where list-style: none drops it (Safari).
+ * From 640 px the list holds the rows' four columns and every item and its AccountRow share them (subgrid): a column
+ * is as wide as its widest cell in the list, so the SOL of all rows lines up even where a row has no action or More,
+ * and a column no row uses takes no room. Anything else in an item spans the whole row.
  */
 export function AccountList({ label, ordered = false, children, className }: AccountListProps) {
   const List = ordered ? 'ol' : 'ul';
@@ -289,7 +311,12 @@ export function AccountList({ label, ordered = false, children, className }: Acc
       role="list"
       aria-label={label}
       data-slot="account-list"
-      className={cn('divide-y divide-border rounded-lg border border-border bg-surface', className)}
+      className={cn(
+        'divide-y divide-border rounded-lg border border-border bg-surface',
+        'sm:grid sm:grid-cols-account-row sm:[&>li]:col-span-full sm:[&>li]:grid sm:[&>li]:grid-cols-subgrid sm:[&>li>*]:col-span-full',
+        'sm:[&>li>[data-slot=account-row]]:grid-cols-subgrid',
+        className,
+      )}
     >
       {children}
     </List>

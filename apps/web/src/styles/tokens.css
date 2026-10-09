@@ -122,6 +122,12 @@
   /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
   --spacing: 0.25rem;
 
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   */
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+
   /* Radii */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;

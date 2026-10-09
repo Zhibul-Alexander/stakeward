@@ -130,6 +130,22 @@ test('/app?address= shows every status, the red banner and the second-key list',
   const secondList = section('You are the second key for');
   await expect(secondList.getByRole('article')).toHaveCount(1);
 
+  // The SOL of one list stands in one column whether a row has an action, More, both or neither: right-aligned from
+  // 640 px, first on its own line below.
+  const wide = (page.viewportSize()?.width ?? 0) >= 640;
+  const amountEdges = await page.locator('[data-slot="account-list"]').evaluateAll(
+    (lists, right) =>
+      lists.map((list) =>
+        [...list.querySelectorAll('article[data-slot="account-row"] > [data-slot="sol-amount"]')].map((amount) => {
+          const box = amount.getBoundingClientRect();
+          return Math.round(right ? box.right : box.left);
+        }),
+      ),
+    wide,
+  );
+  expect(amountEdges.map((edges) => edges.length)).toEqual([4, 1, 1, 1]);
+  for (const edges of amountEdges) expect(new Set(edges).size, edges.join(', ')).toBe(1);
+
   // The answer first: SOL and accounts under the viewer's own lock, out of all of them.
   const summary = page.getByRole('region', { name: 'Summary' });
   await expect(summary).toContainText('1,293.25 of 1,490.45 SOL protected');
