@@ -36,7 +36,7 @@ export function SummaryBar({ label, state, headline, detail, monitoring, tools, 
       </div>
     ) : state === 'ready' && (headline !== undefined || detail !== undefined) ? (
       <div className="flex min-w-0 flex-col gap-1">
-        {headline === undefined ? null : <p className="text-2xl tabular-nums">{headline}</p>}
+        {headline === undefined ? null : <p className="text-2xl text-balance tabular-nums">{headline}</p>}
         {detail === undefined ? null : <div className="text-sm text-muted tabular-nums">{detail}</div>}
       </div>
     ) : null;

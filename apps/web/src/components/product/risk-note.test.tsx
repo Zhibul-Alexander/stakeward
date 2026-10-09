@@ -21,6 +21,15 @@ describe('RiskNote', () => {
     );
   });
 
+  // At 360 px "until 3" / "April 2027" read as two facts: the note keeps the date on one line (non-breaking spaces).
+  // The words stay the same; riskText, which other places quote, keeps plain spaces.
+  it.each(['date', 'date-time'] as const)('keeps the date (%s) on one line', (dateStyle) => {
+    render(<RiskNote risk="lose-second-key" date={T} dateStyle={dateStyle} variant="inline" />);
+    const date = dateStyle === 'date' ? '12 April 2027' : '12 April 2027, 00:00 UTC';
+    expect(screen.getByRole('note').textContent).toContain(` ${date.replaceAll(' ', ' ')} `);
+    expect(riskText('lose-second-key', T, dateStyle)).toContain(` ${date} `);
+  });
+
   it('renders nothing when a dated risk has no usable date', () => {
     const { container } = render(<RiskNote risk="lock-ends" dateStyle="date-time" />);
     expect(container).toBeEmptyDOMElement();
