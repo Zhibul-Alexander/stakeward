@@ -480,7 +480,7 @@
       },
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
       "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
-      "retryAfterLink": "A link is still open, so the rest waits for it. When the other device has sent it, or you cancelled it by closing your link-signing account, press Check again, then try the rest.",
+      "retryAfterLink": "A link is still open, so the rest waits for it. Once the other device sent it, or you cancelled it by closing your link-signing account, press Check again. Then try the rest.",
       "transaction": "Transaction"
     },
     "qr": {
@@ -1445,7 +1445,7 @@
     "stale": "Links work until used or cancelled. Not sure the owner still wants this? Ask first.",
     "feeShortTitle": "The sender cannot pay the network fee yet",
     "feeBalance": "The sender's {role} has {balance}, too little for the network fee. Ask the sender to add a little SOL, then press Try again.",
-    "tailHint": "This wallet changes transactions after another wallet signed, so it cannot co-sign here. Use another wallet app for this key.",
+    "tailHint": "This wallet changes transactions that another wallet already signed, so it cannot co-sign here. Use another wallet app for this key, or sign with every key in one browser.",
     "openInWallet": "No wallet found here. Open this link in your wallet app's browser, or turn on your wallet extension.",
     "copyPage": "Copy link",
     "done": {
