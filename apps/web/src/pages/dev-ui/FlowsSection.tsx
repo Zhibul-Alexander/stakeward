@@ -143,6 +143,8 @@ export function FlowsSection() {
                   renderKeySlot={keySlot}
                   confirm={sample.confirm === undefined ? undefined : { label: t(sample.confirm) }}
                   renderLinkCancel={linkCancel}
+                  summaryIntro={sample.cosign !== true}
+                  hideSingleSigner={sample.cosign === true}
                 />
               </Demo>
             ))

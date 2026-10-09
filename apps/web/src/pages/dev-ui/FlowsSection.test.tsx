@@ -63,6 +63,14 @@ describe('/dev/ui flows', () => {
     );
     expect(screen.getByLabelText('I checked this new wallet address with the owner by voice or in person, or it is mine')).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Sign in Sample Wallet as Second key' })).toHaveAttribute('aria-disabled', 'true');
+    // The /cosign look (CosignSigning): no signing order for the one signer left, no "Read from the exact bytes" line
+    // (the request above the summary says where it comes from). A page's own panel keeps both.
+    const cosignPanel = linkPanels()[2] as HTMLElement;
+    expect(cosignPanel.querySelector('[data-slot="signer-list"]')).toBeNull();
+    expect(cosignPanel).not.toHaveTextContent('Read from the exact bytes you sign.');
+    const pagePanel = panels()[1] as HTMLElement;
+    expect(pagePanel.querySelector('[data-slot="signer-list"]')).not.toBeNull();
+    expect(pagePanel).toHaveTextContent('Read from the exact bytes you sign.');
     // The link card's cancel opens inline (closed here: its card stays mounted but hidden until then), then the
     // link-signing account's cards: set up (by link, for a rescue), close, cancel, refused, gate blocked.
     await waitFor(() => {
