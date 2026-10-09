@@ -322,22 +322,22 @@ curl -sS "$API/getWebhookInfo"
 
 ### а) Dev
 
-- [ ] `pnpm deploy:dev`. Обёртка дописывает раздел в `docs/deploys.md`: закоммитить и запушить.
+- [x] `pnpm deploy:dev`. Обёртка дописывает раздел в `docs/deploys.md`: закоммитить и запушить. 09.10.2026: cc439c0, версия 7c2a4078 (проход по UI, D112).
 - [ ] Миграция 0004 после деплоя кода (D90): применить командой из DECISIONS D96 (подоболочка, только два ключа Cloudflare); `migrations apply` сам покажет 0004 среди неприменённых и спросит подтверждение. Без ключей в окружении wrangler на VPS не работает (OAuth-входа там нет), поэтому и отдельный список — в такой же подоболочке, с `pnpm exec wrangler d1 migrations list DB --remote --env dev` в `apps/worker`.
-- [ ] `pnpm verify-deploy --env dev --commit <sha>` — PASS.
-- [ ] `curl -sI https://stakeward-dev.stakeward.workers.dev/app` — есть `cross-origin-opener-policy: same-origin`; `/api/health` — 200 через 2–4 минуты.
+- [x] `pnpm verify-deploy --env dev --commit <sha>` — PASS (09.10.2026, 28 файлов).
+- [x] `curl -sI https://stakeward-dev.stakeward.workers.dev/app` — есть `cross-origin-opener-policy: same-origin`; `/api/health` — 200 через 2–4 минуты (09.10.2026).
 
 ### б) Prod
 
-Prod работает на https://stakeward-prod.stakeward.workers.dev, но там сборка от 05.10 (до шагов 4–8). Выкатывать — после того, как пройдены шаги 4–8 в dev.
+Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2026 владелец разрешил выкатить main с проходом по UI (D112): 9e5ced0, версия 2da2df53.
 
-- [ ] Решение владельца: выкатить текущую `build/product` в prod. Перед этим догнать main до `build/product` (В7).
-- [ ] Зелёный check на HEAD в GitHub Actions. Можно сначала `pnpm deploy:prod --prod-confirm --dry-run`.
-- [ ] `pnpm deploy:prod --prod-confirm`; закоммитить и запушить `docs/deploys.md`. Я могу сделать это сам по вашему слову.
+- [x] Решение владельца: выкатить main в prod (09.10.2026; `build/product` больше нет, D111).
+- [x] Зелёный check на HEAD в GitHub Actions. Можно сначала `pnpm deploy:prod --prod-confirm --dry-run`.
+- [x] `pnpm deploy:prod --prod-confirm`; закоммитить и запушить `docs/deploys.md`. Я могу сделать это сам по вашему слову.
 - [ ] Миграция 0004 на prod той же командой с `db:migrate:prod`.
-- [ ] `pnpm verify-deploy --env prod --commit <sha>` — PASS.
-- [ ] `curl -s https://stakeward-prod.stakeward.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP.
-- [ ] Старый preview-адрес `https://037f86ff-stakeward-prod.stakeward.workers.dev/` больше не открывается (SECURITY-CHECK В5).
+- [x] `pnpm verify-deploy --env prod --commit <sha>` — PASS (09.10.2026, 16 файлов).
+- [x] `curl -s https://stakeward-prod.stakeward.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP (09.10.2026; маршруты и пометку проверяет `pnpm e2e:mainnet` в CI).
+- [x] Старый preview-адрес `https://037f86ff-stakeward-prod.stakeward.workers.dev/` больше не открывается (SECURITY-CHECK В5): 404, 09.10.2026.
 - [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
 
 ## Перед подачей: за владельцем
