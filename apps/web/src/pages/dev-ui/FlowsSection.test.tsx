@@ -83,7 +83,10 @@ describe('/dev/ui flows', () => {
     expect(screen.getAllByText(/already taken by another account/)).toHaveLength(2);
     expect(document.querySelectorAll('#link [data-slot="nonce-blocked"]')).toHaveLength(1);
 
-    const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > h2')].map((heading) => heading.textContent);
+    // The result is the Done screen's headline, in its header with the lock end and monitoring.
+    const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > [data-slot="done-header"] > h2')].map(
+      (heading) => heading.textContent,
+    );
     expect(titles).toEqual(['2 stake accounts are protected', '1 of 4 stake accounts are protected', 'No stake account was protected']);
     expect(document.querySelectorAll(`#protect-result a[href="/api/telegram/link?wallet=${SAMPLE.mainKey}"]`)).toHaveLength(3);
 

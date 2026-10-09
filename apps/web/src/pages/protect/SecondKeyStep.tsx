@@ -1,7 +1,8 @@
 import type { Address } from '@solana/kit';
 import { shortAddress } from '@stakeward/core';
-import { TriangleAlertIcon } from 'lucide-react';
-import { useId, type Ref } from 'react';
+import { cn } from 'cn';
+import { ChevronDownIcon, TriangleAlertIcon } from 'lucide-react';
+import { useId, useState, type Ref } from 'react';
 import { RiskNote } from '@/components/product/risk-note';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -36,48 +37,71 @@ type SecondKeyStepProps = {
 };
 
 /**
- * Step 2 (F1 step 2): where the second key signs, then connect it in this browser or paste its address for signing by
- * link (step 7 spec 10.1). The risks come before the signature (UX rule 6): the second key can freeze the stake, both
- * keys from one seed phrase protect nothing (the user confirms it; two accounts of one wallet app get a warning), and
- * a second key used on other sites can be tricked into handing the lock away. By link the joint signature on the chain
- * stays the only proof (F1.4), but it proves only that whoever holds the pasted address signed: the hint says to paste
- * only a wallet the user or someone they trust made (SECURITY-CHECK П5, П8, П14).
+ * Step 2 (F1 step 2): the second key, connected in this browser (its slot's Connect is the step's one filled button
+ * while it is empty) or, behind "Second key on another device? Sign by link", pasted for signing by link (step 7 spec
+ * 10.1). The risks come before the signature (UX rule 6): the second key can freeze the stake, both keys from one seed
+ * phrase protect nothing (the user confirms it; two accounts of one wallet app get a warning), and a second key used on
+ * other sites can be tricked into handing the lock away. By link the joint signature on the chain stays the only proof
+ * (F1.4), but it proves only that whoever holds the pasted address signed: the hint says to paste only a wallet the
+ * user or someone they trust made (SECURITY-CHECK П5, П8, П14).
  */
 export function SecondKeyStep(props: SecondKeyStepProps) {
   const { headingRef, mainKey, sameWallet, problems, heldBefore, mode, linkKey } = props;
   const headingId = useId();
   const seedId = useId();
   const hintId = useId();
+  const whereId = useId();
+  // The choice of where the key signs is one click away; it stays open in link mode (Back or a reload shows it).
+  const [whereShown, setWhereShown] = useState(mode === 'link');
+  const byLink = mode === 'link';
   const parsed = parseAddressInput(linkKey);
   // By link the field says what is wrong with a typed address; an empty one is said only when Continue is pressed.
   const fieldError = parsed.ok || parsed.reason === 'empty' ? null : addressInputError(parsed.reason);
   const problemTexts = props.blockers.map((blocker) =>
-    blocker === 'need-second' && mode === 'link' && !parsed.ok ? addressInputError(parsed.reason) : blockerText(blocker),
+    blocker === 'need-second' && byLink && !parsed.ok ? addressInputError(parsed.reason) : blockerText(blocker),
   );
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-          {t('protect.second.heading')}
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
+          {byLink ? t('protect.second.headingLink') : t('protect.second.heading')}
         </h2>
         <p className="max-w-prose text-muted">{t('protect.second.body')}</p>
       </div>
-      <SignWhere role="second" value={mode} onChange={props.onMode} />
-      {mode === 'link' ? (
-        <AddressField
-          label={t('protect.second.linkAddress')}
-          hint={t('protect.second.linkHint')}
-          value={linkKey}
-          onChange={props.onLinkKey}
-          error={fieldError}
-        />
-      ) : (
-        <>
-          <KeySlot role="second" mainKey={mainKey} description={t('protect.second.slotDescription')} />
-          <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>
-        </>
-      )}
-      {mode === 'link' || sameWallet === null ? null : (
+      <div className="flex flex-col gap-2">
+        {byLink ? (
+          <AddressField
+            label={t('protect.second.linkAddress')}
+            hint={t('protect.second.linkHint')}
+            value={linkKey}
+            onChange={props.onLinkKey}
+            error={fieldError}
+          />
+        ) : (
+          <>
+            <KeySlot role="second" mainKey={mainKey} emphasis="primary" description={t('protect.second.slotDescription')} />
+            {/* UX rule 10, said where it matters; the way out (signing by link) follows right under it. */}
+            <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={whereShown}
+              aria-controls={whereId}
+              className="-ml-3 h-auto w-fit max-w-full justify-start py-1.5 text-left whitespace-normal"
+              onClick={() => {
+                setWhereShown((value) => !value);
+              }}
+            >
+              {t('protect.second.byLink')}
+              <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', whereShown && 'rotate-180')} />
+            </Button>
+          </>
+        )}
+        <div id={whereId} hidden={!(whereShown || byLink)} className={byLink ? 'mt-4' : 'mt-1'}>
+          <SignWhere role="second" value={mode} onChange={props.onMode} />
+        </div>
+      </div>
+      {byLink || sameWallet === null ? null : (
         <Alert tone="warning" role="note">
           <TriangleAlertIcon aria-hidden="true" />
           <AlertDescription className="flex flex-col gap-1 text-foreground">
@@ -100,8 +124,6 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           </AlertDescription>
         </Alert>
       )}
-      <RiskNote risk="second-key-can-freeze" />
-      <p className="max-w-prose text-sm">{t('protect.second.onlyStakeward')}</p>
       {problems.length === 0 ? null : (
         <Alert tone="danger" role="note" data-slot="second-key-problems">
           <TriangleAlertIcon aria-hidden="true" />
@@ -128,6 +150,9 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           </AlertDescription>
         </Alert>
       )}
+      <RiskNote risk="second-key-can-freeze">
+        <p>{t('protect.second.onlyStakeward')}</p>
+      </RiskNote>
       <div className="flex items-start gap-3">
         <Checkbox
           id={seedId}
@@ -145,7 +170,7 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
           </p>
         </div>
       </div>
-      <ContinueButtons label={t('common.continue')} problems={problemTexts} onContinue={props.onContinue} onBack={props.onBack} />
+      <ContinueButtons label={t('protect.continue.second')} problems={problemTexts} onContinue={props.onContinue} onBack={props.onBack} />
     </section>
   );
 }

@@ -124,9 +124,28 @@ function actions(): ActionSpies {
 function show(state: SigningState, spy = actions(), onBack = vi.fn()) {
   const renderKeySlot = vi.fn((role: string, _address: Address) => <p data-testid="key-slot">{role}</p>);
   render(
-    <SigningView state={state} actions={spy} knownRoles={{ main: MAIN, second: SECOND }} renderKeySlot={renderKeySlot} onBack={onBack} />,
+    <SigningView
+      state={state}
+      actions={spy}
+      knownRoles={{ main: MAIN, second: SECOND }}
+      renderKeySlot={renderKeySlot}
+      onBack={onBack}
+      risk={<p data-testid="risk">If you lose the second key, you wait.</p>}
+    />,
   );
   return { spy, onBack, renderKeySlot };
+}
+
+/** Visible filled buttons (primary and danger), as e2e/screen-metrics.ts counts them. */
+function filledButtons(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('[data-slot="button"]')].filter((button) =>
+    ['primary', 'danger'].includes(button.dataset['variant'] ?? ''),
+  );
+}
+
+/** True when `a` comes before `b` in the document. */
+function precedes(a: Node, b: Node): boolean {
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 }
 
 function forbiddenRoleWords(): string[] {
@@ -140,16 +159,31 @@ function forbiddenRoleWords(): string[] {
 }
 
 describe('SigningView', () => {
-  it('ready(0): one summary for the batch, the signers in order, one primary action and Back', async () => {
+  it('ready(0): the signing order, one summary for the batch, the risk right above one primary action, and Back', async () => {
     const { spy, onBack } = show(ready);
     const summaries = document.querySelectorAll('[data-slot="transaction-summary"]');
     expect(summaries).toHaveLength(1);
-    expect(summaries[0]).toHaveAttribute('data-kind', 'protect');
-    expect(within(summaries[0] as HTMLElement).getByText('Stake accounts (2)')).toBeInTheDocument();
-    const signers = within(screen.getByRole('list', { name: 'Signatures' })).getAllByRole('listitem');
+    const summary = summaries[0] as HTMLElement;
+    expect(summary).toHaveAttribute('data-kind', 'protect');
+    expect(within(summary).getByText('Stake accounts (2)')).toBeInTheDocument();
+    // The order of signing is the compact list above the summary; the addresses stand in the summary's "Who signs".
+    const order = screen.getByRole('list', { name: 'Signatures' });
+    expect(order.closest('[data-slot="signer-list"]')).toHaveAttribute('data-variant', 'compact');
+    expect(precedes(order, summary)).toBe(true);
+    const signers = within(order).getAllByRole('listitem');
     expect(signers.map((item) => item.getAttribute('data-status'))).toEqual(['current', 'waiting']);
-    expect(screen.getByText('Check the summary above, then approve the request in Main Wallet.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' }));
+    expect(within(order).queryByText(MAIN)).not.toBeInTheDocument();
+    expect(within(summary).getByText(MAIN)).toBeInTheDocument();
+    // The action bar after the summary: the risk, the hint, then Sign (the one filled button) and Back.
+    const bar = document.querySelector('[data-slot="action-bar"]') as HTMLElement;
+    expect(precedes(summary, bar)).toBe(true);
+    const sign = screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' });
+    expect(within(bar).getByTestId('risk')).toBeInTheDocument();
+    expect(precedes(screen.getByTestId('risk'), sign)).toBe(true);
+    expect(within(bar).getByText('Check the summary above, then approve the request in Main Wallet.')).toBeInTheDocument();
+    expect(filledButtons()).toEqual([sign]);
+    expect(sign).toHaveAttribute('data-size', 'lg');
+    await userEvent.click(sign);
     expect(spy.sign).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(onBack).toHaveBeenCalledTimes(1);
@@ -199,14 +233,41 @@ describe('SigningView', () => {
     expect(spy.oneAtATime).toHaveBeenCalledTimes(1);
   });
 
-  it('needs-wallet: the full address and the key slot of that role for that address, then Continue', async () => {
+  it('needs-wallet: the key slot of that role for that address, then an outline "Use this wallet"', async () => {
     const { spy, renderKeySlot } = show(reduce(ready, { type: 'needs-wallet', step: 0 }));
-    expect(screen.getByText('Connect your Main key to continue: it must sign these transactions.')).toBeInTheDocument();
-    // The slot is told which account the step needs (KeySlot `expected`).
+    expect(screen.getByText('Connect your Main key to sign.')).toBeInTheDocument();
+    // The slot is told which account the step needs (KeySlot `expected`); the address stands in full in the summary.
     expect(renderKeySlot).toHaveBeenCalledWith('main', MAIN);
     expect(screen.getByTestId('key-slot')).toHaveTextContent('main');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const summary = document.querySelector('[data-slot="transaction-summary"]') as HTMLElement;
+    expect(screen.getAllByText(MAIN).every((node) => summary.contains(node))).toBe(true);
+    // The page's slot holds the one filled button (Connect); this one goes on once a wallet here holds the key.
+    const use = screen.getByRole('button', { name: 'Use this wallet' });
+    expect(use).toHaveAttribute('data-variant', 'outline');
+    expect(filledButtons()).toEqual([]);
+    expect(screen.queryByTestId('risk')).not.toBeInTheDocument();
+    await userEvent.click(use);
     expect(spy.continueWithWallet).toHaveBeenCalledTimes(1);
+  });
+
+  it('summaryIntro={false} and hideSingleSigner: no intro line, and no signing order while one signer is left', () => {
+    const signedTxs = ready.round?.txs.map((tx) => ({ ...tx, summary: { ...tx.summary, presentSignatures: [MAIN] } })) ?? [];
+    const lastOne = reduce(ready, { type: 'asking', step: 0 }, { type: 'signed', step: 0, txs: signedTxs });
+    const props = { actions: actions(), knownRoles: { main: MAIN, second: SECOND }, renderKeySlot: () => null };
+    const { rerender } = render(<SigningView state={lastOne} {...props} summaryIntro={false} hideSingleSigner />);
+    expect(screen.queryByText('Read from the exact bytes your wallets will sign.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Signatures' })).not.toBeInTheDocument();
+    // "Who signs" still lists both keys and who already signed.
+    const summary = document.querySelector('[data-slot="transaction-summary"]') as HTMLElement;
+    expect(within(summary).getAllByText('Signed')).toHaveLength(1);
+    expect(within(summary).getAllByText('Not signed yet')).toHaveLength(1);
+
+    // Two signers left: each sees whose turn it is.
+    rerender(<SigningView state={ready} {...props} summaryIntro={false} hideSingleSigner />);
+    expect(screen.getByRole('list', { name: 'Signatures' })).toBeInTheDocument();
+    // By default the intro line is there.
+    rerender(<SigningView state={ready} {...props} />);
+    expect(screen.getByText('Read from the exact bytes your wallets will sign.')).toBeInTheDocument();
   });
 
   it('signing: explains the wait and offers Stop waiting, no Back', async () => {

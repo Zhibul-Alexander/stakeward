@@ -110,12 +110,18 @@ async function connect(user: UserEvent, role: 'Main key' | 'Second key', walletN
   const slot = screen.getByRole('group', { name: role });
   await user.click(within(slot).getByRole('button', { name: `Connect a wallet as ${role}` }));
   await user.click(within(slot).getByRole('button', { name: walletName }));
+  // Connected in either layout: a card with its "Connected" badge, or the one line a connected slot shrinks to.
   await waitFor(() => {
-    expect(within(screen.getByRole('group', { name: role })).getByText('Connected')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: role })).toHaveAttribute('data-status', 'connected');
   });
 }
 
-const continueButton = () => screen.getByRole('button', { name: 'Continue' });
+/**
+ * The step's button. Its words say what happens: "Continue with 2 accounts", "Use this second key", "Review 2
+ * transactions" ("Continue" while nothing is chosen yet).
+ */
+const STEP_BUTTON = /^(?:Continue(?: with \d+ accounts?)?|Use this second key|Review \d+ transactions?)$/;
+const continueButton = () => screen.getByRole('button', { name: STEP_BUTTON });
 const selectBox = (account: Address) => screen.getByRole('checkbox', { name: `Protect stake account ${shortAddress(account)}` });
 
 async function click(user: UserEvent, name: string) {
@@ -133,7 +139,7 @@ async function toSigning(page: Page, wallets: { main: string; second: string } =
   await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
   await user.click(continueButton());
   await screen.findByRole('heading', { name: 'How long should the lock hold?' });
-  await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+  await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
   await user.click(continueButton());
   await screen.findByRole('heading', { name: 'Review and sign' });
 }
@@ -171,23 +177,27 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
         expect(selectBox(S1)).toBeChecked();
       }, WAIT);
       expect(selectBox(S2)).toBeChecked();
-      expect(screen.getByText('2 stake accounts selected')).toBeInTheDocument();
-      await user.click(continueButton());
+      // The step button says what it goes on with (it replaced the "2 stake accounts selected" line).
+      await user.click(screen.getByRole('button', { name: 'Continue with 2 accounts' }));
 
       await screen.findByRole('heading', { name: 'Connect your second key' });
       // SECURITY-CHECK П8: a second key that signs elsewhere can be phished into handing the lock away.
-      expect(screen.getByText('Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.')).toBeInTheDocument();
+      expect(screen.getByText('Use it only to co-sign on Stakeward, never on other sites.')).toBeInTheDocument();
       await connect(user, 'Second key', 'Second Wallet');
       // Two wallet apps: no same-wallet warning. Accounts that never had a lock: no warning about a former second key.
       expect(screen.queryByText(/^Both keys are in /)).toBeNull();
       expect(document.querySelector('[data-slot="former-second-key"]')).toBeNull();
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
-      await user.click(continueButton());
+      await user.click(screen.getByRole('button', { name: 'Use this second key' }));
 
       await screen.findByRole('heading', { name: 'How long should the lock hold?' });
-      expect(screen.getByRole('radio', { name: '6 months (recommended)' })).toBeChecked();
-      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
-      await user.click(continueButton());
+      // Each period is a card with its end date; the default one is marked Recommended.
+      const recommended = screen.getByRole('radio', { name: '6 months' });
+      expect(recommended).toBeChecked();
+      expect(recommended.closest('[data-slot="radio-card"]')).toHaveTextContent('Recommended');
+      await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      expect(recommended).toHaveAccessibleDescription(`until ${formatUtcDate(T) ?? ''}`);
+      await user.click(screen.getByRole('button', { name: 'Review 2 transactions' }));
 
       // One summary for both transactions, each stake account in full.
       await screen.findByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' }, WAIT);
@@ -223,14 +233,14 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       });
       await screen.findByText('Monitoring is on: Stakeward checks these stake accounts every few minutes.');
 
-      const telegram = screen.getByRole('link', { name: /Open the Stakeward bot in Telegram/ });
+      const telegram = screen.getByRole('link', { name: /Open Telegram bot/ });
       expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${w.A.address}`);
       expect(telegram).toHaveAttribute('target', '_blank');
       expect(telegram).toHaveAttribute('rel', 'noopener noreferrer');
-      expect(telegram).toHaveAccessibleName('Open the Stakeward bot in Telegram (opens in a new tab)');
+      expect(telegram).toHaveAccessibleName('Open Telegram bot (opens in a new tab)');
 
       // One recovery card covers both accounts of this pair of keys (D74): one link, to the first protected account.
-      const recovery = screen.getAllByRole('link', { name: 'Open your recovery card' });
+      const recovery = screen.getAllByRole('link', { name: 'Open recovery card' });
       expect(recovery).toHaveLength(1);
       expect(recovery[0]).toHaveAttribute('href', `/recovery/${S1}`);
       expect(screen.queryAllByRole('link', { name: /Recovery card for/ })).toEqual([]);
@@ -485,21 +495,28 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       }, WAIT);
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'Connect your second key' });
+      // Where the second key signs is one click away, behind the question for a key on another device.
+      expect(screen.queryByRole('radiogroup', { name: 'Where does your Second key sign?' })).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Second key on another device? Sign by link' }));
       await user.click(
         within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', {
           name: 'On another device, by link',
         }),
       );
+      // By link the step asks for an address, not a connection.
+      expect(screen.getByRole('heading', { name: 'Add your second key' })).toBeInTheDocument();
       // By link there is no slot to connect: the address is pasted, and the one-browser notes do not apply.
       expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
       expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
       const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
       // SECURITY-CHECK П14: a pasted address that signs is a second key, whoever holds it; never one someone gave you.
       expect(field).toHaveAccessibleDescription(
-        'Paste only the address of a wallet you or a person you trust created. Stakeward never gives you a second key address; whoever holds it can freeze this stake.',
+        'Paste only a wallet you or someone you trust created. Stakeward never suggests a second key address.',
       );
+      // Whoever holds it can freeze this stake: the risk stands on the step, by link too.
+      expect(document.querySelector('[data-risk="second-key-can-freeze"]')).not.toBeNull();
       // SECURITY-CHECK П8: the second key is for Stakeward only, by link too.
-      expect(screen.getByText('Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.')).toBeInTheDocument();
+      expect(screen.getByText('Use it only to co-sign on Stakeward, never on other sites.')).toBeInTheDocument();
       await user.click(continueButton());
       expect(await screen.findByText(en.components.addressField.empty)).toBeInTheDocument();
       await user.type(field, 'not-an-address');
@@ -517,7 +534,7 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'How long should the lock hold?' });
-      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
       await user.click(continueButton());
 
       // Review and sign: the main key's link-signing account first, then the lock on that nonce.
@@ -548,7 +565,7 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       other.unmount();
 
       // This page moves on by itself and records what the chain shows (step 4 spec 4.6).
-      await finished('Your stake account is protected');
+      await finished('1 stake account is protected');
       expect(lockOf(w, S)).toEqual({ unixTimestamp: T, epoch: 0n, custodian: w.K.address });
       expect(main.requests).toHaveLength(2);
       expect(second.requests).toHaveLength(1);
@@ -644,7 +661,7 @@ describe('/protect step gates', () => {
       const details = within(alert).getByText('Details').closest('details') as HTMLElement;
       expect(details).toHaveTextContent(`(unix ${START_UNIX_TIMESTAMP.toString()})`);
       expect(details).toHaveTextContent('They differ by 172800 seconds; at most 86400 are allowed.');
-      expect(screen.queryByText(/^Locked until /)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^until /)).not.toBeInTheDocument();
       // No lock end, so no way on.
       await user.click(continueButton());
       expect(screen.getByRole('heading', { name: 'How long should the lock hold?' })).toBeInTheDocument();
@@ -653,7 +670,7 @@ describe('/protect step gates', () => {
       // The device clock agrees again: Try again reads the network and offers the lock end.
       behind = 0n;
       await user.click(within(alert).getByRole('button', { name: 'Try again' }));
-      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
       expect(screen.queryByText('The network time does not match this device')).toBeNull();
       expect(main.requests).toHaveLength(0);
     },
@@ -677,34 +694,40 @@ describe('/protect step gates', () => {
       const { user } = renderProtect(w, [S1, theirs, locked], [main, second]);
 
       expect(screen.getByText('From your link: 3 stake accounts. Connect their main key to continue.')).toBeInTheDocument();
-      // Continue without the main key says what is missing and moves focus there.
+      // Without the main key its Connect is the step's one filled button; the step button is outline and says why
+      // before any click. Pressed, it says what is missing and moves focus there.
+      const slot = screen.getByRole('group', { name: 'Main key' });
+      expect(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' })).toHaveAttribute('data-variant', 'primary');
+      expect(continueButton()).toHaveAttribute('data-variant', 'outline');
+      expect(continueButton()).toHaveAccessibleDescription('Connect your main key first.');
       await user.click(continueButton());
-      const needMain = screen.getByText('Connect your main key to continue.');
-      expect(continueButton()).toHaveAccessibleDescription('Connect your main key to continue.');
+      const needMain = screen.getByText('Connect your main key first.');
       expect(needMain.closest('[data-slot="step-blockers"]')).toHaveFocus();
 
       await connect(user, 'Main key', 'Main Wallet');
       await waitFor(() => {
         expect(selectBox(S1)).toBeChecked();
       }, WAIT);
-      // Another key's lock: shown, not selectable.
-      expect(selectBox(locked)).toBeDisabled();
-      expect(selectBox(locked)).not.toBeChecked();
-      // Why it cannot be chosen, in words that hold whoever holds the lock; the row above says whose key it may be.
-      expect(screen.getByText('Already locked, so it cannot be locked again here.')).toBeInTheDocument();
+      // Another key's lock: shown open in its own group, never called protected, and it cannot be chosen.
+      expect(screen.queryByRole('checkbox', { name: `Protect stake account ${shortAddress(locked)}` })).toBeNull();
+      const lockedGroup = screen.getByRole('region', { name: 'Locked by a second key (1)' });
+      const lockedRow = within(lockedGroup).getByRole('article', { name: `Stake account ${shortAddress(locked)}` });
+      expect(lockedRow).toHaveAttribute('data-status', 'locked-by-other');
+      // The key that holds it, to compare with the viewer's wallets (D35).
+      expect(lockedRow.querySelector('[data-slot="lock-holder"]')).toHaveTextContent(`Second key${shortAddress(stranger)}`);
+      // Why it cannot be chosen, in words that hold whoever holds the lock, said once for the group.
+      expect(within(lockedGroup).getByText('Already locked, so it cannot be locked again here.')).toBeInTheDocument();
       expect(
-        within(screen.getByRole('article', { name: `Stake account ${shortAddress(locked)}` })).getByText(
-          /^This browser does not know this key yet\. If it is your second key, connect it/,
-        ),
+        within(lockedGroup).getByText(/^This browser does not know this key yet\. If it is your second key, connect it/),
       ).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: /^Already protected/ })).toBeNull();
       // The link named an account this main key cannot withdraw (DECISIONS.md D36).
       expect(screen.queryByRole('checkbox', { name: `Protect stake account ${shortAddress(theirs)}` })).toBeNull();
       const outside = document.querySelector('[data-slot="left-out"]') as HTMLElement;
       expect(within(outside).getByText(/Left out: the connected main key cannot withdraw/)).toBeInTheDocument();
       expect(within(outside).getByText(shortAddress(theirs))).toBeInTheDocument();
-      expect(screen.getByText('1 stake account selected')).toBeInTheDocument();
 
-      await user.click(continueButton());
+      await user.click(screen.getByRole('button', { name: 'Continue with 1 account' }));
       await screen.findByRole('heading', { name: 'Connect your second key' });
       expect(screen.getByRole('heading', { name: 'Connect your second key' })).toHaveFocus();
       await connect(user, 'Second key', 'Second Wallet');
@@ -727,6 +750,79 @@ describe('/protect step gates', () => {
       expect(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' })).toBeChecked();
       await user.click(continueButton());
       expect(await screen.findByRole('radio', { name: '12 months' })).toBeChecked();
+    },
+    TIMEOUT,
+  );
+
+  it(
+    'groups the accounts: Not protected with Select all, own locks folded (a changed stake key stays in view), other keys\' locks open',
+    async () => {
+      const w = await world();
+      const thief = (await generateKeyPairSigner()).address;
+      const stranger = (await generateKeyPairSigner()).address;
+      const A = w.A.address;
+      const end = START_UNIX_TIMESTAMP + 100n * DAY;
+      const lock = (custodian: Address) => ({ unixTimestamp: end, epoch: 0n, custodian });
+      const S1 = await w.testChain.createStakeAccount({ staker: A, withdrawer: A });
+      const S2 = await w.testChain.createStakeAccount({ staker: A, withdrawer: A });
+      const own = await w.testChain.createStakeAccount({ staker: A, withdrawer: A, lockup: lock(w.K.address) });
+      // Under the viewer's own lock, another key now manages staking: what a thief with the main key does first.
+      const moved = await w.testChain.createStakeAccount({ staker: thief, withdrawer: A, lockup: lock(w.K.address) });
+      const byOther = await w.testChain.createStakeAccount({ staker: A, withdrawer: A, lockup: lock(stranger) });
+      const [main, second] = await twoWallets(w);
+      const { user, ports, location } = renderProtect(w, [], [main, second]);
+      // This browser knows the second key (it protected with it before).
+      ports.secondKeys.remember(w.K.address);
+      const row = (scope: HTMLElement, account: Address) => within(scope).getByRole('article', { name: `Stake account ${shortAddress(account)}` });
+
+      await connect(user, 'Main key', 'Main Wallet');
+      const open = await screen.findByRole('region', { name: 'Not protected (2)' }, WAIT);
+      // The connected main key shrinks to one line; the group says once what its rows have in common.
+      expect(screen.getByRole('group', { name: 'Main key' })).toHaveAttribute('data-layout', 'inline');
+      expect(within(open).getByText('Anyone with your Main key can withdraw these.')).toBeInTheDocument();
+      expect(selectBox(S1)).not.toBeChecked();
+      expect(continueButton()).toHaveAccessibleName('Continue');
+      expect(continueButton()).toHaveAccessibleDescription('Choose at least one stake account.');
+
+      // Select all, then Clear selection; the selection lives in the URL.
+      await user.click(within(open).getByRole('button', { name: 'Select all (2)' }));
+      expect(selectBox(S1)).toBeChecked();
+      expect(selectBox(S2)).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Continue with 2 accounts' })).toHaveAttribute('data-variant', 'primary');
+      await user.click(within(open).getByRole('button', { name: 'Clear selection' }));
+      expect(selectBox(S1)).not.toBeChecked();
+      expect(selectBox(S2)).not.toBeChecked();
+      // A click anywhere on a row toggles it; the checkbox stays the control for the keyboard.
+      await user.click(row(open, S2).querySelector('[data-slot="sol-amount"]') as HTMLElement);
+      expect(selectBox(S2)).toBeChecked();
+      expect(location.history.at(-1)).toBe(`/protect?account=${S2}`);
+
+      // The viewer's own locks: folded, except the account whose stake key changed (a sign of theft stays in view).
+      const done = screen.getByRole('region', { name: 'Already protected (2)' });
+      const movedRow = row(done, moved);
+      expect(movedRow).toHaveTextContent('Another key can stop or move this stake.');
+      expect(within(movedRow).getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', `/rescue?address=${A}`);
+      expect(within(done).queryByRole('article', { name: `Stake account ${shortAddress(own)}` })).toBeNull();
+      await user.click(within(done).getByRole('button', { name: 'Already protected (2)' }));
+      const ownRow = row(done, own);
+      expect(ownRow).toHaveTextContent(`Locked by your second key until ${formatUtcDate(end) ?? ''}.`);
+      expect(within(ownRow).getByRole('link', { name: 'Extend the lock' })).toHaveAttribute('href', `/extend/${own}`);
+      // Only own locks: the other key's lock is never in this group.
+      expect(within(done).queryByRole('article', { name: `Stake account ${shortAddress(byOther)}` })).toBeNull();
+
+      // Another key's lock: open, in its own group named by the rows' status, with the key that holds it.
+      const lockedGroup = screen.getByRole('region', { name: 'Locked by another key (1)' });
+      expect(
+        within(lockedGroup).getByText('This is not the second key you connected here. If you did not set this lock, someone else holds it.'),
+      ).toBeInTheDocument();
+      expect(within(lockedGroup).getByText('Already locked, so it cannot be locked again here.')).toBeInTheDocument();
+      const otherRow = row(lockedGroup, byOther);
+      expect(otherRow).toHaveAttribute('data-status', 'locked-by-other');
+      expect(otherRow.querySelector('[data-slot="lock-holder"]')).toHaveTextContent(shortAddress(stranger));
+      // Rows that cannot be chosen have no checkbox.
+      for (const account of [own, moved, byOther]) {
+        expect(screen.queryByRole('checkbox', { name: `Protect stake account ${shortAddress(account)}` })).toBeNull();
+      }
     },
     TIMEOUT,
   );
@@ -850,8 +946,7 @@ describe('/protect step gates', () => {
       await waitFor(() => {
         expect(screen.getAllByRole('checkbox', { name: /^Protect stake account / }).filter((box) => box.getAttribute('aria-checked') === 'true')).toHaveLength(11);
       }, WAIT);
-      expect(screen.getByText('11 stake accounts selected')).toBeInTheDocument();
-      await user.click(continueButton());
+      await user.click(screen.getByRole('button', { name: 'Continue with 11 accounts' }));
       expect(
         screen.getByText('Choose up to 10 stake accounts at a time. Protect these first, then come back for the rest.'),
       ).toBeInTheDocument();
@@ -886,12 +981,12 @@ describe('/protect step gates', () => {
       const sameAlert = same.closest('[data-slot="alert"]') as HTMLElement;
       expect(sameAlert).toHaveAttribute('data-tone', 'warning');
       expect(sameAlert).toHaveTextContent(
-        'Both keys are in Both Wallet. Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you imported this account from a different seed phrase.',
+        'Both keys are in Both Wallet. Accounts of one wallet app or one Ledger usually share a seed phrase. Go on only if this account comes from another one.',
       );
-      expect(sameAlert).toHaveTextContent('While signing you will switch accounts in Both Wallet between the two signatures.');
+      expect(sameAlert).toHaveTextContent('While signing, switch accounts in Both Wallet within a minute, or the transactions expire.');
       await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
       await user.click(continueButton());
-      await screen.findByText(`Locked until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+      await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
       await user.click(continueButton());
 
       await click(user, 'Sign 2 transactions in Both Wallet as Main key');

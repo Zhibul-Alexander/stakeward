@@ -140,7 +140,7 @@ function nextSigner(signers: readonly Signer[], scope: Scope = screen): Promise<
   return waitFor(() => {
     for (const signer of signers) {
       if (scope.queryByRole('button', { name: `Sign in ${signer.wallet} as ${signer.role}` }) !== null) return { signer, connect: false };
-      if (scope.queryByText(`Connect your ${signer.role} to continue: it must sign these transactions.`) !== null) {
+      if (scope.queryByText(`Connect your ${signer.role} to sign.`) !== null) {
         return { signer, connect: true };
       }
     }

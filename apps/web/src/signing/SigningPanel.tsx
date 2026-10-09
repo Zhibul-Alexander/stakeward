@@ -2,6 +2,7 @@ import type { Address } from '@solana/kit';
 import { formatSol, summariesMatchExceptStakeAccount, type WalletRole } from '@stakeward/core';
 import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { ActionBar } from '@/components/product/action-bar';
 import { AddressText } from '@/components/product/address-text';
 import { ErrorState } from '@/components/product/error-state';
 import { JobStatusList } from '@/components/product/job-status-list';
@@ -58,14 +59,38 @@ type SigningViewProps = {
   confirm?: { label: string } | undefined;
   /** While a signing link is open: the page's way to cancel it (NonceCloseCard), shown in the link card. */
   renderLinkCancel?: (() => ReactNode) | undefined;
+  /**
+   * The risk the signature takes on, said right above the Sign button (UX rule 6): usually an inline RiskNote with its
+   * date (DECISIONS.md D109).
+   */
+  risk?: ReactNode;
+  /** The summary's line that it is read from the bytes (TransactionSummary `intro`); default true. */
+  summaryIntro?: boolean | undefined;
+  /**
+   * Leave out the signing order while exactly one signer has not signed (/cosign: the one who opened the link signs
+   * next). The summary's "Who signs" still lists every signer. Default false.
+   */
+  hideSingleSigner?: boolean | undefined;
 };
 
 /**
- * The signing screen (CLAUDE.md section 6, UX rules 3 and 7), presentational: the round, the inspector's summary of the
- * exact bytes about to be signed, who signs in which order, then one action area that explains the current wait and
- * offers exactly one way forward, and from sending on each stake account's outcome.
+ * The signing screen (CLAUDE.md section 6, UX rules 3 and 7), presentational: the round, who signs in which order (one
+ * line per key), the inspector's summary of the exact bytes about to be signed as a receipt, then one action area that
+ * explains the current wait and offers exactly one way forward (in the ready phase: the risk, then Sign and Back), and
+ * from sending on each stake account's outcome.
  */
-export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack, confirm, renderLinkCancel }: SigningViewProps) {
+export function SigningView({
+  state,
+  actions,
+  knownRoles,
+  renderKeySlot,
+  onBack,
+  confirm,
+  renderLinkCancel,
+  risk,
+  summaryIntro = true,
+  hideSingleSigner = false,
+}: SigningViewProps) {
   const { phase } = state;
   const linkOpen = phase.kind === 'link';
   // Back on this tab (the other device may have signed meanwhile): check the link now instead of after the pause.
@@ -85,6 +110,9 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack,
   const shown = !building && phase.kind !== 'prepare-failed';
   const sent = phase.kind === 'sending' || phase.kind === 'confirming' || phase.kind === 'checking' || phase.kind === 'finished';
   const signers = shown ? signerItems(state) : [];
+  // On /cosign, one signer left is the person who opened the link: the order would only repeat the Sign button.
+  const singleLeft = signers.filter((signer) => signer.status !== 'signed').length === 1;
+  const showOrder = signers.length > 0 && !(hideSingleSigner && singleLeft);
   const earlier = earlierSent(state);
   return (
     <div data-slot="signing-panel" data-phase={phase.kind} className="flex flex-col gap-5">
@@ -98,8 +126,12 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack,
           )}
         </div>
       ) : null}
-      {building ? <TransactionSummarySkeleton /> : shown ? <Summaries state={state} knownRoles={knownRoles} /> : null}
-      {building ? <SignerListSkeleton /> : signers.length === 0 ? null : <SignerList items={signers} />}
+      {building ? <SignerListSkeleton variant="compact" /> : showOrder ? <SignerList items={signers} variant="compact" /> : null}
+      {building ? (
+        <TransactionSummarySkeleton />
+      ) : shown ? (
+        <Summaries state={state} knownRoles={knownRoles} intro={summaryIntro} />
+      ) : null}
       <div role="status" aria-live="polite" className="flex flex-col gap-3">
         {/* Keyed by round: the confirmation box holds for one round's signers and starts unticked in the next. */}
         <PhaseActions
@@ -110,6 +142,7 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack,
           onBack={onBack}
           confirm={confirm}
           renderLinkCancel={renderLinkCancel}
+          risk={risk}
         />
       </div>
       {sent ? <JobStatusList items={jobItems(state)} label={t('signing.transactions')} /> : null}
@@ -118,26 +151,8 @@ export function SigningView({ state, actions, knownRoles, renderKeySlot, onBack,
 }
 
 /** The signing screen driven by a session: `state` is the session's snapshot (useSigningSession). */
-export function SigningPanel({
-  session,
-  state,
-  knownRoles,
-  renderKeySlot,
-  onBack,
-  confirm,
-  renderLinkCancel,
-}: Omit<SigningViewProps, 'actions'> & { session: SigningSession }) {
-  return (
-    <SigningView
-      state={state}
-      actions={session}
-      knownRoles={knownRoles}
-      renderKeySlot={renderKeySlot}
-      onBack={onBack}
-      confirm={confirm}
-      renderLinkCancel={renderLinkCancel}
-    />
-  );
+export function SigningPanel({ session, ...props }: Omit<SigningViewProps, 'actions'> & { session: SigningSession }) {
+  return <SigningView {...props} actions={session} />;
 }
 
 const noop = () => undefined;
@@ -182,7 +197,15 @@ export function PageSigningPanel({
  * One summary for the whole round when its transactions differ only in the stake account (core
  * `summariesMatchExceptStakeAccount`), otherwise one per transaction; each with the account's state as just read.
  */
-function Summaries({ state, knownRoles }: { state: SigningState; knownRoles: Partial<Record<WalletRole, Address>> }) {
+function Summaries({
+  state,
+  knownRoles,
+  intro,
+}: {
+  state: SigningState;
+  knownRoles: Partial<Record<WalletRole, Address>>;
+  intro: boolean;
+}) {
   const txs = state.round?.txs ?? [];
   const [head] = txs;
   if (head === undefined) return null;
@@ -200,22 +223,35 @@ function Summaries({ state, knownRoles }: { state: SigningState; knownRoles: Par
     });
     const totalFeeLamports = summaries.reduce((sum, summary) => sum + summary.networkFeeLamports, 0n);
     return (
-      <TransactionSummary summary={head.summary} knownRoles={knownRoles} batch={{ accounts, totalFeeLamports }} headingLevel={3} />
+      <TransactionSummary
+        summary={head.summary}
+        knownRoles={knownRoles}
+        batch={{ accounts, totalFeeLamports }}
+        intro={intro}
+        headingLevel={3}
+      />
     );
   }
   return (
     <div className="flex flex-col gap-4">
       {txs.map((tx) => (
-        <TransactionSummary key={tx.id} summary={tx.summary} current={currentOf(tx.id)} knownRoles={knownRoles} headingLevel={3} />
+        <TransactionSummary
+          key={tx.id}
+          summary={tx.summary}
+          current={currentOf(tx.id)}
+          knownRoles={knownRoles}
+          intro={intro}
+          headingLevel={3}
+        />
       ))}
     </div>
   );
 }
 
-type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles'>;
+type PhaseActionsProps = Omit<SigningViewProps, 'knownRoles' | 'summaryIntro' | 'hideSingleSigner'>;
 
 /** What happens now and the one way forward (UX rule 7: every wait is explained and has a way out). */
-function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLinkCancel }: PhaseActionsProps) {
+function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLinkCancel, risk }: PhaseActionsProps) {
   const { phase, round } = state;
   const back = backKind(state);
   // The confirmation box (`confirm`): ticked once per round; pressing Sign before that says so and moves focus to it.
@@ -269,7 +305,6 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
             </Alert>
           ) : null}
           {sameWallet ? <p className="text-sm font-medium">{t('signing.sameWalletHint', { wallet, role })}</p> : null}
-          {phase.step === 0 ? <p className="text-sm">{t('signing.firstHint', { wallet })}</p> : null}
           {confirm === undefined ? null : (
             <div className="flex flex-col gap-2">
               <div className="flex items-start gap-3">
@@ -295,48 +330,57 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, renderLi
               ) : null}
             </div>
           )}
-          <Buttons>
-            <Button
-              // Not `disabled`: pressed before the box is ticked it says why and moves focus to the box.
-              aria-disabled={mustConfirm ? true : undefined}
-              aria-describedby={confirmError ? confirmErrorId : undefined}
-              onClick={() => {
-                if (mustConfirm) {
-                  setConfirmAsked(true);
-                  confirmBox.current?.focus();
-                  return;
-                }
-                actions.sign();
-              }}
-              className="h-auto min-h-10 max-w-full whitespace-normal aria-disabled:pointer-events-auto"
-            >
-              {step.count === 1
-                ? t('signing.signWith', { wallet, role })
-                : t('signing.signManyWith', { count: step.count, wallet, role })}
-            </Button>
-            {backButton}
-          </Buttons>
+          <ActionBar
+            risk={risk}
+            note={phase.step === 0 ? t('signing.firstHint', { wallet }) : undefined}
+            primary={
+              <Button
+                size="lg"
+                // Not `disabled`: pressed before the box is ticked it says why and moves focus to the box.
+                aria-disabled={mustConfirm ? true : undefined}
+                aria-describedby={confirmError ? confirmErrorId : undefined}
+                onClick={() => {
+                  if (mustConfirm) {
+                    setConfirmAsked(true);
+                    confirmBox.current?.focus();
+                    return;
+                  }
+                  actions.sign();
+                }}
+                className="h-auto min-h-12 max-w-full whitespace-normal aria-disabled:pointer-events-auto"
+              >
+                {step.count === 1
+                  ? t('signing.signWith', { wallet, role })
+                  : t('signing.signManyWith', { count: step.count, wallet, role })}
+              </Button>
+            }
+            secondary={backButton ?? undefined}
+          />
         </div>
       );
     }
 
     case 'needs-wallet':
       if (step === undefined) return null;
+      // The key slot's Connect is the screen's one filled button (the page passes emphasis="primary"); the button
+      // under it only goes on once a wallet here holds the key (the session checks), so it stays outline.
       return (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium">{t('signing.needWallet', { role })}</p>
-          <AddressText address={step.address} variant="full" />
           {renderKeySlot(step.role, step.address)}
-          <Buttons>
-            <Button
-              onClick={() => {
-                actions.continueWithWallet();
-              }}
-            >
-              {t('common.continue')}
-            </Button>
-            {backButton}
-          </Buttons>
+          <ActionBar
+            primary={
+              <Button
+                variant="outline"
+                onClick={() => {
+                  actions.continueWithWallet();
+                }}
+              >
+                {t('signing.useWallet')}
+              </Button>
+            }
+            secondary={backButton ?? undefined}
+          />
         </div>
       );
 

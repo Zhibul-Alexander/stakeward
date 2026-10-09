@@ -101,3 +101,57 @@ describe('SignerList', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 });
+
+describe('SignerList compact (the signing screen, above the summary that holds the addresses)', () => {
+  it('one line per key in order: number, role, wallet and status, no address; the count once when all share it', () => {
+    render(
+      <SignerList
+        variant="compact"
+        items={[
+          { role: 'main', walletName: 'Alpha Wallet', address: MAIN, count: 2, status: 'current' },
+          { role: 'second', walletName: 'Beta Wallet', address: SECOND, count: 2, status: 'waiting' },
+        ]}
+      />,
+    );
+    const list = screen.getByRole('list', { name: 'Signatures' });
+    expect(list.tagName).toBe('OL');
+    const entries = within(list).getAllByRole('listitem');
+    expect(entries.map((entry) => entry.getAttribute('data-role'))).toEqual(['main', 'second']);
+    expect(entries.map((entry) => entry.getAttribute('data-status'))).toEqual(['current', 'waiting']);
+    const [main, second] = entries as [HTMLElement, HTMLElement];
+    expect(main).toHaveTextContent(/^1Main key·Alpha WalletYour turn$/);
+    expect(main).toHaveAttribute('aria-current', 'step');
+    expect(second).toHaveTextContent(/^2Second key·Beta WalletNot asked yet$/);
+    expect(second).not.toHaveAttribute('aria-current');
+    // No address on this list: the summary's "Who signs" holds them in full.
+    expect(screen.queryByText(MAIN)).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot="address-text"]')).toBeNull();
+    // The same count for every key: said once under the list, not on each line.
+    expect(screen.getAllByText('Approves 2 transactions in one request')).toHaveLength(1);
+    expect(within(list).queryByText('Approves 2 transactions in one request')).not.toBeInTheDocument();
+    expect(forbiddenRoleWords()).toEqual([]);
+  });
+
+  it('different counts are said on each line; a key no wallet here offers shows its role and status only', () => {
+    render(
+      <SignerList
+        variant="compact"
+        items={[
+          { role: 'new', walletName: 'Gamma Wallet', address: NEW_WALLET, count: 1, status: 'signed' },
+          { role: 'second', walletName: null, address: SECOND, count: 3, status: 'link' },
+        ]}
+      />,
+    );
+    const [fresh, second] = within(screen.getByRole('list', { name: 'Signatures' })).getAllByRole('listitem') as [HTMLElement, HTMLElement];
+    expect(within(fresh).getByText('Approves 1 transaction')).toBeInTheDocument();
+    expect(within(second).getByText('Approves 3 transactions in one request')).toBeInTheDocument();
+    expect(second).toHaveTextContent(/^2Second keySigns by link/);
+    expect(within(second).getByText('Signs by link')).toHaveAttribute('data-tone', 'info');
+  });
+
+  it('loading: two decorative lines', () => {
+    const { container } = render(<SignerListSkeleton variant="compact" />);
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(container.firstElementChild?.children).toHaveLength(2);
+  });
+});

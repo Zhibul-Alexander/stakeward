@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useSearchParams } from 'wouter';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { StepProgress } from '@/components/product/step-progress';
 import { Button } from '@/components/ui/button';
 import { watchWithRetry, type WatchState } from '@/api/watch';
@@ -35,13 +36,15 @@ import {
   type WizardStep,
 } from './wizard.ts';
 
-const STEP_LABEL: Record<WizardStep, MessageKey> = {
+const STEP_LABEL: Record<Exclude<WizardStep, 'done'>, MessageKey> = {
   accounts: 'protect.steps.accounts',
   'second-key': 'protect.steps.secondKey',
   period: 'protect.steps.period',
   sign: 'protect.steps.sign',
-  done: 'protect.steps.done',
 };
+
+/** The steps StepProgress shows: Done is the result, not a step (DECISIONS.md D109). */
+const PROGRESS_STEPS = WIZARD_STEPS.filter((step): step is Exclude<WizardStep, 'done'> => step !== 'done');
 
 type ProtectWizardProps = {
   /** The main key slot's address; the page remounts the wizard when it changes. */
@@ -50,7 +53,8 @@ type ProtectWizardProps = {
 };
 
 /**
- * The protect wizard (F1, DECISIONS.md D48): accounts, second key, lock period, review and sign, done. Each step reads
+ * The protect wizard (F1, DECISIONS.md D48): accounts, second key, lock period, review and sign, done. It heads the
+ * page: the h1, the lead on the first step only, and the four steps' progress until the result. Each step reads
  * what it needs from the chain; nothing is written on this device or sent to the worker before the chain shows the
  * lock (section 4.6 of the step 4 spec): then the second key and the accounts are remembered (D14, F6) and monitoring
  * is turned on (POST /api/watch).
@@ -196,15 +200,25 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
     dispatch({ type: 'go', step });
   }
 
+  const { step } = state;
   return (
-    <div className="flex flex-col gap-8">
-      <StepProgress steps={WIZARD_STEPS.map((step) => t(STEP_LABEL[step]))} current={WIZARD_STEPS.indexOf(state.step)} />
+    <>
+      <PageHeader
+        title={t('common.pages.protect')}
+        lead={step === 'accounts' ? t('protect.intro') : undefined}
+        progress={
+          step === 'done' ? undefined : (
+            <StepProgress steps={PROGRESS_STEPS.map((item) => t(STEP_LABEL[item]))} current={PROGRESS_STEPS.indexOf(step)} />
+          )
+        }
+      />
       {state.step === 'accounts' ? (
         <AccountsStep
           headingRef={headingRef}
           mainKey={mainKey}
           mainReady={mainReady}
           selected={selected}
+          selectionCount={chosen.length}
           loaded={loaded}
           cands={cands}
           knownSecondKeys={knownSecondKeys}
@@ -212,6 +226,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           onSelect={(account, checked) => {
             setSelected(checked ? [...selected.filter((id) => id !== account), account] : selected.filter((id) => id !== account));
           }}
+          onSelectMany={setSelected}
           onRetry={() => {
             setAttempt((value) => value + 1);
           }}
@@ -302,11 +317,13 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
         />
       ) : (
         // A key the step needs is gone (disconnected in the middle): start again from the second key.
-        <SecondKeyFallback onBack={() => {
+        <SecondKeyFallback
+          onBack={() => {
             goTo('second-key');
-          }} />
+          }}
+        />
       )}
-    </div>
+    </>
   );
 }
 

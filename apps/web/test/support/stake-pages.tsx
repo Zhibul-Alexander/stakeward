@@ -137,8 +137,9 @@ export async function connect(user: UserEvent, role: RoleName, walletName: strin
   const slot = await scope.findByRole('group', { name: role }, WAIT);
   await user.click(within(slot).getByRole('button', { name: `Connect a wallet as ${role}` }));
   await user.click(within(slot).getByRole('button', { name: walletName }));
+  // Connected in either layout: a card with its "Connected" badge, or the one line a connected slot shrinks to.
   await waitFor(() => {
-    expect(within(scope.getByRole('group', { name: role })).getByText('Connected')).toBeInTheDocument();
+    expect(scope.getByRole('group', { name: role })).toHaveAttribute('data-status', 'connected');
   });
 }
 
@@ -146,11 +147,11 @@ export async function click(user: UserEvent, name: string | RegExp, scope: Scope
   await user.click(await scope.findByRole('button', { name }, WAIT));
 }
 
-/** The engine asks for a key that is not connected here: connect it, then Continue to its turn. */
+/** The engine asks for a key that is not connected here: connect it, then "Use this wallet" to go on to its turn. */
 export async function connectAndContinue(user: UserEvent, role: RoleName, walletName: string, scope: Scope = screen) {
-  await scope.findByText(`Connect your ${role} to continue: it must sign these transactions.`, undefined, WAIT);
+  await scope.findByText(`Connect your ${role} to sign.`, undefined, WAIT);
   await connect(user, role, walletName, scope);
-  await user.click(scope.getByRole('button', { name: 'Continue' }));
+  await user.click(scope.getByRole('button', { name: 'Use this wallet' }));
 }
 
 /** The transaction id of the last signed bytes a wallet returned. */

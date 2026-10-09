@@ -287,7 +287,7 @@ describe('NonceStep', () => {
       );
 
       await click(user, 'Create the link-signing account');
-      await screen.findByText('Connect your Main key to continue: it must sign these transactions.', undefined, WAIT);
+      await screen.findByText('Connect your Main key to sign.', undefined, WAIT);
       await click(user, 'Back');
       const heading = await screen.findByRole('heading', { name: 'Set up signing by link' }, WAIT);
       expect(heading).toHaveFocus();

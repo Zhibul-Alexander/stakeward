@@ -289,7 +289,7 @@ describe('/withdraw/:account: gates', () => {
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [wallet]);
 
       await click(user, 'Review and sign');
-      await screen.findByText('Connect your Main key to continue: it must sign these transactions.', undefined, WAIT);
+      await screen.findByText('Connect your Main key to sign.', undefined, WAIT);
       const slot = screen.getByRole('group', { name: 'Main key' });
       await user.click(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' }));
       await user.click(within(slot).getByRole('button', { name: 'Two Accounts' }));

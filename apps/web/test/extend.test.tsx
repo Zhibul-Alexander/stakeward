@@ -84,7 +84,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const { user, ports } = renderStakePage(w.chain, `/extend/${S}`, [second]);
 
       // Only the periods that end later than the lock now.
-      expect(await radio(period('6 months (recommended)', SIX_MONTHS))).toBeChecked();
+      expect(await radio(period('6 months', SIX_MONTHS))).toBeChecked();
       expect(screen.getByRole('radio', { name: period('12 months', TWELVE_MONTHS) })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: 'Remove the lock now' })).toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: /^1 month/ })).not.toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
       const rent0 = await w.chain.getMinimumBalanceForRentExemption(0);
 
-      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await radio(period('6 months', SIX_MONTHS));
       await click(user, 'Review and sign');
       await screen.findByText(
         `Your second key has too little SOL for the network fee, so your main key pays and signs too. To sign with the second key alone, send it at least ${formatSol(ONE_SIGNER_FEE + rent0)}, then press Check again.`,
@@ -161,7 +161,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
 
-      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await radio(period('6 months', SIX_MONTHS));
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       await screen.findByText(/so your main key pays and signs too/, undefined, WAIT);
@@ -191,7 +191,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const [main, second] = await Promise.all([mainWallet(w), secondWallet(w)]);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
 
-      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await radio(period('6 months', SIX_MONTHS));
       await click(user, 'Review and sign');
       const error = await screen.findByText(/^Your Second key has 0 SOL\. It needs at least .* Add a little SOL to it, then press Try again\.$/, undefined, WAIT);
       expect(error.closest('[role="alert"]') ?? error.parentElement).toHaveTextContent(w.K.address);
@@ -212,7 +212,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [main, second]);
       const mainBefore = w.testChain.balance(w.A.address);
 
-      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await radio(period('6 months', SIX_MONTHS));
       await click(user, 'Review and sign');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await theSummary();
@@ -317,7 +317,7 @@ describe('/extend/:account: after a removal (SECURITY-CHECK П9)', () => {
       await waitFor(() => {
         expect(screen.getByRole('checkbox', { name: `Protect stake account ${shortAddress(S)}` })).toBeChecked();
       }, WAIT);
-      await click(user, 'Continue');
+      await click(user, 'Continue with 1 account');
       await heading('Connect your second key');
       // The second key slot still holds the key that just removed the lock: the wizard says to use a new one.
       expect(within(screen.getByRole('group', { name: 'Second key' })).getByText('Connected')).toBeInTheDocument();
@@ -355,7 +355,7 @@ describe('/extend/:account: gates', () => {
 
       ahead = 0n;
       await user.click(within(alert).getByRole('button', { name: 'Try again' }));
-      expect(await radio(period('6 months (recommended)', SIX_MONTHS))).toBeChecked();
+      expect(await radio(period('6 months', SIX_MONTHS))).toBeChecked();
       expect(screen.queryByText('The network time does not match this device')).toBeNull();
       expect(second.requests).toHaveLength(0);
     },
@@ -403,9 +403,9 @@ describe('/extend/:account: gates', () => {
       expect(slots.assign('second', { walletId: other.id, address: K2.address }).ok).toBe(true);
       const { user } = renderStakePage(w.chain, `/extend/${S}`, [other], { slots });
 
-      await radio(period('6 months (recommended)', SIX_MONTHS));
+      await radio(period('6 months', SIX_MONTHS));
       await click(user, 'Review and sign');
-      await screen.findByText('Connect your Second key to continue: it must sign these transactions.', undefined, WAIT);
+      await screen.findByText('Connect your Second key to sign.', undefined, WAIT);
       const slot = screen.getByRole('group', { name: 'Second key' });
       expect(within(slot).getByText('This step needs this account. Disconnect, then connect again with this account:')).toBeInTheDocument();
       expect(within(slot).getByText(w.K.address)).toBeInTheDocument();

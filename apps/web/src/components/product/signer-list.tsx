@@ -44,16 +44,29 @@ const LOOKS: Record<SignerStatus, Look> = {
   link: { tone: 'info', icon: LinkIcon, label: 'components.signerList.status.link' },
 };
 
+type SignerListProps = {
+  items: readonly SignerListItem[];
+  /**
+   * `full` (default): a card per key with its full address. `compact`: one line per key, its number, role, wallet and
+   * status, and how many transactions each approves said once when it is the same for all; no address. The signing
+   * screen uses compact above its summary, whose "Who signs" holds the full addresses read from the bytes (DECISIONS.md
+   * D109).
+   */
+  variant?: 'full' | 'compact' | undefined;
+  className?: string | undefined;
+};
+
 /**
  * Who signs, in order, and where each signature stands (UX rule 7: the wait is explained). Each key shows its role
- * and wallet, its full address (a signing screen never shortens addresses, DECISIONS.md D23), how many transactions
- * it approves and its status in a word, a colour and an icon. Presentational: the signing engine computes the items.
+ * and wallet, how many transactions it approves and its status in a word, a colour and an icon. `full` also shows its
+ * full address (a signing screen never shortens addresses, DECISIONS.md D23); `compact` leaves the address to the
+ * summary under it. Presentational: the signing engine computes the items.
  */
-export function SignerList({ items, className }: { items: readonly SignerListItem[]; className?: string | undefined }) {
+export function SignerList({ items, variant = 'full', className }: SignerListProps) {
+  if (variant === 'compact') return <CompactSignerList items={items} className={className} />;
   return (
-    <ol aria-label={t('signing.signers')} data-slot="signer-list" className={cn('flex flex-col gap-3', className)}>
+    <ol aria-label={t('signing.signers')} data-slot="signer-list" data-variant="full" className={cn('flex flex-col gap-3', className)}>
       {items.map((item, index) => {
-        const { tone, icon: Icon, label } = LOOKS[item.status];
         const n = index + 1;
         const role = roleLabel(item.role);
         return (
@@ -73,17 +86,10 @@ export function SignerList({ items, className }: { items: readonly SignerListIte
                   ? t('components.signerList.notConnected', { n, role })
                   : t('components.signerList.title', { n, role, wallet: item.walletName })}
               </span>
-              <Badge tone={tone} data-status={item.status}>
-                <Icon aria-hidden="true" />
-                {t(label)}
-              </Badge>
+              <StatusBadge status={item.status} />
             </div>
             <AddressText address={item.address} variant="full" />
-            <p className="text-sm text-muted">
-              {item.count === 1
-                ? t('components.signerList.approvesOne')
-                : t('components.signerList.approvesOther', { count: item.count })}
-            </p>
+            <p className="text-sm text-muted">{approves(item.count)}</p>
           </li>
         );
       })}
@@ -91,10 +97,86 @@ export function SignerList({ items, className }: { items: readonly SignerListIte
   );
 }
 
-/** Loading state: two signer cards while the transactions are built. Decorative; the panel announces the wait. */
-export function SignerListSkeleton({ className }: { className?: string | undefined }) {
+function approves(count: number): string {
+  return count === 1 ? t('components.signerList.approvesOne') : t('components.signerList.approvesOther', { count });
+}
+
+function StatusBadge({ status }: { status: SignerStatus }) {
+  const { tone, icon: Icon, label } = LOOKS[status];
   return (
-    <div aria-hidden="true" className={cn('flex flex-col gap-3', className)}>
+    <Badge tone={tone} data-status={status}>
+      <Icon aria-hidden="true" />
+      {t(label)}
+    </Badge>
+  );
+}
+
+/** The compact order: "1 · Main key · Wallet A · Your turn", one line per key, the count once when all share it. */
+function CompactSignerList({ items, className }: { items: readonly SignerListItem[]; className?: string | undefined }) {
+  const [first] = items;
+  const sameCount = first !== undefined && items.every((item) => item.count === first.count);
+  return (
+    <div data-slot="signer-list" data-variant="compact" className={cn('flex flex-col gap-2', className)}>
+      <ol aria-label={t('signing.signers')} className="flex flex-col gap-2">
+        {items.map((item, index) => {
+          const current = item.status === 'current';
+          return (
+            <li
+              key={`${String(index)}-${item.address}`}
+              aria-current={current ? 'step' : undefined}
+              data-status={item.status}
+              data-role={item.role}
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
+                  current ? 'bg-primary-soft text-primary ring-2 ring-primary' : 'bg-subtle text-muted',
+                )}
+              >
+                {index + 1}
+              </span>
+              <span className="font-semibold">{roleLabel(item.role)}</span>
+              {item.walletName === null ? null : (
+                <>
+                  <span aria-hidden="true" className="text-muted">
+                    ·
+                  </span>
+                  <span className="min-w-0 truncate text-muted">{item.walletName}</span>
+                </>
+              )}
+              <StatusBadge status={item.status} />
+              {sameCount ? null : <span className="w-full pl-8 text-muted">{approves(item.count)}</span>}
+            </li>
+          );
+        })}
+      </ol>
+      {sameCount ? <p className="text-sm text-muted">{approves(first.count)}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Loading state while the transactions are built: two signer cards (`full`) or two lines (`compact`). Decorative; the
+ * panel announces the wait.
+ */
+export function SignerListSkeleton({ variant = 'full', className }: { variant?: 'full' | 'compact' | undefined; className?: string | undefined }) {
+  if (variant === 'compact') {
+    return (
+      <div aria-hidden="true" data-slot="signer-list-skeleton" className={cn('flex flex-col gap-2', className)}>
+        {[0, 1].map((key) => (
+          <div key={key} className="flex items-center gap-2">
+            <Skeleton className="size-6 rounded-full" />
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div aria-hidden="true" data-slot="signer-list-skeleton" className={cn('flex flex-col gap-3', className)}>
       {[0, 1].map((key) => (
         <div key={key} className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
