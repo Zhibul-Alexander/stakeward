@@ -1,5 +1,6 @@
 import type { Address } from '@solana/kit';
 import { epochEndEstimate, formatSol, isLockupInForce, slotMsEstimate, stakeActivationStatus } from '@stakeward/core';
+import { cn } from 'cn';
 import { LockOpenIcon, RefreshCwIcon, TerminalIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -31,6 +32,11 @@ type StageBlockProps = {
   onCheckAgain: () => void;
   /** The countdown ran out: read the account again (the page throttles it). */
   onCountdownEnd: () => void;
+  /**
+   * The account is under the viewer's own lock (underOwnLock): the row above then says that another staking key may
+   * be theft, and the service-staker block does not say it again.
+   */
+  ownLock?: boolean | undefined;
 };
 
 /** The withdrawal stage title shown on the stage block and kept as the signing section's heading. */
@@ -61,7 +67,16 @@ export function WithdrawRisk({ mainKey }: { mainKey: Address }) {
  * or withdraw; or why it cannot (another key manages staking, a lock no second key holds). One main action at a time
  * (UX rule 2), ending in an ActionBar with the risk right above its button (DECISIONS.md D109).
  */
-export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMode, onCheckAgain, onCountdownEnd }: StageBlockProps) {
+export function StageBlock({
+  headingRef,
+  loaded,
+  onSign,
+  secondMode,
+  onSecondMode,
+  onCheckAgain,
+  onCountdownEnd,
+  ownLock = false,
+}: StageBlockProps) {
   const headingId = useId();
   // Epoch ends are estimated from the device clock at the read: the countdown ticks on the device clock. Slots count
   // at this epoch's own average so far, read from the cluster clock.
@@ -104,8 +119,12 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
         </Stage>
       );
     }
-    case 'service-staker':
-      // One block (DECISIONS.md D109): who manages staking, that key in full, and the way out if it is not the user's.
+    case 'service-staker': {
+      // One block (DECISIONS.md D109): who manages staking, that key in full, and the one way out if it is not the
+      // user's. Under the viewer's own lock the row above already says this may be theft, so the block does not repeat it.
+      const body = ownLock
+        ? t('withdraw.serviceStaker.body')
+        : `${t('withdraw.serviceStaker.body')} ${t('withdraw.serviceStaker.stolen')}`;
       return (
         <section aria-labelledby={headingId} data-slot="service-staker">
           <Alert tone="warning" role="note">
@@ -114,17 +133,20 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
               {t('withdraw.serviceStaker.title')}
             </h2>
             <AlertDescription className="flex flex-col gap-3 text-sm text-foreground">
-              <p className="max-w-prose">{t('withdraw.serviceStaker.body')}</p>
+              <p className="max-w-prose">{body}</p>
               <AddressText address={account.staker} variant="full" explorer />
-              <div>
-                <Button asChild>
-                  <Link href={appLinks.rescue(mainKey)}>{t('withdraw.serviceStaker.action')}</Link>
-                </Button>
-              </div>
+              <ActionBar
+                primary={
+                  <Button asChild>
+                    <Link href={appLinks.rescue(mainKey)}>{t('withdraw.serviceStaker.action')}</Link>
+                  </Button>
+                }
+              />
             </AlertDescription>
           </Alert>
         </section>
       );
+    }
     case 'deactivating': {
       const until = account.delegation?.deactivationEpoch ?? epoch.epoch;
       return (
@@ -136,7 +158,7 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
             {/* No decision here: the risk is a quiet line until the withdrawal is offered again. */}
             <p data-risk="withdraw-compromised" className="max-w-prose text-sm text-muted">
               {riskText('withdraw-compromised')}{' '}
-              <Link href={appLinks.rescue(mainKey)} className={LINK_CLASS}>
+              <Link href={appLinks.rescue(mainKey)} className={cn(LINK_CLASS, 'whitespace-nowrap')}>
                 {t('withdraw.rescueLink')}
               </Link>
             </p>
@@ -154,10 +176,17 @@ export function StageBlock({ headingRef, loaded, onSign, secondMode, onSecondMod
       const { lockup } = account;
       const inForce = isLockupInForce(lockup, clock);
       const lock = lockText(lockup, clock);
+      // The row right above shows a lock's end date when its date alone holds it: the second key's line does not repeat
+      // it. A lock an epoch holds has no date on the row, so the line says it.
+      const rowShowsEnd = lockup.epoch === 0n && lockup.unixTimestamp > 0n;
       const keys: KeyListItem[] = inForce
         ? [
             { role: 'main', address: mainKey, note: t('withdraw.keys.main') },
-            { role: 'second', address: lockup.custodian, note: t('withdraw.keys.second', { lock }) },
+            {
+              role: 'second',
+              address: lockup.custodian,
+              note: rowShowsEnd ? t('withdraw.keys.secondCoSigns') : t('withdraw.keys.second', { lock }),
+            },
           ]
         : [
             {

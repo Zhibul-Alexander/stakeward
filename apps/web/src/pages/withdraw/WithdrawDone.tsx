@@ -88,8 +88,8 @@ export function WithdrawDone(props: WithdrawDoneProps) {
   const amount = job.action?.kind === 'withdraw' ? job.action.lamports : (job.before?.lamports ?? null);
   return (
     <section aria-labelledby={headingId} data-slot="withdraw-done" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold">
-        <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl font-semibold">
+        <CircleCheckIcon aria-hidden="true" className="mt-1 size-6 shrink-0 text-success" />
         {t('withdraw.done.title', { amount: amount === null ? '' : formatSol(amount) })}
       </h2>
       <TransactionLink signature={job.signature} />

@@ -7,6 +7,7 @@ import { START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/te
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { createSecondKeyMemory } from '@/ports';
 import {
   click,
   connectAndContinue,
@@ -77,7 +78,9 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
       expect(within(keys).getByText(w.A.address)).toBeInTheDocument();
       expect(within(keys).getByText(w.K.address)).toBeInTheDocument();
       expect(within(keys).getByText('Receives the SOL and pays the network fee')).toBeInTheDocument();
-      expect(within(keys).getByText(`Locked until ${formatUtcDate(T) ?? ''}: co-signs this withdrawal`)).toBeInTheDocument();
+      // The lock's end stands on the account row right above; the second key's line says what it does here.
+      expect(document.querySelector('[data-slot="lock-end"]')).toHaveTextContent(`until ${formatUtcDate(T) ?? ''}`);
+      expect(within(keys).getByText('Co-signs this withdrawal')).toBeInTheDocument();
       // The risk stands right above the one filled button it guards (ActionBar, DECISIONS.md D109).
       const bar = (risk as HTMLElement).closest<HTMLElement>('[data-slot="action-bar"]') as HTMLElement;
       expect(within(bar).getByRole('button', { name: 'Review withdrawal' })).toHaveAttribute('data-variant', 'primary');
@@ -335,6 +338,67 @@ describe('/withdraw/:account: gates', () => {
       expect(rescue).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
       expect(rescue).toHaveAttribute('data-variant', 'primary');
       expect(document.querySelectorAll('[data-slot="alert"], [data-slot="row-warning"], [data-slot="risk-note"], [data-risk]')).toHaveLength(1);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'W3b2: another staking key under this device\'s own lock: the row says it may be theft, the block says the rest, one Rescue',
+    async () => {
+      const w = await world();
+      const X = await w.testChain.fundedKey();
+      const S = await w.testChain.createStakeAccount({
+        staker: X.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: T, epoch: 0n, custodian: w.K.address },
+        delegateTo: { voteAccount: w.vote, stakerKey: X },
+      });
+      w.testChain.warpToEpoch(START_EPOCH + 1n);
+      const secondKeys = createSecondKeyMemory(null);
+      secondKeys.remember(w.K.address);
+      renderStakePage(w.chain, `/withdraw/${S}`, [], { secondKeys });
+
+      await heading('Another key manages staking');
+      // The theft sign stays on the row (SECURITY-CHECK П6); the block does not say it a second time.
+      const rowWarning = document.querySelector<HTMLElement>('[data-slot="row-warning"]') as HTMLElement;
+      expect(rowWarning).toHaveTextContent('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.');
+      expect(screen.getByText('Stop staking with that key, or in your staking service, then come back.')).toBeInTheDocument();
+      expect(screen.queryByText(/Did not set this up\?/)).not.toBeInTheDocument();
+      expect(document.querySelectorAll('[data-slot="alert"]')).toHaveLength(1);
+      // One way out: the block's filled Rescue, not a second link on the row.
+      const rescues = screen.getAllByRole('link', { name: /rescue/i });
+      expect(rescues).toHaveLength(1);
+      expect(rescues[0]).toHaveTextContent('Rescue your stake');
+      expect(rescues[0]).toHaveAttribute('data-variant', 'primary');
+      expect(rescues[0]).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
+    'W3b3: another staking key while the stake stops: the row keeps its staking-service line',
+    async () => {
+      const w = await world();
+      const X = await w.testChain.fundedKey();
+      const S = await w.testChain.createStakeAccount({
+        staker: X.address,
+        withdrawer: w.A.address,
+        lockup: { unixTimestamp: T, epoch: 0n, custodian: w.K.address },
+        delegateTo: { voteAccount: w.vote, stakerKey: X },
+      });
+      w.testChain.warpToEpoch(START_EPOCH + 1n);
+      const { bytes } = buildTransaction(
+        { kind: 'deactivate', stakeAccount: S, staker: X.address },
+        { feePayer: X.address, lifetime: w.testChain.blockhashLifetime() },
+      );
+      expect((await w.testChain.send(bytes, [X])).ok).toBe(true);
+      // Opened on a device that does not know the second key: no theft line, but the other staking key is still said.
+      renderStakePage(w.chain, `/withdraw/${S}`, []);
+
+      await heading('Waiting for the epoch to end');
+      const rowWarning = document.querySelector<HTMLElement>('[data-slot="row-warning"]') as HTMLElement;
+      expect(rowWarning).toHaveTextContent('A staking service may manage this stake.');
+      expect(screen.queryByRole('heading', { name: 'Another key manages staking' })).not.toBeInTheDocument();
     },
     SCENARIO_TIMEOUT,
   );

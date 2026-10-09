@@ -1034,6 +1034,7 @@
     "keys": {
       "main": "Receives the SOL and pays the network fee",
       "second": "{lock}: co-signs this withdrawal",
+      "secondCoSigns": "Co-signs this withdrawal",
       "signsAlone": "Signs alone"
     },
     "deactivate": {
@@ -1044,7 +1045,8 @@
     },
     "serviceStaker": {
       "title": "Another key manages staking",
-      "body": "Stop staking with that key, or in your staking service, then come back. Did not set this up? Your main key may be stolen.",
+      "body": "Stop staking with that key, or in your staking service, then come back.",
+      "stolen": "Did not set this up? Your main key may be stolen.",
       "action": "Rescue your stake"
     },
     "deactivating": {
@@ -1062,7 +1064,7 @@
       "action": "Remove the lock first"
     },
     "unsupportedLockTitle": "Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key.",
-    "unsupportedLock": "If the main key holds it, the Solana command line can withdraw when the main key also signs as the lock's key: solana withdraw-stake --help names that option. Otherwise wait until the lock ends.",
+    "unsupportedLock": "If the main key holds it, the Solana command line can withdraw. The main key must also sign as the lock's key: solana withdraw-stake --help names that option. Otherwise wait until the lock ends.",
     "result": "Withdrawal",
     "done": {
       "title": "{amount} went to your main key",
