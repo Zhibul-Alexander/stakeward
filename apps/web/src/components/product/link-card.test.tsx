@@ -51,6 +51,14 @@ describe('LinkCard', () => {
     expect(cancel).toHaveAttribute('aria-expanded', 'true');
     const slot = screen.getByRole('button', { name: 'Cancel slot' });
     expect(slot.closest('[data-slot="link-card"]')).not.toBeNull();
+    // Its inset comes right after the buttons, and the note (about Stop waiting) stands before them.
+    expect(cancel.parentElement?.nextElementSibling).toContainElement(slot);
+    expect(screen.getByText('The link keeps working after you leave.').compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Folding it hides the page's cancel but keeps it mounted, so a close being signed is not dropped.
+    await user.click(cancel);
+    expect(cancel).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Cancel slot' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel slot', hidden: true })).toBe(slot);
     expect(screen.queryByRole('button', { name: 'Check again' })).not.toBeInTheDocument();
   });
 

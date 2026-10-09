@@ -580,7 +580,7 @@
       "paused": "Stopped checking after 30 minutes. The link still works.",
       "checkAgain": "Check again",
       "stopWaiting": "Stop waiting here",
-      "stopNote": "The link keeps working after you leave. Cancel it if it should not be signed.",
+      "stopNote": "The link keeps working after you leave.",
       "cancel": "Cancel the link",
       "cancelTitle": "Cancel the link?",
       "cancelBody": "Cancelling closes your link-signing account, so this link stops working. Its deposit of {amount} comes back to your {role}. If the other device already sent the transaction, that change stays.",
@@ -1381,7 +1381,8 @@
     },
     "blocked": "The address of your link-signing account is already taken by another account, so it cannot be created. Anyone can do this by sending a tiny amount of SOL to it.",
     "blockedHere": "Sign in this browser instead.",
-    "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address."
+    "blockedRescue": "Connect another new wallet instead: its link-signing account has a different address.",
+    "cancelGone": "Your link-signing account is already closed, so this link can no longer be sent."
   },
   "cosign": {
     "intro": "Someone sent you this link to approve a change with your wallet.",

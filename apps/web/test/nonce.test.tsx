@@ -253,6 +253,24 @@ describe('NonceCloseCard', () => {
   );
 
   it(
+    'cancel-link: says when the account cannot be read (Try again reads it again) and when it is already closed',
+    async () => {
+      const w = await world();
+      const { port, failing } = flakyChain(w.chain);
+      failing.on = true;
+      const { user } = renderWith(port, [w.main], <NonceCloseCard authority={w.A.address} role="main" variant="cancel-link" signing={FAST_SIGNING} />);
+      // The user asked to cancel: the inset is never empty while it reads, fails or finds nothing to close.
+      await screen.findByText('Could not read your link-signing account', undefined, WAIT);
+      failing.on = false;
+      await click(user, 'Try again');
+      await screen.findByText('Your link-signing account is already closed, so this link can no longer be sent.', undefined, WAIT);
+      expect(screen.queryByRole('button', { name: 'Yes, cancel the link' })).not.toBeInTheDocument();
+      expect(w.main.requests).toHaveLength(0);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'no account: shows nothing (closing is never required)',
     async () => {
       const w = await world();

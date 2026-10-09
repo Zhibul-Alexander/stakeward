@@ -63,12 +63,15 @@ describe('/dev/ui flows', () => {
     );
     expect(screen.getByLabelText('I checked this new wallet address with the owner by voice or in person, or it is mine')).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Sign in Sample Wallet as Second key' })).toHaveAttribute('aria-disabled', 'true');
-    // The link card's cancel opens inline (closed here: its card is not rendered until then), then the link-signing
-    // account's cards: set up (by link, for a rescue), close, cancel, refused, gate blocked.
+    // The link card's cancel opens inline (closed here: its card stays mounted but hidden until then), then the
+    // link-signing account's cards: set up (by link, for a rescue), close, cancel, refused, gate blocked.
     await waitFor(() => {
       expect(document.querySelectorAll('#link > div:last-child > figure')).toHaveLength(6);
     });
-    const cards = [...document.querySelectorAll('#link [data-slot="nonce-step"]')];
+    for (const inset of document.querySelectorAll('#link [data-slot="link-card"] [data-slot="nonce-step"]')) {
+      expect(inset.closest('[hidden]')).not.toBeNull();
+    }
+    const cards = [...document.querySelectorAll('#link > div:last-child [data-slot="nonce-step"]')];
     expect(cards.map((card) => `${card.getAttribute('data-mode') ?? ''}/${card.getAttribute('data-variant') ?? ''}`)).toEqual([
       'setup/close',
       'setup/rescue',

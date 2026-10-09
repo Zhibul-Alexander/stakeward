@@ -5,7 +5,6 @@ import { ChevronDownIcon, CopyIcon, PauseIcon, WifiOffIcon } from 'lucide-react'
 import { useId, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -31,7 +30,10 @@ export type LinkCardProps = {
   onStopWaiting?: (() => void) | undefined;
   /** A new watch after the pause. Without it the paused card offers no Check again. */
   onCheckAgain?: (() => void) | undefined;
-  /** The page's way to cancel the link (closing the link-signing account), shown inline under "Cancel the link". */
+  /**
+   * The page's way to cancel the link (closing the link-signing account), shown inline under "Cancel the link". It
+   * stays mounted while folded (only hidden), so folding it never drops a close that is being signed.
+   */
   cancel?: ReactNode;
   className?: string | undefined;
 };
@@ -89,6 +91,7 @@ export function LinkCard({
   const [cancelOpen, setCancelOpen] = useState(false);
   const urlId = useId();
   const titleId = useId();
+  const cancelId = useId();
   const roles = joinRoles(signers.map((signer) => signer.role));
   const [only] = signers;
 
@@ -191,27 +194,39 @@ export function LinkCard({
       {onStopWaiting === undefined && cancel === undefined ? (
         <p className="text-sm text-muted">{t('signing.link.stopNote')}</p>
       ) : (
-        <Collapsible open={cancelOpen} onOpenChange={setCancelOpen} className="flex flex-col gap-3 border-t border-border pt-4">
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          {/* The note belongs to Stop waiting; Cancel's inset comes right under the button that opens it. */}
+          <p className="text-sm text-muted">{t('signing.link.stopNote')}</p>
           <div className="flex flex-wrap items-center gap-2">
             {onStopWaiting === undefined ? null : (
-              <Button variant="ghost" onClick={onStopWaiting} className="-ml-3 h-auto min-h-10 max-w-full whitespace-normal">
+              // -ml-4 takes back the ghost button's own padding, so its label starts on the card's text column.
+              <Button variant="ghost" onClick={onStopWaiting} className="-ml-4 h-auto min-h-10 max-w-full whitespace-normal">
                 {t('signing.link.stopWaiting')}
               </Button>
             )}
             {cancel === undefined ? null : (
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="sm:ml-auto">
-                  {t('signing.link.cancel')}
-                  <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', cancelOpen ? 'rotate-180' : undefined)} />
-                </Button>
-              </CollapsibleTrigger>
+              <Button
+                variant="outline"
+                aria-expanded={cancelOpen}
+                aria-controls={cancelId}
+                onClick={() => {
+                  setCancelOpen((open) => !open);
+                }}
+                className="sm:ml-auto"
+              >
+                {t('signing.link.cancel')}
+                <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', cancelOpen ? 'rotate-180' : undefined)} />
+              </Button>
             )}
           </div>
-          <p className="text-sm text-muted">{t('signing.link.stopNote')}</p>
           {cancel === undefined ? null : (
-            <CollapsibleContent className="rounded-md bg-subtle p-4 empty:hidden">{cancel}</CollapsibleContent>
+            // A disclosure, not a Radix Collapsible: that one unmounts its content when closed, which would drop the
+            // page's close (and its signing session) when folded mid-sign.
+            <div id={cancelId} hidden={!cancelOpen} className="rounded-md bg-subtle p-4 empty:hidden">
+              {cancel}
+            </div>
           )}
-        </Collapsible>
+        </div>
       )}
     </section>
   );
