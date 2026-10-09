@@ -72,5 +72,6 @@ describe('review: /app second key slot', () => {
         'protected',
       );
     });
-  });
+    // A fresh LiteSVM chain, a render and two wallet clicks: 4 s alone on this busy machine, over 5 s in the full suite.
+  }, 30_000);
 });
