@@ -15,6 +15,8 @@
     "build": "VITE_CLUSTER=devnet pnpm -r build",
     "e2e": "pnpm --filter @stakeward/web e2e",
     "e2e:mainnet": "pnpm --filter @stakeward/web e2e:mainnet",
+    "qa:local": "pnpm --filter @stakeward/web qa:local",
+    "qa:dev": "pnpm --filter @stakeward/web qa:dev",
     "check-rpc": "pnpm --filter @stakeward/scripts check-rpc",
     "dev-accounts": "pnpm --filter @stakeward/scripts dev-accounts",
     "deploy:dev": "node scripts/deploy.ts --env dev",
