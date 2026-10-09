@@ -22,9 +22,9 @@ const TILE: Record<'success' | 'neutral', string> = {
 /** One half of the panel: what the lock guards (success) or what the main key can still do alone (neutral). */
 function LockColumn({ icon: Icon, tone, title, keys }: { icon: LucideIcon; tone: keyof typeof TILE; title: string; keys: readonly MessageKey[] }) {
   return (
-    <div className="flex flex-col gap-2 p-4 sm:gap-3 sm:p-5">
+    <div className="flex flex-col gap-2 px-4 py-3 sm:gap-3 sm:p-5">
       <h3 className="flex items-center gap-3 text-base font-semibold">
-        <span aria-hidden="true" className={cn('flex size-7 shrink-0 items-center justify-center rounded-md sm:size-8', TILE[tone])}>
+        <span aria-hidden="true" className={cn('flex size-6 shrink-0 items-center justify-center rounded-md sm:size-8', TILE[tone])}>
           <Icon className="size-4" />
         </span>
         {title}
@@ -40,7 +40,8 @@ function LockColumn({ icon: Icon, tone, title, keys }: { icon: LucideIcon; tone:
 
 /**
  * What the lock stops while it holds, and what it does not (CLAUDE.md sections 1 and 4), then the honest limit of the
- * second key, said before anyone picks one (`#second-key`).
+ * second key, said before anyone picks one (`#second-key`): the risk note's inline form (its icon and words, no fill),
+ * since nothing here is about to be signed.
  */
 export function Protects() {
   return (
@@ -50,9 +51,9 @@ export function Protects() {
         <LockColumn icon={KeyRoundIcon} tone="neutral" title={t('landing.protects.mainAloneTitle')} keys={MAIN_ALONE} />
       </div>
       <p className="max-w-prose text-sm font-medium text-pretty sm:text-base">{t('landing.protects.thief')}</p>
-      <SubSection id="second-key" title={t('landing.secondKey.title')} className="mt-2">
+      <SubSection id="second-key" title={t('landing.secondKey.title')} className="sm:mt-2">
         <div className="grid items-start gap-3 md:grid-cols-2 md:gap-8">
-          <RiskNote risk="second-key-can-freeze">
+          <RiskNote risk="second-key-can-freeze" variant="inline">
             <p>{t('landing.secondKey.freeze')}</p>
           </RiskNote>
           <div className="flex flex-col gap-2 text-sm">

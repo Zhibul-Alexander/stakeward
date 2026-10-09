@@ -11,14 +11,14 @@ const STEPS: readonly { step: 'step1' | 'step2' | 'step3'; icon: LucideIcon }[] 
 
 /**
  * The scheme in three steps (CLAUDE.md section 10, step 8): lock with a second key, get alerts, rescue or withdraw.
- * Rows on a phone, three columns on a soft panel from `md` up.
+ * Rows on a phone; from `md` up three columns on a soft panel, each with its tile beside its title.
  */
 export function HowItWorks({ cluster }: { cluster: Cluster }) {
   return (
     <Section id="how-it-works" title={t('landing.how.title')} intro={t('landing.how.intro')}>
       <ol className="grid gap-3 sm:gap-4 md:grid-cols-3 md:gap-8 md:rounded-lg md:bg-subtle md:p-6">
         {STEPS.map(({ step, icon: Icon }, index) => (
-          <li key={step} className="flex gap-4 md:flex-col md:gap-3">
+          <li key={step} className="flex gap-4 md:flex-wrap md:items-center md:gap-x-3 md:gap-y-2">
             {/* The list numbers the steps for assistive technology; the tile repeats it for the eye. */}
             <span aria-hidden="true" className="relative flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
               <Icon className="size-5" />
@@ -26,9 +26,11 @@ export function HowItWorks({ cluster }: { cluster: Cluster }) {
                 {index + 1}
               </span>
             </span>
-            <div className="flex min-w-0 flex-col gap-1">
-              <h3 className="text-base font-semibold">{t(`landing.how.${step}.title`)}</h3>
-              <p className="text-sm text-pretty">{t(`landing.how.${step}.body`)}</p>
+            {/* From `md` the tile and the title share a line and the text runs under both: `contents` lets the title and
+                the text wrap in the step's own row. */}
+            <div className="flex min-w-0 flex-col gap-1 md:contents">
+              <h3 className="text-base font-semibold md:min-w-0 md:flex-1">{t(`landing.how.${step}.title`)}</h3>
+              <p className="text-sm text-pretty md:w-full">{t(`landing.how.${step}.body`)}</p>
             </div>
           </li>
         ))}

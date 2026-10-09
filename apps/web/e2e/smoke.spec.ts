@@ -88,8 +88,9 @@ async function landingShows(page: Page) {
   for (const group of await groups.all()) await expect(group).not.toHaveAttribute('open');
   // What a visitor first gets, before the answers below are opened.
   if (DEVNET) await recordScreenMetrics(page, 'landing-initial');
-  // Every answer open, so the overflow check and axe cover the whole FAQ.
-  const questions = page.locator('#faq details');
+  // Every disclosure on the page open (the FAQ groups and their answers, and any other fold), so the overflow check,
+  // axe in both themes and the screenshot cover all of the page's text.
+  const questions = page.locator('main details');
   expect(await questions.count()).toBeGreaterThan(0);
   await questions.evaluateAll((items) => {
     for (const item of items) (item as HTMLDetailsElement).open = true;

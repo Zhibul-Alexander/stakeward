@@ -125,11 +125,10 @@
     },
     "alerts": {
       "title": "Alerts in Telegram",
-      "intro": "Stakeward watches your stake and messages you in Telegram when it changes.",
-      "eventsTitle": "What triggers an alert",
+      "intro": "Stakeward messages you in Telegram when:",
       "events": {
         "deactivated": "your stake stops staking",
-        "delegation": "it moves to another validator",
+        "delegation": "your stake moves to another validator",
         "manager": "the wallet that manages staking changes",
         "owner": "the main key changes",
         "lock": "the lock or its second key changes",
@@ -144,7 +143,6 @@
       "title": "What it costs",
       "intro": "Stakeward is free: no token, no subscription. You pay only network fees, and Stakeward gets none of them.",
       "perSignature": "The network charges {amount} for each signature, plus a tiny fixed priority fee:",
-      "eachAction": "Fee for each action",
       "protect": "Protect a stake account",
       "protectPayer": "Paid by your main key.",
       "extend": "Extend or remove a lock",
@@ -160,8 +158,8 @@
     },
     "wallets": {
       "title": "Which wallets work",
-      "intro": "You need two wallets from different seed phrases. So far only Phantom has been tested. Solflare, Backpack and Ledger have not been tested yet.",
-      "notVerified": "Until a pair says Works, try it with a small stake first.",
+      "intro": "So far only Phantom has been tested. Solflare, Backpack and Ledger have not been tested yet.",
+      "notVerified": "Until a pair says Works, try a small stake first.",
       "checkedOn": "Tested on Solana devnet on {date}.",
       "pairLabel": "{main} and {second}",
       "here": "In one browser",

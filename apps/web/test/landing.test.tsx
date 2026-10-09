@@ -165,16 +165,25 @@ describe('landing fees', () => {
   it('shows the network fees from core and the deposit read from the network, once', async () => {
     const { chain } = renderLanding();
     const fees = section('fees');
-    // The answer stays in view: free, network fees only, the fee per signature.
+    // All in view, nothing folded (spec [landing] Must stay): free, network fees only, the fee per signature, and the
+    // fee for each action with who pays it.
     expect(within(fees).getByText(/^Stakeward is free: no token, no subscription\./)).toBeVisible();
     expect(within(fees).getByText(/^The network charges 0\.000005 SOL for each signature/)).toBeVisible();
-    // The fee for each action is one click away (a closed <details>), with who pays it.
-    const eachAction = fees.querySelector('details') as HTMLDetailsElement;
-    expect(eachAction.querySelector('summary')).toHaveTextContent('Fee for each action');
-    expect(eachAction.open).toBe(false);
-    for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(eachAction).toHaveTextContent(amount);
-    expect(eachAction).toHaveTextContent('If it has no SOL, your main key signs too and pays 0.0000106 SOL.');
-    expect(eachAction).toHaveTextContent('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.');
+    expect(fees.querySelector('details')).toBeNull();
+    const rows = [...fees.querySelectorAll('dl > div')];
+    expect(rows.map((row) => row.querySelector('dt')?.textContent)).toEqual([
+      'Protect a stake account',
+      'Extend or remove a lock',
+      'Withdraw',
+      'Rescue a stake account',
+      'Link-signing deposit',
+    ]);
+    for (const row of rows) expect(row).toBeVisible();
+    for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(within(fees).getAllByText(amount)[0]).toBeVisible();
+    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key signs too and pays 0.0000106 SOL.')).toBeVisible();
+    expect(within(fees).getByText('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.')).toBeVisible();
+    // CLAUDE.md section 5: the new wallet pays for a rescue, never the stolen main key.
+    expect(within(fees).getByText('Paid by your new wallet.')).toBeVisible();
 
     await depositShown();
     expect(section('faq-deposit')).toHaveTextContent(`The network asks for ${DEPOSIT} to keep it open`);
@@ -356,7 +365,7 @@ describe('landing words and numbers', () => {
     await depositShown();
     expect(document.body.textContent).not.toMatch(/\{[a-zA-Z]+\}/);
     expect(section('faq-lock-ends')).toHaveTextContent('Stakeward reminds you 30, 14, 7, 3, and 1 days before.');
-    expect(section('alerts')).toHaveTextContent('the lock ends soon: 30, 14, 7, 3, and 1 days before, and when it ends');
+    expect(within(section('alerts')).getByText('the lock ends soon: 30, 14, 7, 3, and 1 days before, and when it ends')).toBeVisible();
     expect(section('faq-main-stolen')).toHaveTextContent('put about 0.01 SOL on it');
     expect(section('faq-cli')).toHaveTextContent('Solana CLI 4.3.0 refuses');
 
@@ -425,11 +434,12 @@ describe('landing words and numbers', () => {
       { type: 'DEACTIVATED', details: { deactivationEpoch: '0' }, stakeAccount: decode(7) },
       { withdrawer: decode(8), custodian: decode(9), lockUntil: 1n, now: 0n },
     );
-    // What sends an alert is one click away; the example stays in view.
-    const triggers = section('alerts').querySelector('details') as HTMLDetailsElement;
-    expect(triggers.querySelector('summary')).toHaveTextContent('What triggers an alert');
-    expect(triggers.open).toBe(false);
-    expect(triggers.querySelectorAll('li')).toHaveLength(8);
+    // Every change that sends an alert is in view, finishing the intro's sentence; so is the example.
+    expect(section('alerts').querySelector('details')).toBeNull();
+    expect(within(section('alerts')).getByText(/messages you in Telegram when:$/)).toBeVisible();
+    const triggers = [...section('alerts').querySelectorAll('ul > li')];
+    expect(triggers).toHaveLength(8);
+    for (const trigger of triggers) expect(trigger).toBeVisible();
     const figure = section('alerts').querySelector('figure') as HTMLElement;
     expect(figure.querySelector('figcaption')).toHaveTextContent('Example');
     expect([...figure.querySelectorAll('p')].map((p) => p.textContent)).toEqual([alert.text]);

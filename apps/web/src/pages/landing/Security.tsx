@@ -24,7 +24,7 @@ function Dot() {
 export function Security() {
   return (
     <Section id="security" title={t('landing.security.title')}>
-      <ul className="grid gap-x-8 gap-y-1.5 text-sm sm:gap-y-2.5 md:grid-cols-2">
+      <ul className="grid gap-x-8 gap-y-1 text-sm sm:gap-y-2.5 md:grid-cols-2">
         {ITEMS.map((item) => (
           <li key={item} className="flex items-start gap-2">
             <ShieldCheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />

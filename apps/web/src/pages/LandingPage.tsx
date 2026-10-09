@@ -28,7 +28,7 @@ export function LandingPage({ cluster = CLUSTER }: { cluster?: Cluster | undefin
   const deposit = useNonceDeposit();
   const faqParams = useFaqParams(deposit);
   return (
-    <Page className="gap-8 sm:gap-16">
+    <Page>
       <Hero cluster={cluster} />
       <HowItWorks cluster={cluster} />
       <Protects />
