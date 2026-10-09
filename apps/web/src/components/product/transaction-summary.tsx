@@ -145,7 +145,7 @@ function sharedCurrent(accounts: readonly SummaryBatchAccount[]): OnChainContext
 }
 
 /**
- * The signing screen's summary as a receipt (UX rule 3, DECISIONS.md D109), built only from the inspector's reading of
+ * The signing screen's summary as a receipt (UX rule 3, DECISIONS.md D112), built only from the inspector's reading of
  * the bytes, top to bottom: what this transaction does; the warnings, never folded (a new second key replacing
  * another, a lock made shorter, a withdrawal to a wallet that does not sign: DECISIONS.md D23); the stake account; what
  * was and what becomes (with `current`); who signs (role names, full addresses, who already signed, who pays); the

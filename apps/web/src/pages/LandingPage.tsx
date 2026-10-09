@@ -17,7 +17,7 @@ import { useHashTarget } from './landing/use-hash-target.ts';
 import { Wallets } from './landing/Wallets.tsx';
 
 /**
- * `/` (CLAUDE.md section 9, DECISIONS.md D79, D109): the answer first (what Stakeward does, "Check my stake"), then how
+ * `/` (CLAUDE.md section 9, DECISIONS.md D79, D112): the answer first (what Stakeward does, "Check my stake"), then how
  * it works, what the lock stops and the second key's limit, alerts, fees, wallets, what Stakeward cannot do, how it
  * keeps you safe and what is left if it disappears, a word for whoever was sent a link to co-sign, the FAQ in closed
  * groups, and a last call to look. Composition only. The one network read is the link-signing deposit. A hash

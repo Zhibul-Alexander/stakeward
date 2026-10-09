@@ -65,7 +65,7 @@ function secondWallet(w: World): Promise<TestWalletPort> {
 const radio = (name: string | RegExp) => screen.findByRole('radio', { name }, WAIT);
 const heading = (name: string | RegExp) => screen.findByRole('heading', { name }, WAIT);
 
-/** A period's radio card: named by its period, described by its end date (DECISIONS.md D109). */
+/** A period's radio card: named by its period, described by its end date (DECISIONS.md D112). */
 async function periodRadio(title: string, until: bigint): Promise<HTMLElement> {
   const found = await radio(title);
   expect(found).toHaveAccessibleDescription(`until ${formatUtcDate(until) ?? ''}`);

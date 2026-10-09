@@ -81,7 +81,7 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
       // The lock's end stands on the account row right above; the second key's line says what it does here.
       expect(document.querySelector('[data-slot="lock-end"]')).toHaveTextContent(`until ${formatUtcDate(T) ?? ''}`);
       expect(within(keys).getByText('Co-signs this withdrawal')).toBeInTheDocument();
-      // The risk stands right above the one filled button it guards (ActionBar, DECISIONS.md D109).
+      // The risk stands right above the one filled button it guards (ActionBar, DECISIONS.md D112).
       const bar = (risk as HTMLElement).closest<HTMLElement>('[data-slot="action-bar"]') as HTMLElement;
       expect(within(bar).getByRole('button', { name: 'Review withdrawal' })).toHaveAttribute('data-variant', 'primary');
       // The way without the second key at hand (F3.4), and the same withdrawal with the Solana CLI.
@@ -341,7 +341,7 @@ describe('/withdraw/:account: gates', () => {
       expect(screen.getByText(/^Stop staking with that key, or in your staking service, then come back\. Did not set this up\?/)).toBeInTheDocument();
       expect(screen.getAllByText(X.address).length).toBeGreaterThan(0);
       expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
-      // One block says it, with one way out (DECISIONS.md D109): no second warning on the row, no risk without a withdrawal.
+      // One block says it, with one way out (DECISIONS.md D112): no second warning on the row, no risk without a withdrawal.
       const rescue = screen.getByRole('link', { name: 'Rescue your stake' });
       expect(rescue).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
       expect(rescue).toHaveAttribute('data-variant', 'primary');

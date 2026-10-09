@@ -15,7 +15,7 @@ const WIDTH: Record<NonNullable<PageProps['width']>, string> = {
 };
 
 /**
- * The frame of every page inside <main> (DECISIONS.md D109): its width and the space between its blocks, so pages do
+ * The frame of every page inside <main> (DECISIONS.md D112): its width and the space between its blocks, so pages do
  * not pick them. A page starts with a PageHeader (its only h1), then its Sections.
  */
 export function Page({ width = 'app', children, className }: PageProps) {

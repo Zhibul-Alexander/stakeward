@@ -65,7 +65,7 @@ export function WithdrawRisk({ mainKey }: { mainKey: Address }) {
 /**
  * What /withdraw/:account offers for the account as just read (F3): stop staking first, wait for the epoch to end,
  * or withdraw; or why it cannot (another key manages staking, a lock no second key holds). One main action at a time
- * (UX rule 2), ending in an ActionBar with the risk right above its button (DECISIONS.md D109).
+ * (UX rule 2), ending in an ActionBar with the risk right above its button (DECISIONS.md D112).
  */
 export function StageBlock({
   headingRef,
@@ -120,7 +120,7 @@ export function StageBlock({
       );
     }
     case 'service-staker': {
-      // One block (DECISIONS.md D109): who manages staking, that key in full, and the one way out if it is not the
+      // One block (DECISIONS.md D112): who manages staking, that key in full, and the one way out if it is not the
       // user's. Under the viewer's own lock the row above already says this may be theft, so the block does not repeat it.
       const body = ownLock
         ? t('withdraw.serviceStaker.body')

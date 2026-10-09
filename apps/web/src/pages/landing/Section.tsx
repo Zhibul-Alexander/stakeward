@@ -18,7 +18,7 @@ type SectionProps = {
 /**
  * One section of the landing page: the anchor the footer and the FAQ link to (`#<id>`), named by its h2
  * (`<id>-title`; `cannot-do-title` predates this page and stays). From 640 px the landing's h2 is `text-2xl`
- * (DECISIONS.md D109, type roles); below, where the hero's h1 is `text-2xl` too, it is the app's `text-lg`, so the h1
+ * (DECISIONS.md D112, type roles); below, where the hero's h1 is `text-2xl` too, it is the app's `text-lg`, so the h1
  * still leads.
  */
 export function Section({ id, title, intro, children, className }: SectionProps) {

@@ -48,7 +48,7 @@ export function StepButtons({
  * ActionBar. Ready, the step button is the screen's one filled button. While something is missing (`problems`, the
  * texts to show) it is outline with aria-disabled, and the first problem stands under it in muted text before any
  * click (the ActionBar's reason: under the button, above Back, below 640 px), tied to it with aria-describedby
- * (DECISIONS.md D109). It still takes clicks: pressed, the line names every problem in danger text and takes focus.
+ * (DECISIONS.md D112). It still takes clicks: pressed, the line names every problem in danger text and takes focus.
  * The line goes away once the step is complete.
  */
 export function ContinueButtons({

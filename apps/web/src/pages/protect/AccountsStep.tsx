@@ -42,7 +42,7 @@ type AccountsStepProps = {
  * Step 1 (F1 steps 1-2): connect the main key, then choose which of its stake accounts to lock. Accounts from a link
  * are only named until the main key is connected; then the chain decides which of them it can protect. Until it is
  * connected, its slot's Connect is the step's one filled button; then the slot shrinks to one line and the accounts
- * follow in groups (DECISIONS.md D109): an account whose stake key changed under the viewer's own lock first (a sign of
+ * follow in groups (DECISIONS.md D112): an account whose stake key changed under the viewer's own lock first (a sign of
  * theft, never folded), the ones to choose from, the ones the viewer's own second key already locks (folded), and locks
  * of a key this browser does not hold, open and never called protected (D14, D35, D102).
  */

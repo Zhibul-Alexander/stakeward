@@ -23,7 +23,7 @@ type PageHeaderProps = {
 };
 
 /**
- * The top of every page (DECISIONS.md D109): the h1 and what belongs to it, in one place, so pages do not pick heading
+ * The top of every page (DECISIONS.md D112): the h1 and what belongs to it, in one place, so pages do not pick heading
  * sizes. A div, not <header>: the site header is the page's only banner landmark.
  */
 export function PageHeader({ title, lead, meta, back, progress, action, headingRef, className }: PageHeaderProps) {

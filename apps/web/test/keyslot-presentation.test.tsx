@@ -17,7 +17,7 @@ import {
 } from '@/ports';
 import { createFakeApi } from './support/fake-api.ts';
 
-// KeySlot passes WalletSlot's presentation props (emphasis, layout, connectLabel) through in every state (D109); they
+// KeySlot passes WalletSlot's presentation props (emphasis, layout, connectLabel) through in every state (D112); they
 // change how the slot looks, never what it connects.
 
 /** KeySlot reads no chain. */

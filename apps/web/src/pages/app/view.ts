@@ -42,9 +42,9 @@ export type AccountsView = {
    * never added to the protected SOL (D14, D35, D102).
    */
   lockedUnconfirmedLamports: bigint;
-  /** The rows grouped by what they ask of the viewer, each group most urgent first (DECISIONS.md D109). */
+  /** The rows grouped by what they ask of the viewer, each group most urgent first (DECISIONS.md D112). */
   groups: AccountGroups;
-  /** The screen's one filled button, or none when nothing needs doing (D109). */
+  /** The screen's one filled button, or none when nothing needs doing (D112). */
   primaryAction: PrimaryAction;
 };
 
@@ -66,7 +66,7 @@ export type AccountGroups = {
 };
 
 /**
- * The screen's one filled button (D109), most urgent first: the F6 banner's Protect again, then Rescue on the first
+ * The screen's one filled button (D112), most urgent first: the F6 banner's Protect again, then Rescue on the first
  * row whose stake key changed under the viewer's own lock (the sign of a stolen main key, SECURITY-CHECK П6), then
  * protecting the accounts of Needs attention in one go, then extending the lock that ends first.
  */
@@ -176,7 +176,7 @@ export function protectableInGroup(attention: readonly AccountView[]): Address[]
 }
 
 /**
- * What Needs attention says once for its rows (D109), worded so it is true of every row it covers: without a lock the
+ * What Needs attention says once for its rows (D112), worded so it is true of every row it covers: without a lock the
  * main key alone withdraws now (`open`); a lock that ends soon allows it once it ends (`ending`); both kinds, or open
  * rows next to a changed stake key, get the sentence that covers both (`open-or-ending`). A changed stake key alone
  * says its own warning on the row (null).

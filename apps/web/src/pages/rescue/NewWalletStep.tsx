@@ -109,7 +109,7 @@ export function NewWalletStep(props: NewWalletStepProps) {
         </h2>
         <p className="max-w-prose text-pretty">{t('rescue.newWallet.body')}</p>
       </div>
-      {/* Connecting is this step's main action until the new wallet is here (DECISIONS.md D109). */}
+      {/* Connecting is this step's main action until the new wallet is here (DECISIONS.md D112). */}
       <KeySlot role="new" mainKey={mainKey} description={t('rescue.newWallet.slot')} emphasis={newWallet === null ? 'primary' : 'outline'} />
       {sameWallet === null ? null : <SameWalletWarning sameWallet={sameWallet} action="continue" />}
       {problems.length === 0 ? null : (

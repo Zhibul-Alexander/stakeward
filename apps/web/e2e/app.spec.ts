@@ -71,7 +71,7 @@ test('/app without an address: a form, then the stake of the address it checked'
   await expect(page.getByRole('heading', { level: 1, name: 'Your stake accounts' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Wallet address' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Main key' }).getByRole('button', { name: 'Connect main key' })).toBeVisible();
-  // One filled button: Check, while nothing is shown yet (D109).
+  // One filled button: Check, while nothing is shown yet (D112).
   await expect(filledButtons(page)).toHaveCount(1);
   await expect(filledButtons(page)).toHaveText('Check');
   expect(requests).toEqual([]);
@@ -115,7 +115,7 @@ test('/app?address= shows every status, the red banner and the second-key list',
   await expect(banner.getByRole('link', { name: 'Protect again' })).toHaveAttribute('href', `/protect?account=${STAKE.ended}`);
 
   // The banner is the page's one filled button; the group's "Protect 2 accounts" (the F6 account and the open one, not
-  // the one a staking service may manage) is outline while it shows (D109).
+  // the one a staking service may manage) is outline while it shows (D112).
   await expect(filledButtons(page)).toHaveCount(1);
   await expect(filledButtons(page)).toHaveText('Protect again');
   const section = (name: string) => page.locator('section', { has: page.getByRole('heading', { level: 2, name, exact: true }) });
@@ -158,7 +158,7 @@ test('/app?address= shows every status, the red banner and the second-key list',
   const summary = page.getByRole('region', { name: 'Summary' });
   await expect(summary).toContainText('1,293.25 of 1,490.45 SOL protected');
   await expect(summary.getByText('2 of 6 stake accounts', { exact: true })).toBeVisible();
-  // The answer starts on the first screen of a phone, without scrolling (D109).
+  // The answer starts on the first screen of a phone, without scrolling (D112).
   const headline = await summary.getByText('1,293.25 of 1,490.45 SOL protected').boundingBox();
   expect(headline?.y ?? Infinity).toBeLessThan(740);
   await expect(page.locator('[data-slot="monitoring"]')).toHaveText('Last checked 2 min ago');

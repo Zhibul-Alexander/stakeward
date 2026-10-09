@@ -93,7 +93,7 @@ function WhereCards({
 }
 
 /**
- * Step 3 (F4 steps 4-5): who signs the move, as one table (DECISIONS.md D109). The new wallet always signs here: it pays
+ * Step 3 (F4 steps 4-5): who signs the move, as one table (DECISIONS.md D112). The new wallet always signs here: it pays
  * and owns the link-signing account. The main key and the second key each sign in this browser or on another device by
  * link. With several second keys the user picks the one for this run; with none, any other wallet of theirs is
  * connected as the second key. A second key connected here from the new wallet's wallet app gets the same-wallet

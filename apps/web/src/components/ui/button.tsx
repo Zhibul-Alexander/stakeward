@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react';
 
 // shadcn/ui button (radix base), classes rewritten to design tokens. Focus uses the global :focus-visible outline.
 //
-// Hierarchy (DECISIONS.md D109): at most one filled button (primary or danger) per screen; e2e/screen-metrics.ts
+// Hierarchy (DECISIONS.md D112): at most one filled button (primary or danger) per screen; e2e/screen-metrics.ts
 // counts them.
 //   variant   role                                                                     per screen
 //   primary   the one thing to do here                                                 at most 1 filled

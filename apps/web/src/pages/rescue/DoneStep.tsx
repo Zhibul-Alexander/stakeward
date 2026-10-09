@@ -78,7 +78,7 @@ function movedAccountOf(job: JobView): StakeAccount | null | undefined {
 
 /**
  * Step 5 (F4 step 6): what the chain now shows moved to the new wallet (its address once, in full), what did not move
- * yet and the way forward for it, then the next steps after a rescue as one checklist (DECISIONS.md D109): use the new
+ * yet and the way forward for it, then the next steps after a rescue as one checklist (DECISIONS.md D112): use the new
  * wallet from now on, delegate again what stopped staking, print a new recovery card, alerts for the new wallet, close
  * the link-signing account, and a fresh look for stake accounts split off meanwhile. One filled button: Try again
  * while something can be retried, else the new wallet's stake.

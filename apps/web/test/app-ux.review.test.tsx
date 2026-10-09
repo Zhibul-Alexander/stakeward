@@ -196,7 +196,7 @@ describe('/app "Is this lock yours?" by address (CLAUDE.md section 6, F1: K must
     const { ports } = renderApp(`/app?address=${A}`, stubChain(accounts), () => Promise.resolve({ lastMonitorRunAt: new Date() }), [
       wallet,
     ]);
-    // Since D109 the Second key slot heads the group "Locked by a second key" (it was "Is this lock yours?").
+    // Since D112 the Second key slot heads the group "Locked by a second key" (it was "Is this lock yours?").
     const heading = await screen.findByRole('heading', { level: 2, name: 'Locked by a second key' });
     const confirm = heading.closest('section');
     if (confirm === null) throw new Error('no section');

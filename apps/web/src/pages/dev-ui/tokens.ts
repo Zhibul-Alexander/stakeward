@@ -113,7 +113,7 @@ export const TEXT_CLASS: Record<string, string> = {
   '3xl': 'text-3xl',
 };
 
-/** The role of each size (the table in tokens.css, DECISIONS.md D109). */
+/** The role of each size (the table in tokens.css, DECISIONS.md D112). */
 export const TEXT_ROLE: Record<string, MessageKey> = {
   xs: 'devUi.typeRoles.xs',
   sm: 'devUi.typeRoles.sm',

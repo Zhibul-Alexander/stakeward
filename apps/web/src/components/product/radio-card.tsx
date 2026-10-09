@@ -32,7 +32,7 @@ type RadioCardGroupProps = {
 };
 
 /**
- * A choice between a few options, each a card with its words next to its radio (DECISIONS.md D109). The whole card is
+ * A choice between a few options, each a card with its words next to its radio (DECISIONS.md D112). The whole card is
  * the radio's label, so a click anywhere on it chooses; the radio stays visible, so the choice is never shown by colour
  * alone (the chosen card also turns primary-soft with a primary frame). Arrow keys move between options (Radix).
  */

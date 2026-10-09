@@ -155,7 +155,7 @@ describe('rescue Done: a new recovery card', () => {
   });
 });
 
-describe('rescue Done: the answer, then one way on (DECISIONS.md D109)', () => {
+describe('rescue Done: the answer, then one way on (DECISIONS.md D112)', () => {
   it('names the new owner in full once, lists the next steps, and fills only "View your stake"', () => {
     const [L1, N1] = ids as [Address, Address];
     show([moved(L1, lockedBySecond()), moved(N1, noLock())]);

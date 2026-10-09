@@ -34,7 +34,7 @@ type AddressFormProps = {
    */
   resultsFor?: Address | null | undefined;
   onSubmit: (address: Address) => void;
-  /** Check is the screen's one filled button only while nothing is shown yet (DECISIONS.md D109). */
+  /** Check is the screen's one filled button only while nothing is shown yet (DECISIONS.md D112). */
   emphasis?: 'primary' | 'outline' | undefined;
   /**
    * Beside the field, outside the form (its buttons must not submit it): the other way to show stake, connecting the

@@ -20,7 +20,7 @@ type SectionProps = {
   className?: string | undefined;
 };
 
-/** A titled block of a page (DECISIONS.md D109): its heading, count, one shared description and an action. */
+/** A titled block of a page (DECISIONS.md D112): its heading, count, one shared description and an action. */
 export function Section({ title, headingLevel = 2, id, count, description, action, children, className }: SectionProps) {
   const generatedId = useId();
   const headingId = id === undefined ? generatedId : `${id}-title`;

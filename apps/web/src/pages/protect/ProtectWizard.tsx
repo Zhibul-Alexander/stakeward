@@ -43,7 +43,7 @@ const STEP_LABEL: Record<Exclude<WizardStep, 'done'>, MessageKey> = {
   sign: 'protect.steps.sign',
 };
 
-/** The steps StepProgress shows: Done is the result, not a step (DECISIONS.md D109). */
+/** The steps StepProgress shows: Done is the result, not a step (DECISIONS.md D112). */
 const PROGRESS_STEPS = WIZARD_STEPS.filter((step): step is Exclude<WizardStep, 'done'> => step !== 'done');
 
 type ProtectWizardProps = {

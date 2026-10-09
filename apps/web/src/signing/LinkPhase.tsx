@@ -19,7 +19,7 @@ type LinkPhaseProps = {
 };
 
 /**
- * The signing panel while the rest of the round signs on another device (phase `link`, DECISIONS.md D109): the link
+ * The signing panel while the rest of the round signs on another device (phase `link`, DECISIONS.md D112): the link
  * card first (QR code, the link with Copy, the wait and its ways out), then what was signed here, folded (the decision
  * was made on the previous screen with the summary open), and one line on who signed here and who signs there.
  */

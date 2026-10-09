@@ -116,7 +116,7 @@ describe('buildAccountsView', () => {
   });
 });
 
-describe('groups and the one filled button (D109)', () => {
+describe('groups and the one filled button (D112)', () => {
   const base = { address: A, clock, knownSecondKeys: [K], rememberedProtected: [] as Address[] };
   const addresses = (rows: readonly { account: StakeAccount }[]) => rows.map((row) => row.account.address);
   const managed = stake(20, { sol: 4n, staker: key(50) });

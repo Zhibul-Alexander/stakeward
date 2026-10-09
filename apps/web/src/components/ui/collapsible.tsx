@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 
 // shadcn/ui collapsible over Radix Collapsible, classes rewritten to design tokens. Radix writes the content's size
 // variables through element.style (CSSOM, allowed by the CSP) and injects no <style> element (DECISIONS.md D3, D29).
-// Used for a row's "More" actions only; text that folds away uses the native <details> instead (D109). Closed, the
+// Used for a row's "More" actions only; text that folds away uses the native <details> instead (D112). Closed, the
 // content is an empty element with `hidden`: its children are not in the DOM, so tests open it first. It fades in
 // without a height animation.
 function Collapsible(props: ComponentProps<typeof CollapsiblePrimitive.Root>) {

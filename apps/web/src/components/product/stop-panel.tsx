@@ -28,7 +28,7 @@ type StopPanelProps = {
 };
 
 /**
- * "Do not sign" on /cosign (DECISIONS.md D109): the loudest thing on the page and the only red one. A framed danger
+ * "Do not sign" on /cosign (DECISIONS.md D112): the loudest thing on the page and the only red one. A framed danger
  * alert at its large size, its own h2, the reason, the addresses it is about in full, what to do and one way out.
  * Never folded: the decision is made here.
  */

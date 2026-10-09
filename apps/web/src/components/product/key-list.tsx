@@ -19,7 +19,7 @@ type KeyListProps = {
 };
 
 /**
- * The keys an action needs, before anything is signed (DECISIONS.md D109): per row the role (Main key, Second key, New
+ * The keys an action needs, before anything is signed (DECISIONS.md D112): per row the role (Main key, Second key, New
  * wallet), its whole address with copy and explorer, and one line of what it does here. A <dl> in one panel with
  * hairlines between the rows; from 640 px the role stands left of the address.
  */

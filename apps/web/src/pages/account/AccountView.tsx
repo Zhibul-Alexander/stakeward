@@ -75,7 +75,7 @@ type AccountViewProps = {
 /**
  * The account part of /withdraw/:account and /extend/:account (step 6 spec 4.3), the same on both pages: the read's
  * states (loading, error with Try again and the way back, no account, not a stake account), then the account as one
- * compact row under the page's title (DECISIONS.md D109): its status, staking state and SOL, with no hint, actions or
+ * compact row under the page's title (DECISIONS.md D112): its status, staking state and SOL, with no hint, actions or
  * More, since the page below is the action.
  */
 export function AccountView({ load, onRetry, hideNotFound = false, service = true }: AccountViewProps) {

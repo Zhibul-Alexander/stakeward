@@ -113,7 +113,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.keyboard.press('Space');
   await expect(faq).not.toHaveAttribute('open');
 
-  // The Collapsible primitive (a row's "More" actions, DECISIONS.md D109): closed, its content is hidden and holds
+  // The Collapsible primitive (a row's "More" actions, DECISIONS.md D112): closed, its content is hidden and holds
   // nothing; the trigger opens and closes it from the keyboard, and Radix sizes it through CSSOM (a refused inline
   // style would fail the fixture's console check).
   const more = page.locator('#primitives').getByRole('button', { name: 'More actions for this row' });
@@ -131,7 +131,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(moreContent).toBeHidden();
   await expect(moreContent.locator('*')).toHaveCount(0);
 
-  // The page frame (D109): one PageHeader sample with its back link, meta, progress and action; two ActionBars, one
+  // The page frame (D112): one PageHeader sample with its back link, meta, progress and action; two ActionBars, one
   // with a blocked step button whose first reason shows before any click.
   await expect(page.locator('#layout [data-slot="page-header"]')).toHaveCount(1);
   await expect(page.locator('#layout [data-slot="section"]')).toHaveCount(1);
@@ -154,7 +154,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(blocked).toHaveAttribute('aria-disabled', 'true');
   await expect(blocked).toHaveAccessibleDescription('Connect your main key first.');
 
-  // The product samples (D109): the summary bar in six states and the dark preview, monitoring and Refresh in every
+  // The product samples (D112): the summary bar in six states and the dark preview, monitoring and Refresh in every
   // one; every sample row in one list and once more in the dark preview; the lock period and extend choices as cards.
   const bars = page.locator('#components [data-slot="summary-bar"]');
   await expect(bars).toHaveCount(SUMMARY_BARS);
@@ -180,7 +180,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await page.keyboard.press('Enter');
   await expect(expiringRow.getByRole('button', { name: 'Withdraw' })).toHaveCount(0);
 
-  // Compact rows (D109): a row without warnings and with an action is at most 72 px tall at 1280 and 112 px at 360
+  // Compact rows (D112): a row without warnings and with an action is at most 72 px tall at 1280 and 112 px at 360
   // (the row itself, without its list item's padding). At 360 that holds where the status badge and the address share
   // line 1; the two longest badges (No longer protected, Locked by …) push the address to a line of its own.
   const rowHeights = await page

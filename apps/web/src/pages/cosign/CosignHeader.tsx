@@ -6,7 +6,7 @@ import { t } from '@/i18n';
 /**
  * The top of /cosign: the h1 and "What is Stakeward?" (to the landing's card for someone sent a link). The lead says who
  * asks for what only while the link can be signed: above "Do not sign" or a link that no longer works it would
- * contradict the panel under it (DECISIONS.md D109).
+ * contradict the panel under it (DECISIONS.md D112).
  */
 export function CosignHeader({ lead }: { lead: boolean }) {
   return (

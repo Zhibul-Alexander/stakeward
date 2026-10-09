@@ -22,7 +22,7 @@ type SummaryBarProps = {
 };
 
 /**
- * The answer at the top of /app (DECISIONS.md D109): how much is protected, then how fresh that is. Monitoring and the
+ * The answer at the top of /app (DECISIONS.md D112): how much is protected, then how fresh that is. Monitoring and the
  * tools show in every state, loading and error included: "Last checked" matters most when the worker or the RPC may
  * be down (UX rule 12). Loading draws the headline and detail as skeletons; an error draws neither, and the page puts
  * its ErrorState with Try again right under the bar. The F6 banner is not part of it.

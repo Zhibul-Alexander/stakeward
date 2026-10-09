@@ -15,7 +15,7 @@ const noop = () => undefined;
 /** 12 April 2027 00:00 UTC, as samples.ts (not imported here: it pulls core's builders into this eager chunk). */
 const LOCK_END = 1_807_488_000n;
 
-/** The page frame (DECISIONS.md D109): Page, PageHeader, Section and ActionBar with their optional parts. */
+/** The page frame (DECISIONS.md D112): Page, PageHeader, Section and ActionBar with their optional parts. */
 export function LayoutSection() {
   const steps = [t('devUi.sample.stepAccounts'), t('devUi.sample.stepSecondKey'), t('devUi.sample.stepPeriod'), t('devUi.sample.stepSign')];
   return (

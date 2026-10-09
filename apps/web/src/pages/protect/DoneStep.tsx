@@ -106,7 +106,7 @@ const NEW_TAB_REL = 'noopener noreferrer';
 
 /**
  * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures (DECISIONS.md
- * D109): the result as the headline with the lock end and the second key, monitoring in one line, what the chain now
+ * D112): the result as the headline with the lock end and the second key, monitoring in one line, what the chain now
  * shows protected (each with its transaction), what is not protected yet with the one way forward for it, then the
  * next steps: Telegram alerts (only the bot reminds before the lock ends) and the recovery card.
  */

@@ -38,7 +38,7 @@ type JobOutcomeProps = {
 };
 
 /**
- * The heading names the outcome, not the action (DECISIONS.md D109): "Withdrawal did not go through", "Not confirmed
+ * The heading names the outcome, not the action (DECISIONS.md D112): "Withdrawal did not go through", "Not confirmed
  * yet", "Lock change expired, nothing changed", in the words of the status badge below it.
  */
 function outcomeHeading(status: JobStatus, subject: string): string {

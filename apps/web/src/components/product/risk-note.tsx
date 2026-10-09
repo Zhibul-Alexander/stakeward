@@ -40,7 +40,7 @@ type RiskNoteProps = {
   tone?: 'warning' | 'danger' | undefined;
   /**
    * `block` (default): a soft alert of the tone. `inline`: one line of text with the tone's icon and no fill, for the
-   * ActionBar right above the button it guards (DECISIONS.md D109). The words and the date are the same.
+   * ActionBar right above the button it guards (DECISIONS.md D112). The words and the date are the same.
    */
   variant?: 'block' | 'inline' | undefined;
   /** Extra sentences after the risk. */

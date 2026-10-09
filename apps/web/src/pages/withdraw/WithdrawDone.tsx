@@ -74,7 +74,7 @@ export function WithdrawDone(props: WithdrawDoneProps) {
     // activation epoch = deactivation epoch), so the withdrawal is open now, not at the epoch's end.
     const after = job.state.kind === 'done' || job.state.kind === 'already-done' ? job.state.after : null;
     const stoppedAtOnce = after?.delegation !== null && after?.delegation !== undefined && after.delegation.activationEpoch === after.delegation.deactivationEpoch;
-    // One line with its transaction (DECISIONS.md D109): the stage below says what comes next, from a fresh read.
+    // One line with its transaction (DECISIONS.md D112): the stage below says what comes next, from a fresh read.
     return (
       <div role="status" data-slot="withdraw-done" className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <h2 ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-base font-medium">

@@ -39,7 +39,7 @@ describe('RiskNote', () => {
     );
   });
 
-  // The ActionBar's line right above the button it guards (D109): the same words and date, no fill, the tone's icon.
+  // The ActionBar's line right above the button it guards (D112): the same words and date, no fill, the tone's icon.
   it.each([
     ['warning', 'lose-second-key', 'If you lose the second key, you wait until 12 April 2027 to withdraw or rescue this stake.'],
     ['danger', 'unlock-opens-window', null],

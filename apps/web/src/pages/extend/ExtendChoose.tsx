@@ -54,7 +54,7 @@ type ExtendChooseProps = {
 
 /**
  * What /extend/:account offers for the lock as just read (F5): a later end, or removing the lock now, each with its
- * risk said right above the button (UX rule 6, DECISIONS.md D109); or why there is nothing to change here. Nothing is
+ * risk said right above the button (UX rule 6, DECISIONS.md D112); or why there is nothing to change here. Nothing is
  * offered when the cluster clock was more than a day off this device's clock at the read: the new ends are computed
  * from it (SECURITY-CHECK П12).
  */
@@ -104,7 +104,7 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
       const legend = periods === 0 ? t('extend.remove') : removeParam ? t('extend.removeLegend') : t('extend.legend');
       return (
         <section aria-labelledby={headingId} className="flex flex-col gap-5">
-          {/* The lock's end now stands on the account row right above (DECISIONS.md D109); the cards give the new ends. */}
+          {/* The lock's end now stands on the account row right above (DECISIONS.md D112); the cards give the new ends. */}
           <div className="flex flex-col gap-1">
             <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
               {legend}
@@ -134,7 +134,7 @@ export function ExtendChoose({ headingRef, loaded, removeParam, selected, onSele
             }
             note={t('extend.phone')}
             primary={
-              // Removing the lock takes the protection away: the one filled button turns danger (DECISIONS.md D109).
+              // Removing the lock takes the protection away: the one filled button turns danger (DECISIONS.md D112).
               <Button
                 variant={removing ? 'danger' : 'primary'}
                 onClick={() => {

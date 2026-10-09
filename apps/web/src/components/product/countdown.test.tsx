@@ -17,7 +17,7 @@ describe('formatRemaining', () => {
 });
 
 describe('keepTogether', () => {
-  // "in about 1 d 23 h" inside a sentence never breaks inside the time (DECISIONS.md D109).
+  // "in about 1 d 23 h" inside a sentence never breaks inside the time (DECISIONS.md D112).
   it('joins a time with no-break spaces, which read as spaces', () => {
     const joined = keepTogether(formatRemaining(86_400 + 23 * 3_600, false));
     expect(joined).toBe('1 d 23 h');

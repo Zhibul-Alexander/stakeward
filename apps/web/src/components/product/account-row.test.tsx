@@ -40,7 +40,7 @@ describe('AccountRow', () => {
     expect(screen.getByText('until 12 April 2027')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Extend' })).toBeInTheDocument();
-    // Compact (D109): no "Stake account" eyebrow on screen, the article's name says it; nothing behind a More.
+    // Compact (D112): no "Stake account" eyebrow on screen, the article's name says it; nothing behind a More.
     expect(within(row).queryByText('Stake account')).toBeNull();
     expect(screen.queryByRole('button', { name: /^More for stake account/ })).toBeNull();
   });
@@ -124,7 +124,7 @@ describe('AccountRow', () => {
       </Router>,
     );
     const warning = screen.getByText('Another key can stop or move this stake. If you did not set this up, your main key may be stolen.');
-    // One unframed line with the warning icon, always visible (a sign of theft is never folded, D109).
+    // One unframed line with the warning icon, always visible (a sign of theft is never folded, D112).
     const line = warning.closest('[data-slot="row-warning"]') as HTMLElement;
     expect(line).toHaveAttribute('data-tone', 'warning');
     expect(line).toHaveAttribute('role', 'note');

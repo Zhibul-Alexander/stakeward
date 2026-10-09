@@ -21,7 +21,7 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIc
 }
 
 /**
- * The site header (DECISIONS.md D109): the mark and name, the network on devnet (a badge and, from 768 px, what it
+ * The site header (DECISIONS.md D112): the mark and name, the network on devnet (a badge and, from 768 px, what it
  * means), and two links: Rescue, for someone whose main key was just stolen, and the accounts page. Below 640 px the
  * links take a second row rather than hiding their words. Their boxes (the current page's pill, the focus ring) stay
  * inside the content column, clear of the 16 px gutter.

@@ -17,7 +17,7 @@ type EmptyStateProps = {
 
 /**
  * A list with nothing in it, explained rather than blank (UX rule 13): a soft panel without a frame, an icon, a title,
- * at most two short lines and one action (DECISIONS.md D109).
+ * at most two short lines and one action (DECISIONS.md D112).
  */
 export function EmptyState({ icon: Icon = LayersIcon, title, headingLevel = 2, children, action, className }: EmptyStateProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';

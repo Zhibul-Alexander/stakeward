@@ -74,7 +74,7 @@ function renderApp(setup: Setup, defaultChain: ChainPort) {
 const row = (account: Address) => screen.getByRole('article', { name: `Stake account ${shortAddress(account)}` });
 const findRow = (account: Address) => screen.findByRole('article', { name: `Stake account ${shortAddress(account)}` });
 const rowStatus = (account: Address) => row(account).getAttribute('data-status');
-/** The row's More button (D109: the actions after its first one are behind it); null when the row has no more actions. */
+/** The row's More button (D112: the actions after its first one are behind it); null when the row has no more actions. */
 const moreButton = (account: Address) =>
   within(row(account)).queryByRole('button', { name: `More for stake account ${shortAddress(account)}` });
 /** Opens the row's More, so the actions behind it are in the page. */
@@ -92,7 +92,7 @@ const section = (name: string) => {
   if (region === null) throw new Error(`no section for ${name}`);
   return region;
 };
-/** The answer at the top (D109): SOL and accounts protected, monitoring, Telegram, Refresh, Rescue. */
+/** The answer at the top (D112): SOL and accounts protected, monitoring, Telegram, Refresh, Rescue. */
 const summary = () => screen.getByRole('region', { name: 'Summary' });
 /** A SOL amount as the summary's sentence says it, its unit once at the end. */
 const sol = (lamports: bigint) => formatSol(lamports).replace(/ SOL$/, '');
@@ -155,7 +155,7 @@ describe('/app on LiteSvmChain', () => {
     await findRow(stake.locked);
 
     // Most urgent first: expiring, then not protected (bigger first), protected, someone else's lock. The groups keep
-    // that order (D109): Needs attention, Protected, Locked by another key.
+    // that order (D112): Needs attention, Protected, Locked by another key.
     expect(ownedRows().map((article) => article.getAttribute('aria-label'))).toEqual(
       [stake.expiring, stake.service, stake.open, stake.locked, stake.foreign].map((a) => `Stake account ${shortAddress(a)}`),
     );
@@ -186,7 +186,7 @@ describe('/app on LiteSvmChain', () => {
     );
 
     // Protected by the connected second key: lock end date, the group says once what the lock does, extend and
-    // withdraw behind More (D109).
+    // withdraw behind More (D112).
     const lockedRow = within(row(stake.locked));
     expect(lockedRow.getByText('Protected')).toBeInTheDocument();
     expect(lockedRow.getByText(`until ${formatUtcDate(NOW + 100n * DAY) ?? ''}`)).toBeInTheDocument();
@@ -411,7 +411,7 @@ describe('/app on LiteSvmChain', () => {
     expect(banner).toHaveTextContent('This device saw it protected, but its lock has ended. Anyone with your main key can withdraw it now.');
     const protectAgain = within(banner).getByRole('link', { name: 'Protect again' });
     expect(protectAgain).toHaveAttribute('href', `/protect?account=${account}`);
-    // The banner's button is the page's one filled button (D109); the row says it with its badge only.
+    // The banner's button is the page's one filled button (D112); the row says it with its badge only.
     expect(protectAgain).toHaveAttribute('data-variant', 'danger');
     expect(within(section('Needs attention')).getByRole('link', { name: 'Protect 1 account' })).toHaveAttribute('data-variant', 'outline');
     expect(within(row(account)).getByText('No longer protected')).toBeInTheDocument();
@@ -617,7 +617,7 @@ describe('/app on LiteSvmChain', () => {
     expect(await findRow(stake.locked)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Wallet address' })).toHaveValue(main.address);
     expect(location.history).toEqual(['/app']);
-    // A result is shown: Check is no longer the screen's filled button (D109).
+    // A result is shown: Check is no longer the screen's filled button (D112).
     expect(screen.getByRole('button', { name: 'Check' })).toHaveAttribute('data-variant', 'outline');
   });
 

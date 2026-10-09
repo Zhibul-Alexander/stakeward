@@ -305,7 +305,7 @@ describe('tokens.css colours', () => {
 
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The type scale (DECISIONS.md D109): six sizes, each with a role written in tokens.css. */
+/** The type scale (DECISIONS.md D112): six sizes, each with a role written in tokens.css. */
 const TYPE_SCALE = ['xs', 'sm', 'base', 'lg', '2xl', '3xl'];
 
 /** Sizes declared in tokens.css: `--text-<name>:`, not the sub-properties `--text-<name>--line-height:`. */

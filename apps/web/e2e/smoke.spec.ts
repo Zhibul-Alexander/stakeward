@@ -69,7 +69,7 @@ async function landingShows(page: Page) {
   const network = page.locator('[data-slot="network"]');
   await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
   await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
-  // The first screen answers what this is and offers the one main button without scrolling (D109: at 360 px its
+  // The first screen answers what this is and offers the one main button without scrolling (D112: at 360 px its
   // bottom stands above 740 px). Below 640 px the title is one line of text-2xl (32 px).
   const checkStake = page.getByRole('main').getByRole('link', { name: text('landing.checkStake') }).first();
   await expect(checkStake).toHaveAttribute('data-variant', 'primary');
@@ -206,7 +206,7 @@ async function notFoundShows(page: Page) {
 /**
  * The site header's rows (its row container's children, by where they sit), its height, and how far its furthest
  * visible part passes the left and the right edge of the content column (the container inside its padding; 0 or less
- * is inside). Below 640 px the nav takes a second row by design (DECISIONS.md D109).
+ * is inside). Below 640 px the nav takes a second row by design (DECISIONS.md D112).
  */
 async function headerLayout(page: Page) {
   return page.getByRole('banner').evaluate((header) => {
@@ -249,7 +249,7 @@ const ROUTES: readonly SmokeRoute[] = [
         page.getByRole('button', { name: text('components.walletSlot.connectAs', { role: text('common.roles.main') }) }),
       ).toBeVisible();
       // The wizard's steps reach assistive technology at every width: below 640 px the list is screen-reader text next
-      // to a line and a bar, never display: none (D109), and still marks where you are.
+      // to a line and a bar, never display: none (D112), and still marks where you are.
       const current = page
         .getByRole('navigation', { name: text('components.steps.label') })
         .getByRole('listitem')
@@ -279,7 +279,7 @@ const ROUTES: readonly SmokeRoute[] = [
     heading: text('common.pages.rescue'),
     shows: async (page) => {
       await expect(page.getByRole('heading', { level: 2, name: text('rescue.stake.heading') })).toBeVisible();
-      // The answer first: what is locked, its SOL and until when (DECISIONS.md D109).
+      // The answer first: what is locked, its SOL and until when (DECISIONS.md D112).
       await expect(page.getByText(text('rescue.stake.safeUntil', { count: 1, amount: '1,250.5 SOL', date: '10 April 2027' }))).toBeVisible();
       await expect(page.locator('[data-slot="rescue-movable"] article[data-slot="account-row"]')).toHaveCount(1);
     },

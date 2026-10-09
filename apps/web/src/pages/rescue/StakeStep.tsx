@@ -61,7 +61,7 @@ type StakeStepProps = {
 
 /**
  * Step 1 (F4 steps 1-2), no wallet needed: which main key may be stolen, and its stake as the chain shows it now. First
- * the answer (DECISIONS.md D109): what is locked and safe until when, and what is not locked and moves first; then the
+ * the answer (DECISIONS.md D112): what is locked and safe until when, and what is not locked and moves first; then the
  * accounts in the order the run moves them; the ones this run cannot move fold away under "Not in this run".
  */
 export function StakeStep(props: StakeStepProps) {

@@ -196,7 +196,7 @@ async function expectNonceRescue(wallet: TestWalletPort, D: Address, from = 0) {
   }
 }
 
-describe('/rescue: the first step with no address (DECISIONS.md D109)', () => {
+describe('/rescue: the first step with no address (DECISIONS.md D112)', () => {
   it('asks for the main key once: Find its stake is the one filled button, connecting is the outline alternative', async () => {
     const w = await world();
     renderStakePage(w.chain, '/rescue', [w.main]);

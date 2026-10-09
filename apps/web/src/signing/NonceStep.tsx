@@ -58,7 +58,7 @@ type FrameProps = {
 
 /**
  * The card around the step: its heading (h4 inside the link card, h3 elsewhere) and what comes below it. Inside the
- * link card it has no frame of its own: the card's inset holds it (no frame in a frame, DECISIONS.md D109).
+ * link card it has no frame of its own: the card's inset holds it (no frame in a frame, DECISIONS.md D112).
  */
 function Frame({ mode, variant, headingRef, children }: FrameProps) {
   const headingId = useId();

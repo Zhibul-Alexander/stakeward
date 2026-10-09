@@ -16,7 +16,7 @@ type SignWhereProps = {
 
 /**
  * The choice of where one key signs (CLAUDE.md section 6: live or by link), with what each way means, as two cards side
- * by side from 640 px (DECISIONS.md D109). The legend names the role, so the hints stay role-neutral (a rescue has
+ * by side from 640 px (DECISIONS.md D112). The legend names the role, so the hints stay role-neutral (a rescue has
  * three wallets). The page sets the default; the link option can be turned off with the reason next to it.
  */
 export function SignWhere({ role, value, onChange, disabledLink }: SignWhereProps) {

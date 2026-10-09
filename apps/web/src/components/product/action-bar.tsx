@@ -20,7 +20,7 @@ type ActionBarProps = {
 };
 
 /**
- * The block that ends every flow step and every signing panel (DECISIONS.md D109): the risk, one line of context, then
+ * The block that ends every flow step and every signing panel (DECISIONS.md D112): the risk, one line of context, then
  * the main button with Back or one alternative next to it, and why the main button cannot run yet under it. Never
  * sticky: the decision is made after reading the step.
  */

@@ -76,12 +76,12 @@ type AccountRowProps = {
   /**
    * The cluster clock the statuses were computed with. A lock that ends within 30 days of it (core's Expiring
    * threshold) shows its date in warning with a clock icon, whoever holds it: a lock of a key this browser does not
-   * know has no Expiring status of its own (DECISIONS.md D109).
+   * know has no Expiring status of its own (DECISIONS.md D112).
    */
   clock: ClockView;
   /**
    * The one visible button: `<Button variant="outline" size="sm">`, primary only when it is the screen's one filled
-   * button (DECISIONS.md D109); never danger.
+   * button (DECISIONS.md D112); never danger.
    */
   action?: ReactNode;
   /** Every other action (Withdraw, Recovery card, ...): behind the row's More, which opens them under the row. */
@@ -129,7 +129,7 @@ function RowWarning({ children }: { children: ReactNode }) {
 }
 
 /**
- * One stake account as a compact row (DECISIONS.md D109), usually inside an AccountList:
+ * One stake account as a compact row (DECISIONS.md D112), usually inside an AccountList:
  * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. From
  *   640 px the row is a grid of four columns (grid-cols-account-row); in an AccountList the rows share the list's
  *   columns, so SOL stands in one column whichever rows have an action or More, and the action ends next to More.
@@ -305,7 +305,7 @@ type AccountListProps = {
 };
 
 /**
- * Rows of stake accounts in one panel, divided by hairlines instead of a card per account (DECISIONS.md D109). Items
+ * Rows of stake accounts in one panel, divided by hairlines instead of a card per account (DECISIONS.md D112). Items
  * are AccountListItem. role="list" keeps the list in the accessibility tree where list-style: none drops it (Safari).
  * From 640 px the list holds the rows' four columns and every item and its AccountRow share them (subgrid): a column
  * is as wide as its widest cell in the list, so the SOL of all rows lines up even where a row has no action or More,

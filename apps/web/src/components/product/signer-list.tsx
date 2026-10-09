@@ -50,7 +50,7 @@ type SignerListProps = {
    * `full` (default): a card per key with its full address. `compact`: one line per key, its number, role, wallet and
    * status, and how many transactions each approves said once when it is the same for all; no address. The signing
    * screen uses compact above its summary, whose "Who signs" holds the full addresses read from the bytes (DECISIONS.md
-   * D109).
+   * D112).
    */
   variant?: 'full' | 'compact' | undefined;
   className?: string | undefined;

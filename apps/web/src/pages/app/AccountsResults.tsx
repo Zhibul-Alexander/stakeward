@@ -50,7 +50,7 @@ const sumOf = (rows: readonly AccountView[]) => rows.reduce((total, row) => tota
 
 /**
  * The stake of one main key: first the answer (how much is protected, how fresh that is), then the accounts grouped by
- * what they ask of the viewer, then the accounts whose lock it holds as second key (DECISIONS.md D109). Everything
+ * what they ask of the viewer, then the accounts whose lock it holds as second key (DECISIONS.md D112). Everything
  * comes from the chain on each read (CLAUDE.md section 5: reload-safe); the device adds only the known second keys and
  * the accounts it saw protected.
  */
@@ -299,7 +299,7 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
         <Section
           title={t('app.groups.attention')}
           count={groupCount(attention)}
-          // Said once for the group (D109), true of every row it covers.
+          // Said once for the group (D112), true of every row it covers.
           description={attentionDescription(attention)}
           action={
             protectable.length === 0 ? undefined : (
@@ -556,7 +556,7 @@ function RecoveryCardLink({ account }: { account: Address }) {
 
 /**
  * F6: accounts this device saw protected now stand without a lock. The page's only red block and, while it shows, the
- * page's one filled button (D109).
+ * page's one filled button (D112).
  */
 function NoLongerProtectedBanner({ accounts }: { accounts: readonly Address[] }) {
   return (

@@ -61,7 +61,7 @@ type SigningViewProps = {
   renderLinkCancel?: (() => ReactNode) | undefined;
   /**
    * The risk the signature takes on, said right above the Sign button (UX rule 6): usually an inline RiskNote with its
-   * date (DECISIONS.md D109).
+   * date (DECISIONS.md D112).
    */
   risk?: ReactNode;
   /** The summary's line that it is read from the bytes (TransactionSummary `intro`); default true. */

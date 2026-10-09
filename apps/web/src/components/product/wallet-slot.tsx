@@ -32,7 +32,7 @@ type Common = {
   description?: string | undefined;
   /**
    * The Connect button: `outline` (default), or `primary` when connecting is the step's main action (the screen's one
-   * filled button, DECISIONS.md D109).
+   * filled button, DECISIONS.md D112).
    */
   emphasis?: 'primary' | 'outline' | undefined;
   /**

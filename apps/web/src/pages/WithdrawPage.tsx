@@ -126,7 +126,7 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const landedDeactivate = page.kind === 'done' && page.run.what === 'deactivate' && isLanded(page.job);
   const stageShown = loaded !== null && (page.kind === 'view' || landedDeactivate);
   // The service-staker stage is one block that says who manages staking, with Rescue: while it shows, the row leaves
-  // out its own service line and Rescue link (DECISIONS.md D109). Every other stage keeps the row's line.
+  // out its own service line and Rescue link (DECISIONS.md D112). Every other stage keeps the row's line.
   const serviceBlock = stageShown && withdrawStage(loaded.account, loaded.clock) === 'service-staker';
   return (
     <Page width="flow">

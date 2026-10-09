@@ -18,7 +18,7 @@ type DisclosureProps = {
 };
 
 /**
- * Text that folds away (DECISIONS.md D109): a native <details>, so the browser opens it from the keyboard (Enter,
+ * Text that folds away (DECISIONS.md D112): a native <details>, so the browser opens it from the keyboard (Enter,
  * Space), from find-in-page and from a link's hash, with no script (D3). Never for a risk before an irreversible
  * action, the signing screen's guarantees or a sign of theft: those stay visible.
  */
