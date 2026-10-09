@@ -1,7 +1,7 @@
 import { getAddressDecoder, type Address } from '@solana/kit';
 import { U64_MAX, ZERO_ADDRESS, type StakeAccount } from '@stakeward/core';
 import { describe, expect, it } from 'vitest';
-import { appLinks, buildAccountsView } from './view.ts';
+import { appLinks, attentionNote, buildAccountsView } from './view.ts';
 
 const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
 const DAY = 86_400n;
@@ -178,6 +178,21 @@ describe('groups and the one filled button (D109)', () => {
   it('none when nothing needs doing: the page stays quiet', () => {
     expect(buildAccountsView({ ...base, accounts: [locked, foreign, asSecondKey] }).primaryAction).toBeNull();
     expect(buildAccountsView({ ...base, accounts: [] }).primaryAction).toBeNull();
+  });
+
+  it('words the Needs attention note so it is true of every row in the group', () => {
+    const note = (accounts: StakeAccount[], rememberedProtected: Address[] = []) =>
+      attentionNote(buildAccountsView({ ...base, accounts, rememberedProtected }).groups.attention);
+    // Only accounts without a lock (F6 included): the main key alone can withdraw them now.
+    expect(note([open, managed])).toBe('open');
+    expect(note([ended], [ended.address])).toBe('open');
+    // Only locks that end soon: once they end.
+    expect(note([expiring, locked])).toBe('ending');
+    // Both, or open next to a changed stake key (locked, so not "now"): the sentence that covers both.
+    expect(note([open, expiring])).toBe('open-or-ending');
+    expect(note([open, stolenStakeKey])).toBe('open-or-ending');
+    // A changed stake key alone says its warning on the row.
+    expect(note([stolenStakeKey, locked])).toBeNull();
   });
 
   it('counts SOL under locks of a second key this browser does not know apart, never as protected (D14)', () => {

@@ -868,6 +868,8 @@
       "lockedUnknown": "Locked by a second key",
       "secondKeyFor": "You are the second key for",
       "count": "{count} · {amount}",
+      "attentionEnding": "Once a lock ends, anyone with your main key can withdraw the stake.",
+      "attentionOpenOrEnding": "Without a lock, or once it ends, anyone with your main key can withdraw the stake.",
       "protectedNote": "Withdrawing or changing the owner needs your second key until the date shown.",
       "secondKeyForNote": "This wallet holds their lock. It can extend or remove it. It cannot move their SOL."
     },

@@ -175,6 +175,19 @@ export function protectableInGroup(attention: readonly AccountView[]): Address[]
     .map((view) => view.account.address);
 }
 
+/**
+ * What Needs attention says once for its rows (D109), worded so it is true of every row it covers: without a lock the
+ * main key alone withdraws now (`open`); a lock that ends soon allows it once it ends (`ending`); both kinds, or open
+ * rows next to a changed stake key, get the sentence that covers both (`open-or-ending`). A changed stake key alone
+ * says its own warning on the row (null).
+ */
+export function attentionNote(attention: readonly AccountView[]): 'open' | 'ending' | 'open-or-ending' | null {
+  const open = attention.some((view) => view.protection === 'unprotected');
+  const locked = attention.some((view) => view.protection !== 'unprotected');
+  if (open) return locked ? 'open-or-ending' : 'open';
+  return attention.some((view) => view.protection === 'expiring') ? 'ending' : null;
+}
+
 /** Groups keep the order of their input, which is already most urgent first. */
 function groupAccounts(owned: readonly AccountView[], secondKeyFor: AccountView[]): AccountGroups {
   const groups: AccountGroups = { attention: [], protected: [], locked: [], secondKeyFor };

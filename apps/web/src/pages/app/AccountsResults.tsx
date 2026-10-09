@@ -31,6 +31,7 @@ import { KeySlot } from './KeySlot.tsx';
 import { MonitoringStatus } from './MonitoringStatus.tsx';
 import {
   appLinks,
+  attentionNote,
   buildAccountsView,
   protectableInGroup,
   stakeKeyChanged,
@@ -285,8 +286,8 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
         <Section
           title={t('app.groups.attention')}
           count={groupCount(attention)}
-          // Said once for the group (D109), when it holds an account anyone with the main key can withdraw.
-          description={attention.some((row) => row.protection === 'unprotected') ? t('status.unprotectedHint') : undefined}
+          // Said once for the group (D109), true of every row it covers.
+          description={attentionDescription(attention)}
           action={
             protectable.length === 0 ? undefined : (
               <Button asChild size="sm" variant={primary?.kind === 'protect-group' ? 'primary' : 'outline'}>
@@ -329,6 +330,20 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
       {secondKeyForSection}
     </>
   );
+}
+
+/** The consequence Needs attention says once: now for rows without a lock, once it ends for locks that end soon. */
+function attentionDescription(rows: readonly AccountView[]): string | undefined {
+  switch (attentionNote(rows)) {
+    case 'open':
+      return t('status.unprotectedHint');
+    case 'ending':
+      return t('app.groups.attentionEnding');
+    case 'open-or-ending':
+      return t('app.groups.attentionOpenOrEnding');
+    case null:
+      return undefined;
+  }
 }
 
 /** "4 · 229.95 SOL": how many accounts a group holds and their SOL. */

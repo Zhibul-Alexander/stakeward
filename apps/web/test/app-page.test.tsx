@@ -169,7 +169,9 @@ describe('/app on LiteSvmChain', () => {
     expect(rowStatus(stake.open)).toBe('unprotected');
     expect(within(row(stake.open)).getByText('Not protected')).toBeInTheDocument();
     expect(within(row(stake.open)).getByText('Activating')).toBeInTheDocument();
-    expect(within(attention).getByText(en.status.unprotectedHint)).toBeInTheDocument();
+    // The group's note is true of each row: the expiring one is locked until its date, so not "can withdraw now".
+    expect(within(attention).getByText(en.app.groups.attentionOpenOrEnding)).toBeInTheDocument();
+    expect(attention).not.toHaveTextContent(en.status.unprotectedHint);
     const protectGroup = within(attention).getByRole('link', { name: 'Protect 1 account' });
     expect(protectGroup).toHaveAttribute('href', `/protect?account=${stake.open}`);
     expect(protectGroup).toHaveAttribute('data-variant', 'primary');
@@ -269,7 +271,8 @@ describe('/app on LiteSvmChain', () => {
 
     // F6 memory: a view by address writes nothing (the main key is not connected here).
     expect(ports.protectedAccounts.getSnapshot()).toEqual([]);
-  });
+    // It walks every status and opens four Mores: near 5 s when the machine is busy, like App.test.tsx's long cases.
+  }, 30_000);
 
   it('remembers the locks of the connected main key that its second key holds (F6 memory)', async () => {
     const mainWallet = await createTestWalletPort({ name: 'Main Wallet', signers: [main], connected: true });
@@ -391,6 +394,8 @@ describe('/app on LiteSvmChain', () => {
 
     await findRow(account);
     expect(rowStatus(account)).toBe('expiring');
+    // A lock that ends soon: what its end opens, said once for the group.
+    expect(within(section('Needs attention')).getByText(en.app.groups.attentionEnding)).toBeInTheDocument();
     await waitFor(() => {
       expect(ports.protectedAccounts.getSnapshot()).toEqual([account]);
     });
@@ -410,6 +415,8 @@ describe('/app on LiteSvmChain', () => {
     expect(protectAgain).toHaveAttribute('data-variant', 'danger');
     expect(within(section('Needs attention')).getByRole('link', { name: 'Protect 1 account' })).toHaveAttribute('data-variant', 'outline');
     expect(within(row(account)).getByText('No longer protected')).toBeInTheDocument();
+    // No lock left in the group: anyone with the main key can withdraw now.
+    expect(within(section('Needs attention')).getByText(en.status.unprotectedHint)).toBeInTheDocument();
     await openMore(account);
     expect(within(row(account)).getByRole('link', { name: `Protect again stake account ${shortAddress(account)}` })).toBeInTheDocument();
   });
