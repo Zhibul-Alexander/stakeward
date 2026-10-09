@@ -4,6 +4,7 @@ import { ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { t, type MessageKey } from '@/i18n';
+import { keepTogether } from './countdown.tsx';
 
 /**
  * Risks said before the action, in plain words and with the date (UX rule 6). Pages pick one of these instead of
@@ -57,7 +58,7 @@ export function riskText(risk: RiskKind, date?: bigint, dateStyle: DateStyle = '
   const format = dateStyle === 'date-time' ? formatUtcDateTime : formatUtcDate;
   const formatted = date === undefined ? null : format(date);
   if (formatted === null) return null;
-  return t(key, { date: dateOnOneLine ? formatted.replaceAll(' ', '\u00a0') : formatted });
+  return t(key, { date: dateOnOneLine ? keepTogether(formatted) : formatted });
 }
 
 export function RiskNote({ risk, date, dateStyle = 'date', tone = 'warning', variant = 'block', children, className }: RiskNoteProps) {
