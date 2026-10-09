@@ -22,7 +22,8 @@ export function Hero({ cluster }: { cluster: Cluster }) {
             <GlobeIcon aria-hidden="true" />
             {t(devnet ? 'landing.network.devnet' : 'landing.network.mainnet')}
           </Badge>
-          <span>{t(devnet ? 'landing.network.devnetNote' : 'landing.network.mainnetNote')}</span>
+          {/* From 768 px the header says the devnet note in the same words, so the hero does not repeat it there. */}
+          <span className={devnet ? 'md:hidden' : undefined}>{t(devnet ? 'landing.network.devnetNote' : 'landing.network.mainnetNote')}</span>
         </p>
         <h1 id="landing-title" className="text-2xl text-balance sm:text-3xl">
           {t('landing.title')}
@@ -41,7 +42,7 @@ export function Hero({ cluster }: { cluster: Cluster }) {
         </div>
         <p className="text-sm text-muted">{t('landing.checkStakeHint')}</p>
       </div>
-      <ul className="flex flex-wrap gap-x-6 gap-y-1.5 text-sm">
+      <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {TRUST.map((key) => (
           <li key={key} className="flex items-start gap-2">
             <CheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />

@@ -135,7 +135,7 @@ describe('landing page structure', () => {
     expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
     expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
     // The promise of recovery without Stakeward carries its condition where it is made.
-    expect(recover).toHaveTextContent('Solana CLI steps. They need keys on a Ledger or in keypair files.');
+    expect(recover).toHaveTextContent('Its Solana CLI steps need a Ledger or keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
     expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
@@ -167,10 +167,9 @@ describe('landing fees', () => {
   it('shows the network fees from core and the deposit read from the network, once', async () => {
     const { chain } = renderLanding();
     const fees = section('fees');
-    // All in view, nothing folded (spec [landing] Must stay): free, network fees only, the fee per signature, and the
-    // fee for each action with who pays it.
-    expect(within(fees).getByText(/^Stakeward is free: no token, no subscription\./)).toBeVisible();
-    expect(within(fees).getByText(/^The network charges 0\.000005 SOL for each signature/)).toBeVisible();
+    // All in view, nothing folded (spec [landing] Must stay): free, the network fee per signature, and the fee for each
+    // action with who pays it.
+    expect(within(fees).getByText(/^Stakeward is free\. Network fees: 0\.000005 SOL per signature/)).toBeVisible();
     expect(fees.querySelector('details')).toBeNull();
     const rows = [...fees.querySelectorAll('dl > div')];
     expect(rows.map((row) => row.querySelector('dt')?.textContent)).toEqual([
@@ -182,7 +181,7 @@ describe('landing fees', () => {
     ]);
     for (const row of rows) expect(row).toBeVisible();
     for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(within(fees).getAllByText(amount)[0]).toBeVisible();
-    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key signs too and pays 0.0000106 SOL.')).toBeVisible();
+    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key pays 0.0000106 SOL.')).toBeVisible();
     expect(within(fees).getByText('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.')).toBeVisible();
     // CLAUDE.md section 5: the new wallet pays for a rescue, never the stolen main key.
     expect(within(fees).getByText('Paid by your new wallet.')).toBeVisible();
@@ -396,6 +395,25 @@ describe('landing words and numbers', () => {
     expect(mainStolen).toHaveTextContent(
       'If you need more time, or there are many, first extend the lock on each with your second key alone, then rescue them run by run.',
     );
+  });
+
+  // The 5000 px cut shortened these lines; each claim keeps the condition that makes it true.
+  it('keeps each short claim with its condition: who signs, while the lock holds, which programs, which phone browser', async () => {
+    renderLanding();
+    await depositShown();
+    const steps = [...section('how-it-works').querySelectorAll('ol > li')];
+    // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Rescue or withdraw": withdrawing
+    // takes both keys (F3), and a rescue needs a new wallet as well (F4: main key, second key and new wallet sign).
+    expect(steps[0]).toHaveTextContent('Both keys sign.');
+    expect(steps[2]).toHaveTextContent('Both keys withdraw. Main key stolen? They and a new wallet rescue the stake.');
+    // UX rule 6: the lock stops a thief only until it ends.
+    expect(within(section('protects')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
+    // CLAUDE.md 2.3: Phantom may append Lighthouse, so the claim is what Stakeward uses, and it names the programs.
+    expect(within(section('security')).getByText(/^Stakeward uses only Solana's stake, system and fee programs\. It owns no program or token\.$/)).toBeVisible();
+    // UX rule 10: only a phone wallet's own browser has a wallet to sign with; there is no Mobile Wallet Adapter.
+    expect(within(section('wallets')).getByText(/^In a phone wallet's browser: check, extend or remove a lock, and co-sign\./)).toBeVisible();
+    // CLAUDE.md section 11: with both keys from one seed phrase the lock protects nothing.
+    expect(section('cannot-do')).toHaveTextContent('Protect you if keys share a seed phrase.');
   });
 
   it('keeps the second key for Stakeward, and says how to check a lock without Stakeward', async () => {
