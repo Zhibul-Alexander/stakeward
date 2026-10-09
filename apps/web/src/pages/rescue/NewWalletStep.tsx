@@ -3,6 +3,7 @@ import { formatSol } from '@stakeward/core';
 import { CircleAlertIcon, CircleCheckIcon, LoaderCircleIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useId, useState, type Ref } from 'react';
 import { AddressText } from '@/components/product/address-text';
+import { keepTogether } from '@/components/product/countdown';
 import { ErrorState } from '@/components/product/error-state';
 import { QrCode } from '@/components/product/qr-code';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -143,11 +144,12 @@ export function NewWalletStep(props: NewWalletStepProps) {
             ) : (
               <CircleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
             )}
-            <span>
+            {/* An amount never breaks from its unit ("0.01" / "SOL"). */}
+            <span className="text-pretty">
               {t('rescue.newWallet.balance', {
-                balance: formatSol(ready.balance),
-                needed: formatSol(needed),
-                suggested: formatSol(needed > SUGGESTED_RESCUE_LAMPORTS ? needed : SUGGESTED_RESCUE_LAMPORTS),
+                balance: keepTogether(formatSol(ready.balance)),
+                needed: keepTogether(formatSol(needed)),
+                suggested: keepTogether(formatSol(needed > SUGGESTED_RESCUE_LAMPORTS ? needed : SUGGESTED_RESCUE_LAMPORTS)),
               })}
             </span>
           </p>

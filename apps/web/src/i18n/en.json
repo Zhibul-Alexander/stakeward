@@ -1473,7 +1473,7 @@
       "notInRun": "Not in this run ({count})",
       "otherKey": "Locked by another second key — rescue these in another run with that key",
       "unsupportedTitle": "Stakeward cannot move these: the main key itself, or no key, holds the lock",
-      "unsupported": "If the main key holds the lock, the Solana command line can move it when the main key also signs as the lock's key: solana stake-authorize --help names that option.",
+      "unsupported": "If the main key holds the lock, the Solana command line can move it. The main key must also sign as the lock's key: solana stake-authorize --help names that option.",
       "tooMany": "{count} stake accounts: the {max} most urgent move in this run, the rest in the next.",
       "splitsNote": "Includes accounts split off from yours. A very new one may show up later: look again at the end.",
       "needMain": "Paste the main key's address or connect it first.",

@@ -27,7 +27,7 @@ import { AddressText } from '@/components/product/address-text';
 import { Disclosure } from '@/components/product/disclosure';
 import { EmptyState } from '@/components/product/empty-state';
 import { ErrorState } from '@/components/product/error-state';
-import { KeyList } from '@/components/product/key-list';
+import { roleLabel } from '@/components/product/wallet-slot';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { t } from '@/i18n';
@@ -73,7 +73,11 @@ export function StakeStep(props: StakeStepProps) {
         {t('rescue.stake.heading')}
       </h2>
       {mainKeyFrom === 'address' && mainKey !== null ? (
-        <KeyList items={[{ role: 'main', address: mainKey }]} />
+        // From the page address (a Telegram alert): one line, the role and the whole address with copy, no slot.
+        <div data-slot="rescue-main-key" className="flex items-start gap-3">
+          <span className="shrink-0 pt-1.5 text-sm font-semibold">{roleLabel('main')}</span>
+          <AddressText address={mainKey} variant="full" className="min-w-0 flex-1" />
+        </div>
       ) : mainKeyFrom === 'slot' ? (
         // Connected here: one line with the wallet and Disconnect, so a wrong wallet can be swapped.
         <KeySlot role="main" layout="inline" />
@@ -102,7 +106,11 @@ export function StakeStep(props: StakeStepProps) {
       ) : (
         <Accounts groups={props.groups} clock={loaded.clock} knownSecondKeys={props.knownSecondKeys} />
       )}
-      <ContinueButtons label={t('rescue.next.newWallet')} problems={props.problems} onContinue={props.onContinue} />
+      {/* Until a main key is found, Find its stake (or connecting) is the step's action and its hint says what to do:
+          no step button that would only repeat the hint. */}
+      {mainKey === null ? null : (
+        <ContinueButtons label={t('rescue.next.newWallet')} problems={props.problems} onContinue={props.onContinue} />
+      )}
     </section>
   );
 }
@@ -144,7 +152,7 @@ function MainKeyField({
         />
       </form>
       {/* The submit button sits outside the form, next to Connect, whose wallet buttons must not submit it. */}
-      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-start">
+      <div className="flex flex-col items-start gap-2 sm:flex-row">
         <Button type="submit" form={formId} variant={found ? 'outline' : 'primary'}>
           {t('rescue.stake.check')}
         </Button>

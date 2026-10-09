@@ -46,7 +46,7 @@ function blockerText(blocker: RescueBlocker): string {
 /** One row of the signers table: the role and its address on the left, where it signs on the right (from 640 px). */
 function SignerRow({ role, address, children }: { role: WalletRole; address: Address | null; children: ReactNode }) {
   return (
-    <li data-role={role} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-x-4">
+    <li data-role={role} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-x-4 sm:px-4">
       <div className="flex flex-col items-start sm:w-36 sm:shrink-0">
         <span className="text-sm font-semibold">{roleLabel(role)}</span>
         {address === null ? (
@@ -77,8 +77,9 @@ function WhereCards({
       legend={t('signing.where.legend', { role: roleLabel(role) })}
       legendHidden
       columns={2}
-      // Two short choices: side by side at every width, so the table stays one screen on a phone.
-      className="[&_[role=radiogroup]]:grid-cols-2"
+      // Two short choices: side by side at every width, so the table stays one screen on a phone. Below 640 px the
+      // cards are tighter, so "This browser" stays on one line at 360 px.
+      className="[&_[data-slot=radio-card]]:gap-2 [&_[data-slot=radio-card]]:p-2.5 sm:[&_[data-slot=radio-card]]:gap-3 sm:[&_[data-slot=radio-card]]:p-3 [&_[role=radiogroup]]:grid-cols-2 [&_[role=radiogroup]]:gap-2 sm:[&_[role=radiogroup]]:gap-3"
       value={value}
       onValueChange={(next) => {
         if (next === 'here' || next === 'link') onChange(next);

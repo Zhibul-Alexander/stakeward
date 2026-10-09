@@ -207,10 +207,24 @@ describe('/rescue: the first step with no address (DECISIONS.md D109)', () => {
     expect(screen.getByRole('button', { name: en.rescue.stake.check })).toHaveAttribute('data-variant', 'primary');
     // The visible words lead the accessible name (WCAG 2.5.3); the role says which key it connects.
     expect(screen.getByRole('button', { name: `${en.rescue.stake.connect} as Main key` })).toHaveAttribute('data-variant', 'outline');
-    const next = screen.getByRole('button', { name: en.rescue.next.newWallet });
-    expect(next).toHaveAttribute('aria-disabled', 'true');
-    expect(next).toHaveAttribute('data-variant', 'outline');
+    // No step button until a main key is found: it would only repeat the field's hint (said once, above).
+    expect(screen.queryByRole('button', { name: en.rescue.next.newWallet })).not.toBeInTheDocument();
+    expect(screen.queryByText(en.rescue.stake.needMain)).not.toBeInTheDocument();
     expect(document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')).toHaveLength(1);
+  });
+
+  it('a found main key brings the step button; Find its stake turns outline', async () => {
+    const w = await world();
+    await stake(w, { custodian: w.K.address });
+    const { user } = renderStakePage(w.chain, '/rescue', [w.main]);
+
+    await user.type(await screen.findByRole('textbox', { name: en.rescue.stake.address }, WAIT), w.A.address);
+    await click(user, en.rescue.stake.check);
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-slot="rescue-movable"] [data-slot="account-row"]')).toHaveLength(1);
+    }, WAIT);
+    expect(screen.getByRole('button', { name: en.rescue.next.newWallet })).toHaveAttribute('data-variant', 'primary');
+    expect(screen.getByRole('button', { name: en.rescue.stake.check })).toHaveAttribute('data-variant', 'outline');
   });
 });
 
@@ -233,6 +247,11 @@ describe('/rescue: the first step never states a date a lock does not have', () 
       renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [w.newWallet, w.main, w.second]);
 
       await heading(en.rescue.stake.heading);
+      // The main key from the page address: one line with its whole address, and no slot asking to connect it.
+      const mainLine = document.querySelector<HTMLElement>('[data-slot="rescue-main-key"]') as HTMLElement;
+      expect(mainLine).toHaveTextContent(`Main key${w.A.address}`);
+      expect(within(mainLine).getByRole('button', { name: /^Copy/ })).toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: 'Main key' })).not.toBeInTheDocument();
       await screen.findByText(safeLine([byEpoch, byDate], w, LATER), undefined, WAIT);
       await waitFor(() => {
         expect(movableOrder()).toEqual([rowLabel(byDate), rowLabel(byEpoch)]);
