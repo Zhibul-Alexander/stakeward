@@ -10,10 +10,12 @@
     "build:devnet": "VITE_CLUSTER=devnet vite build",
     "build:mainnet": "VITE_CLUSTER=mainnet vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && tsc -p e2e/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && tsc -p e2e/tsconfig.json && tsc -p qa/tsconfig.json",
     "test": "vitest run",
     "e2e": "pnpm build:devnet && playwright test",
-    "e2e:mainnet": "pnpm build:mainnet && E2E_CLUSTER=mainnet playwright test"
+    "e2e:mainnet": "pnpm build:mainnet && E2E_CLUSTER=mainnet playwright test",
+    "qa:local": "QA_TARGET=local playwright test -c qa/playwright.config.ts",
+    "qa:dev": "QA_TARGET=dev playwright test -c qa/playwright.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",
