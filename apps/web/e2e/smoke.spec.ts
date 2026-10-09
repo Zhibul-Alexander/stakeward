@@ -172,7 +172,7 @@ async function recoveryOnA4(page: Page) {
 }
 
 /**
- * The recovery card on paper: light whatever the reader's theme, without the site's header, footer and Print button,
+ * The recovery card on paper: light whatever the reader's theme, without the site's header, footer, Print and Back,
  * with the commands, and on A4 sheets with no sheet wasted.
  */
 async function recoveryPrint(page: Page) {
@@ -182,6 +182,7 @@ async function recoveryPrint(page: Page) {
     page.getByRole('banner', { includeHidden: true }),
     page.getByRole('contentinfo', { includeHidden: true }),
     page.getByRole('button', { name: text('recovery.print'), includeHidden: true }),
+    page.getByRole('main').getByRole('link', { name: text('common.backToAccounts'), includeHidden: true }),
   ];
   for (const part of screenOnly) await expect(part).toBeVisible();
 
@@ -194,8 +195,43 @@ async function recoveryPrint(page: Page) {
   await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
 }
 
+/** A page that does not exist: one way on (the accounts page), the start page as the alternative. */
 async function notFoundShows(page: Page) {
-  await expect(page.getByRole('main').getByRole('link', { name: text('common.backHome') })).toHaveAttribute('href', '/');
+  const main = page.getByRole('main');
+  await expect(main.getByText(text('common.notFoundLink'))).toBeVisible();
+  await expect(main.getByRole('link', { name: text('common.notFoundAction') })).toHaveAttribute('href', '/app');
+  await expect(main.getByRole('link', { name: text('common.goHome') })).toHaveAttribute('href', '/');
+}
+
+/**
+ * The site header's rows (its row container's children, by where they sit), its height, and how far its furthest
+ * visible part passes the left and the right edge of the content column (the container inside its padding; 0 or less
+ * is inside). Below 640 px the nav takes a second row by design (DECISIONS.md D109).
+ */
+async function headerLayout(page: Page) {
+  return page.getByRole('banner').evaluate((header) => {
+    // The row container spans the page with its padding; what counts is what it holds.
+    const container = header.firstElementChild;
+    if (container === null) throw new Error('empty header');
+    const boxes = [...container.children].map((child) => child.getBoundingClientRect());
+    let rows = 0;
+    let rowBottom = -Infinity;
+    for (const box of [...boxes].sort((a, b) => a.top - b.top)) {
+      if (box.top >= rowBottom - 1) rows += 1;
+      rowBottom = Math.max(rowBottom, box.bottom);
+    }
+    const frame = container.getBoundingClientRect();
+    const style = getComputedStyle(container);
+    const contentLeft = frame.left + Number.parseFloat(style.paddingLeft);
+    const contentRight = frame.right - Number.parseFloat(style.paddingRight);
+    const visible = [...container.querySelectorAll('*')].map((element) => element.getBoundingClientRect()).filter((box) => box.width > 0);
+    return {
+      rows,
+      height: header.getBoundingClientRect().height,
+      pastLeft: contentLeft - Math.min(...visible.map((box) => box.left)),
+      pastRight: Math.max(...visible.map((box) => box.right)) - contentRight,
+    };
+  });
 }
 
 const NOT_FOUND = { heading: text('common.notFoundTitle'), shows: notFoundShows };
@@ -295,6 +331,8 @@ test('every route renders under the production headers, without console errors o
 }) => {
   // Each page is checked by axe in two themes; the landing page with every FAQ answer open is the longest.
   test.setTimeout(20_000 * ROUTES.length);
+  const viewport = page.viewportSize() ?? { width: 0, height: 0 };
+  const width = viewport.width;
   const apiRequests: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/')) apiRequests.push(request.url());
@@ -317,7 +355,12 @@ test('every route renders under the production headers, without console errors o
 
       await expect(page.getByRole('heading', { level: 1, name: route.heading, exact: true })).toBeVisible();
       await expect(page.getByRole('link', { name: text('nav.home') })).toBeVisible();
+      // Rescue and the accounts page from every page, in words at every width.
+      const nav = page.getByRole('banner').getByRole('navigation', { name: text('nav.label') });
+      await expect(nav.getByRole('link', { name: text('nav.rescue'), exact: true })).toHaveAttribute('href', '/rescue');
+      await expect(nav.getByRole('link', { name: text('nav.app'), exact: true })).toHaveAttribute('href', '/app');
       const footer = page.getByRole('contentinfo');
+      await expect(footer.getByText(text('footer.trust'))).toBeVisible();
       const source = footer.getByRole('link', { name: `${text('footer.sourceCode')} ${text('common.opensInNewTab')}`, exact: true });
       await expect(source).toHaveAttribute('href', SOURCE_CODE_URL);
       await expect(source).toHaveAttribute('target', '_blank');
@@ -329,6 +372,10 @@ test('every route renders under the production headers, without console errors o
       const devnetBadge = page.getByRole('banner').getByText(text('common.devnet'), { exact: true });
       if (DEVNET) await expect(devnetBadge).toBeVisible();
       else await expect(devnetBadge).toHaveCount(0);
+      // What devnet means, in words where there is room for them (768 px and up), never in a tooltip.
+      const devnetNote = page.getByRole('banner').getByText(text('common.devnetNote'), { exact: true });
+      if (DEVNET && width >= 768) await expect(devnetNote).toBeVisible();
+      else await expect(devnetNote).toBeHidden();
 
       await route.shows?.(page);
       if (route.noApi === true) expect(apiRequests).toEqual([]);
@@ -342,6 +389,23 @@ test('every route renders under the production headers, without console errors o
       // Works at 360 px: nothing wider than the viewport.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBe(0);
+      // The header: at 360 px two rows at most and 104 px tall at most; one row from 640 px. At every width nothing,
+      // not even a link's box (the current page's pill, the focus ring), leaves the content column: at 360 px that is
+      // the 16 px gutter on each side.
+      const header = await headerLayout(page);
+      if (width < 640) {
+        expect(header.rows).toBeLessThanOrEqual(2);
+        expect(header.height).toBeLessThanOrEqual(104);
+      } else {
+        expect(header.rows).toBe(1);
+      }
+      expect(header.pastLeft).toBeLessThanOrEqual(0.5);
+      expect(header.pastRight).toBeLessThanOrEqual(0.5);
+      if (route === ROUTES[0] && width >= 640) {
+        await page.setViewportSize({ width: 640, height: 800 });
+        expect((await headerLayout(page)).rows).toBe(1);
+        await page.setViewportSize(viewport);
+      }
 
       // Geist comes from the site itself (no CDN) and actually loads under the CSP.
       const geistLoaded = await page.evaluate(async () => {

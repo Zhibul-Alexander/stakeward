@@ -32,12 +32,13 @@ describe('StatsPage', () => {
     expect(definitions()).toEqual(['12', '1,234 SOL', '7']);
     // The server counts the locks at most every 10 minutes (DECISIONS.md D82), so no "right now" and no promise that a
     // reload gives fresh numbers.
-    expect(
-      screen.getByText(/^Locked accounts and SOL are counted at most every 10 minutes, from watched stake accounts whose lock is in force\./),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('From the Stakeward monitor: the locked stake accounts it watches and the alerts it has sent.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/^Counted at most every 10 minutes, from watched stake accounts with a lock in force\./)).toBeInTheDocument();
+    expect(screen.getByText('What the Stakeward monitor watches, and the alerts it has sent.')).toBeInTheDocument();
+    // The number reads first on screen, but each label stays before its number in the DOM, as a description list needs.
+    for (const term of screen.getAllByRole('term')) {
+      expect(term.nextElementSibling?.tagName).toBe('DD');
+      expect(term.parentElement).toHaveClass('flex-col-reverse');
+    }
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 

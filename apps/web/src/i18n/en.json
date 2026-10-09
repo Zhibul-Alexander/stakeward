@@ -6,7 +6,10 @@
     "backToAccounts": "Back to your accounts",
     "backHome": "Back to the start page",
     "notFoundTitle": "Page not found",
-    "notFoundBody": "There is no page at this address.",
+    "notFoundBody": "Nothing lives at this address.",
+    "notFoundLink": "Opened a signing link? Ask the sender to send it again.",
+    "notFoundAction": "Check your stake",
+    "goHome": "Go to the start page",
     "skipToContent": "Skip to content",
     "copy": "Copy",
     "copied": "Copied",
@@ -40,10 +43,13 @@
   },
   "nav": {
     "label": "Main",
+    "rescue": "Rescue",
     "home": "Stakeward home",
     "app": "Your accounts"
   },
   "footer": {
+    "label": "Footer",
+    "trust": "Stakeward never holds your SOL or keys, and never asks for your seed phrase.",
     "sourceCode": "Source code",
     "cannotDo": "What Stakeward cannot do",
     "stats": "Stats",
@@ -1621,10 +1627,10 @@
   "recovery": {
     "title": "Stakeward recovery card",
     "documentTitle": "Stakeward recovery card {account}",
-    "intro": "Print this card and keep it with your second key. It holds no secrets, only public addresses, and says what to do if a key is lost or stolen.",
+    "intro": "Print it and keep it with your second key. It holds only public addresses, never secrets.",
     "print": "Print this card",
-    "printHint": "To keep a file, choose Save as PDF in the print dialog.",
-    "devnet": "Devnet card: these stake accounts are on the test network and hold no real SOL.",
+    "printHint": "To keep a file, choose Save as PDF when printing.",
+    "devnet": "Test network: these stake accounts hold no real SOL.",
     "loading": "Reading the stake accounts from the network",
     "loadError": "Could not load the recovery card",
     "invalid": "This page address does not contain a valid stake account address.",
@@ -1646,16 +1652,15 @@
     "readAt": "Read from the network on {date}.",
     "verify": {
       "title": "Check the second key first",
-      "body": "This card cannot tell whether the second key below is yours. Compare its address with the wallet you use as your second key now. If it is not yours, someone else holds this lock: they can keep the stake locked, and this card does not protect you. Your SOL still cannot leave without the main key."
+      "body": "Compare the Second key below with the wallet you use as your second key. If they differ, someone else holds this lock: they can keep your stake locked. They still cannot move your SOL without the main key."
     },
     "keys": {
       "title": "Keys",
-      "mainNote": "It withdraws the SOL, together with the second key while the lock holds. Nothing replaces it: if it is lost, nobody can withdraw this stake. The Solana command line calls it the withdraw authority.",
-      "secondNote": "It co-signs and cannot move SOL on its own. It is not a backup of the main key. The Solana command line calls it the lockup custodian."
+      "mainNote": "Withdraws the SOL, together with the second key while the lock holds. If it is lost, nobody can withdraw this stake. The Solana command line calls it the withdraw authority.",
+      "secondNote": "Co-signs; it cannot move SOL alone and is not a backup of the main key. The Solana command line calls it the lockup custodian."
     },
     "accounts": {
       "title": "Stake accounts on this card",
-      "intro": "Each one is locked until the time shown. Until then, withdrawing it or moving it to a new wallet needs the main key and the second key shown above.",
       "lockedUntil": "Locked until {date}",
       "managedBy": "Staking is managed by another key (the stake authority):",
       "managedByWarning": "If you did not set this up, your main key may be stolen: see “Your main key is stolen” below.",
@@ -1664,25 +1669,24 @@
       "othersLink": "See all stake accounts of this main key"
     },
     "cli": {
-      "title": "Without Stakeward: the Solana command line",
-      "intro": "These commands talk to the Solana network directly. They work even if Stakeward is gone.",
-      "needs": "Every key that signs a command must be on one computer at the same time, as a keypair file or on a Ledger. If another person holds your second key, they bring their Ledger to that computer. A key that lives only in a browser or phone wallet cannot sign these commands: use Stakeward, or wait until the lock ends.",
-      "tested": "Tested with Solana CLI {version} on a local Solana test validator, with keypair files.",
+      "title": "Before you run a command",
       "install": "Install Solana CLI {version} on Linux or macOS:",
-      "installHint": "On Windows, use the install page instead. If a newer version rejects a command on this card, install version {version}.",
-      "stakeAccount": "Replace <STAKE_ACCOUNT> with an address from the list above, and run the command once for each stake account.",
-      "keys": "Replace each <MAIN_KEY>, <SECOND_KEY>, <NEW_WALLET> and <NEW_SECOND_KEY> with where that key is: the path to its keypair file, or its Ledger written as \"usb://ledger?key=0\", with the double quotes. Replace the whole placeholder, including < and >.",
-      "ledger": "To find which Ledger key is yours, connect the Ledger, open its Solana app and run this. Try \"usb://ledger\" first, then key=0, key=1, key=2, then key=0/0, key=1/0 and so on, until it prints the address of your key. If none of them does, use Stakeward, or wait until the lock ends. These commands have not been tried with a real Ledger yet.",
-      "twoLedgers": "With two Ledgers connected, the command line may ask which device to use for each key. Not tested yet.",
-      "oneLine": "Each command is shown over several lines, and every line but the last ends with \\. Bash and zsh (Linux, macOS) accept it as shown. In Windows PowerShell or cmd, type it on one line and leave out every \\. The copy button copies it as one line.",
-      "date": "Replace <NEW_END_DATE> with a date and time in UTC, like {example}. Check the year: a date in the past removes the lock instead of extending it.",
-      "fees": "The key after --fee-payer pays the network fee, about {amount} for each signature, so it needs a little SOL. Never let a key that may be stolen pay: a thief's bot can empty it at once.",
-      "noSeed": "Never type a seed phrase into a command or a website."
+      "installHint": "On Windows, use the install page. If a newer version rejects a command, install {version}.",
+      "keys": "Every key that signs must be on this computer: a keypair file or a Ledger. A key only in a browser or phone wallet cannot sign here.",
+      "ledger": "To find your Ledger key, open its Solana app and run this. Try \"usb://ledger\", then key=0, key=1…, then key=0/0, key=1/0…, until it shows your address:",
+      "placeholders": "Replace each placeholder, < and > included, with:",
+      "stakeAccount": "an address from the list above, once for each stake account",
+      "keyPath": "the keypair file path, or \"usb://ledger?key=0\" with the quotes",
+      "fees": "The key after --fee-payer pays about {amount} per signature. Never let a key that may be stolen pay.",
+      "oneLine": "Bash and zsh accept these as shown. In PowerShell or cmd, type each command on one line without the \\. Copy gives one line.",
+      "tested": "Tested with Solana CLI {version} on a local Solana test validator, with keypair files.",
+      "untestedLedger": "Not tested with a real Ledger yet."
     },
     "links": {
       "install": "Solana CLI install page",
       "rescue": "Rescue in Stakeward",
       "extend": "Extend in Stakeward",
+      "withdraw": "Withdraw in Stakeward",
       "source": "Stakeward source code",
       "lockedByOther": "Why a stake account says Locked by a second key"
     },
@@ -1702,68 +1706,83 @@
     },
     "cases": {
       "title": "What to do",
+      "intro": "Find your case: Stakeward first, then the commands, which work without it.",
+      "beforeCli": "Read “Before you run a command” first.",
+      "noSeed": "Never type a seed phrase into a command or a website.",
+      "index": "The cases on this card",
+      "newKey": {
+        "title": "A new key means a new seed phrase",
+        "body": "Pick a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file from solana-keygen new.",
+        "ledger": "Never use the Ledger that holds your main key or your second key, not even another account on it."
+      },
+      "newKeyRef": "See “A new key means a new seed phrase”.",
       "stolen": {
         "title": "Your main key is stolen, or someone saw its seed phrase",
-        "body": "Without the second key, the thief cannot withdraw your stake or make it theirs. They can stop the staking and split the stake account. The first lock on this card ends on {date}. After that, the main key alone can withdraw, so the thief can too. Move every stake account to a new wallet well before then, at least a day earlier.",
-        "time": "If you cannot finish soon, first extend the lock with the second key alone, as in “The lock is about to end”. The thief cannot undo that, and the stolen key signs nothing.",
-        "cleanDevice": "Work on a computer you trust, not the one where the main key may have leaked. If you can, keep the second key and the new wallet each on its own Ledger, made from its own seed phrase: a Ledger key never leaves the device.",
-        "newWallet": "Create a new wallet from a new seed phrase and send it about {amount}: it pays the fees. For the command line use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with solana-keygen new on that trusted computer. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. Do not send SOL to the stolen main key: a bot may take it at once.",
-        "find": "List every stake account of the main key, including any the thief split off:",
-        "stakeward": "In Stakeward, use Rescue with all three keys.",
-        "cli": "Or, without Stakeward, run this for each stake account. The main key, the second key and the new wallet all sign; the new wallet pays:",
-        "after": "This works even if the thief changed who manages staking. The lock and its end time stay. When every stake account is moved, run the command that lists them again: the thief may have split off another one in the meantime. Move each one it still lists, until it lists none. From then on the new wallet is your main key: use it wherever this card says <MAIN_KEY>. Then open this card again at the address at the bottom and print it. Keep this copy as well: only this one can list the stolen key's stake accounts.",
-        "restake": "If the stake stopped earning, stake it again from the new wallet: in Stakeward, or in a wallet app that holds the new wallet."
+        "body": "Without the second key, the thief cannot withdraw until the first lock ends on {date}.",
+        "time": "Finish a day before that. Short of time? First extend the lock with the second key alone.",
+        "newWallet": "On a computer you trust, make the new wallet and send it about {amount}. Never send SOL to the stolen key.",
+        "stakeward": "In Stakeward, use Rescue with all three keys:",
+        "find": "Or, without Stakeward, list the main key's stake accounts, including any the thief split off:",
+        "cli": "Run this for each. All three keys sign; the new wallet pays. It works even if the thief took over staking:",
+        "after": "When all are moved, list them again (Rescue or the first command): the thief may have split off another. Repeat until the list is empty. From then on the new wallet is your main key. Open this card again and print the new one. Keep this copy too: only it lists the stolen key's accounts.",
+        "restake": "If the stake stopped earning, stake it again from the new wallet."
       },
       "lostSecond": {
         "title": "You lost the second key",
-        "body": "Your SOL is safe, but until each lock ends (the times in the list) nobody can withdraw it or move it to a new wallet, not even you. Keep your main key safe until then: after that time, whoever holds it can withdraw alone.",
-        "after": "After that time, your main key withdraws alone. Stop staking first, as in “You want to withdraw”:",
-        "reprotect": "Or protect the stake again in Stakeward with your main key and a new second key made from a new seed phrase."
+        "body": "Your SOL is safe, but until each lock ends nobody can withdraw or move it, not even you. After that, whoever holds the main key can withdraw alone: keep it safe.",
+        "reprotect": "When the lock ends, protect the stake again in Stakeward with a new second key from a new seed phrase.",
+        "after": "Or, once the lock ends, stop staking and withdraw with the main key alone.",
+        "afterRef": "See “You want to withdraw”."
       },
       "ending": {
         "title": "The lock is about to end",
-        "body": "Extend it with the second key before {date}. After that time the second key can no longer change the lock. Then only Stakeward can lock it again, with your main key and a second key: the Solana command line cannot set a new lock after the old one ended.",
-        "stakeward": "In Stakeward, use Extend with the second key. Or run:",
-        "mainPays": "If the second key has no SOL for the fee, write <MAIN_KEY> after --fee-payer instead: the main key then pays and signs too. Not if your main key may be stolen: send the second key a little SOL instead."
+        "body": "Extend it with the second key before {date}; after that, only Stakeward can set a new lock.",
+        "stakeward": "In Stakeward, use Extend with the second key:",
+        "cli": "Or, without Stakeward, run:",
+        "date": "Replace <NEW_END_DATE> with a UTC date and time, like {example}. A past date removes the lock.",
+        "mainPays": "No SOL on the second key? Put <MAIN_KEY> after --fee-payer, unless the main key may be stolen."
       },
       "withdraw": {
         "title": "You want to withdraw",
-        "deactivate": "If the stake is Active or Activating, stop staking first. An Activating stake becomes Inactive at once; an Active one at the end of the epoch, within about 2 days. The second command shows the time left:",
-        "managed": "If staking is managed by another key (see the list), that key or its service stops the staking, not your main key. A rescue would take staking back from that service.",
-        "withdraw": "When the stake is Inactive, withdraw everything to your main key. Both keys sign; the main key pays the fee:",
-        "remove": "Main key and second key not on the same computer? First stop staking and wait until the stake is Inactive. Only then does the second key remove the lock, and the main key withdraws right after:"
+        "stakeward": "In Stakeward, use Withdraw with both keys:",
+        "deactivate": "Or, without Stakeward: stop staking first if the stake is Active or Activating. Activating stops at once, Active at the epoch's end, within about 2 days. The second command shows the time left:",
+        "managed": "If another key manages staking (see the list), that key or its service stops it. A rescue takes staking back.",
+        "withdraw": "When it is Inactive, withdraw everything to the main key. Both keys sign; the main key pays:",
+        "remove": "Or, if the keys are not on one computer: stop staking and wait until it is Inactive. Then the second key removes the lock, and the main key withdraws right after:"
       },
       "stolenSecond": {
         "title": "Your second key is stolen, or someone saw its seed phrase",
-        "body": "The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with solana-keygen new. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay.",
-        "late": "If the thief got there first, only their key can change the lock now, and the stake stays locked until the time they chose. Your SOL still cannot leave without the main key."
+        "body": "The thief cannot take your SOL, but can freeze it by moving the lock date.",
+        "newKey": "Act first: make a new second key.",
+        "cli": "Hand the lock to it. Both second keys sign; the new one pays:",
+        "late": "If the thief acts first, the stake stays locked until the date they chose."
       },
       "down": {
         "title": "Stakeward is down or gone",
-        "body": "Nothing changes for your stake: the lock lives in the Solana stake program, not in Stakeward. Only the Telegram alerts stop. The commands on this card work without Stakeward, and its source code is public:",
-        "browserOnly": "If your keys live only in browser or phone wallets, the command line cannot use them. Your stake is still safe: after each lock ends (the times in the list), your main key alone can withdraw it, in any wallet that can withdraw stake.",
-        "check": "To see the keys and the lock of a stake account, run:"
+        "body": "Your stake does not change: the lock lives in the Solana stake program. Only the Telegram alerts stop.",
+        "source": "These commands work without Stakeward, and its code is public:",
+        "browserOnly": "Keys only in browser or phone wallets? Wait until each lock ends; then the main key withdraws alone.",
+        "check": "To see a stake account's keys and lock, run:"
       }
     },
     "errors": {
       "title": "If a command fails",
-      "intro": "The message from the command line, and what it means:",
-      "lockup": "The second key is missing or is not the second key of this stake account, or the lock has not ended yet. It ends at the time shown, in UTC; wait a few minutes after it.",
+      "lockup": "Add the right second key, or wait a few minutes past the lock's end (UTC).",
       "custodian": "Add --custodian <SECOND_KEY>.",
-      "authority": "This key is not the one the stake account expects. The expected address is in the brackets.",
-      "signature": "A key that must sign is missing or is not allowed to. If your main key can no longer stop staking, someone changed who manages staking: follow “Your main key is stolen”.",
-      "funds": "The stake is still staking or stopping. Stop staking, wait until it is Inactive, then try again.",
-      "fee": "The key after --fee-payer has no SOL for the fee. Send it a little SOL, unless that key may be stolen.",
-      "rewards": "A new epoch has just started. Wait a few minutes and run the command again.",
+      "authority": "Wrong key: the brackets show the expected one.",
+      "signature": "A key that must sign is missing. Main key cannot stop staking? See “Your main key is stolen”.",
+      "funds": "Stop staking and wait until it is Inactive.",
+      "fee": "The fee payer has no SOL. Send it a little, unless it may be stolen.",
+      "rewards": "A new epoch just started: wait a few minutes.",
       "date": "Write the date with its time, like {example}.",
-      "file": "A path to a keypair file is wrong, or a <…> placeholder was not replaced.",
+      "file": "A key path is wrong, or a <…> was not replaced.",
       "device": "Connect and unlock the Ledger, then open its Solana app."
     },
     "limits": {
       "title": "What no one can undo",
-      "mainLost": "If you lose the main key, nobody can withdraw this stake or move it, not even with the second key. Keep a backup of the main key's seed phrase.",
-      "mainLostStolen": "If you lost the main key and someone else may have it, extend the lock with the second key before each end time. The stake stays stuck, but nobody can take it.",
-      "lostAndStolen": "If the second key is lost and the main key is stolen, the thief can withdraw as soon as the lock ends.",
+      "mainLost": "If you lose the main key, nobody can withdraw or move this stake, not even with the second key. Back up its seed phrase.",
+      "mainLostStolen": "Lost the main key, and someone else may have it? Extend the lock with the second key before each end: stuck, but safe.",
+      "lostAndStolen": "If the second key is lost and the main key is stolen, the thief can withdraw once the lock ends.",
       "bothLost": "If you lose both keys, nobody can recover this stake.",
       "bothStolen": "If someone has both keys, they can take this stake.",
       "sameSeed": "Two keys from one seed phrase protect nothing: whoever has the seed phrase has both keys. The second key must come from a different seed phrase."
@@ -1774,12 +1793,12 @@
   },
   "stats": {
     "title": "Stakeward in numbers",
-    "intro": "From the Stakeward monitor: the locked stake accounts it watches and the alerts it has sent.",
+    "intro": "What the Stakeward monitor watches, and the alerts it has sent.",
     "loading": "Loading the numbers",
     "accountsLocked": "Locked stake accounts Stakeward watches",
     "solLocked": "SOL in those stake accounts",
     "alertsSent": "Telegram alerts sent",
-    "note": "Locked accounts and SOL are counted at most every 10 minutes, from watched stake accounts whose lock is in force. Anyone can ask Stakeward to watch a locked stake account, so locks set with other tools count too. SOL is rounded down to whole SOL.",
+    "note": "Counted at most every 10 minutes, from watched stake accounts with a lock in force. Locks set with other tools count too. SOL is rounded down.",
     "emptyTitle": "Nothing locked yet",
     "emptyBody": "Stakeward does not watch any locked stake account yet. The numbers appear here once someone protects their stake.",
     "emptyAction": "Check your stake",

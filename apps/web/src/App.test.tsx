@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
@@ -28,13 +28,28 @@ describe('app shell', () => {
   ])('%s shows its heading inside the layout', (path, heading) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(screen.getByRole('link', { name: 'Stakeward home' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: 'Your accounts' })).toHaveAttribute('href', '/app');
+    expect(within(nav).getByRole('link', { name: 'Your accounts' })).toHaveAttribute('href', '/app');
+    // Rescue on every page: the person whose main key was just stolen should not have to look for it.
+    expect(within(nav).getByRole('link', { name: 'Rescue' })).toHaveAttribute('href', '/rescue');
+  });
+
+  it.each([
+    ['/app', 'Your accounts'],
+    ['/rescue', 'Rescue'],
+  ])('marks the header link of %s as the current page, and only that one', (path, name) => {
+    renderAt(path);
+    const links = within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link');
+    expect(links.filter((link) => link.getAttribute('aria-current') === 'page').map((link) => link.textContent)).toEqual([name]);
   });
 
   it('has the trust links in the footer on every page (UX rule 12)', () => {
     renderAt('/rescue');
     const footer = screen.getByRole('contentinfo');
+    // What Stakeward never does, said once on every page above the links.
+    expect(within(footer).getByText('Stakeward never holds your SOL or keys, and never asks for your seed phrase.')).toBeInTheDocument();
+    expect(within(footer).getByRole('navigation', { name: 'Footer' })).toBeInTheDocument();
     // Another site: it opens in a new tab and says so, as every external link does (step 8 spec L14).
     const source = screen.getByRole('link', { name: 'Source code (opens in a new tab)' });
     expect(footer).toContainElement(source);
@@ -53,8 +68,24 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Design system' }, { timeout: 20_000 })).toBeInTheDocument();
   }, 30_000);
 
-  it('marks devnet in the header', () => {
+  it('marks devnet in the header, with what it means in words (not a tooltip)', () => {
     renderAt('/');
-    expect(screen.getByText('Devnet')).toBeInTheDocument();
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('Devnet')).toBeInTheDocument();
+    expect(within(header).getByText('Test network: no real SOL.')).toBeInTheDocument();
+    expect(header.querySelector('[title]')).toBeNull();
+  });
+
+  it('gives a page that does not exist a word for a broken signing link and a way on', () => {
+    renderAt('/no-such-page');
+    const main = screen.getByRole('main');
+    expect(within(main).getByText('Nothing lives at this address.')).toBeInTheDocument();
+    expect(within(main).getByText('Opened a signing link? Ask the sender to send it again.')).toBeInTheDocument();
+    const check = within(main).getByRole('link', { name: 'Check your stake' });
+    expect(check).toHaveAttribute('href', '/app');
+    expect(check).toHaveAttribute('data-variant', 'primary');
+    const home = within(main).getByRole('link', { name: 'Go to the start page' });
+    expect(home).toHaveAttribute('href', '/');
+    expect(home).toHaveAttribute('data-variant', 'ghost');
   });
 });
