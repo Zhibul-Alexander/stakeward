@@ -58,7 +58,10 @@ async function bodyColours(page: Page) {
   });
 }
 
-/** The landing page: fees with the deposit read from the network, the three steps, the limits, the network, the FAQ. */
+/**
+ * The landing page: the hero's answer and its one button in the first screen, fees with the deposit read from the
+ * network, the three steps, the limits, the network, the FAQ in closed groups.
+ */
 async function landingShows(page: Page) {
   await expect(page.locator('#fees')).toContainText('0.00105664 SOL');
   await expect(page.locator('#how-it-works ol > li')).toHaveCount(3);
@@ -66,6 +69,23 @@ async function landingShows(page: Page) {
   const network = page.locator('[data-slot="network"]');
   await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
   await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
+  // The first screen answers what this is and offers the one main button without scrolling (D109: at 360 px its
+  // bottom stands above 740 px). Below 640 px the title is one line of text-2xl (32 px).
+  const checkStake = page.getByRole('main').getByRole('link', { name: text('landing.checkStake') }).first();
+  await expect(checkStake).toHaveAttribute('data-variant', 'primary');
+  await expect(checkStake).toBeInViewport();
+  const viewport = page.viewportSize();
+  const buttonBox = await checkStake.boundingBox();
+  expect(buttonBox).not.toBeNull();
+  if (viewport !== null && viewport.width < 640) {
+    expect((buttonBox?.y ?? Infinity) + (buttonBox?.height ?? 0)).toBeLessThan(740);
+    const titleBox = await page.getByRole('heading', { level: 1, name: text('landing.title') }).boundingBox();
+    expect(titleBox?.height ?? Infinity).toBeLessThanOrEqual(32);
+  }
+  // The questions come folded into their groups.
+  const groups = page.locator('#faq details[data-slot="faq-group"]');
+  await expect(groups).toHaveCount(5);
+  for (const group of await groups.all()) await expect(group).not.toHaveAttribute('open');
   // What a visitor first gets, before the answers below are opened.
   if (DEVNET) await recordScreenMetrics(page, 'landing-initial');
   // Every answer open, so the overflow check and axe cover the whole FAQ.
@@ -78,7 +98,8 @@ async function landingShows(page: Page) {
 
 /**
  * Deep links into the landing page: the footer's `/#cannot-do` followed from another page (a fresh load) shows that
- * section; a later `/#faq-ledger` (a hash change, as an in-page link makes) opens that question and shows it.
+ * section; a later `/#faq-ledger` (a hash change, as an in-page link makes) opens that question and its group and
+ * shows it.
  */
 async function landingDeepLinks(page: Page) {
   await page.goto('/stats');
@@ -88,6 +109,8 @@ async function landingDeepLinks(page: Page) {
   await expect(ledger).not.toHaveAttribute('open');
   await page.goto('/#faq-ledger');
   await expect(ledger).toHaveAttribute('open', '');
+  // The question sits in a closed group: the group opens with it, and the question is shown.
+  await expect(page.locator('details[data-slot="faq-group"]:has(#faq-ledger)')).toHaveAttribute('open', '');
   await expect(ledger).toBeInViewport();
 }
 

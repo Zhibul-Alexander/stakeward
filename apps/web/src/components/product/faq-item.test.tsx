@@ -62,6 +62,23 @@ describe('FaqItem', () => {
     expect(details().querySelector('summary')).toHaveFocus();
   });
 
+  // It sits inside an FAQ group that is a <details> too: an unnamed Tailwind group would turn every chevron of an open
+  // group, so the item names its own group and the chevron follows this item only.
+  it('turns its chevron with its own open state, not with the group around it', () => {
+    render(
+      <details open className="group">
+        <summary>Group</summary>
+        <FaqItem id="faq-lock-ends" question={QUESTION}>
+          <p>Answer</p>
+        </FaqItem>
+      </details>,
+    );
+    expect(details()).toHaveClass('group/faq-item');
+    expect(details()).not.toHaveClass('group');
+    expect(details().querySelector('svg')).toHaveClass('group-open/faq-item:rotate-180');
+    expect(details().querySelector('svg')?.getAttribute('class')).not.toMatch(/(^|\s)group-open:/);
+  });
+
   it('the chevron is decorative', () => {
     render(
       <FaqItem id="faq-lock-ends" question={QUESTION}>

@@ -6,18 +6,42 @@ import { t } from '@/i18n';
 
 const LINK_CLASS = 'rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover';
 
-type SectionProps = { id: string; title: string; children: ReactNode; className?: string | undefined };
+type SectionProps = {
+  id: string;
+  title: string;
+  /** One sentence under the title, said once for the whole section. */
+  intro?: ReactNode;
+  children: ReactNode;
+  className?: string | undefined;
+};
 
 /**
- * One section of the landing page: the anchor the table of contents, the footer and the FAQ link to (`#<id>`), named
- * by its h2 (`<id>-title`; `cannot-do-title` predates this page and stays).
+ * One section of the landing page: the anchor the footer and the FAQ link to (`#<id>`), named by its h2
+ * (`<id>-title`; `cannot-do-title` predates this page and stays). From 640 px the landing's h2 is `text-2xl`
+ * (DECISIONS.md D109, type roles); below, where the hero's h1 is `text-2xl` too, it is the app's `text-lg`, so the h1
+ * still leads.
  */
-export function Section({ id, title, children, className }: SectionProps) {
+export function Section({ id, title, intro, children, className }: SectionProps) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-6', className)}>
-      <h2 id={`${id}-title`} className="text-2xl font-semibold">
+    <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-3 sm:gap-4', className)}>
+      <div className="flex max-w-prose flex-col gap-1 sm:gap-2">
+        <h2 id={`${id}-title`} className="text-lg font-semibold text-balance sm:text-2xl">
+          {title}
+        </h2>
+        {intro === undefined ? null : <p className="text-sm text-pretty text-muted sm:text-base">{intro}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** A titled block inside a section (`#second-key`, `#recover`): its own anchor, named by its h3. */
+export function SubSection({ id, title, children, className }: Omit<SectionProps, 'intro'>) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-3', className)}>
+      <h3 id={`${id}-title`} className="text-base font-semibold text-balance sm:text-lg">
         {title}
-      </h2>
+      </h3>
       {children}
     </section>
   );

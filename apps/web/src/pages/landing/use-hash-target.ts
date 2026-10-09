@@ -13,20 +13,25 @@ function hashTarget(hash: string): HTMLElement | null {
   return document.getElementById(id);
 }
 
-/** Opens an FAQ question the fragment names (a native <details>) and brings the target to the top of the view. */
+/**
+ * Opens what the fragment names, and every <details> around it (an FAQ question sits inside its closed group), then
+ * brings the target to the top of the view. A target outside any <details> opens nothing.
+ */
 function showHashTarget() {
   const target = hashTarget(window.location.hash);
   if (target === null) return;
-  if (target instanceof HTMLDetailsElement) target.open = true;
+  for (let node: HTMLElement | null = target; node !== null; node = node.parentElement) {
+    if (node instanceof HTMLDetailsElement) node.open = true;
+  }
   // jsdom has no scrollIntoView; browsers scroll at once (no smooth scrolling, spec 17).
   const scrollable: Partial<Pick<HTMLElement, 'scrollIntoView'>> = target;
   scrollable.scrollIntoView?.({ block: 'start' });
 }
 
 /**
- * A link to `/#faq-ledger` (or `#cannot-do` from the footer of another page) opens that FAQ question and shows it,
- * after the page's first render and on every later hash change on this page. The browser alone would scroll to a
- * closed <details> without opening it, and would not scroll at all when the site's router brings the page in.
+ * A link to `/#faq-ledger` (or `#cannot-do` from the footer of another page) opens that FAQ question and its group and
+ * shows it, after the page's first render and on every later hash change on this page. The browser alone would scroll
+ * to a closed <details> without opening it, and would not scroll at all when the site's router brings the page in.
  */
 export function useHashTarget(): void {
   useEffect(() => {
