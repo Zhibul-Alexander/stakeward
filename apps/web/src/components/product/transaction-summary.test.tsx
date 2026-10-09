@@ -84,6 +84,8 @@ describe('TransactionSummary', () => {
     expect(screen.getByText('This transaction cannot move your SOL.')).toBeInTheDocument();
     expect(screen.getByText('It cannot change who can withdraw. Only the lock and its second key change.')).toBeInTheDocument();
     expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
+    // Phantom warns about these transactions; the screen says why before the wallet does (D110).
+    expect(screen.getByText(/^Your wallet may warn that this transaction could steal your funds in the future\./)).toBeInTheDocument();
     expect(screen.getByText('Valid for about a minute. If it expires, sign again.')).toBeInTheDocument();
     // A recent blockhash without checks added by a wallet: nothing technical to fold away.
     expect(screen.queryByText('Technical details')).not.toBeInTheDocument();

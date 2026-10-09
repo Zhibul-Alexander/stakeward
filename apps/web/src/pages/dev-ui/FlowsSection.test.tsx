@@ -113,7 +113,7 @@ describe('/dev/ui flows', () => {
 
     // The landing's wallet table as a matrix run would fill it (spec 4.7): every verdict and every note at least once.
     const wallets = document.getElementById('landing-wallets') as HTMLElement;
-    expect(wallets.querySelectorAll('[data-pair]')).toHaveLength(6);
+    expect(wallets.querySelectorAll('[data-pair]')).toHaveLength(7);
     expect(new Set([...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict')))).toEqual(
       new Set(['not-verified', 'works', 'works-with-warning', 'blind-signing', 'does-not-work']),
     );

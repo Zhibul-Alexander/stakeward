@@ -291,6 +291,8 @@ export function TransactionSummary({
               <span>{t('common.neverSeedPhrase')}</span>
             </li>
           </ul>
+          {/* Phantom shows "could steal your funds in the future" for these transactions (wallet matrix, D110). */}
+          <p className="text-sm text-muted">{t('components.tx.walletWarning')}</p>
         </Part>
         <div data-slot="summary-lifetime" className="flex flex-col gap-2 text-sm">
           <p className="flex items-start gap-2 text-muted">

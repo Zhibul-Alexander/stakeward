@@ -184,7 +184,8 @@
         "switch-account": "The wallet shares one account at a time. Switch accounts in the wallet between the two signatures.",
         "new-site-warning": "The wallet may warn that this site is new. The warning goes away after a few days.",
         "ledger-blind": "The Ledger asks for blind signing here. Use another pair with a Ledger.",
-        "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer."
+        "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer.",
+    "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
       },
       "ledgerLink": "What will my Ledger show?",
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
@@ -345,6 +346,7 @@
       "nonceLifetime": "Valid until it is sent or cancelled.",
       "technical": "Technical details",
       "lighthouse": "Checks your wallet added at the end (Lighthouse): {count}. They only read accounts and cannot move funds.",
+      "walletWarning": "Your wallet may warn that this transaction could steal your funds in the future. Wallets say that about any transaction that gives a key a role in an account. Before you confirm, check that every key on this screen is yours.",
       "warn": {
         "replacesSecondKey": "This replaces the current second key:",
         "shortens": "This makes the lock end sooner: on {date} instead of {current}.",

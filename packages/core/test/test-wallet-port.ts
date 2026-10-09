@@ -53,6 +53,11 @@ export type TestWalletPort = WalletPort & {
   readonly maxConcurrent: number;
   /** The wallet now exposes these of its keys (the user switched accounts); listeners are told. */
   setExposedAccounts(addresses: readonly Address[]): void;
+  /**
+   * The user selects this account in the wallet. A wallet that follows the selection exposes it at once; a `sticky`
+   * one (Phantom) keeps the site on the account it connected until the site disconnects and connects again.
+   */
+  select(address: Address): void;
   /** When true, connect() is declined (code 4001). */
   rejectConnect: boolean;
 };
@@ -66,6 +71,12 @@ export type TestWalletOptions = {
   exposed?: readonly Address[];
   /** Already authorised on load: accounts are exposed before connect(). Default false. */
   connected?: boolean;
+  /**
+   * Like Phantom (owner's wallet test, 08.10.2026): one account at a time, and the site stays on the account it
+   * connected. Switching accounts in the wallet (select) tells the site nothing, connect() answers with the connected
+   * account again, and only a disconnect lets the next connect() offer the selected one. Default false.
+   */
+  sticky?: boolean;
 };
 
 /**
@@ -79,7 +90,13 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
   const listeners = new Set<() => void>();
   const requests: TestWalletRequest[] = [];
   const responses: Uint8Array[][] = [];
-  let accounts: readonly Address[] = options.connected === true ? [...exposedOnConnect] : [];
+  const sticky = options.sticky === true;
+  /** What a fresh connect() offers: the configured accounts until the user picks others (setExposedAccounts, select). */
+  let preferred: readonly Address[] = exposedOnConnect;
+  /** The account selected in the wallet's own window (a sticky wallet offers only this one on a fresh connect). */
+  let selected: Address | undefined = exposedOnConnect[0];
+  const onConnect = (): readonly Address[] => (sticky ? (selected === undefined ? [] : [selected]) : preferred);
+  let accounts: readonly Address[] = options.connected === true ? [...onConnect()] : [];
   const serialised = createWalletRequestQueue();
   let open = 0;
   let maxConcurrent = 0;
@@ -151,7 +168,7 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
     connect(requestOptions) {
       return serialised(() => {
         if (port.rejectConnect) return Promise.reject(rejection(name));
-        setAccounts(accounts.length > 0 ? accounts : exposedOnConnect);
+        setAccounts(accounts.length > 0 ? accounts : onConnect());
         return Promise.resolve(accounts);
       }, requestOptions?.signal);
     },
@@ -168,7 +185,15 @@ export async function createTestWalletPort(options: TestWalletOptions = {}): Pro
       return () => listeners.delete(listener);
     },
     setExposedAccounts(addresses) {
+      preferred = [...addresses];
+      selected = addresses[0] ?? selected;
       setAccounts(addresses);
+    },
+    select(address) {
+      selected = address;
+      if (sticky) return;
+      preferred = [address];
+      setAccounts([address]);
     },
   };
   return port;

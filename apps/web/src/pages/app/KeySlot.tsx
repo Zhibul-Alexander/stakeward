@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { WalletSlot, type WalletOption } from '@/components/product/wallet-slot';
 import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
-import { usePorts, useSlot, useWallets, WALLET_ROLES } from '@/ports';
+import { connectOffering, usePorts, useSlot, useWallets, WALLET_ROLES } from '@/ports';
 
 /** What the slot is doing on top of the stored slot: a connect in progress, its failure, or an account conflict. */
 type Pending =
@@ -52,7 +52,9 @@ function option(wallet: WalletPort): WalletOption {
 /**
  * Connects a wallet account to one key slot (CLAUDE.md section 6) and shows it with WalletSlot. Connecting is never
  * silent: it starts from the user's click. An account that already fills another role is refused with "switch to
- * your other account in the wallet, then press Continue"; Continue reads the wallet's accounts again.
+ * your other account in the wallet, then press Continue"; Continue reads the wallet's accounts again. A wallet that
+ * keeps offering an account this slot cannot take is disconnected and asked once more (connectOffering, D109):
+ * Phantom stays on the account the site connected first until then.
  */
 export function KeySlot({
   role,
@@ -91,12 +93,24 @@ export function KeySlot({
 
   const walletById = (walletId: string) => wallets.find((wallet) => wallet.id === walletId) ?? null;
 
-  function take(wallet: WalletPort, accounts: readonly Address[]) {
+  /** The role that already holds `address`, other than this one (the main key on screen counts). */
+  function roleOf(address: Address): WalletRole | undefined {
     const current = slots.getSnapshot();
-    const roleOf = (address: Address): WalletRole | undefined =>
-      role !== 'main' && address === mainKey
-        ? 'main'
-        : WALLET_ROLES.find((other) => other !== role && current[other]?.address === address);
+    return role !== 'main' && address === mainKey
+      ? 'main'
+      : WALLET_ROLES.find((other) => other !== role && current[other]?.address === address);
+  }
+
+  /** Whether the wallet offers an account this slot may take: the expected one, or one no other role holds. */
+  function fits(accounts: readonly Address[]): boolean {
+    if (expected !== undefined) return accounts.includes(expected);
+    // The account this slot let go with Disconnect does not fit: the wallet often stays on it (Phantom, D109), so a
+    // Connect asks the wallet again rather than taking it straight back.
+    const released = slots.released(role);
+    return accounts.some((address) => address !== released && roleOf(address) === undefined);
+  }
+
+  function take(wallet: WalletPort, accounts: readonly Address[]) {
     const first = accounts[0];
     if (first === undefined) {
       setPending({ kind: 'error', walletId: wallet.id, message: t('app.connect.noAccount'), detail: '' });
@@ -107,7 +121,12 @@ export function KeySlot({
       setPending({ kind: 'conflict', walletId: wallet.id, address: first, conflictRole: undefined, expected });
       return;
     }
-    const free = expected ?? accounts.find((address) => roleOf(address) === undefined);
+    // Prefer an account other than the one this slot just released; it is taken back only when it is all there is.
+    const released = slots.released(role);
+    const free =
+      expected ??
+      accounts.find((address) => address !== released && roleOf(address) === undefined) ??
+      accounts.find((address) => roleOf(address) === undefined);
     if (free === undefined || roleOf(free) !== undefined) {
       const shown = free ?? first;
       setPending({ kind: 'conflict', walletId: wallet.id, address: shown, conflictRole: roleOf(shown) });
@@ -128,7 +147,7 @@ export function KeySlot({
     const { id, signal } = nextRequest();
     setPending({ kind: 'connecting', walletId });
     try {
-      const accounts = await wallet.connect({ signal });
+      const accounts = await connectOffering(wallet, fits, { signal });
       if (request.current === id) take(wallet, accounts);
     } catch (error) {
       if (request.current !== id) return;
@@ -143,24 +162,24 @@ export function KeySlot({
     setPending({ kind: 'idle' });
   }
 
-  /** After the user switched accounts in the wallet: use what it offers now, or ask it again when it offers none. */
+  /** After the user switched accounts in the wallet: use what it offers now, or ask it again when nothing fits. */
   function continueWith(wallet: WalletPort) {
-    if (wallet.accounts.length === 0) void connect(wallet.id);
-    else take(wallet, wallet.accounts);
+    if (fits(wallet.accounts)) take(wallet, wallet.accounts);
+    else void connect(wallet.id);
   }
 
   /**
    * Continue on a filled slot whose wallet offers other accounts now: only look again for the slot's own account. It
    * never puts another account in the slot (that would change the key behind the user's back); replacing the key is
-   * Disconnect, then Connect. A wallet that offers no account is asked again; what it answers only refreshes its
-   * accounts, which re-resolves the slot.
+   * Disconnect, then Connect. A wallet that does not offer the slot's account is asked again (reconnected once if it
+   * still offers another one, D109); what it answers only refreshes its accounts, which re-resolves the slot.
    */
   async function recheck(wallet: WalletPort, address: Address) {
     if (wallet.accounts.includes(address)) return;
     const { id, signal } = nextRequest();
     setPending({ kind: 'connecting', walletId: wallet.id });
     try {
-      await wallet.connect({ signal });
+      await connectOffering(wallet, (offered) => offered.includes(address), { signal });
       if (request.current === id) setPending({ kind: 'idle' });
     } catch (error) {
       if (request.current !== id) return;

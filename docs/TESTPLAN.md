@@ -17,12 +17,13 @@
 
 На сайте роль Acc 3 называется New wallet: настоящий пострадавший создаёт его в момент кражи из новой фразы. Наш Acc 3 сделан заранее из фразы Acc 1 только для теста.
 
-**Главное правило Phantom.** Все три — аккаунты одного Phantom, а сайт видит только тот, что сейчас выбран в Phantom. Перед каждым «Connect a wallet» и перед каждой подписью переключайте в Phantom аккаунт, который называет кнопка: «… as Main key» — Acc 1, «… as Second key» — Acc 2, «… as New wallet» — Acc 3. Если страница пишет, что кошелёк сейчас не отдаёт этот аккаунт, — переключитесь и нажмите Continue. Когда два ключа подписывают на месте, транзакция живёт около минуты: вторую подпись не откладывайте; если истекла — «Sign again».
+**Главное правило Phantom.** Все три — аккаунты одного Phantom, а сайт видит только тот, что сейчас выбран в Phantom. Перед каждым «Connect a wallet» и перед каждой подписью переключайте в Phantom аккаунт, который называет кнопка: «… as Main key» — Acc 1, «… as Second key» — Acc 2, «… as New wallet» — Acc 3. Перезагружать страницу не нужно: если Phantom всё ещё отдаёт прежний аккаунт, сайт сам переподключится к выбранному (D109). Phantom при этом может показать окно подключения — одобрите. Если страница всё же пишет, что кошелёк не отдаёт этот аккаунт, — переключитесь и нажмите Continue. Когда два ключа подписывают на месте, транзакция живёт около минуты: вторую подпись не откладывайте; если истекла — «Sign again».
 
 ### Сделано 06.10.2026
 
 - [x] Деплой dev 27af77c (version 4cc35690), миграция 0004, `verify-deploy` PASS.
 - [x] 08.10.2026: деплой dev 98a8bcf (version 0500d635), сделал владелец; `verify-deploy` PASS, 27 файлов, 5 заголовков на 26 ответах.
+- [x] 08.10.2026: деплой dev 2c6207a (version e95b8b86) с исправлением переключения аккаунтов Phantom (D109), сделал владелец из рабочей копии `stakeward-fix`; `verify-deploy` PASS.
 - [x] Переезд на `stakeward.workers.dev`: поддомен сменил владелец, `SITE_ORIGIN`, вебхуки и описания обоих ботов обновил Claude по просьбе владельца; вебхуки без ошибок, проход монитора dev после переезда — `botCheck: ok`. Одна тревога bot-mismatch пришла в минуту переключения — ожидаемо.
 - [x] Devnet SOL: на спонсоре 8,7 SOL, на Second key 0,05 SOL — пополнять ничего не нужно.
 - [x] 08.10.2026: Acc 2 заменён новым кошельком из своей фразы, `GuY1kkv9Ket7kGX4FjTasycpBmNN1i1op7FgnEgxdo2G`; со спонсора на него 0,05 devnet SOL (транзакция `5uvhdDQm…`). Прежний второй ключ `2Fz9TU…` в тестах больше не участвует.
@@ -72,7 +73,7 @@ Claude правит найденное и пишет «готово к prod».
 ### Этап 6. Mainnet — по слову Claude, начать не позже 09.10
 
 0. Выключить Testnet Mode в Phantom на компьютере и на телефоне.
-1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd /home/dev/workspace/stakeward` → `pnpm deploy:prod --prod-confirm`. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
+1. Деплой prod: написать «начинаю деплой» и дождаться «можно» (в это время сессии Claude ничего не собирают в папке). Новое подключение к серверу → `cd <папка, которую назовёт Claude>` → `pnpm deploy:prod --prod-confirm`. Деплой идёт из чистой папки на main (D111): сейчас это `/home/dev/workspace/stakeward-main`, а в `/home/dev/workspace/stakeward` работает сессия UI на своей ветке. Успех — `Deployed … to prod: version …`. Отказ «CI is still running…» — подождать 15 минут и повторить; «GitHub answered HTTP 403…» — повторить через час; «Would you like to continue?» — `y`; другое — прислать текст. Затем миграция prod:
    ```sh
    ( set -a; . ~/.config/stakeward/secrets.env; set +a
      exec env -i PATH="$PATH" HOME="$HOME" TERM="$TERM" CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
@@ -135,11 +136,11 @@ Claude правит найденное и пишет «готово к prod».
 
 Пара (Main key / Second key): Phantom 1 / Phantom 2. У владельца нет Ledger и других кошельков (05.10.2026), поэтому Solflare, Backpack и Ledger не проверяются; в FAQ так и пишем: проверен только Phantom. Если кошельки появятся, пары те же, что были: Phantom + Solflare, Phantom + Backpack, Solflare + Backpack, Ledger через каждый из них как Main key (ему нужен свой аккаунт: `pnpm dev-accounts <адрес Ledger> --only undelegated`).
 
-Каждую пару прогнать четыре раза:
-- [ ] blockhash, Main key first;
-- [ ] blockhash, Second key first;
-- [ ] nonce, Main key first;
-- [ ] nonce, Second key first.
+Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Phantom при подписи предупреждал: «This transaction could steal your funds in the future…» и «This domain is new…» (D110). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109).
+- [x] blockhash, Main key first: `2E3eJenmimzSkwEuw2ZpABGnd3QsX8K8vDMwoF8QY5A5D6wkv9DoEzJkudmVxJuCetQMv78jiSg2hYYZyeE26EzS`;
+- [x] blockhash, Second key first: `3WCesYLeZBFPpxsByJPxZBQMio7yyfmMMtvyWVDwcvKXJjia6wNaRpYg5JDP3H5M1w49tkRxy7RWjbRpEU4nEcYV`;
+- [x] nonce, Main key first: `5CPSxuKadDZ3QZ8msivNRrJ5caThjQQtrYYJRKRdvXt6oK2TZ98fnTRi9eFHDHQ1w23KvrDx2rXheQFqmwtPo5aG`;
+- [x] nonce, Second key first: `5kE76RfhS5QL5zDa6UYjRweYZcAaQgzxn3NSbBKHojYAhCi8Z9sa5EvpXnLdkUTAmY2ysFSk1oWuQ2rsFLqSrXbh`.
 
 Один прогон по шагам:
 1. Открыть `<адрес dev>/dev/cosign`.

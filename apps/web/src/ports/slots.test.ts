@@ -99,6 +99,22 @@ describe('slot store', () => {
     expect(createSlotStore(duplicated).getSnapshot()).toMatchObject({ main: { address: A }, second: null });
   });
 
+  it('remembers the address a role let go until the role is filled again, in memory only (D109)', () => {
+    const storage = memoryStorage();
+    const store = createSlotStore(storage);
+    expect(store.released('main')).toBeNull();
+    store.assign('main', { walletId: 'Phantom', address: A });
+    store.clear('main');
+    expect(store.released('main')).toBe(A);
+    expect(store.released('second')).toBeNull();
+    // Clearing an empty role keeps what it let go.
+    store.clear('main');
+    expect(store.released('main')).toBe(A);
+    expect(createSlotStore(storage).released('main')).toBeNull();
+    store.assign('main', { walletId: 'Phantom', address: K });
+    expect(store.released('main')).toBeNull();
+  });
+
   it('works without storage (blocked, full, private mode)', () => {
     for (const storage of [null, brokenStorage]) {
       const store = createSlotStore(storage);
