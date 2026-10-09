@@ -1,5 +1,6 @@
 import type { Address } from '@solana/kit';
 import { formatUtcDate, scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
+import { cn } from 'cn';
 import {
   CircleAlertIcon,
   CircleCheckIcon,
@@ -19,7 +20,6 @@ import { ErrorDetails } from '@/components/product/error-state';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
 import { RiskNote } from '@/components/product/risk-note';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
 import { t } from '@/i18n';
@@ -105,9 +105,10 @@ export function DoneStep({
 const NEW_TAB_REL = 'noopener noreferrer';
 
 /**
- * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures: what the
- * chain now shows protected, what is not protected yet and the one way forward for it, the second key and its risk,
- * monitoring, Telegram alerts with the date the lock ends (only the bot reminds before it), and the recovery card.
+ * The Done screen of the protect wizard (F1 step 7), presentational so /dev/ui can show it with fixtures (DECISIONS.md
+ * D109): the result as the headline with the lock end and the second key, monitoring in one line, what the chain now
+ * shows protected (each with its transaction), what is not protected yet with the one way forward for it, then the
+ * next steps: Telegram alerts (only the bot reminds before the lock ends) and the recovery card.
  */
 export function ProtectDoneView({
   headingRef,
@@ -132,6 +133,7 @@ export function ProtectDoneView({
   const others = outcomes.filter((job) => protectedAccountOf(job) === undefined);
   const total = outcomes.length;
   const done = protectedJobs.length;
+  const allDone = done > 0 && others.length === 0;
   const title =
     done === 0
       ? t('protect.done.titleNone')
@@ -145,15 +147,25 @@ export function ProtectDoneView({
   const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
   const uncertain = others.filter((job) => job.state.kind === 'unknown');
   const lockEndPassed = others.some((job) => job.state.kind === 'refused' && job.state.reason === 'lock-end-passed');
+  const lockDate = lockUntil === null ? null : formatUtcDate(lockUntil);
+  const HeadIcon = allDone ? CircleCheckIcon : TriangleAlertIcon;
 
   return (
-    <section aria-labelledby={headingId} data-slot="protect-done" className="flex flex-col gap-8">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-        {title}
-      </h2>
+    <section aria-labelledby={headingId} data-slot="protect-done" className="flex flex-col gap-6 text-pretty sm:gap-8">
+      <div data-slot="done-header" className="flex flex-col gap-2">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-3 text-2xl text-balance">
+          <HeadIcon aria-hidden="true" className={cn('mt-1 size-6 shrink-0', allDone ? 'text-success' : 'text-warning')} />
+          <span>{title}</span>
+        </h2>
+        {done === 0 || lockDate === null || secondKey === null ? null : (
+          <DoneSubtitle date={lockDate} secondKey={secondKey} />
+        )}
+        {watch.kind === 'idle' ? null : <MonitoringLine watch={watch} onRetry={actions.retryMonitoring} />}
+      </div>
 
       {protectedJobs.length === 0 ? null : (
-        <List title={t('protect.done.protectedList')}>
+        // Everything protected: the headline says so, so the list's heading is for screen readers only.
+        <List title={t('protect.done.protectedList')} hidden={others.length === 0}>
           <AccountList label={t('protect.done.protectedList')}>
             {protectedJobs.map(({ job, after }) => (
               <AccountListItem key={job.id}>
@@ -175,7 +187,7 @@ export function ProtectDoneView({
           ) : null}
           {waitsForLink ? <p className="max-w-prose text-sm">{t('components.jobs.retryAfterLink')}</p> : null}
           {retryable.length === 0 && uncertain.length === 0 && !lockEndPassed ? null : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {retryable.length === 0 ? null : (
                 <Button onClick={actions.retry} className="h-auto min-h-10 max-w-full whitespace-normal">
                   <RotateCcwIcon aria-hidden="true" />
@@ -202,39 +214,34 @@ export function ProtectDoneView({
         </List>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-        {done === 0 || secondKey === null ? null : (
-          <DoneCard title={t('protect.done.secondKey')}>
-            <AddressText address={secondKey} variant="full" />
-            <RiskNote risk="lose-second-key" date={lockUntil ?? undefined} />
-          </DoneCard>
-        )}
-        {watch.kind === 'idle' ? null : <MonitoringCard watch={watch} onRetry={actions.retryMonitoring} />}
-        {nonceClose}
-        <DoneCard title={t('protect.done.telegram.title')} description={t('protect.done.telegram.body')}>
-          {done === 0 || lockUntil === null ? null : (
-            // "Monitoring is on" reminds nobody: only the bot's reminders come before the lock ends.
-            <RiskNote risk="lock-ends" date={lockUntil}>
-              <p>{t('protect.done.telegram.noReminder', { date: formatUtcDate(lockUntil) ?? '' })}</p>
-            </RiskNote>
-          )}
-          <div>
-            <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
-              <a
-                href={telegramUrl}
-                target="_blank"
-                rel={NEW_TAB_REL}
-                aria-label={`${t('protect.done.telegram.action')} ${t('common.opensInNewTab')}`}
-              >
-                <SendIcon aria-hidden="true" />
-                {t('protect.done.telegram.action')}
-              </a>
-            </Button>
-          </div>
-        </DoneCard>
-        {firstProtected === undefined ? null : (
-          // One card for the pair of keys covers every account they lock (DECISIONS.md D74).
-          <DoneCard title={t('protect.done.recovery.title')} description={t('protect.done.recovery.body')}>
+      {firstProtected === undefined ? null : (
+        // Next steps follow a lock: with nothing protected there is no lock to be alerted about or to recover from.
+        <NextSteps>
+          <NextStep n={1} title={t('protect.done.telegram.title')} body={t('protect.done.telegram.body')}>
+            <div>
+              {/* The one filled button once everything is protected; while something can be tried again, that is. */}
+              <Button asChild variant={allDone ? 'primary' : 'outline'} className="h-auto min-h-10 max-w-full whitespace-normal">
+                <a
+                  href={telegramUrl}
+                  target="_blank"
+                  rel={NEW_TAB_REL}
+                  aria-label={`${t('protect.done.telegram.action')} ${t('common.opensInNewTab')}`}
+                >
+                  <SendIcon aria-hidden="true" />
+                  {t('protect.done.telegram.action')}
+                </a>
+              </Button>
+            </div>
+            {lockUntil === null ? null : (
+              // "Monitoring is on" reminds nobody: only the bot's reminders come before the lock ends (SECURITY-CHECK
+              // П11). The lock-ends risk in the same words as everywhere, and why the bot matters for it.
+              <RiskNote risk="lock-ends" date={lockUntil} variant="inline">
+                <p>{t('protect.done.telegram.noReminder')}</p>
+              </RiskNote>
+            )}
+          </NextStep>
+          {/* One card for the pair of keys covers every account they lock (DECISIONS.md D74). */}
+          <NextStep n={2} title={t('protect.done.recovery.title')} body={t('protect.done.recovery.body')}>
             <div>
               <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
                 <Link href={appLinks.recovery(firstProtected.job.id as Address)}>
@@ -243,16 +250,32 @@ export function ProtectDoneView({
                 </Link>
               </Button>
             </div>
-          </DoneCard>
-        )}
-      </div>
+          </NextStep>
+        </NextSteps>
+      )}
+
+      {nonceClose}
 
       <div>
-        <Button asChild>
+        {/* Text aligned with the column; below 640 px less, so the focus ring stays inside the 16 px gutter. */}
+        <Button asChild variant="ghost" className="-ml-2 sm:-ml-4">
           <Link href={`/app?${new URLSearchParams({ address: mainKey }).toString()}`}>{t('common.backToAccounts')}</Link>
         </Button>
       </div>
     </section>
+  );
+}
+
+/** "Locked until 12 April 2027 · Second key 9Dp…6fi": the second key short, with copy and explorer (UX rule 9). */
+function DoneSubtitle({ date, secondKey }: { date: string; secondKey: Address }) {
+  // The sentence lives in en.json whole; the address goes where its placeholder stands.
+  const [before = '', after = ''] = t('protect.done.subtitle', { date }).split('{address}');
+  return (
+    <p data-slot="done-subtitle" className="flex flex-wrap items-center gap-x-1 pl-9 text-sm text-muted">
+      <span>{before.trimEnd()}</span>
+      <AddressText address={secondKey} />
+      {after.trim() === '' ? null : <span>{after.trim()}</span>}
+    </p>
   );
 }
 
@@ -262,15 +285,48 @@ function protectedAccountOf(job: JobView): StakeAccount | null | undefined {
   return state.kind === 'done' || state.kind === 'already-done' ? state.after : undefined;
 }
 
-function List({ title, children }: { title: string; children: ReactNode }) {
+function List({ title, hidden = false, children }: { title: string; hidden?: boolean; children: ReactNode }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h3 id={id} className="text-lg font-semibold">
+      <h3 id={id} className={hidden ? 'sr-only' : 'text-base font-semibold'}>
         {title}
       </h3>
       {children}
     </section>
+  );
+}
+
+function NextSteps({ children }: { children: ReactNode }) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} data-slot="next-steps" className="flex flex-col gap-4">
+      <h3 id={id} className="text-base font-semibold">
+        {t('protect.done.nextSteps')}
+      </h3>
+      <ol className="flex flex-col gap-4">{children}</ol>
+    </section>
+  );
+}
+
+function NextStep({ n, title, body, children }: { n: number; title: string; body: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <li aria-labelledby={id} className="flex gap-3">
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary tabular-nums"
+      >
+        {n}
+      </span>
+      <div className="flex min-w-0 flex-col gap-2">
+        <h4 id={id} className="text-sm font-semibold">
+          {title}
+        </h4>
+        <p className="max-w-prose text-sm text-muted">{body}</p>
+        {children}
+      </div>
+    </li>
   );
 }
 
@@ -288,8 +344,8 @@ function ProtectedRow({
   const account = job.id as Address;
   const transaction =
     job.signature === null ? undefined : (
-      <span className="flex flex-wrap items-center gap-x-2 text-sm">
-        <span className="text-muted">{t('protect.done.transaction')}</span>
+      <span className="inline-flex flex-wrap items-center gap-x-1">
+        <span>{t('protect.done.transaction')}</span>
         <AddressText address={job.signature} kind="tx" />
       </span>
     );
@@ -312,6 +368,7 @@ function ProtectedRow({
       managedByService={view.managedByService}
       secondKeyKnown
       rescueHref={appLinks.rescue(after.withdrawer)}
+      hint={false}
       serviceDetail
       meta={transaction}
     />
@@ -328,32 +385,11 @@ function notProtectedItem(job: JobView): JobStatusItem {
   return item;
 }
 
-function DoneCard({ title, description, children }: { title: string; description?: string | undefined; children: ReactNode }) {
+/** Monitoring in one line: its state by word, colour and icon (UX rule 5), and a way to turn it on again. */
+function MonitoringLine({ watch, onRetry }: { watch: Exclude<WatchState, { kind: 'idle' }>; onRetry: () => void }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle asChild>
-          <h3>{title}</h3>
-        </CardTitle>
-        {description === undefined ? null : <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">{children}</CardContent>
-    </Card>
-  );
-}
-
-function MonitoringCard({ watch, onRetry }: { watch: Exclude<WatchState, { kind: 'idle' }>; onRetry: () => void }) {
-  const retry = (
-    <div>
-      <Button variant="outline" size="sm" onClick={onRetry}>
-        <RotateCcwIcon aria-hidden="true" />
-        {t('protect.done.monitoring.retry')}
-      </Button>
-    </div>
-  );
-  return (
-    <DoneCard title={t('protect.done.monitoring.title')}>
-      <div role="status" data-watch={watch.kind} className="flex flex-col gap-3 text-sm">
+    <div role="status" data-watch={watch.kind} className="flex flex-col gap-1 pl-9 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {watch.kind === 'working' ? (
           <p className="flex items-center gap-2">
             <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin text-muted" />
@@ -365,24 +401,28 @@ function MonitoringCard({ watch, onRetry }: { watch: Exclude<WatchState, { kind:
             {t('protect.done.monitoring.on')}
           </p>
         ) : watch.kind === 'partial' ? (
-          <>
-            <p className="flex items-start gap-2 font-medium">
-              <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
-              {t('protect.done.monitoring.partial')}
-            </p>
-            <ErrorDetails detail={watch.rejected.map(({ account, reason }) => `${account}: ${reason}`).join('\n')} />
-          </>
+          <p className="flex items-start gap-2 font-medium">
+            <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
+            {t('protect.done.monitoring.partial')}
+          </p>
         ) : (
-          <>
-            <p className="flex items-start gap-2 font-medium">
-              <CircleXIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />
-              {t('protect.done.monitoring.failed')}
-            </p>
-            <ErrorDetails detail={watch.detail} />
-          </>
+          <p className="flex items-start gap-2 font-medium">
+            <CircleXIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-danger" />
+            {t('protect.done.monitoring.failed')}
+          </p>
         )}
+        {watch.kind === 'partial' || watch.kind === 'failed' ? (
+          <Button variant="ghost" size="sm" onClick={onRetry}>
+            <RotateCcwIcon aria-hidden="true" />
+            {t('protect.done.monitoring.retry')}
+          </Button>
+        ) : null}
       </div>
-      {watch.kind === 'partial' || watch.kind === 'failed' ? retry : null}
-    </DoneCard>
+      {watch.kind === 'partial' ? (
+        <ErrorDetails detail={watch.rejected.map(({ account, reason }) => `${account}: ${reason}`).join('\n')} />
+      ) : watch.kind === 'failed' ? (
+        <ErrorDetails detail={watch.detail} />
+      ) : null}
+    </div>
   );
 }

@@ -83,9 +83,13 @@ describe('/dev/ui flows', () => {
     expect(screen.getAllByText(/already taken by another account/)).toHaveLength(2);
     expect(document.querySelectorAll('#link [data-slot="nonce-blocked"]')).toHaveLength(1);
 
-    const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > h2')].map((heading) => heading.textContent);
+    // The result is the Done screen's headline, in its header with the lock end and monitoring.
+    const titles = [...document.querySelectorAll('#protect-result [data-slot="protect-done"] > [data-slot="done-header"] > h2')].map(
+      (heading) => heading.textContent,
+    );
     expect(titles).toEqual(['2 stake accounts are protected', '1 of 4 stake accounts are protected', 'No stake account was protected']);
-    expect(document.querySelectorAll(`#protect-result a[href="/api/telegram/link?wallet=${SAMPLE.mainKey}"]`)).toHaveLength(3);
+    // Telegram is a next step of a lock: the two outcomes that protected something offer it, the one that did not does not.
+    expect(document.querySelectorAll(`#protect-result a[href="/api/telegram/link?wallet=${SAMPLE.mainKey}"]`)).toHaveLength(2);
 
     // The recovery card of the sample keys (spec 4.7): two accounts, one managed by another key; the first lock ends
     // within 30 days, so the card names its time; one more account of the main key is not on the card.

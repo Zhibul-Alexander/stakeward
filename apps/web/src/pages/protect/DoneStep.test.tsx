@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { WatchState } from '@/api/watch';
 import { ProtectDoneView, type ProtectDoneViewProps } from './DoneStep.tsx';
@@ -98,19 +98,57 @@ describe('ProtectDoneView: when the lock ends', () => {
 
   it('names the end date and that nobody reminds before it without Telegram alerts', () => {
     show({ outcomes: [protectedOutcome], lockUntil: T, watch: { kind: 'on' } });
+    // The headline's line says when the lock ends, with the second key that holds it.
+    expect(document.querySelector('[data-slot="done-subtitle"]')).toHaveTextContent(/^Locked until 12 April 2027 · Second key/);
     const note = document.querySelector('[data-risk="lock-ends"]');
     expect(note).not.toBeNull();
     expect(note).toHaveTextContent(
       'On 12 April 2027 the lock ends and anyone with your main key can withdraw this stake. Extend it before then.',
     );
-    expect(note).toHaveTextContent('Without Telegram alerts nobody reminds you before 12 April 2027.');
-    // It sits with the Telegram card, next to the button that turns the reminders on.
-    const card = screen.getByRole('heading', { name: 'Get alerts in Telegram' }).closest('[data-slot="card"]');
-    expect(card).toContainElement(note as HTMLElement);
+    expect(note).toHaveTextContent('Without alerts, nobody reminds you.');
+    expect(note?.querySelector('svg')?.getAttribute('class')).toContain('text-warning');
+    // It sits in the Telegram step, right under the button that turns the reminders on.
+    const step = screen.getByRole('heading', { name: 'Get alerts in Telegram' }).closest('li');
+    expect(step).toContainElement(note as HTMLElement);
+    const telegram = screen.getByRole('link', { name: 'Open Telegram bot (opens in a new tab)' });
+    expect(step).toContainElement(telegram);
+    expect(telegram.compareDocumentPosition(note as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('says nothing about an end date when nothing was protected', () => {
+  it('all protected: the headline with a check, Telegram is the one filled button, Back is quiet', () => {
+    show({ outcomes: [protectedOutcome], lockUntil: T, watch: { kind: 'on' } });
+    const heading = screen.getByRole('heading', { level: 2, name: '1 stake account is protected' });
+    expect(heading.querySelector('svg')?.getAttribute('class')).toContain('text-success');
+    const filled = [...document.querySelectorAll<HTMLElement>('[data-slot="button"]')].filter((button) =>
+      ['primary', 'danger'].includes(button.dataset['variant'] ?? ''),
+    );
+    expect(filled.map((button) => button.textContent)).toEqual(['Open Telegram bot']);
+    expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('data-variant', 'ghost');
+    const steps = within(screen.getByRole('region', { name: 'Next steps' })).getAllByRole('listitem');
+    expect(steps.map((step) => within(step).getByRole('heading').textContent)).toEqual(['Get alerts in Telegram', 'Keep a recovery card']);
+    expect(screen.getByRole('link', { name: 'Open recovery card' })).toHaveAttribute('href', `/recovery/${S1}`);
+    // The second key's risk was said before signing; Done does not repeat it.
+    expect(document.querySelector('[data-risk="lose-second-key"]')).toBeNull();
+  });
+
+  it('not all protected: Try again is the one filled button and Telegram is outline', () => {
+    const S2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6' as Address;
+    show({
+      outcomes: [protectedOutcome, { id: S2, state: { kind: 'not-sent' }, before: null, action: null, lifetime: null, signature: null, bytes: null }],
+      lockUntil: T,
+    });
+    expect(screen.getByRole('heading', { level: 2, name: '1 of 2 stake accounts are protected' })).toBeInTheDocument();
+    const filled = [...document.querySelectorAll<HTMLElement>('[data-slot="button"]')].filter((button) =>
+      ['primary', 'danger'].includes(button.dataset['variant'] ?? ''),
+    );
+    expect(filled.map((button) => button.textContent)).toEqual(['Try again for 1 stake account']);
+    expect(screen.getByRole('link', { name: 'Open Telegram bot (opens in a new tab)' })).toHaveAttribute('data-variant', 'outline');
+  });
+
+  it('says nothing about an end date when nothing was protected, and offers no next steps for a lock that is not there', () => {
     show({ lockUntil: T });
     expect(document.querySelector('[data-risk="lock-ends"]')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Next steps' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Open Telegram bot/ })).toBeNull();
   });
 });

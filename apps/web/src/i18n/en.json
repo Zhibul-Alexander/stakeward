@@ -334,7 +334,7 @@
         "nonce-setup": "Set up signing by link",
         "nonce-close": "Close the link-signing account"
       },
-      "intro": "Read from the exact transaction your wallet is about to sign. Check every line before you sign.",
+      "intro": "Read from the exact bytes you sign.",
       "stakeAccount": "Stake account",
       "changes": "What changes",
       "now": "Now",
@@ -365,10 +365,11 @@
       "signed": "Signed",
       "notSigned": "Not signed yet",
       "signer": "Wallet",
+      "ledgerNewAuthority": "A Ledger should show this as “New authority”. Not yet checked on a device.",
       "feeValue": "Up to {amount}",
       "cannotDo": "What this transaction cannot do",
       "cannot": {
-        "changeOwner": "It cannot change who can withdraw: only the lock and its second key change.",
+        "changeOwner": "It cannot change who can withdraw. Only the lock and its second key change.",
         "onlyDate": "It only changes the date the lock ends.",
         "onlyRecipient": "It can only send SOL to the address shown above.",
         "noKeyChange": "It does not change any key or the lock.",
@@ -377,9 +378,9 @@
         "stakeStays": "This transaction cannot move your SOL: it stays in the stake account.",
         "noStake": "It cannot touch your stake accounts."
       },
-      "lifetime": "How long it stays valid",
-      "blockhash": "About one minute after it was created. If it expires, start signing again.",
-      "nonce": "Until it is sent or cancelled. It uses this link-signing account:",
+      "blockhash": "Valid for about a minute. If it expires, sign again.",
+      "nonceLifetime": "Valid until it is sent or cancelled.",
+      "technical": "Technical details",
       "lighthouse": "Checks your wallet added at the end (Lighthouse): {count}. They only read accounts and cannot move funds.",
       "warn": {
         "replacesSecondKey": "This replaces the current second key:",
@@ -401,10 +402,12 @@
         "verification-unavailable": "This browser cannot check the signatures on this transaction. Open it in a current browser."
       },
       "batch": {
-        "intro": "{count} transactions, one for each stake account below. They do the same thing; only the stake account differs.",
         "accounts": "Stake accounts ({count})",
+        "kind": {
+          "protect": "Protect {count} stake accounts"
+        },
         "now": "Now: {lock}",
-        "fee": "Up to {amount} each, {total} in total"
+        "fee": "Up to {total} ({amount} each)"
       }
     },
     "steps": {
@@ -517,7 +520,11 @@
     "waitingWallet": "Waiting for {wallet}: approve or reject the request there.",
     "checkingTime": "Checking the network before asking {wallet}",
     "stopWaiting": "Stop waiting",
-    "needWallet": "Connect your {role} to continue: it must sign these transactions.",
+    "needWallet": "Connect your {role} to sign.",
+    "useWallet": "Use this wallet",
+    "connectFirst": "No wallet here holds your {role} yet. Connect it above, then press Use this wallet.",
+    "leftOutOne": "1 stake account is not in this request:",
+    "leftOutOther": "{count} stake accounts are not in this request:",
     "accountNotOffered": "{wallet} does not offer this account right now:",
     "stillNotOffered": "{wallet} still does not offer this account. Switch to it in {wallet}, then press Continue.",
     "backNothingSent": "Stop and go back. Nothing was sent.",
@@ -894,44 +901,58 @@
     }
   },
   "protect": {
-    "intro": "Lock your stake accounts with a second key you control. While the lock holds, withdrawing the SOL or changing which wallet can withdraw it needs your second key too.",
+    "intro": "Lock your stake with a second key you control. While it is locked, your main key alone cannot withdraw the SOL or give the stake away.",
     "steps": {
       "accounts": "Accounts",
       "secondKey": "Second key",
       "period": "Lock period",
-      "sign": "Review and sign",
-      "done": "Done"
+      "sign": "Review and sign"
     },
     "accounts": {
       "heading": "Choose the stake accounts to protect",
-      "connectMain": "The wallet that can withdraw your stake. It signs the lock and pays the network fee. Connecting signs nothing.",
+      "connectMain": "The wallet that holds your stake. It signs and pays the fee. Connecting signs nothing.",
       "fromLinkOne": "From your link: 1 stake account. Connect its main key to continue.",
       "fromLinkOther": "From your link: {count} stake accounts. Connect their main key to continue.",
       "loading": "Reading your stake accounts from the network",
       "loadError": "Could not load your stake accounts",
+      "groupOpen": "Not protected ({count})",
+      "groupHint": "Anyone with your Main key can withdraw these.",
+      "selectAll": "Select all ({count})",
+      "clearAll": "Clear selection",
+      "upTo": "Up to {max} at a time",
+      "groupDone": "Already protected ({count})",
+      "groupChanged": "Needs your attention ({count})",
+      "groupLocked": "Locked by another key ({count})",
+      "groupLockedUnknown": "Locked by a second key ({count})",
       "select": "Protect stake account {address}",
-      "selectedOne": "1 stake account selected",
-      "selectedOther": "{count} stake accounts selected",
-      "needMain": "Connect your main key to continue.",
+      "needMain": "Connect your main key first.",
       "needOne": "Choose at least one stake account.",
       "noneLeft": "No stake account is left to protect. Go back and choose at least one.",
       "tooMany": "Choose up to {max} stake accounts at a time. Protect these first, then come back for the rest.",
-      "alreadyProtected": "Already locked by your second key until {date}. To change the date, extend the lock.",
       "extend": "Extend the lock",
       "lockedByOther": "Already locked, so it cannot be locked again here.",
       "leftOut": "Left out: the connected main key cannot withdraw these stake accounts, so it cannot protect them.",
       "noneProtectable": "None of these stake accounts can be protected right now."
     },
+    "continue": {
+      "accountsOne": "Continue with 1 account",
+      "accountsOther": "Continue with {count} accounts",
+      "second": "Use this second key",
+      "periodOne": "Review 1 transaction",
+      "periodOther": "Review {count} transactions"
+    },
     "second": {
       "heading": "Connect your second key",
-      "body": "Use a wallet made from a different seed phrase. It signs once now to show it works. Later it is needed to withdraw this stake or to move it to a new wallet.",
-      "slotDescription": "Your second key. Connecting signs nothing.",
+      "headingLink": "Add your second key",
+      "body": "Use a wallet from a different seed phrase.",
+      "slotDescription": "Connecting signs nothing.",
+      "byLink": "Second key on another device? Sign by link",
       "linkAddress": "Second key address",
-      "linkHint": "Paste only the address of a wallet you or a person you trust created. Stakeward never gives you a second key address; whoever holds it can freeze this stake.",
-      "oneBrowser": "Both keys must be connected in this browser. A phone wallet's own browser offers only that wallet: use a desktop browser.",
-      "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app, and every account of one Ledger, usually come from one seed phrase. Continue only if you imported this account from a different seed phrase.",
-      "sameWalletSwitch": "While signing you will switch accounts in {wallet} between the two signatures. Do it within a minute: the transactions expire.",
-      "onlyStakeward": "Use your second key only to co-sign Stakeward transactions; do not connect it to other sites.",
+      "linkHint": "Paste only a wallet you or someone you trust created. Stakeward never suggests a second key address.",
+      "oneBrowser": "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.",
+      "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app or one Ledger usually share a seed phrase. Go on only if this account comes from another one.",
+      "sameWalletSwitch": "While signing, switch accounts in {wallet} within a minute, or the transactions expire.",
+      "onlyStakeward": "Use it only to co-sign on Stakeward, never on other sites.",
       "heldBeforeOne": "This second key held the lock on stake account {address} before. If it may be stolen, use a new second key from a new seed phrase.",
       "heldBeforeOther": "This second key held the lock on {count} of these stake accounts before. If it may be stolen, use a new second key from a new seed phrase.",
       "problem": {
@@ -943,7 +964,7 @@
       "leaveOut": "Leave {address} out",
       "fixProblem": "This second key cannot lock every chosen stake account. Choose another second key, or leave those stake accounts out.",
       "seedCheck": "My second key comes from a different seed phrase",
-      "seedHint": "If both keys come from one seed phrase, whoever gets that phrase has both keys and the lock stops nothing.",
+      "seedHint": "With one seed phrase, whoever steals it gets both keys and the lock stops nothing.",
       "needSecond": "Connect your second key to continue.",
       "needSeedCheck": "Confirm that your second key comes from a different seed phrase."
     },
@@ -953,13 +974,14 @@
       "options": {
         "1-month": "1 month",
         "3-months": "3 months",
-        "6-months": "6 months (recommended)",
+        "6-months": "6 months",
         "12-months": "12 months",
         "10-minutes": "10 minutes (devnet test)",
         "1-hour": "1 hour (devnet test)"
       },
-      "until": "Locked until {date}",
-      "renew": "Before it ends, your second key can extend it.",
+      "recommended": "Recommended",
+      "until": "until {date}",
+      "renew": "Your second key can extend it before then.",
       "loading": "Reading the network time",
       "loadError": "Could not read the network time",
       "needClock": "The lock end needs the network time. Wait for it, or press Try again."
@@ -971,8 +993,6 @@
     },
     "sign": {
       "heading": "Review and sign",
-      "countOne": "1 transaction for 1 stake account. Your main key and your second key each approve it.",
-      "countOther": "{count} transactions, one for each stake account. Your main key and your second key each approve all of them in one request.",
       "linkOne": "1 transaction. Your main key signs here; your second key signs it from the link.",
       "linkOther": "{count} transactions, one link each, one after another. Your main key signs here; your second key signs each link."
     },
@@ -986,10 +1006,11 @@
       "lock-end-passed": "The chosen lock end is too close or has passed. Choose the lock period again."
     },
     "done": {
-      "titleOne": "Your stake account is protected",
+      "titleOne": "1 stake account is protected",
       "titleOther": "{count} stake accounts are protected",
       "titlePartial": "{done} of {total} stake accounts are protected",
       "titleNone": "No stake account was protected",
+      "subtitle": "Locked until {date} · Second key {address}",
       "protectedList": "Protected",
       "notProtectedList": "Not protected yet",
       "retryOne": "Try again for 1 stake account",
@@ -998,9 +1019,8 @@
       "checkAgain": "Check again",
       "checkFailed": "Could not read the network. Try again in a moment.",
       "transaction": "Transaction",
-      "secondKey": "Your second key",
+      "nextSteps": "Next steps",
       "monitoring": {
-        "title": "Monitoring",
         "working": "Turning on monitoring",
         "on": "Monitoring is on: Stakeward checks these stake accounts every few minutes.",
         "partial": "Monitoring is on for some of them. Turn it on for the rest in a minute.",
@@ -1009,14 +1029,14 @@
       },
       "telegram": {
         "title": "Get alerts in Telegram",
-        "body": "The Stakeward bot messages you if anything changes, for example a deactivation you did not make. It only needs your public main key address.",
-        "action": "Open the Stakeward bot in Telegram",
-        "noReminder": "Without Telegram alerts nobody reminds you before {date}."
+        "body": "The bot alerts you when anything changes. It needs only your public address.",
+        "action": "Open Telegram bot",
+        "noReminder": "Without alerts, nobody reminds you."
       },
       "recovery": {
         "title": "Keep a recovery card",
-        "body": "One card covers every stake account of this main key that this second key locks: what to do if a key is lost or stolen, with Solana command-line steps that work without Stakeward. Print it and keep it with your second key. It holds no secrets.",
-        "open": "Open your recovery card"
+        "body": "What to do if a key is lost or stolen, with CLI steps that work without Stakeward. Print it; it holds no secrets.",
+        "open": "Open recovery card"
       }
     }
   },

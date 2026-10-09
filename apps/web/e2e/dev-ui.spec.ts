@@ -126,7 +126,7 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#layout [data-slot="action-bar"]')).toHaveCount(2);
   const blocked = page.locator('#layout').getByRole('button', { name: 'Continue with 2 accounts' });
   await expect(blocked).toHaveAttribute('aria-disabled', 'true');
-  await expect(blocked).toHaveAccessibleDescription('Connect your main key to continue.');
+  await expect(blocked).toHaveAccessibleDescription('Connect your main key first.');
 
   // The product samples (D109): the summary bar in six states and the dark preview, monitoring and Refresh in every
   // one; every sample row in one list and once more in the dark preview; the lock period and extend choices as cards.

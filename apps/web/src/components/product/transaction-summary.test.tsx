@@ -11,6 +11,7 @@ import {
   type TransactionSummary as InspectedSummary,
 } from '@stakeward/core';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { TransactionSummary, TransactionSummaryError } from './transaction-summary.tsx';
 
@@ -59,32 +60,78 @@ function signers(): string[] {
 
 const protect: TransactionAction = { kind: 'protect', stakeAccount: STAKE, mainKey: MAIN, secondKey: SECOND, lockUntil: APRIL_2027 };
 
+/** True when `a` comes before `b` in the document. */
+function before(a: Node, b: Node): boolean {
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
+
 describe('TransactionSummary', () => {
   it('protect: what changes, both keys sign, it cannot move SOL, never the seed phrase', async () => {
     render(<TransactionSummary summary={await inspected(protect, MAIN)} current={{ lockup: NO_LOCK, clock: NOW }} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
+    expect(screen.getByText('Read from the exact bytes you sign.')).toBeInTheDocument();
     expect(screen.getByText(STAKE)).toBeInTheDocument();
     expect(screen.getByText('No lock')).toBeInTheDocument();
     expect(screen.getByText('Locked until 12 April 2027')).toBeInTheDocument();
+    // What a Ledger calls the new second key, said under its row (D80: from its sources, not checked on a device).
+    expect(screen.getByText('A Ledger should show this as “New authority”. Not yet checked on a device.')).toBeInTheDocument();
     expect(signers()).toEqual([
       `Main keyNot signed yetPays the network fee${MAIN}`,
       `Second keyNot signed yet${SECOND}`,
     ]);
     expect(screen.getByText('Up to 0.0000106 SOL')).toBeInTheDocument();
     expect(screen.getByText('This transaction cannot move your SOL.')).toBeInTheDocument();
-    expect(screen.getByText('It cannot change who can withdraw: only the lock and its second key change.')).toBeInTheDocument();
+    expect(screen.getByText('It cannot change who can withdraw. Only the lock and its second key change.')).toBeInTheDocument();
     expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
-    expect(screen.getByText('About one minute after it was created. If it expires, start signing again.')).toBeInTheDocument();
+    expect(screen.getByText('Valid for about a minute. If it expires, sign again.')).toBeInTheDocument();
+    // A recent blockhash without checks added by a wallet: nothing technical to fold away.
+    expect(screen.queryByText('Technical details')).not.toBeInTheDocument();
     expect(screen.queryByText(/replaces the current second key/)).not.toBeInTheDocument();
     expect(forbiddenRoleWords()).toEqual([]);
+
+    // A receipt, top to bottom: the stake account, what changes, who signs, the fee, what it cannot do, how long it lasts.
+    const order = [
+      screen.getByText('Stake account'),
+      screen.getByText('What changes'),
+      screen.getByText('Who signs'),
+      screen.getByText('Network fee'),
+      screen.getByText('What this transaction cannot do'),
+      screen.getByText('Valid for about a minute. If it expires, sign again.'),
+    ];
+    for (let i = 1; i < order.length; i += 1) expect(before(order[i - 1] as Node, order[i] as Node)).toBe(true);
   });
 
-  it('protect over a lock held by another key warns that it replaces that key', async () => {
+  it('intro={false} leaves out the line about the bytes (/cosign says who sent it instead)', async () => {
+    render(<TransactionSummary summary={await inspected(protect, MAIN)} intro={false} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
+    expect(screen.queryByText('Read from the exact bytes you sign.')).not.toBeInTheDocument();
+  });
+
+  it('What changes: a Now of a word or two gives the After the room for a full address; a Now with an address keeps three equal columns', async () => {
+    const { unmount } = render(<TransactionSummary summary={await inspected(protect, MAIN)} current={{ lockup: NO_LOCK, clock: NOW }} />);
+    const rows = () => [...document.querySelectorAll('dl > [data-layout]')].map((row) => row.getAttribute('data-layout'));
+    // Lock: No lock -> date; Second key: None -> the full address.
+    expect(rows()).toEqual(['wide-after', 'wide-after']);
+    unmount();
+    // A second key in force is replaced: its Now is a full address too.
+    render(
+      <TransactionSummary
+        summary={await inspected(protect, MAIN)}
+        current={{ lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: OTHER }, clock: NOW }}
+      />,
+    );
+    expect(rows()).toEqual(['columns', 'columns']);
+  });
+
+  it('protect over a lock held by another key warns that it replaces that key, before anything else', async () => {
     const current = { lockup: { unixTimestamp: APRIL_2027, epoch: 0n, custodian: OTHER }, clock: NOW };
     render(<TransactionSummary summary={await inspected(protect, MAIN)} current={current} />);
-    expect(screen.getByText('This replaces the current second key:')).toBeInTheDocument();
+    const warning = screen.getByText('This replaces the current second key:');
     expect(screen.getAllByText(OTHER).length).toBeGreaterThan(0);
+    // Warnings come first, never folded: above the stake account and what changes.
+    expect(before(warning, screen.getByText('Stake account'))).toBe(true);
+    expect(warning.closest('details')).toBeNull();
   });
 
   it('protect over a lock in force that ends later warns that it shortens the lock', async () => {
@@ -172,8 +219,14 @@ describe('TransactionSummary', () => {
     expect(screen.getByText('Up to 0.0000156 SOL')).toBeInTheDocument();
     expect(screen.getByText('It cannot move your SOL out of the stake account: only its keys change.')).toBeInTheDocument();
     expect(screen.getByText('It does not change the lock.')).toBeInTheDocument();
-    expect(screen.getByText('Until it is sent or cancelled. It uses this link-signing account:')).toBeInTheDocument();
-    expect(screen.getByText(nonceAccount)).toBeInTheDocument();
+    expect(screen.getByText('Valid until it is sent or cancelled.')).toBeInTheDocument();
+    // The link-signing account is a technical detail: under "Technical details", closed until opened.
+    const technical = screen.getByText('Technical details').closest('details') as HTMLDetailsElement;
+    expect(technical).not.toHaveAttribute('open');
+    await userEvent.click(screen.getByText('Technical details'));
+    expect(technical).toHaveAttribute('open');
+    expect(within(technical).getByText('Link-signing account')).toBeVisible();
+    expect(within(technical).getByText(nonceAccount)).toBeVisible();
     expect(forbiddenRoleWords()).toEqual([]);
   });
 
@@ -214,10 +267,7 @@ describe('TransactionSummary', () => {
       />,
     );
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
-    expect(
-      screen.getByText('2 transactions, one for each stake account below. They do the same thing; only the stake account differs.'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Protect 2 stake accounts' })).toBeInTheDocument();
     expect(screen.queryByText('Stake account')).not.toBeInTheDocument();
     const items = within(screen.getByRole('list', { name: 'Stake accounts (2)' })).getAllByRole('listitem');
     expect(items).toHaveLength(2);
@@ -237,7 +287,7 @@ describe('TransactionSummary', () => {
     // "What changes" shows the After values only: each account's "now" is in its own line above.
     expect(screen.queryByText('Now')).not.toBeInTheDocument();
     expect(screen.getAllByText('After')).toHaveLength(2);
-    expect(screen.getByText('Up to 0.0000106 SOL each, 0.0000212 SOL in total')).toBeInTheDocument();
+    expect(screen.getByText('Up to 0.0000212 SOL (0.0000106 SOL each)')).toBeInTheDocument();
     expect(screen.queryByText('Up to 0.0000106 SOL')).not.toBeInTheDocument();
     expect(signers()).toEqual([
       `Main keyNot signed yetPays the network fee${MAIN}`,
@@ -245,6 +295,30 @@ describe('TransactionSummary', () => {
     ]);
     expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
     expect(forbiddenRoleWords()).toEqual([]);
+  });
+
+  it('batch: accounts with the same lock now say "Now" once, in What changes, and not on each account', async () => {
+    const first = await inspected(protect, MAIN);
+    const now = { lockup: NO_LOCK, clock: NOW };
+    render(
+      <TransactionSummary
+        summary={first}
+        batch={{
+          accounts: [
+            { address: STAKE, lamports: 3_200_000_000n, current: now },
+            { address: STAKE_2, lamports: 1_000_000_000n, current: now },
+          ],
+          totalFeeLamports: 2n * first.networkFeeLamports,
+        }}
+      />,
+    );
+    expect(screen.queryAllByText(/^Now: /)).toHaveLength(0);
+    // "Now" stands in both rows of What changes (the lock and the second key), each said once for every account.
+    expect(screen.getAllByText('Now')).toHaveLength(2);
+    expect(screen.getByText('No lock')).toBeInTheDocument();
+    expect(screen.getByText('None')).toBeInTheDocument();
+    const items = within(screen.getByRole('list', { name: 'Stake accounts (2)' })).getAllByRole('listitem');
+    expect(items.map((item) => item.textContent)).toEqual([expect.stringContaining('3.2 SOL'), expect.stringContaining('1 SOL')]);
   });
 
   it('batch: a warning from the bytes alone is said once, and a single `current` is not used', async () => {

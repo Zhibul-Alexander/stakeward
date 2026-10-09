@@ -13,7 +13,7 @@ import { NonceGate } from '@/signing/NonceGate';
 import { PageSigningPanel } from '@/signing/SigningPanel';
 import type { SignMode } from '@/signing/SignWhere';
 import { useSigningSession } from '@/signing/use-signing-session';
-import { protectPlan } from './plan.ts';
+import { protectPlan, refusalText } from './plan.ts';
 
 type SignStepProps = {
   headingRef: Ref<HTMLHeadingElement>;
@@ -31,31 +31,27 @@ type SignStepProps = {
 /**
  * Step 4 (F1 steps 4-5): one SetLockupChecked per stake account, signed by the main key and the second key. The
  * signing engine reads the chain again, shows the inspector's summary of the exact bytes, asks each wallet once for
- * the whole round, sends, and checks the result on the chain. A new run key is a new session. By link (step 7 spec
- * 10.1) the main key's link-signing account comes first; then one transaction per stake account, one after another:
- * the main key signs here and the page shows a link for the second key and waits for it.
+ * the whole round, sends, and checks the result on the chain. A new run key is a new session. The risk of losing the
+ * second key, with its date, stands right above the Sign button (UX rule 6). By link (step 7 spec 10.1) the main key's
+ * link-signing account comes first; then one transaction per stake account, one after another: the main key signs
+ * here and the page shows a link for the second key and waits for it.
  */
 export function SignStep(props: SignStepProps) {
   const { headingRef, run, mainKey, mode, signing, onBack } = props;
   const headingId = useId();
   const count = run.ids.length;
   const byLink = mode === 'link';
-  const countText = byLink
-    ? count === 1
-      ? t('protect.sign.linkOne')
-      : t('protect.sign.linkOther', { count })
-    : count === 1
-      ? t('protect.sign.countOne')
-      : t('protect.sign.countOther', { count });
+  // By link the line says how the transactions travel. Live it would only repeat the signing order's "Approves N in one
+  // request", which counts the round actually built (an account read again and left out is named there).
+  const linkText = count === 1 ? t('protect.sign.linkOne') : t('protect.sign.linkOther', { count });
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
           {t('protect.sign.heading')}
         </h2>
-        <p className="max-w-prose text-muted">{countText}</p>
+        {byLink ? <p className="max-w-prose text-pretty text-muted">{linkText}</p> : null}
       </div>
-      <RiskNote risk="lose-second-key" date={props.lockUntil} />
       {byLink ? (
         <NonceGate
           authority={mainKey}
@@ -94,8 +90,11 @@ function ProtectRun({
     createPageSession(ports, { plan: protectPlan({ mainKey, secondKey, lockUntil, link }), ids: run.ids, signing, onFinished });
   const { session, snapshot } = useSigningSession(create, `protect#${String(run.key)}`);
   const knownRoles = { main: mainKey, second: secondKey };
-  // The step names the exact account: a wallet that offers another one is told which account this step needs.
-  const renderKeySlot = (role: WalletRole, address: Address) => <KeySlot role={role} mainKey={mainKey} expected={address} />;
+  // The step names the exact account: a wallet that offers another one is told which account this step needs. While
+  // the key is missing, its Connect is the screen's one filled button.
+  const renderKeySlot = (role: WalletRole, address: Address) => (
+    <KeySlot role={role} mainKey={mainKey} expected={address} emphasis="primary" />
+  );
   return (
     <PageSigningPanel
       session={session}
@@ -105,6 +104,8 @@ function ProtectRun({
       roundSize={link === undefined ? run.ids.length : 1}
       knownRoles={knownRoles}
       renderKeySlot={renderKeySlot}
+      risk={<RiskNote risk="lose-second-key" date={lockUntil} variant="inline" />}
+      refusalText={refusalText}
       renderLinkCancel={
         link === undefined
           ? undefined
