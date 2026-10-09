@@ -382,9 +382,10 @@ function Rows({
   meta?: ((row: AccountView) => ReactNode) | undefined;
 }) {
   // Rescue for the account's own main key (its withdrawer): the address itself in the main lists, the owner in the
-  // second-key list. The row links it only under its warning that another key can stop or move the stake.
+  // second-key list. The row links it only under its warning that another key can stop or move the stake. Every list
+  // keeps room for an action and More, so the SOL of all groups stands in one column.
   return (
-    <AccountList label={label}>
+    <AccountList label={label} actionColumns>
       {rows.map((row) => {
         const { action, more } = actions(row);
         return (

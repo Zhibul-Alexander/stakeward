@@ -130,21 +130,29 @@ test('/app?address= shows every status, the red banner and the second-key list',
   const secondList = section('You are the second key for');
   await expect(secondList.getByRole('article')).toHaveCount(1);
 
-  // The SOL of one list stands in one column whether a row has an action, More, both or neither: right-aligned from
-  // 640 px, first on its own line below.
+  // The SOL of every row on the page stands in one column, in every list, whether a row has an action, More, both or
+  // neither: right-aligned from 640 px, first on its own line below. From 640 px the actions end in one column too,
+  // next to More.
   const wide = (page.viewportSize()?.width ?? 0) >= 640;
-  const amountEdges = await page.locator('[data-slot="account-list"]').evaluateAll(
-    (lists, right) =>
-      lists.map((list) =>
-        [...list.querySelectorAll('article[data-slot="account-row"] > [data-slot="sol-amount"]')].map((amount) => {
-          const box = amount.getBoundingClientRect();
-          return Math.round(right ? box.right : box.left);
-        }),
-      ),
-    wide,
-  );
+  const edgesOf = (selector: string) =>
+    page.locator('[data-slot="account-list"]').evaluateAll(
+      (lists, { selector, right }) =>
+        lists.map((list) =>
+          [...list.querySelectorAll(`article[data-slot="account-row"] ${selector}`)].map((element) => {
+            const box = element.getBoundingClientRect();
+            return Math.round(right ? box.right : box.left);
+          }),
+        ),
+      { selector, right: wide },
+    );
+  const amountEdges = await edgesOf('> [data-slot="sol-amount"]');
   expect(amountEdges.map((edges) => edges.length)).toEqual([4, 1, 1, 1]);
-  for (const edges of amountEdges) expect(new Set(edges).size, edges.join(', ')).toBe(1);
+  expect(new Set(amountEdges.flat()).size, amountEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
+  if (wide) {
+    const actionEdges = await edgesOf('[data-slot="row-action"]');
+    expect(actionEdges.map((edges) => edges.length)).toEqual([2, 0, 0, 1]);
+    expect(new Set(actionEdges.flat()).size, actionEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
+  }
 
   // The answer first: SOL and accounts under the viewer's own lock, out of all of them.
   const summary = page.getByRole('region', { name: 'Summary' });

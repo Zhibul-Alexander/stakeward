@@ -339,6 +339,31 @@ describe('AccountList', () => {
     expect(within(list).getAllByRole('article')).toHaveLength(2);
   });
 
+  // jsdom has no layout: the widths are checked on the built site (e2e/app.spec.ts, every list of /app); here, which
+  // columns a list asks for.
+  it('actionColumns keeps the action and More columns in every list, so lists on one page line up', () => {
+    render(
+      <>
+        <AccountList label="Fitted">
+          <AccountListItem>
+            <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService={false} secondKeyKnown />
+          </AccountListItem>
+        </AccountList>
+        <AccountList label="Lined up" actionColumns>
+          <AccountListItem>
+            <AccountRow account={account(SECOND)} activation="active" clock={CLOCK} protection="protected" managedByService={false} secondKeyKnown />
+          </AccountListItem>
+        </AccountList>
+      </>,
+    );
+    const fitted = screen.getByRole('list', { name: 'Fitted' });
+    const linedUp = screen.getByRole('list', { name: 'Lined up' });
+    expect(fitted).toHaveClass('sm:grid-cols-account-row');
+    expect(fitted).not.toHaveClass('sm:grid-cols-account-row-actions');
+    expect(linedUp).toHaveClass('sm:grid-cols-account-row-actions');
+    expect(linedUp).not.toHaveClass('sm:grid-cols-account-row');
+  });
+
   it('the error row: one line saying the account could not be read, its address, Try again and Details', async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();

@@ -132,8 +132,8 @@ function RowWarning({ children }: { children: ReactNode }) {
  * One stake account as a compact row (DECISIONS.md D109), usually inside an AccountList:
  * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. From
  *   640 px the row is a grid of four columns (grid-cols-account-row); in an AccountList the rows share the list's
- *   columns, so SOL stands in one column whichever rows have an action or More. Below 640 px the badge and address keep
- *   line 1 to themselves, and SOL with the action and More take the next line;
+ *   columns, so SOL stands in one column whichever rows have an action or More, and the action ends next to More.
+ *   Below 640 px the badge and address keep line 1 to themselves, and SOL with the action and More take the next line;
  * - then, muted: the lock end date (warning with a clock icon when it ends within 30 days), the staking state, for a
  *   lock of an unknown key the key that holds it (D35), then the caller's meta;
  * - always visible, one line each: the warning that another stake key works under the viewer's own lock (with Rescue,
@@ -203,10 +203,11 @@ export function AccountRow({
         className="shrink-0 text-base font-semibold sm:col-start-2 sm:ml-3 sm:justify-self-end sm:text-lg sm:leading-8"
       />
       {hasActions ? (
-        // From 640 px its parts take the grid's last two columns (display: contents), in the same order.
+        // From 640 px its parts take the grid's last two columns (display: contents), in the same order; the action
+        // stands at the end of its column, next to More.
         <div data-slot="row-actions" className="ml-auto flex shrink-0 items-center gap-2 sm:contents">
           {action === undefined ? null : (
-            <div data-slot="row-action" className="flex sm:col-start-3 sm:ml-3">
+            <div data-slot="row-action" className="flex sm:col-start-3 sm:ml-3 sm:justify-self-end">
               {action}
             </div>
           )}
@@ -293,6 +294,12 @@ type AccountListProps = {
   label: string;
   /** An <ol> where the order means something (rescue: what moves first). */
   ordered?: boolean | undefined;
+  /**
+   * Every row keeps room for an action and More from 640 px, whether any row has them or not
+   * (grid-cols-account-row-actions): the SOL of separate lists on one page then stands in one column, as on /app.
+   * Without it a column no row uses takes no room.
+   */
+  actionColumns?: boolean | undefined;
   children: ReactNode;
   className?: string | undefined;
 };
@@ -302,9 +309,10 @@ type AccountListProps = {
  * are AccountListItem. role="list" keeps the list in the accessibility tree where list-style: none drops it (Safari).
  * From 640 px the list holds the rows' four columns and every item and its AccountRow share them (subgrid): a column
  * is as wide as its widest cell in the list, so the SOL of all rows lines up even where a row has no action or More,
- * and a column no row uses takes no room. Anything else in an item spans the whole row.
+ * and a column no row uses takes no room (with `actionColumns`, the action and More columns keep their room). Anything
+ * else in an item spans the whole row.
  */
-export function AccountList({ label, ordered = false, children, className }: AccountListProps) {
+export function AccountList({ label, ordered = false, actionColumns = false, children, className }: AccountListProps) {
   const List = ordered ? 'ol' : 'ul';
   return (
     <List
@@ -313,7 +321,8 @@ export function AccountList({ label, ordered = false, children, className }: Acc
       data-slot="account-list"
       className={cn(
         'divide-y divide-border rounded-lg border border-border bg-surface',
-        'sm:grid sm:grid-cols-account-row sm:[&>li]:col-span-full sm:[&>li]:grid sm:[&>li]:grid-cols-subgrid sm:[&>li>*]:col-span-full',
+        'sm:grid sm:[&>li]:col-span-full sm:[&>li]:grid sm:[&>li]:grid-cols-subgrid sm:[&>li>*]:col-span-full',
+        actionColumns ? 'sm:grid-cols-account-row-actions' : 'sm:grid-cols-account-row',
         'sm:[&>li>[data-slot=account-row]]:grid-cols-subgrid',
         className,
       )}
