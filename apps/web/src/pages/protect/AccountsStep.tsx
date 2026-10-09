@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate, scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
+import { scannerStatus, shortAddress, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
 import { cn } from 'cn';
 import { ChevronDownIcon, LoaderCircleIcon } from 'lucide-react';
 import { useId, useState, type MouseEvent, type ReactNode, type Ref } from 'react';
@@ -42,23 +42,20 @@ type AccountsStepProps = {
  * Step 1 (F1 steps 1-2): connect the main key, then choose which of its stake accounts to lock. Accounts from a link
  * are only named until the main key is connected; then the chain decides which of them it can protect. Until it is
  * connected, its slot's Connect is the step's one filled button; then the slot shrinks to one line and the accounts
- * follow in groups (DECISIONS.md D109): the ones to choose from, the ones the viewer's own second key already locks
- * (folded, except an account whose stake key changed: a sign of theft is never folded), and locks of a key this browser
- * does not hold, open and never called protected (D14, D35, D102).
+ * follow in groups (DECISIONS.md D109): an account whose stake key changed under the viewer's own lock first (a sign of
+ * theft, never folded), the ones to choose from, the ones the viewer's own second key already locks (folded), and locks
+ * of a key this browser does not hold, open and never called protected (D14, D35, D102).
  */
 export function AccountsStep(props: AccountsStepProps) {
   const { headingRef, mainKey, mainReady, selected, selectionCount, loaded } = props;
   const headingId = useId();
   const connected = mainReady && mainKey !== null;
+  // Verb and object in every state: "Continue with 0 accounts" while nothing is chosen, with the reason under it.
   const label =
-    selectionCount === 0
-      ? t('common.continue')
-      : selectionCount === 1
-        ? t('protect.continue.accountsOne')
-        : t('protect.continue.accountsOther', { count: selectionCount });
+    selectionCount === 1 ? t('protect.continue.accountsOne') : t('protect.continue.accountsOther', { count: selectionCount });
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
+    <section aria-labelledby={headingId} className="flex flex-col gap-6 text-pretty">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
         {t('protect.accounts.heading')}
       </h2>
       {/* One slot in both layouts, so a connect in progress keeps its state when the slot shrinks to one line. */}
@@ -153,13 +150,23 @@ function Choices({
   const folded = own.filter((candidate) => !changed.includes(candidate));
   const outside = leftOut(selected, cands);
   const rescueHref = appLinks.rescue(mainKey);
+  // The row already says Protected and until when; the one thing to add is the way to change it.
   const ownMeta = (account: StakeAccount) => (
-    <span className="inline-flex flex-wrap items-center gap-x-2">
-      {t('protect.accounts.alreadyProtected', { date: formatUtcDate(account.lockup.unixTimestamp) ?? '' })}
-      <Link href={appLinks.extend(account.address)} className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover">
-        {t('protect.accounts.extend')}
-      </Link>
-    </span>
+    <Link href={appLinks.extend(account.address)} className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover">
+      {t('protect.accounts.extend')}
+    </Link>
+  );
+  // A row whose stake key changed has one way forward, its warning's Open Rescue; the others can be extended.
+  const ownRow = ({ account }: Candidate) => (
+    <AccountListItem key={account.address}>
+      <ReadOnlyRow
+        account={account}
+        clock={clock}
+        knownSecondKeys={knownSecondKeys}
+        meta={changed.some((candidate) => candidate.account.address === account.address) ? undefined : ownMeta(account)}
+        rescueHref={rescueHref}
+      />
+    </AccountListItem>
   );
 
   if (cands.length === 0) {
@@ -181,26 +188,18 @@ function Choices({
 
   return (
     <div className="flex flex-col gap-8">
+      {changed.length === 0 ? null : (
+        // A sign of theft comes first, in a group of its own: never under the calm, folded "Already protected".
+        <Section title={t('protect.accounts.groupChanged', { count: changed.length })} headingLevel={3}>
+          <AccountList label={t('protect.accounts.groupChanged', { count: changed.length })}>{changed.map(ownRow)}</AccountList>
+        </Section>
+      )}
       {open.length === 0 ? (
         <p className="text-sm font-medium">{t('protect.accounts.noneProtectable')}</p>
       ) : (
         <OpenGroup open={open} clock={clock} knownSecondKeys={knownSecondKeys} selected={selected} onSelect={onSelect} onSelectMany={onSelectMany} />
       )}
-      {own.length === 0 ? null : (
-        <AlreadyProtected
-          count={own.length}
-          changed={changed.map(({ account }) => (
-            <AccountListItem key={account.address}>
-              <ReadOnlyRow account={account} clock={clock} knownSecondKeys={knownSecondKeys} meta={ownMeta(account)} rescueHref={rescueHref} />
-            </AccountListItem>
-          ))}
-          folded={folded.map(({ account }) => (
-            <AccountListItem key={account.address}>
-              <ReadOnlyRow account={account} clock={clock} knownSecondKeys={knownSecondKeys} meta={ownMeta(account)} rescueHref={rescueHref} />
-            </AccountListItem>
-          ))}
-        />
-      )}
+      {folded.length === 0 ? null : <AlreadyProtected count={folded.length}>{folded.map(ownRow)}</AlreadyProtected>}
       {locked.length === 0 ? null : (
         <LockedByOther locked={locked} clock={clock} knownSecondKeys={knownSecondKeys} />
       )}
@@ -295,10 +294,10 @@ function OpenGroup({
 }
 
 /**
- * "Already protected (n)": accounts the viewer's own second key locks, folded (only an extend can change them). An
- * account whose stake key changed stays above the fold with its warning.
+ * "Already protected (n)": accounts the viewer's own second key locks, folded (only an extend can change them); n is
+ * what opening it shows. An account whose stake key changed is not here: it has its own group above.
  */
-function AlreadyProtected({ count, changed, folded }: { count: number; changed: ReactNode[]; folded: ReactNode[] }) {
+function AlreadyProtected({ count, children }: { count: number; children: ReactNode }) {
   const headingId = useId();
   const [open, setOpen] = useState(false);
   const title = t('protect.accounts.groupDone', { count });
@@ -306,23 +305,16 @@ function AlreadyProtected({ count, changed, folded }: { count: number; changed: 
     <section aria-labelledby={headingId} data-slot="already-protected" className="flex flex-col gap-3">
       <Collapsible open={open} onOpenChange={setOpen} className="flex flex-col gap-3">
         <h3 id={headingId} className="text-base font-semibold">
-          {folded.length === 0 ? (
-            title
-          ) : (
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="-ml-2 h-auto px-2 py-1 text-base font-semibold">
-                {title}
-                <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
-              </Button>
-            </CollapsibleTrigger>
-          )}
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="-ml-2 h-auto px-2 py-1 text-base font-semibold">
+              {title}
+              <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', open && 'rotate-180')} />
+            </Button>
+          </CollapsibleTrigger>
         </h3>
-        {changed.length === 0 ? null : <AccountList label={title}>{changed}</AccountList>}
-        {folded.length === 0 ? null : (
-          <CollapsibleContent>
-            <AccountList label={title}>{folded}</AccountList>
-          </CollapsibleContent>
-        )}
+        <CollapsibleContent>
+          <AccountList label={title}>{children}</AccountList>
+        </CollapsibleContent>
       </Collapsible>
     </section>
   );

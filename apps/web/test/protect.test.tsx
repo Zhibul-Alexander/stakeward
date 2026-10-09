@@ -118,9 +118,9 @@ async function connect(user: UserEvent, role: 'Main key' | 'Second key', walletN
 
 /**
  * The step's button. Its words say what happens: "Continue with 2 accounts", "Use this second key", "Review 2
- * transactions" ("Continue" while nothing is chosen yet).
+ * transactions" ("Continue with 0 accounts" while nothing is chosen yet).
  */
-const STEP_BUTTON = /^(?:Continue(?: with \d+ accounts?)?|Use this second key|Review \d+ transactions?)$/;
+const STEP_BUTTON = /^(?:Continue with \d+ accounts?|Use this second key|Review \d+ transactions?)$/;
 const continueButton = () => screen.getByRole('button', { name: STEP_BUTTON });
 const selectBox = (account: Address) => screen.getByRole('checkbox', { name: `Protect stake account ${shortAddress(account)}` });
 
@@ -183,7 +183,10 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
       await screen.findByRole('heading', { name: 'Connect your second key' });
       // SECURITY-CHECK П8: a second key that signs elsewhere can be phished into handing the lock away.
       expect(screen.getByText('Use it only to co-sign on Stakeward, never on other sites.')).toBeInTheDocument();
+      // The empty slot reassures that connecting signs nothing; once connected there is nothing left to reassure about.
+      expect(within(screen.getByRole('group', { name: 'Second key' })).getByText('Connecting signs nothing.')).toBeInTheDocument();
       await connect(user, 'Second key', 'Second Wallet');
+      expect(within(screen.getByRole('group', { name: 'Second key' })).queryByText('Connecting signs nothing.')).toBeNull();
       // Two wallet apps: no same-wallet warning. Accounts that never had a lock: no warning about a former second key.
       expect(screen.queryByText(/^Both keys are in /)).toBeNull();
       expect(document.querySelector('[data-slot="former-second-key"]')).toBeNull();
@@ -495,9 +498,17 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       }, WAIT);
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'Connect your second key' });
+      // UX rule 10 under the slot: a phone wallet's browser holds one wallet, so the second key signs elsewhere.
+      const oneBrowser = "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.";
+      expect(screen.getByText(oneBrowser)).toBeVisible();
       // Where the second key signs is one click away, behind the question for a key on another device.
       expect(screen.queryByRole('radiogroup', { name: 'Where does your Second key sign?' })).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Second key on another device? Sign by link' }));
+      // Open, the choice's "In this browser" card says the phone-wallet line, so it is not said twice.
+      expect(screen.queryByText(oneBrowser)).toBeNull();
+      expect(
+        within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', { name: 'In this browser' }),
+      ).toHaveAccessibleDescription(/A phone wallet's browser holds only that wallet\./);
       await user.click(
         within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', {
           name: 'On another device, by link',
@@ -509,6 +520,12 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
       expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
       const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
+      // The choice comes before the field it asks for, so the next Tab from the chosen radio reaches the field.
+      const where = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
+      expect(where.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(within(where).getByRole('radio', { name: 'On another device, by link' })).toHaveFocus();
+      await user.tab();
+      expect(field).toHaveFocus();
       // SECURITY-CHECK П14: a pasted address that signs is a second key, whoever holds it; never one someone gave you.
       expect(field).toHaveAccessibleDescription(
         'Paste only a wallet you or someone you trust created. Stakeward never suggests a second key address.',
@@ -781,7 +798,7 @@ describe('/protect step gates', () => {
       expect(screen.getByRole('group', { name: 'Main key' })).toHaveAttribute('data-layout', 'inline');
       expect(within(open).getByText('Anyone with your Main key can withdraw these.')).toBeInTheDocument();
       expect(selectBox(S1)).not.toBeChecked();
-      expect(continueButton()).toHaveAccessibleName('Continue');
+      expect(continueButton()).toHaveAccessibleName('Continue with 0 accounts');
       expect(continueButton()).toHaveAccessibleDescription('Choose at least one stake account.');
 
       // Select all, then Clear selection; the selection lives in the URL.
@@ -797,15 +814,25 @@ describe('/protect step gates', () => {
       expect(selectBox(S2)).toBeChecked();
       expect(location.history.at(-1)).toBe(`/protect?account=${S2}`);
 
-      // The viewer's own locks: folded, except the account whose stake key changed (a sign of theft stays in view).
-      const done = screen.getByRole('region', { name: 'Already protected (2)' });
-      const movedRow = row(done, moved);
+      // The account whose stake key changed under the viewer's own lock: a sign of theft, first and in a group of its own,
+      // never under the folded "Already protected".
+      const attention = screen.getByRole('region', { name: 'Needs your attention (1)' });
+      expect(attention.compareDocumentPosition(open) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      const movedRow = row(attention, moved);
       expect(movedRow).toHaveTextContent('Another key can stop or move this stake.');
       expect(within(movedRow).getByRole('link', { name: 'Open Rescue' })).toHaveAttribute('href', `/rescue?address=${A}`);
+      // Its one way forward is Rescue: no Extend the lock next to it.
+      expect(within(movedRow).queryByRole('link', { name: 'Extend the lock' })).toBeNull();
+      // The viewer's own locks: folded, and the count is what opening shows.
+      const done = screen.getByRole('region', { name: 'Already protected (1)' });
+      expect(within(done).queryByRole('article', { name: `Stake account ${shortAddress(moved)}` })).toBeNull();
       expect(within(done).queryByRole('article', { name: `Stake account ${shortAddress(own)}` })).toBeNull();
-      await user.click(within(done).getByRole('button', { name: 'Already protected (2)' }));
+      await user.click(within(done).getByRole('button', { name: 'Already protected (1)' }));
       const ownRow = row(done, own);
-      expect(ownRow).toHaveTextContent(`Locked by your second key until ${formatUtcDate(end) ?? ''}.`);
+      expect(within(done).getAllByRole('article')).toEqual([ownRow]);
+      // The row says its lock end once (its own "until"), and the way to change it.
+      expect(ownRow).toHaveTextContent(`until ${formatUtcDate(end) ?? ''}`);
+      expect(ownRow.textContent.split(formatUtcDate(end) ?? '')).toHaveLength(2);
       expect(within(ownRow).getByRole('link', { name: 'Extend the lock' })).toHaveAttribute('href', `/extend/${own}`);
       // Only own locks: the other key's lock is never in this group.
       expect(within(done).queryByRole('article', { name: `Stake account ${shortAddress(byOther)}` })).toBeNull();

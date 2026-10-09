@@ -5,7 +5,6 @@ import {
   CircleAlertIcon,
   CircleCheckIcon,
   CircleXIcon,
-  ClockIcon,
   FileTextIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
@@ -19,6 +18,7 @@ import { AccountList, AccountListItem, AccountRow } from '@/components/product/a
 import { AddressText } from '@/components/product/address-text';
 import { ErrorDetails } from '@/components/product/error-state';
 import { JobStatusList, type JobStatusItem } from '@/components/product/job-status-list';
+import { RiskNote } from '@/components/product/risk-note';
 import { Button } from '@/components/ui/button';
 import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
@@ -151,9 +151,9 @@ export function ProtectDoneView({
   const HeadIcon = allDone ? CircleCheckIcon : TriangleAlertIcon;
 
   return (
-    <section aria-labelledby={headingId} data-slot="protect-done" className="flex flex-col gap-6 sm:gap-8">
+    <section aria-labelledby={headingId} data-slot="protect-done" className="flex flex-col gap-6 text-pretty sm:gap-8">
       <div data-slot="done-header" className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-3 text-2xl">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-3 text-2xl text-balance">
           <HeadIcon aria-hidden="true" className={cn('mt-1 size-6 shrink-0', allDone ? 'text-success' : 'text-warning')} />
           <span>{title}</span>
         </h2>
@@ -214,32 +214,33 @@ export function ProtectDoneView({
         </List>
       )}
 
-      <NextSteps>
-        <NextStep n={1} title={t('protect.done.telegram.title')} body={t('protect.done.telegram.body')}>
-          <div>
-            {/* The one filled button once everything is protected; while something can be tried again, that is. */}
-            <Button asChild variant={allDone ? 'primary' : 'outline'} className="h-auto min-h-10 max-w-full whitespace-normal">
-              <a
-                href={telegramUrl}
-                target="_blank"
-                rel={NEW_TAB_REL}
-                aria-label={`${t('protect.done.telegram.action')} ${t('common.opensInNewTab')}`}
-              >
-                <SendIcon aria-hidden="true" />
-                {t('protect.done.telegram.action')}
-              </a>
-            </Button>
-          </div>
-          {done === 0 || lockDate === null ? null : (
-            // "Monitoring is on" reminds nobody: only the bot's reminders come before the lock ends (SECURITY-CHECK П11).
-            <p role="note" data-risk="lock-ends" className="flex items-start gap-2 text-sm font-medium text-foreground">
-              <ClockIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-warning" />
-              {t('protect.done.telegram.noReminder', { date: lockDate })}
-            </p>
-          )}
-        </NextStep>
-        {firstProtected === undefined ? null : (
-          // One card for the pair of keys covers every account they lock (DECISIONS.md D74).
+      {firstProtected === undefined ? null : (
+        // Next steps follow a lock: with nothing protected there is no lock to be alerted about or to recover from.
+        <NextSteps>
+          <NextStep n={1} title={t('protect.done.telegram.title')} body={t('protect.done.telegram.body')}>
+            <div>
+              {/* The one filled button once everything is protected; while something can be tried again, that is. */}
+              <Button asChild variant={allDone ? 'primary' : 'outline'} className="h-auto min-h-10 max-w-full whitespace-normal">
+                <a
+                  href={telegramUrl}
+                  target="_blank"
+                  rel={NEW_TAB_REL}
+                  aria-label={`${t('protect.done.telegram.action')} ${t('common.opensInNewTab')}`}
+                >
+                  <SendIcon aria-hidden="true" />
+                  {t('protect.done.telegram.action')}
+                </a>
+              </Button>
+            </div>
+            {lockUntil === null ? null : (
+              // "Monitoring is on" reminds nobody: only the bot's reminders come before the lock ends (SECURITY-CHECK
+              // П11). The lock-ends risk in the same words as everywhere, and why the bot matters for it.
+              <RiskNote risk="lock-ends" date={lockUntil} variant="inline">
+                <p>{t('protect.done.telegram.noReminder')}</p>
+              </RiskNote>
+            )}
+          </NextStep>
+          {/* One card for the pair of keys covers every account they lock (DECISIONS.md D74). */}
           <NextStep n={2} title={t('protect.done.recovery.title')} body={t('protect.done.recovery.body')}>
             <div>
               <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
@@ -250,13 +251,14 @@ export function ProtectDoneView({
               </Button>
             </div>
           </NextStep>
-        )}
-      </NextSteps>
+        </NextSteps>
+      )}
 
       {nonceClose}
 
       <div>
-        <Button asChild variant="ghost" className="-ml-4">
+        {/* Text aligned with the column; below 640 px less, so the focus ring stays inside the 16 px gutter. */}
+        <Button asChild variant="ghost" className="-ml-2 sm:-ml-4">
           <Link href={`/app?${new URLSearchParams({ address: mainKey }).toString()}`}>{t('common.backToAccounts')}</Link>
         </Button>
       </div>

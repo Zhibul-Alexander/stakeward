@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { t } from '@/i18n';
 import { KeySlot } from '@/pages/app/KeySlot';
+import { useSlot } from '@/ports';
 import { AddressField, addressInputError, parseAddressInput } from '@/signing/AddressField';
 import { SignWhere, type SignMode } from '@/signing/SignWhere';
 import { blockerText, ContinueButtons } from './StepButtons.tsx';
@@ -54,6 +55,9 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
   // The choice of where the key signs is one click away; it stays open in link mode (Back or a reload shows it).
   const [whereShown, setWhereShown] = useState(mode === 'link');
   const byLink = mode === 'link';
+  // "Connecting signs nothing." is for an empty slot: a connected one has nothing left to reassure about.
+  const slot = useSlot('second');
+  const secondConnected = slot !== null && slot.wallet !== null && slot.ready;
   const parsed = parseAddressInput(linkKey);
   // By link the field says what is wrong with a typed address; an empty one is said only when Continue is pressed.
   const fieldError = parsed.ok || parsed.reason === 'empty' ? null : addressInputError(parsed.reason);
@@ -61,45 +65,66 @@ export function SecondKeyStep(props: SecondKeyStepProps) {
     blocker === 'need-second' && byLink && !parsed.ok ? addressInputError(parsed.reason) : blockerText(blocker),
   );
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
+    <section aria-labelledby={headingId} className="flex flex-col gap-6 text-pretty">
       <div className="flex flex-col gap-2">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
           {byLink ? t('protect.second.headingLink') : t('protect.second.heading')}
         </h2>
         <p className="max-w-prose text-muted">{t('protect.second.body')}</p>
       </div>
+      {/*
+        The three places keep their positions in either mode, so the choice is never moved or remounted while it has
+        focus. By link the choice comes before the address field it asks for: reading and Tab go from cause to effect.
+      */}
       <div className="flex flex-col gap-2">
-        {byLink ? (
-          <AddressField
-            label={t('protect.second.linkAddress')}
-            hint={t('protect.second.linkHint')}
-            value={linkKey}
-            onChange={props.onLinkKey}
-            error={fieldError}
-          />
-        ) : (
+        {byLink ? null : (
           <>
-            <KeySlot role="second" mainKey={mainKey} emphasis="primary" description={t('protect.second.slotDescription')} />
-            {/* UX rule 10, said where it matters; the way out (signing by link) follows right under it. */}
-            <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>
+            <KeySlot
+              role="second"
+              mainKey={mainKey}
+              emphasis="primary"
+              description={secondConnected ? undefined : t('protect.second.slotDescription')}
+            />
+            {/*
+              UX rule 10, said where it matters, with the way out right under it. While the choice is open its "In this
+              browser" card says the same, so the line is not said twice.
+            */}
+            {whereShown ? null : <p className="max-w-prose text-sm text-muted">{t('protect.second.oneBrowser')}</p>}
             <Button
               variant="ghost"
               size="sm"
               aria-expanded={whereShown}
               aria-controls={whereId}
-              className="-ml-3 h-auto w-fit max-w-full justify-start py-1.5 text-left whitespace-normal"
+              className="-ml-2 h-auto w-fit max-w-full justify-start px-2 py-1.5 text-left whitespace-normal"
               onClick={() => {
                 setWhereShown((value) => !value);
               }}
             >
-              {t('protect.second.byLink')}
-              <ChevronDownIcon aria-hidden="true" className={cn('transition-transform', whereShown && 'rotate-180')} />
+              {/* One inline run, so a wrapped label keeps its chevron after the last word. */}
+              <span className="text-balance">
+                {t('protect.second.byLink')}{' '}
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className={cn('inline-block align-middle transition-transform', whereShown && 'rotate-180')}
+                />
+              </span>
             </Button>
           </>
         )}
-        <div id={whereId} hidden={!(whereShown || byLink)} className={byLink ? 'mt-4' : 'mt-1'}>
+        <div id={whereId} hidden={!(whereShown || byLink)} className="mt-1">
           <SignWhere role="second" value={mode} onChange={props.onMode} />
         </div>
+        {byLink ? (
+          <div className="mt-4">
+            <AddressField
+              label={t('protect.second.linkAddress')}
+              hint={t('protect.second.linkHint')}
+              value={linkKey}
+              onChange={props.onLinkKey}
+              error={fieldError}
+            />
+          </div>
+        ) : null}
       </div>
       {byLink || sameWallet === null ? null : (
         <Alert tone="warning" role="note">

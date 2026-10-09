@@ -50,8 +50,8 @@ export function PeriodStep({ headingRef, period, blockerInput, onPeriod, onBack,
   const lockUntil = endOf(period);
   const count = blockerInput.selection;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
+    <section aria-labelledby={headingId} className="flex flex-col gap-6 text-pretty">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
         {t('protect.period.heading')}
       </h2>
       <RadioCardGroup
@@ -103,13 +103,7 @@ export function PeriodStep({ headingRef, period, blockerInput, onPeriod, onBack,
         </div>
       )}
       <StepButtons
-        label={
-          count === 0
-            ? t('common.continue')
-            : count === 1
-              ? t('protect.continue.periodOne')
-              : t('protect.continue.periodOther', { count })
-        }
+        label={count === 1 ? t('protect.continue.periodOne') : t('protect.continue.periodOther', { count })}
         blockers={blockers('period', { ...blockerInput, clockReady: lockUntil !== null })}
         onBack={onBack}
         onContinue={() => {

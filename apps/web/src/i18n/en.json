@@ -918,6 +918,7 @@
       "clearAll": "Clear selection",
       "upTo": "Up to {max} at a time",
       "groupDone": "Already protected ({count})",
+      "groupChanged": "Needs your attention ({count})",
       "groupLocked": "Locked by another key ({count})",
       "groupLockedUnknown": "Locked by a second key ({count})",
       "select": "Protect stake account {address}",
@@ -925,7 +926,6 @@
       "needOne": "Choose at least one stake account.",
       "noneLeft": "No stake account is left to protect. Go back and choose at least one.",
       "tooMany": "Choose up to {max} stake accounts at a time. Protect these first, then come back for the rest.",
-      "alreadyProtected": "Locked by your second key until {date}.",
       "extend": "Extend the lock",
       "lockedByOther": "Already locked, so it cannot be locked again here.",
       "leftOut": "Left out: the connected main key cannot withdraw these stake accounts, so it cannot protect them.",
@@ -941,12 +941,12 @@
     "second": {
       "heading": "Connect your second key",
       "headingLink": "Add your second key",
-      "body": "Use a wallet from a different seed phrase. It co-signs now, and later only to withdraw or rescue this stake.",
+      "body": "Use a wallet from a different seed phrase.",
       "slotDescription": "Connecting signs nothing.",
       "byLink": "Second key on another device? Sign by link",
       "linkAddress": "Second key address",
       "linkHint": "Paste only a wallet you or someone you trust created. Stakeward never suggests a second key address.",
-      "oneBrowser": "A phone wallet's browser holds only that wallet.",
+      "oneBrowser": "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.",
       "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app or one Ledger usually share a seed phrase. Go on only if this account comes from another one.",
       "sameWalletSwitch": "While signing, switch accounts in {wallet} within a minute, or the transactions expire.",
       "onlyStakeward": "Use it only to co-sign on Stakeward, never on other sites.",
@@ -1028,9 +1028,9 @@
       },
       "telegram": {
         "title": "Get alerts in Telegram",
-        "body": "The bot alerts you if anything changes and reminds you before the lock ends. It needs only your public address.",
+        "body": "The bot alerts you when anything changes. It needs only your public address.",
         "action": "Open Telegram bot",
-        "noReminder": "Without alerts, nobody reminds you before {date}."
+        "noReminder": "Without alerts, nobody reminds you."
       },
       "recovery": {
         "title": "Keep a recovery card",

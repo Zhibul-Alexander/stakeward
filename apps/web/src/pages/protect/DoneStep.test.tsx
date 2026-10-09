@@ -102,7 +102,10 @@ describe('ProtectDoneView: when the lock ends', () => {
     expect(document.querySelector('[data-slot="done-subtitle"]')).toHaveTextContent(/^Locked until 12 April 2027 · Second key/);
     const note = document.querySelector('[data-risk="lock-ends"]');
     expect(note).not.toBeNull();
-    expect(note).toHaveTextContent('Without alerts, nobody reminds you before 12 April 2027.');
+    expect(note).toHaveTextContent(
+      'On 12 April 2027 the lock ends and anyone with your main key can withdraw this stake. Extend it before then.',
+    );
+    expect(note).toHaveTextContent('Without alerts, nobody reminds you.');
     expect(note?.querySelector('svg')?.getAttribute('class')).toContain('text-warning');
     // It sits in the Telegram step, right under the button that turns the reminders on.
     const step = screen.getByRole('heading', { name: 'Get alerts in Telegram' }).closest('li');
@@ -142,8 +145,10 @@ describe('ProtectDoneView: when the lock ends', () => {
     expect(screen.getByRole('link', { name: 'Open Telegram bot (opens in a new tab)' })).toHaveAttribute('data-variant', 'outline');
   });
 
-  it('says nothing about an end date when nothing was protected', () => {
+  it('says nothing about an end date when nothing was protected, and offers no next steps for a lock that is not there', () => {
     show({ lockUntil: T });
     expect(document.querySelector('[data-risk="lock-ends"]')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Next steps' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Open Telegram bot/ })).toBeNull();
   });
 });
