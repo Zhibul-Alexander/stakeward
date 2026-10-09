@@ -71,12 +71,23 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
         'href',
         `/rescue?address=${w.A.address}`,
       );
-      // Both keys in full before anything is asked (UX rule 9).
-      expect(screen.getAllByText(w.A.address).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(w.K.address).length).toBeGreaterThan(0);
+      // Both keys in full before anything is asked (UX rule 9), each with what it does here (the KeyList).
+      const keys = document.querySelector<HTMLElement>('dl[data-slot="key-list"]') as HTMLElement;
+      expect([...keys.querySelectorAll('dt')].map((term) => term.textContent)).toEqual(['Main key', 'Second key']);
+      expect(within(keys).getByText(w.A.address)).toBeInTheDocument();
+      expect(within(keys).getByText(w.K.address)).toBeInTheDocument();
+      expect(within(keys).getByText('Receives the SOL and pays the network fee')).toBeInTheDocument();
+      expect(within(keys).getByText(`Locked until ${formatUtcDate(T) ?? ''}: co-signs this withdrawal`)).toBeInTheDocument();
+      // The risk stands right above the one filled button it guards (ActionBar, DECISIONS.md D109).
+      const bar = (risk as HTMLElement).closest<HTMLElement>('[data-slot="action-bar"]') as HTMLElement;
+      expect(within(bar).getByRole('button', { name: 'Review withdrawal' })).toHaveAttribute('data-variant', 'primary');
+      // The way without the second key at hand (F3.4), and the same withdrawal with the Solana CLI.
+      expect(screen.getByText('Second key not at hand? It can remove the lock alone, then your main key withdraws alone.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Remove the lock first' })).toHaveAttribute('href', `/extend/${S}?remove`);
+      expect(screen.getByRole('link', { name: 'Solana CLI commands' })).toHaveAttribute('href', `/recovery/${S}`);
       const balanceBefore = w.testChain.balance(w.A.address);
 
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       await screen.findByRole('button', { name: 'Sign in Main Wallet as Main key' }, WAIT);
       const summaries = document.querySelectorAll<HTMLElement>('[data-slot="transaction-summary"]');
@@ -119,8 +130,12 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main, second]);
 
       await heading('First, stop staking');
-      expect(screen.getByText(/This stake is earning rewards\. Stop staking first: it stops at the end of the current epoch, in about \d+ min\./)).toBeInTheDocument();
-      await click(user, 'Review and sign');
+      expect(screen.getByText(/^Staking stops at the end of this epoch, in about \d+ min\. Then you can withdraw\.$/)).toBeInTheDocument();
+      // Only the main key signs a deactivation.
+      const keys = document.querySelector<HTMLElement>('dl[data-slot="key-list"]') as HTMLElement;
+      expect([...keys.querySelectorAll('dt')].map((term) => term.textContent)).toEqual(['Main key']);
+      expect(within(keys).getByText('Signs alone')).toBeInTheDocument();
+      await click(user, 'Review: stop staking');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await waitFor(() => {
         const found = document.querySelector<HTMLElement>('[data-slot="transaction-summary"]');
@@ -146,7 +161,7 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
       // The Done note of the deactivation is gone: the page says where the stake stands now.
       expect(screen.queryByText('Staking stops at the end of this epoch. Come back then to withdraw.')).not.toBeInTheDocument();
       expect(screen.getByRole('heading', { name: `Withdraw ${formatSol(lamports)} to your main key` })).toHaveFocus();
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await click(user, 'Sign in Main Wallet as Main key');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await click(user, 'Sign in Second Wallet as Second key');
@@ -170,11 +185,9 @@ describe('/withdraw/:account: a stake delegated in this epoch', () => {
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main, second]);
 
       await heading('First, stop staking');
-      expect(
-        screen.getByText('This stake starts earning rewards at the end of this epoch. Stop it now and you can withdraw right away. Only your main key signs.'),
-      ).toBeInTheDocument();
-      expect(screen.queryByText(/stops at the end of the current epoch/)).not.toBeInTheDocument();
-      await click(user, 'Review and sign');
+      expect(screen.getByText('This stake has not started earning yet. Stop it now and withdraw right away.')).toBeInTheDocument();
+      expect(screen.queryByText(/stops at the end of this epoch, in about/)).not.toBeInTheDocument();
+      await click(user, 'Review: stop staking');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       // The summary agrees with the page: a stake that has not started earning does not wait for the epoch's end.
       const summary = await waitFor(() => {
@@ -193,7 +206,7 @@ describe('/withdraw/:account: a stake delegated in this epoch', () => {
       // The fresh read offers the withdrawal in the same epoch, with both keys.
       const lamports = w.testChain.account(S)?.lamports ?? 0n;
       await heading(`Withdraw ${formatSol(lamports)} to your main key`);
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await click(user, 'Sign in Main Wallet as Main key');
       await connectAndContinue(user, 'Second key', 'Second Wallet');
       await click(user, 'Sign in Second Wallet as Second key');
@@ -245,7 +258,7 @@ describe('/withdraw/:account: an uncertain outcome', () => {
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [main]);
 
       await screen.findByText('No lock, so your main key signs alone.', undefined, WAIT);
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       const summary = await waitFor(() => {
         const found = document.querySelector<HTMLElement>('[data-slot="transaction-summary"]');
@@ -288,7 +301,7 @@ describe('/withdraw/:account: gates', () => {
       const wallet = await createTestWalletPort({ name: 'Two Accounts', signers: [other, w.A], exposed: [other.address] });
       const { user } = renderStakePage(w.chain, `/withdraw/${S}`, [wallet]);
 
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await screen.findByText('Connect your Main key to continue: it must sign these transactions.', undefined, WAIT);
       const slot = screen.getByRole('group', { name: 'Main key' });
       await user.click(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' }));
@@ -313,10 +326,15 @@ describe('/withdraw/:account: gates', () => {
       w.testChain.warpToEpoch(START_EPOCH + 1n);
       renderStakePage(w.chain, `/withdraw/${S}`, []);
 
-      await screen.findByText(/^Another key manages staking for this stake account\. Stop staking with that key/, undefined, WAIT);
+      await heading('Another key manages staking');
+      expect(screen.getByText(/^Stop staking with that key, or in your staking service, then come back\. Did not set this up\?/)).toBeInTheDocument();
       expect(screen.getAllByText(X.address).length).toBeGreaterThan(0);
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).not.toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Rescue your stake instead' })).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+      // One block says it, with one way out (DECISIONS.md D109): no second warning on the row, no risk without a withdrawal.
+      const rescue = screen.getByRole('link', { name: 'Rescue your stake' });
+      expect(rescue).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
+      expect(rescue).toHaveAttribute('data-variant', 'primary');
+      expect(document.querySelectorAll('[data-slot="alert"], [data-slot="row-warning"], [data-slot="risk-note"], [data-risk]')).toHaveLength(1);
     },
     SCENARIO_TIMEOUT,
   );
@@ -332,7 +350,10 @@ describe('/withdraw/:account: gates', () => {
       });
       renderStakePage(w.chain, `/withdraw/${S}`, []);
       await screen.findByText(/^Stakeward cannot withdraw this stake: its lock is held by the main key itself or by no key\./, undefined, WAIT);
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
+      // The command line's way, under Details.
+      const details = screen.getByText('Details').closest('details') as HTMLElement;
+      expect(details).toHaveTextContent('solana withdraw-stake --help names that option');
     },
     SCENARIO_TIMEOUT,
   );
@@ -359,7 +380,7 @@ describe('/withdraw/:account: gates', () => {
       const missing = (await generateKeyPairSigner()).address;
       renderStakePage(w.chain, `/withdraw/${missing}`, []);
       await heading('This stake account does not exist. If you just withdrew from it, the SOL is with its main key.');
-      expect(screen.queryByRole('button', { name: 'Review and sign' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Review/ })).not.toBeInTheDocument();
     },
     SCENARIO_TIMEOUT,
   );
@@ -379,7 +400,7 @@ describe('/withdraw/:account: gates', () => {
       );
       expect((await w.testChain.send(bytes, [w.A])).ok).toBe(true);
 
-      await click(user, 'Review and sign');
+      await click(user, 'Review withdrawal');
       await heading('Withdrawal');
       const list = screen.getByRole('list', { name: 'Withdrawal' });
       expect(within(list).getByText('This stake is still staked or stopping. Wait until it is inactive.')).toBeInTheDocument();

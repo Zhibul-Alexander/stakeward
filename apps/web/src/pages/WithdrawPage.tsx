@@ -1,16 +1,14 @@
 import type { Address } from '@solana/kit';
 import { isLockupInForce } from '@stakeward/core';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'wouter';
+import { useParams } from 'wouter';
 import { Page } from '@/components/layout/Page';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { RiskNote } from '@/components/product/risk-note';
 import { useThrottledCall } from '@/hooks/use-throttled-call';
 import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount, type LoadedAccount } from '@/pages/account/AccountView';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
-import { appLinks } from '@/pages/app/view';
 import { useChain } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
 import type { JobView, SigningState } from '@/signing/machine';
@@ -126,24 +124,13 @@ export function WithdrawPage({ signing }: WithdrawPageProps) {
   const landedDeactivate = page.kind === 'done' && page.run.what === 'deactivate' && isLanded(page.job);
   return (
     <Page width="flow">
-      <PageHeader title={t('common.pages.withdraw')} lead={t('withdraw.intro')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
+      <PageHeader title={t('common.pages.withdraw')} meta={<p>{t('common.neverSeedPhrase')}</p>} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (
-        <div className="flex flex-col gap-6">
-          <AccountView load={load} onRetry={reread} hideNotFound={page.kind === 'done'} />
-          {loaded === null ? null : (
-            <RiskNote risk="withdraw-compromised">
-              <p>
-                <Link
-                  href={appLinks.rescue(loaded.account.withdrawer)}
-                  className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
-                >
-                  {t('withdraw.rescueLink')}
-                </Link>
-              </p>
-            </RiskNote>
-          )}
+        <div className="flex flex-col gap-5">
+          {/* The service line is the service-staker stage's own block here (DECISIONS.md D109). */}
+          <AccountView load={load} onRetry={reread} hideNotFound={page.kind === 'done'} service={false} />
           {page.kind === 'sign' ? (
             <WithdrawSigning
               headingRef={headingRef}

@@ -20,6 +20,8 @@ const SUMMARY_BARS = 7;
 const SAMPLE_ROWS = 8;
 /** RadioCardGroup samples: lock period (4 cards), extend with Remove (4) and the dark preview's extend (4). */
 const RADIO_CARDS = 12;
+/** KeyList samples ([actions]): the keys of a withdrawal, and its loading state. */
+const KEY_LISTS = 1;
 
 test('/dev/ui shows every token and component without console errors, axe violations or horizontal scroll', async ({
   page,
@@ -140,6 +142,11 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#components [data-slot="radio-card"]')).toHaveCount(RADIO_CARDS);
   await expect(page.locator('#components [data-slot="radio-card"][data-tone="danger"]')).toHaveCount(2);
   await expect(page.locator('#components [data-slot="disclosure"]')).not.toHaveCount(0);
+  // The keys of an action, in full before signing: role, whole address, what the key does here.
+  const keyLists = page.locator('#components dl[data-slot="key-list"]');
+  await expect(keyLists).toHaveCount(KEY_LISTS);
+  await expect(keyLists.first().locator('dt')).toHaveText(['Main key', 'Second key']);
+  await expect(page.locator('#components [data-slot="key-list-skeleton"]')).toHaveCount(1);
 
   // A row's More opens from the keyboard and shows the actions behind it; closed, they are not in the page.
   const expiringRow = page.locator('#components article[data-slot="account-row"][data-status="expiring"]').first();

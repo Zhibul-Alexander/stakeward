@@ -2,6 +2,7 @@ import type { Address } from '@solana/kit';
 import { isLockupInForce } from '@stakeward/core';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { StepProgress } from '@/components/product/step-progress';
 import { Button } from '@/components/ui/button';
 import { t, type MessageKey } from '@/i18n';
@@ -216,13 +217,23 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
         }).map(stakeBlockerText);
 
   return (
-    <div className="flex flex-col gap-8">
-      <StepProgress steps={RESCUE_STEPS.map((step) => t(STEP_LABEL[step]))} current={RESCUE_STEPS.indexOf(state.step)} />
+    <>
+      <PageHeader
+        title={t('common.pages.rescue')}
+        lead={state.step === 'stake' ? t('rescue.intro') : undefined}
+        meta={
+          <>
+            <p>{t('rescue.desktop')}</p>
+            <p>{t('common.neverSeedPhrase')}</p>
+          </>
+        }
+        progress={<StepProgress steps={RESCUE_STEPS.map((step) => t(STEP_LABEL[step]))} current={RESCUE_STEPS.indexOf(state.step)} />}
+      />
       {state.step === 'stake' ? (
         <StakeStep
           headingRef={headingRef}
           mainKey={liveA}
-          mainKeyGiven={paramA !== null || slotA !== null}
+          mainKeyFrom={paramA !== null ? 'address' : slotA !== null ? 'slot' : null}
           typed={state.typed}
           loaded={loaded}
           groups={groups}
@@ -341,6 +352,6 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           </Button>
         </div>
       )}
-    </div>
+    </>
   );
 }

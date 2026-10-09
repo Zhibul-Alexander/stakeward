@@ -1,6 +1,6 @@
 import type { Address } from '@solana/kit';
 import { formatUtcDate } from '@stakeward/core';
-import { CircleCheckIcon } from 'lucide-react';
+import { CircleCheckIcon, FileTextIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AddressText } from '@/components/product/address-text';
@@ -16,6 +16,8 @@ import { extendRefusalText } from './plan.ts';
 type ExtendDoneProps = {
   headingRef: Ref<HTMLHeadingElement>;
   account: Address;
+  /** The stake's main key: "Back to your accounts" shows its stake. */
+  mainKey: Address;
   /** The lock end the run signed; 0 removed the lock. */
   lockUntil: bigint;
   /** The run's outcome for this stake account. */
@@ -28,10 +30,11 @@ type ExtendDoneProps = {
 };
 
 /**
- * The end of a run on /extend/:account: the lock's new end, or that the lock is gone with its risk, the way to
- * withdraw now and the way to protect it again, or what did not happen and the way forward.
+ * The end of a run on /extend/:account: the lock's new end with the way back and an updated recovery card, or that the
+ * lock is gone with its risk, the way to withdraw now and the way to protect it again, or what did not happen and the
+ * way forward.
  */
-export function ExtendDone({ headingRef, account, lockUntil, job, checking, checkFailed, onRetry, onCheckAgain, onBack }: ExtendDoneProps) {
+export function ExtendDone({ headingRef, account, mainKey, lockUntil, job, checking, checkFailed, onRetry, onCheckAgain, onBack }: ExtendDoneProps) {
   const headingId = useId();
   if (!isLanded(job)) {
     return (
@@ -56,21 +59,25 @@ export function ExtendDone({ headingRef, account, lockUntil, job, checking, chec
       </p>
     );
   return (
-    <section aria-labelledby={headingId} data-slot="extend-done" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl font-semibold">
-        <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
-        {lockUntil === 0n
-          ? t('extend.done.removed')
-          : t('extend.done.extended', { date: formatUtcDate(lockUntil) ?? lockUntil.toString() })}
-      </h2>
-      {transaction}
+    <section aria-labelledby={headingId} data-slot="extend-done" className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl">
+          <CircleCheckIcon aria-hidden="true" className="mt-1 size-6 shrink-0 text-success" />
+          {lockUntil === 0n
+            ? t('extend.done.removed')
+            : t('extend.done.extended', { date: formatUtcDate(lockUntil) ?? lockUntil.toString() })}
+        </h2>
+        {transaction}
+      </div>
       {lockUntil === 0n ? (
         <>
-          <RiskNote risk="unlock-opens-window" tone="danger" />
-          {/* The way on after a "second key may be stolen" alert: a lock under a new second key (SECURITY-CHECK П9). The
-              wizard warns again while the old second key is still the one connected. */}
-          <p className="max-w-prose text-sm">{t('extend.done.protectNewKey')}</p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-2">
+            <RiskNote risk="unlock-opens-window" tone="danger" variant="inline" />
+            {/* The way on after a "second key may be stolen" alert: a lock under a new second key (SECURITY-CHECK П9).
+                The wizard warns again while the old second key is still the one connected. */}
+            <p className="max-w-prose text-sm text-muted">{t('extend.done.protectNewKey')}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button asChild>
               <Link href={appLinks.withdraw(account)}>{t('extend.done.withdraw')}</Link>
             </Button>
@@ -79,7 +86,20 @@ export function ExtendDone({ headingRef, account, lockUntil, job, checking, chec
             </Button>
           </div>
         </>
-      ) : null}
+      ) : (
+        // Nothing urgent after a longer lock: no filled button. A card printed before names the old end date.
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Button asChild variant="outline">
+            <Link href={`/app?${new URLSearchParams({ address: mainKey }).toString()}`}>{t('common.backToAccounts')}</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href={appLinks.recovery(account)}>
+              <FileTextIcon aria-hidden="true" />
+              {t('extend.done.recovery')}
+            </Link>
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

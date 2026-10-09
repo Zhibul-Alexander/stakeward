@@ -53,14 +53,20 @@ type AccountViewProps = {
   onRetry: () => void;
   /** Say nothing about a missing account (a page whose Done screen already says the account is gone). */
   hideNotFound?: boolean | undefined;
+  /**
+   * The row's staking-service line (default true). /withdraw leaves it out: its `service-staker` stage says it, as one
+   * block with the way out. The sign of theft (another stake key under the viewer's own lock) always stays.
+   */
+  service?: boolean | undefined;
 };
 
 /**
  * The account part of /withdraw/:account and /extend/:account (step 6 spec 4.3), the same on both pages: the read's
- * states (loading, error with Try again, no account, not a stake account), then the account's row with its staking
- * state and its protection as this device knows it.
+ * states (loading, error with Try again and the way back, no account, not a stake account), then the account as one
+ * compact row under the page's title (DECISIONS.md D109): its status, staking state and SOL, with no hint, actions or
+ * More, since the page below is the action.
  */
-export function AccountView({ load, onRetry, hideNotFound = false }: AccountViewProps) {
+export function AccountView({ load, onRetry, hideNotFound = false, service = true }: AccountViewProps) {
   const knownSecondKeys = useKnownSecondKeys();
   switch (load.status) {
     case 'idle':
@@ -82,6 +88,11 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
           message={errorMessage(load.error)}
           detail={load.error.detail}
           onRetry={onRetry}
+          actions={
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/app">{t('common.backToAccounts')}</Link>
+            </Button>
+          }
         />
       );
     case 'ready': {
@@ -103,15 +114,19 @@ export function AccountView({ load, onRetry, hideNotFound = false }: AccountView
         );
       }
       const view = scannerStatus(account, knownSecondKeys, clock);
+      // Under the viewer's own lock, staker != withdrawer is a sign of theft (AccountRow says so, with Rescue): it stays
+      // on every page. Without one it is a staking service, which /withdraw says in its own stage.
+      const ownLock = view.status === 'protected' || view.status === 'expiring';
       return (
         <AccountRow
           account={account}
           activation={stakeActivationStatus(account.delegation, clock.epoch)}
           clock={clock}
           protection={view.status}
-          managedByService={view.managedByService}
+          managedByService={view.managedByService && (service || ownLock)}
           secondKeyKnown={knownSecondKeys.length > 0}
           rescueHref={appLinks.rescue(account.withdrawer)}
+          hint={false}
           serviceDetail
           className={SINGLE_ROW_FRAME}
         />

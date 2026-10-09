@@ -4,6 +4,7 @@ import { generateKeyPairSigner, type Address, type KeyPairSigner } from '@solana
 import {
   buildTransaction,
   deriveNonceAccountAddress,
+  formatSol,
   formatUtcDate,
   inspectTransaction,
   U64_MAX,
@@ -90,18 +91,27 @@ function movableOrder(): string[] {
 
 const rowLabel = (address: Address) => `Stake account ${address.slice(0, 3)}...${address.slice(-3)}`;
 
+/** The first step's answer for `locked`: how many, their SOL, and the earliest date a lock ends. */
+function safeLine(locked: readonly Address[], w: World, until: bigint): string {
+  const lamports = locked.reduce((total, id) => total + (w.testChain.account(id)?.lamports ?? 0n), 0n);
+  return en.rescue.stake.safeUntil
+    .replace('{count}', String(locked.length))
+    .replace('{amount}', formatSol(lamports))
+    .replace('{date}', formatUtcDate(until) ?? '');
+}
+
 /** Steps 1-3 with every key in this browser: the first step as read, the new wallet, then both keys sign here. */
 async function throughKeys(
   user: UserEvent,
   options: { secondMode: 'here' | 'link'; chooseSecond?: Address; choices?: readonly Address[] } = { secondMode: 'here' },
 ) {
   await heading(en.rescue.stake.heading);
-  await click(user, 'Continue');
+  await click(user, en.rescue.next.newWallet);
   await heading(en.rescue.newWallet.heading);
   await connect(user, 'New wallet', 'New Wallet');
   await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
-  await screen.findByText(/^Your new wallet has /, undefined, WAIT);
-  await click(user, 'Continue');
+  await screen.findByText(/^Balance /, undefined, WAIT);
+  await click(user, en.rescue.next.keys);
   await heading(en.rescue.keys.heading);
   if (options.choices !== undefined) {
     const chooser = screen.getByRole('radiogroup', { name: en.rescue.keys.chooseSecond });
@@ -111,12 +121,12 @@ async function throughKeys(
     await user.click(screen.getByRole('radio', { name: options.chooseSecond }));
   }
   const mainWhere = screen.getByRole('radiogroup', { name: 'Where does your Main key sign?' });
-  await user.click(within(mainWhere).getByRole('radio', { name: 'In this browser' }));
+  await user.click(within(mainWhere).getByRole('radio', { name: en.rescue.keys.here }));
   const secondWhere = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
   await user.click(
-    within(secondWhere).getByRole('radio', { name: options.secondMode === 'here' ? 'In this browser' : 'On another device, by link' }),
+    within(secondWhere).getByRole('radio', { name: options.secondMode === 'here' ? en.rescue.keys.here : en.rescue.keys.link }),
   );
-  await click(user, 'Continue');
+  await click(user, en.rescue.next.move);
   await heading(en.rescue.move.heading);
 }
 
@@ -186,6 +196,24 @@ async function expectNonceRescue(wallet: TestWalletPort, D: Address, from = 0) {
   }
 }
 
+describe('/rescue: the first step with no address (DECISIONS.md D109)', () => {
+  it('asks for the main key once: Find its stake is the one filled button, connecting is the outline alternative', async () => {
+    const w = await world();
+    renderStakePage(w.chain, '/rescue', [w.main]);
+
+    await heading(en.rescue.stake.heading);
+    expect(screen.getByRole('textbox', { name: en.rescue.stake.address })).toHaveAccessibleDescription(en.rescue.stake.addressHint);
+    expect(screen.getAllByText(en.rescue.stake.addressHint)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: en.rescue.stake.check })).toHaveAttribute('data-variant', 'primary');
+    // The visible words lead the accessible name (WCAG 2.5.3); the role says which key it connects.
+    expect(screen.getByRole('button', { name: `${en.rescue.stake.connect} as Main key` })).toHaveAttribute('data-variant', 'outline');
+    const next = screen.getByRole('button', { name: en.rescue.next.newWallet });
+    expect(next).toHaveAttribute('aria-disabled', 'true');
+    expect(next).toHaveAttribute('data-variant', 'outline');
+    expect(document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')).toHaveLength(1);
+  });
+});
+
 describe('/rescue: the first step never states a date a lock does not have', () => {
   it(
     'R0: a lock an epoch holds (no date) next to one that ends on a date: the reassurance names the real date',
@@ -205,7 +233,7 @@ describe('/rescue: the first step never states a date a lock does not have', () 
       renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [w.newWallet, w.main, w.second]);
 
       await heading(en.rescue.stake.heading);
-      await screen.findByText(en.rescue.stake.safeUntil.replace('{date}', formatUtcDate(LATER) ?? ''), undefined, WAIT);
+      await screen.findByText(safeLine([byEpoch, byDate], w, LATER), undefined, WAIT);
       await waitFor(() => {
         expect(movableOrder()).toEqual([rowLabel(byDate), rowLabel(byEpoch)]);
       }, WAIT);
@@ -236,7 +264,7 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.newWallet, w.second], { slots });
 
       await heading(en.rescue.stake.heading);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.newWallet);
       await heading(en.rescue.newWallet.heading);
       expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
       await connect(user, 'New wallet', 'Shared Wallet');
@@ -268,7 +296,7 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.second], { slots });
 
       await heading(en.rescue.stake.heading);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.newWallet);
       await heading(en.rescue.newWallet.heading);
       const slot = await screen.findByRole('group', { name: 'New wallet' }, WAIT);
       await user.click(within(slot).getByRole('button', { name: 'Connect a wallet as New wallet' }));
@@ -301,20 +329,20 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, w.second], { slots });
 
       await heading(en.rescue.stake.heading);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.newWallet);
       await heading(en.rescue.newWallet.heading);
       await connect(user, 'New wallet', 'Shared Wallet');
       await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
-      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      await screen.findByText(/^Balance /, undefined, WAIT);
       expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.keys);
       await heading(en.rescue.keys.heading);
       expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
       for (const role of ['Main key', 'Second key']) {
         const where = screen.getByRole('radiogroup', { name: `Where does your ${role} sign?` });
-        await user.click(within(where).getByRole('radio', { name: 'In this browser' }));
+        await user.click(within(where).getByRole('radio', { name: en.rescue.keys.here }));
       }
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.move);
       await heading(en.rescue.move.heading);
       await click(user, 'Create the link-signing account');
       await click(user, 'Sign in Shared Wallet as New wallet');
@@ -362,15 +390,15 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [shared, other], { slots });
 
       await heading(en.rescue.stake.heading);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.newWallet);
       await heading(en.rescue.newWallet.heading);
       await connect(user, 'New wallet', 'Shared Wallet');
       expect(slots.getSnapshot().new?.address).toBe(w.D.address);
       await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
-      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
+      await screen.findByText(/^Balance /, undefined, WAIT);
       // No second key yet: nothing to name.
       expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.keys);
       await heading(en.rescue.keys.heading);
       expect(screen.queryByText(/^Your new wallet and your /)).toBeNull();
       await connect(user, 'Second key', 'Shared Wallet');
@@ -412,7 +440,13 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
 
       // Step 1, no wallet: the reassurance first, then the run order (unlocked first), then what this run leaves.
       await heading(en.rescue.stake.heading);
-      await screen.findByText(en.rescue.stake.safeUntil.replace('{date}', formatUtcDate(T) ?? ''), undefined, WAIT);
+      await screen.findByText(safeLine([S1, S2], w, T), undefined, WAIT);
+      // The unlocked account is said as plainly, with its SOL, and moves first.
+      expect(
+        screen.getByText(
+          en.rescue.stake.notLockedOne.replace('{amount}', formatSol(w.testChain.account(S3)?.lamports ?? 0n)),
+        ),
+      ).toBeInTheDocument();
       expect(screen.getAllByText(w.A.address).length).toBeGreaterThan(0);
       await waitFor(() => {
         expect(movableOrder()).toHaveLength(3);
@@ -420,7 +454,17 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       const order = movableOrder();
       expect(order[0]).toBe(rowLabel(S3));
       expect(order.slice(1).sort()).toEqual([rowLabel(S1), rowLabel(S2)].sort());
-      expect(screen.getByText(en.rescue.stake.unlocked)).toBeInTheDocument();
+      const movable = document.querySelector<HTMLElement>('[data-slot="rescue-movable"]') as HTMLElement;
+      expect(within(within(movable).getByRole('article', { name: rowLabel(S3) })).getByText(en.rescue.stake.movesFirst)).toBeInTheDocument();
+      // The thief's staking key under the lock: said in the rescue's words on that row only.
+      expect(within(within(movable).getByRole('article', { name: rowLabel(S2) })).getByText(en.rescue.stake.stakeKeyChanged)).toBeInTheDocument();
+      expect(within(movable).getAllByText(en.rescue.stake.stakeKeyChanged)).toHaveLength(1);
+      // What this run leaves folds away while something can move; opened, it names the other key in full.
+      const notInRun = screen.getByRole('button', { name: en.rescue.stake.notInRun.replace('{count}', '1') });
+      expect(notInRun).toHaveAttribute('aria-expanded', 'false');
+      expect(document.querySelector('[data-slot="rescue-other-key"]')).toBeNull();
+      await user.click(notInRun);
+      expect(notInRun).toHaveAttribute('aria-expanded', 'true');
       const otherKey = document.querySelector<HTMLElement>('[data-slot="rescue-other-key"]');
       expect(otherKey).not.toBeNull();
       expect(within(otherKey as HTMLElement).getByRole('article', { name: rowLabel(S4) })).toBeInTheDocument();
@@ -444,6 +488,9 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await signRound(user, 3, 3);
 
       await heading('3 stake accounts are safe');
+      // The new owner in full once, under the heading; the rows do not repeat it.
+      expect(within(document.querySelector('[data-slot="rescue-new-owner"]') as HTMLElement).getByText(w.D.address)).toBeInTheDocument();
+      expect(within(screen.getByRole('list', { name: en.rescue.done.movedList })).queryByText(w.D.address)).toBeNull();
       // S1 and S2 keep their lock; S3 had none and still has none. Done says both, never that the second key locks S3.
       expect(screen.queryByText(/still holds the lock/)).not.toBeInTheDocument();
       expect(screen.getByText('Each lock stays as it was, and your second key still holds it.')).toBeInTheDocument();
@@ -501,13 +548,13 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       });
 
       // Earn rewards again: only S2 stopped staking; the new wallet delegates it back to the same validator.
-      const delegateCard = (await heading(en.rescue.done.delegate.title)).closest<HTMLElement>('[data-slot="card"]');
+      const delegateCard = (await heading(en.rescue.done.delegate.title)).closest<HTMLElement>('[data-slot="next-step"]');
       expect(delegateCard).not.toBeNull();
       const card = within(delegateCard as HTMLElement);
       expect(card.getByText(rowLabel(S2))).toBeInTheDocument();
       expect(card.queryByText(rowLabel(S1))).not.toBeInTheDocument();
       expect(card.getByText(w.vote)).toBeInTheDocument();
-      await click(user, 'Review and sign', card);
+      await click(user, en.rescue.done.delegate.action, card);
       await click(user, 'Sign in New Wallet as New wallet', card);
       await waitFor(() => {
         const delegation = w.testChain.stakeAccount(S2)?.delegation;
@@ -528,7 +575,7 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
 
       // The Done screen's ways on: the new wallet's accounts and its alerts.
       expect(screen.getByRole('link', { name: en.rescue.done.view })).toHaveAttribute('href', `/app?address=${w.D.address}`);
-      expect(screen.getByRole('link', { name: `${en.rescue.done.telegram} (opens in a new tab)` })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: `${en.rescue.done.telegramAction} (opens in a new tab)` })).toHaveAttribute(
         'href',
         `/api/telegram/link?wallet=${w.D.address}`,
       );
@@ -648,13 +695,13 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await waitFor(() => {
         expect(movableOrder()).toEqual([rowLabel(split)]);
       }, WAIT);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.newWallet);
       // The new wallet, the seed check and the modes are kept.
       await heading(en.rescue.newWallet.heading);
-      await screen.findByText(/^Your new wallet has /, undefined, WAIT);
-      await click(user, 'Continue');
+      await screen.findByText(/^Balance /, undefined, WAIT);
+      await click(user, en.rescue.next.keys);
       await heading(en.rescue.keys.heading);
-      await click(user, 'Continue');
+      await click(user, en.rescue.next.move);
       await heading(en.rescue.move.heading);
       await signAll(user, [NEW, MAIN, SECOND]);
 

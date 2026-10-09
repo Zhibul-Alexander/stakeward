@@ -13,6 +13,7 @@ import { PageSigningPanel } from '@/signing/SigningPanel';
 import type { SignMode } from '@/signing/SignWhere';
 import { useSigningSession } from '@/signing/use-signing-session';
 import { deactivatePlan, withdrawPlan } from './plan.ts';
+import { WithdrawRisk } from './StageBlock.tsx';
 
 export type WithdrawWhat = 'deactivate' | 'withdraw';
 
@@ -50,10 +51,14 @@ export function WithdrawSigning(props: WithdrawSigningProps) {
   const headingId = useId();
   const byLink = what === 'withdraw' && secondKey !== null && mode === 'link';
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-6">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-semibold">
-        {title}
-      </h2>
+    <section aria-labelledby={headingId} className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
+          {title}
+        </h2>
+        {/* F3 step 3 stays in sight while the wallets sign: the SOL goes to the main key. */}
+        <WithdrawRisk mainKey={mainKey} />
+      </div>
       {byLink ? (
         <NonceGate
           authority={mainKey}

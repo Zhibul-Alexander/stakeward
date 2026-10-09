@@ -197,7 +197,8 @@ const ROUTES: readonly SmokeRoute[] = [
     heading: text('common.pages.rescue'),
     shows: async (page) => {
       await expect(page.getByRole('heading', { level: 2, name: text('rescue.stake.heading') })).toBeVisible();
-      await expect(page.getByText(text('rescue.stake.safeUntil', { date: '10 April 2027' }))).toBeVisible();
+      // The answer first: what is locked, its SOL and until when (DECISIONS.md D109).
+      await expect(page.getByText(text('rescue.stake.safeUntil', { count: 1, amount: '1,250.5 SOL', date: '10 April 2027' }))).toBeVisible();
       await expect(page.locator('[data-slot="rescue-movable"] article[data-slot="account-row"]')).toHaveCount(1);
     },
     screen: 'rescue-start',

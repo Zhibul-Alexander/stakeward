@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Countdown, formatRemaining } from './countdown.tsx';
+import { Countdown, formatRemaining, keepTogether } from './countdown.tsx';
 
 describe('formatRemaining', () => {
   it.each([
@@ -13,6 +13,20 @@ describe('formatRemaining', () => {
     [0, false, '0 s'],
   ])('%s s (coarse: %s) -> %s', (seconds, coarse, text) => {
     expect(formatRemaining(seconds, coarse)).toBe(text);
+  });
+});
+
+describe('keepTogether', () => {
+  // "in about 1 d 23 h" inside a sentence never breaks inside the time (DECISIONS.md D109).
+  it('joins a time with no-break spaces, which read as spaces', () => {
+    const joined = keepTogether(formatRemaining(86_400 + 23 * 3_600, false));
+    expect(joined).toBe('1 d 23 h');
+    expect(joined.replace(/\s/g, ' ')).toBe('1 d 23 h');
+  });
+
+  it('the countdown itself never wraps either', () => {
+    render(<Countdown to={BigInt(Math.floor(Date.now() / 1000) + 90_000)} label="Withdraw opens in about" />);
+    expect(screen.getByRole('timer', { name: 'Withdraw opens in about' })).toHaveClass('whitespace-nowrap');
   });
 });
 
