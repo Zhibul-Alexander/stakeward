@@ -31,25 +31,23 @@ function BackToAccounts({ variant = 'outline' }: { variant?: 'outline' | 'ghost'
   );
 }
 
-/** Print (the page's one filled button), back to the main key's accounts, how to keep a file. On screen only. */
-function Actions({ mainKey }: { mainKey: Address }) {
+/**
+ * Print (the page's one filled button) and how to keep a file. On screen only. From 640 px the hint wraps under the
+ * button, so the column stays narrow and the title keeps one line beside it.
+ */
+function Actions() {
   return (
     <div data-slot="recovery-actions" className="flex w-full flex-col gap-2 print:hidden sm:w-auto sm:items-end">
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-        <Button
-          type="button"
-          onClick={() => {
-            window.print();
-          }}
-        >
-          <PrinterIcon aria-hidden="true" />
-          {t('recovery.print')}
-        </Button>
-        <Button asChild variant="ghost" className="w-fit">
-          <Link href={accountsPath(mainKey)}>{t('common.backToAccounts')}</Link>
-        </Button>
-      </div>
-      <p className="text-xs text-muted">{t('recovery.printHint')}</p>
+      <Button
+        type="button"
+        onClick={() => {
+          window.print();
+        }}
+      >
+        <PrinterIcon aria-hidden="true" />
+        {t('recovery.print')}
+      </Button>
+      <p className="text-xs text-muted sm:max-w-44 sm:text-right">{t('recovery.printHint')}</p>
     </div>
   );
 }
@@ -61,7 +59,8 @@ function Actions({ mainKey }: { mainKey: Address }) {
 function CardMeta({ card }: { card: RecoveryCard }) {
   return (
     <>
-      <p>{t('recovery.readAt', { date: formatUtcDateTime(card.readAt) ?? String(card.readAt) })}</p>
+      {/* Non-breaking spaces keep the date and its time together: "UTC." never stands alone on a line. */}
+      <p>{t('recovery.readAt', { date: (formatUtcDateTime(card.readAt) ?? String(card.readAt)).replaceAll(' ', '\u00a0') })}</p>
       {CLUSTER === 'devnet' ? (
         <p>
           <Badge tone="outline" className="mr-2 align-middle">
@@ -188,17 +187,19 @@ export function RecoveryPage() {
     };
   }, [route]);
 
-  // The header spans the page, Print on the right of the title; the card keeps its own max-w-3xl column below (its
-  // print layout, DECISIONS.md D77).
+  // The header and the card share one max-w-3xl column (the card's print layout, DECISIONS.md D77), so Print ends where
+  // the card ends. Back to the main key's accounts stands above the title and is not printed.
   return (
     <Page width="app">
-      <PageHeader
-        title={t('recovery.title')}
-        lead={t('recovery.intro')}
-        meta={card === null ? undefined : <CardMeta card={card} />}
-        action={card === null ? undefined : <Actions mainKey={card.mainKey} />}
-      />
-      <div className="flex max-w-3xl flex-col gap-6">
+      <div className="flex max-w-3xl flex-col gap-8 sm:gap-12">
+        <PageHeader
+          title={t('recovery.title')}
+          lead={t('recovery.intro')}
+          meta={card === null ? undefined : <CardMeta card={card} />}
+          back={card === null ? undefined : { href: accountsPath(card.mainKey), label: t('common.backToAccounts') }}
+          action={card === null ? undefined : <Actions />}
+          className="print:[&>a]:hidden"
+        />
         {route === null ? (
           <Alert tone="danger">
             <CircleAlertIcon aria-hidden="true" />

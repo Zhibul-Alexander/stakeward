@@ -199,15 +199,25 @@ describe('/recovery/:account on LiteSvmChain', () => {
         expect(follows(newKey, part)).toBe(true);
         expect(within(part).getByRole('link', { name: /A new key means a new seed phrase/ })).toHaveAttribute('href', `#${newKey.id}`);
       }
-      expect(caseOf('You lost the second key')).toHaveTextContent('a new second key made from a new seed phrase');
+      // Lost the second key: risk before the action (UX rule 6). Once the lock ends the main key alone withdraws, and so
+      // could a thief with it; both ways out wait for the lock's end. The command to withdraw alone lives in "You want
+      // to withdraw", which this case links to: the card shows it once.
+      const lostSecond = caseOf('You lost the second key');
+      expect(lostSecond).toHaveTextContent('a new second key from a new seed phrase');
+      expect(lostSecond).toHaveTextContent('After that, whoever holds the main key can withdraw alone: keep it safe.');
+      expect(within(lostSecond).getByText(/^Or, once the lock ends, stop staking and withdraw with the main key alone\./)).toBeInTheDocument();
+      const withdrawCase = caseOf('You want to withdraw');
+      expect(within(lostSecond).getByRole('link', { name: 'See “You want to withdraw”.' })).toHaveAttribute('href', `#${withdrawCase.id}`);
+      expect(screen.getAllByRole('group', { name: 'Withdraw with the main key alone' })).toHaveLength(1);
+      expect(withdrawCase).toContainElement(block('Withdraw with the main key alone'));
       // Each case says what to do in Stakeward before the command line.
       expect(follows(within(stolen).getByRole('link', { name: 'Rescue in Stakeward' }), block('List the stake accounts of the main key'))).toBe(true);
       expect(follows(within(caseOf('The lock is about to end')).getByRole('link', { name: 'Extend in Stakeward' }), block('Extend the lock'))).toBe(true);
       expect(follows(within(caseOf('You want to withdraw')).getByRole('link', { name: 'Withdraw in Stakeward' }), block('Stop staking'))).toBe(
         true,
       );
-      // An index of the six cases comes before them, each entry an anchor link to its case, named by the start of its
-      // title.
+      // An index of the six cases comes before them, each entry an anchor link to its case, named by its whole title:
+      // someone whose seed phrase was seen may not call the key stolen.
       const index = screen.getByRole('navigation', { name: 'The cases on this card' });
       const entries = within(index).getAllByRole('link');
       const caseHeadings = [...document.querySelectorAll('[data-slot="recovery-card"] h3')];
@@ -216,7 +226,7 @@ describe('/recovery/:account on LiteSvmChain', () => {
       entries.forEach((entry, position) => {
         const target = document.getElementById((entry.getAttribute('href') ?? '').slice(1));
         expect(target?.querySelector('h3')).toBe(caseHeadings[position]);
-        expect(caseHeadings[position]?.textContent.startsWith(entry.textContent)).toBe(true);
+        expect(entry.textContent).toBe(caseHeadings[position]?.textContent);
         expect(follows(index, target as HTMLElement)).toBe(true);
       });
       // Stopping an Activating stake makes it Inactive at once; only an Active one waits for the epoch's end (as the
@@ -241,9 +251,33 @@ describe('/recovery/:account on LiteSvmChain', () => {
         expect(meaning(key)).toHaveTextContent('the keypair file path, or "usb://ledger?key=0" with the quotes');
       }
 
-      // Risk before action: the unlock warning comes before the remove-lock command.
+      // Risk before action: the unlock warning comes before the remove-lock command. Removing the lock is an
+      // alternative, not the next numbered step after a withdraw with both keys.
       const unlockRisk = document.querySelector('[data-risk="unlock-opens-window"]') as HTMLElement;
       expect(follows(unlockRisk, block('Remove the lock'))).toBe(true);
+      expect(block('Remove the lock').closest('ol')).toBeNull();
+      expect(within(withdrawCase).getByText(/^Or, if the keys are not on one computer:/)).toBeInTheDocument();
+      // Alternatives are not numbered as a sequence: in "Your main key is stolen" Rescue and its command line form one
+      // step, followed by listing again; "The lock is about to end" has no numbered steps.
+      const moveStep = within(stolen).getByRole('link', { name: 'Rescue in Stakeward' }).closest('li') as HTMLElement;
+      expect(moveStep).toContainElement(block('List the stake accounts of the main key'));
+      expect(moveStep).toContainElement(block('Move a stake account to the new wallet'));
+      expect(moveStep.nextElementSibling).toBe(listAgain);
+      expect(caseOf('The lock is about to end').querySelector('ol')).toBeNull();
+
+      // The seed-phrase warning stands before the first command of the card (and before the index), once, with the
+      // promise that Stakeward never asks for one.
+      const noSeed = document.querySelector('[data-slot="recovery-no-seed"]') as HTMLElement;
+      expect(noSeed).toHaveTextContent('Never type a seed phrase into a command or a website. Stakeward never asks for your seed phrase.');
+      expect(follows(noSeed, document.querySelector('[data-slot="recovery-card"] [data-slot="command-block"]') as HTMLElement)).toBe(true);
+      expect(follows(noSeed, index)).toBe(true);
+      expect(textHolders('Stakeward never asks for your seed phrase.')).toHaveLength(1);
+      // A command-line option and its placeholder never break across lines: typed apart, they fail.
+      const custodian = document.querySelector('[data-cli-error="custodian"] dd') as HTMLElement;
+      expect(within(custodian).getByText('--custodian <SECOND_KEY>')).toHaveClass('whitespace-nowrap');
+      expect(within(beforeCli).getByText('--fee-payer')).toHaveClass('whitespace-nowrap');
+      // The lock ends by the cluster's clock, which runs behind: wait a few minutes past the end.
+      expect(document.querySelector('[data-cli-error="lockup"] dd')).toHaveTextContent("wait a few minutes past the lock's end (UTC)");
       // On paper, what leads into a command stays on its sheet (break-after: avoid, as the headings, D77): a command
       // torn from the sentence that says when to run it is worse than a page break before both.
       for (const group of document.querySelectorAll('[data-slot="recovery-card"] [data-slot="command-block"]')) {
@@ -259,8 +293,12 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
       await user.click(screen.getByRole('button', { name: 'Print this card' }));
       expect(print).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('href', `/app?address=${w.A.address}`);
-      // The page's one filled button is Print; Back is a ghost link next to it.
+      // Back to the main key's accounts stands above the title, as PageHeader places it, so Print is the header's one
+      // control and ends where the card ends.
+      const back = screen.getByRole('link', { name: 'Back to your accounts' });
+      expect(back).toHaveAttribute('href', `/app?address=${w.A.address}`);
+      expect(follows(back, screen.getByRole('heading', { level: 1 }))).toBe(true);
+      // The page's one filled button is Print; Back is a ghost link.
       expect([...document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')].map((b) => b.textContent)).toEqual([
         'Print this card',
       ]);

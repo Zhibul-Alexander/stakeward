@@ -44,9 +44,10 @@ test('/dev/ui shows every token and component without console errors, axe violat
   await expect(page.locator('#signing figure')).toHaveCount(14);
   await expect(page.locator('#signing [data-slot="transaction-summary"][data-kind="protect"]').first()).toBeVisible();
   await expect(page.locator('#protect-result [data-slot="protect-done"]')).toHaveCount(3);
-  // The recovery card of the sample keys: two accounts, its commands wrap at 360 (the overflow check below).
+  // The recovery card of the sample keys: two accounts, its commands wrap at 360 (the overflow check below). Each
+  // command shows once: "You lost the second key" links to the withdraw-alone command of "You want to withdraw".
   await expect(page.locator('#recovery [data-slot="recovery-account"]')).toHaveCount(2);
-  await expect(page.locator('#recovery [data-slot="command-block"]')).toHaveCount(13);
+  await expect(page.locator('#recovery [data-slot="command-block"]')).toHaveCount(12);
 
   // Signing by link: the link card's QR code is one SVG path, drawn under the production CSP (no style attribute, no
   // <style> element, no data: URI; a refused inline style would also fail the fixture's console check). The components

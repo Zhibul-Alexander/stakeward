@@ -1591,8 +1591,7 @@
       "fees": "The key after --fee-payer pays about {amount} per signature. Never let a key that may be stolen pay.",
       "oneLine": "Bash and zsh accept these as shown. In PowerShell or cmd, type each command on one line without the \\. Copy gives one line.",
       "tested": "Tested with Solana CLI {version} on a local Solana test validator, with keypair files.",
-      "untestedLedger": "Not tested with a real Ledger yet.",
-      "noSeed": "Never type a seed phrase into a command or a website."
+      "untestedLedger": "Not tested with a real Ledger yet."
     },
     "links": {
       "install": "Solana CLI install page",
@@ -1620,6 +1619,7 @@
       "title": "What to do",
       "intro": "Find your case: Stakeward first, then the commands, which work without it.",
       "beforeCli": "Read “Before you run a command” first.",
+      "noSeed": "Never type a seed phrase into a command or a website.",
       "index": "The cases on this card",
       "newKey": {
         "title": "A new key means a new seed phrase",
@@ -1629,21 +1629,21 @@
       "newKeyRef": "See “A new key means a new seed phrase”.",
       "stolen": {
         "title": "Your main key is stolen, or someone saw its seed phrase",
-        "short": "Your main key is stolen",
         "body": "Without the second key, the thief cannot withdraw until the first lock ends on {date}.",
         "time": "Finish a day before that. Short of time? First extend the lock with the second key alone.",
         "newWallet": "On a computer you trust, make the new wallet and send it about {amount}. Never send SOL to the stolen key.",
         "stakeward": "In Stakeward, use Rescue with all three keys:",
         "find": "Or, without Stakeward, list the main key's stake accounts, including any the thief split off:",
         "cli": "Run this for each. All three keys sign; the new wallet pays. It works even if the thief took over staking:",
-        "after": "When all are moved, list them again: the thief may have split off another. Repeat until the list is empty. From then on the new wallet is your main key. Open this card again and print the new one. Keep this copy too: only it lists the stolen key's accounts.",
+        "after": "When all are moved, list them again (Rescue or the first command): the thief may have split off another. Repeat until the list is empty. From then on the new wallet is your main key. Open this card again and print the new one. Keep this copy too: only it lists the stolen key's accounts.",
         "restake": "If the stake stopped earning, stake it again from the new wallet."
       },
       "lostSecond": {
         "title": "You lost the second key",
-        "body": "Your SOL is safe, but until each lock ends nobody can withdraw or move it, not even you.",
-        "reprotect": "When the lock ends, protect the stake again in Stakeward with a new second key made from a new seed phrase.",
-        "after": "Or withdraw with the main key alone. Stop staking first, as in “You want to withdraw”:"
+        "body": "Your SOL is safe, but until each lock ends nobody can withdraw or move it, not even you. After that, whoever holds the main key can withdraw alone: keep it safe.",
+        "reprotect": "When the lock ends, protect the stake again in Stakeward with a new second key from a new seed phrase.",
+        "after": "Or, once the lock ends, stop staking and withdraw with the main key alone.",
+        "afterRef": "See “You want to withdraw”."
       },
       "ending": {
         "title": "The lock is about to end",
@@ -1659,11 +1659,10 @@
         "deactivate": "Or, without Stakeward: stop staking first if the stake is Active or Activating. Activating stops at once, Active at the epoch's end, within about 2 days. The second command shows the time left:",
         "managed": "If another key manages staking (see the list), that key or its service stops it. A rescue takes staking back.",
         "withdraw": "When it is Inactive, withdraw everything to the main key. Both keys sign; the main key pays:",
-        "remove": "Keys not on one computer? Once the stake is Inactive, the second key removes the lock; the main key withdraws right after:"
+        "remove": "Or, if the keys are not on one computer: stop staking and wait until it is Inactive. Then the second key removes the lock, and the main key withdraws right after:"
       },
       "stolenSecond": {
         "title": "Your second key is stolen, or someone saw its seed phrase",
-        "short": "Your second key is stolen",
         "body": "The thief cannot take your SOL, but can freeze it by moving the lock date.",
         "newKey": "Act first: make a new second key.",
         "cli": "Hand the lock to it. Both second keys sign; the new one pays:",
@@ -1679,7 +1678,7 @@
     },
     "errors": {
       "title": "If a command fails",
-      "lockup": "Add the right second key, or wait until the lock ends (UTC).",
+      "lockup": "Add the right second key, or wait a few minutes past the lock's end (UTC).",
       "custodian": "Add --custodian <SECOND_KEY>.",
       "authority": "Wrong key: the brackets show the expected one.",
       "signature": "A key that must sign is missing. Main key cannot stop staking? See “Your main key is stolen”.",

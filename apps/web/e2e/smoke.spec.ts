@@ -126,7 +126,7 @@ async function recoveryOnA4(page: Page) {
 }
 
 /**
- * The recovery card on paper: light whatever the reader's theme, without the site's header, footer and Print button,
+ * The recovery card on paper: light whatever the reader's theme, without the site's header, footer, Print and Back,
  * with the commands, and on A4 sheets with no sheet wasted.
  */
 async function recoveryPrint(page: Page) {
@@ -136,6 +136,7 @@ async function recoveryPrint(page: Page) {
     page.getByRole('banner', { includeHidden: true }),
     page.getByRole('contentinfo', { includeHidden: true }),
     page.getByRole('button', { name: text('recovery.print'), includeHidden: true }),
+    page.getByRole('main').getByRole('link', { name: text('common.backToAccounts'), includeHidden: true }),
   ];
   for (const part of screenOnly) await expect(part).toBeVisible();
 

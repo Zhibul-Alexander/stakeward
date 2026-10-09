@@ -38,15 +38,18 @@ const INSTALL_PAGE_URL = 'https://docs.anza.xyz/cli/install';
 /** "If a command fails" explains every CLI message core lists, in its order. */
 const ERROR_KEYS = Object.keys(CLI_ERROR_MESSAGES) as CliErrorKey[];
 
-/** The six cases, in the card's order: each one's title and the shorter words the index links to it with. */
+/**
+ * The six cases, in the card's order, by title. The index names each case by its whole title: a reader whose seed
+ * phrase was seen may not think of the key as stolen, so the index keeps "or someone saw its seed phrase".
+ */
 const CASES = {
-  stolen: { title: 'recovery.cases.stolen.title', short: 'recovery.cases.stolen.short' },
-  'lost-second': { title: 'recovery.cases.lostSecond.title', short: 'recovery.cases.lostSecond.title' },
-  ending: { title: 'recovery.cases.ending.title', short: 'recovery.cases.ending.title' },
-  withdraw: { title: 'recovery.cases.withdraw.title', short: 'recovery.cases.withdraw.title' },
-  'stolen-second': { title: 'recovery.cases.stolenSecond.title', short: 'recovery.cases.stolenSecond.short' },
-  down: { title: 'recovery.cases.down.title', short: 'recovery.cases.down.title' },
-} as const satisfies Record<string, { title: MessageKey; short: MessageKey }>;
+  stolen: 'recovery.cases.stolen.title',
+  'lost-second': 'recovery.cases.lostSecond.title',
+  ending: 'recovery.cases.ending.title',
+  withdraw: 'recovery.cases.withdraw.title',
+  'stolen-second': 'recovery.cases.stolenSecond.title',
+  down: 'recovery.cases.down.title',
+} as const satisfies Record<string, MessageKey>;
 
 type CaseId = keyof typeof CASES;
 
@@ -98,12 +101,15 @@ function CardSection({ id, title, children }: { id: string; title: string; child
   );
 }
 
-/** One case of "What to do": its situation, then numbered steps, Stakeward first and the command line second. */
+/**
+ * One case of "What to do": its situation, then Stakeward first and the command line second. Only steps done one after
+ * another are numbered; an alternative ("Or, …") is never numbered as the next step.
+ */
 function Case({ id, children }: { id: CaseId; children: ReactNode }) {
   return (
     <section id={caseAnchor(id)} aria-labelledby={`${caseAnchor(id)}-title`} className="flex flex-col gap-3 border-t border-border pt-5">
       <h3 id={`${caseAnchor(id)}-title`} className="text-base font-semibold print:break-after-avoid">
-        {t(CASES[id].title)}
+        {t(CASES[id])}
       </h3>
       {children}
     </section>
@@ -129,6 +135,26 @@ const STEP_BLEED = '-ml-6 sm:ml-0';
  * reader takes them. From 640 px, and on paper, where they may be typed, they keep the block's own size.
  */
 const PHONE_COMMAND = '[&_pre]:text-xs sm:[&_pre]:text-sm';
+
+/**
+ * A command-line option and the placeholder after it, as in "--custodian <SECOND_KEY>". A line may otherwise break after
+ * "--" or inside the option, and a reader who types the halves apart gets an error.
+ */
+const OPTION = /(--[a-z][a-z-]*(?: <[A-Z_]+>)?)/;
+
+/** Text that may name a command-line option: each option stays on one line. */
+function WithOptions({ text }: { text: string }) {
+  return text.split(OPTION).map((part, index) =>
+    index % 2 === 1 ? (
+      // Keyed by position: the parts of one fixed string, never reordered.
+      <span key={index} className="whitespace-nowrap">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
 
 /**
  * A numbered list of steps; the numbers come from the list, not from en.json. A step that holds several blocks spaces
@@ -253,11 +279,15 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         <p>
           {t('recovery.cases.intro')} <CardLink href={`#${BEFORE_CLI_ANCHOR}`}>{t('recovery.cases.beforeCli')}</CardLink>
         </p>
+        {/* Before the first command, where a phisher would ask for it; the card says it once. */}
+        <p data-slot="recovery-no-seed" className="font-medium">
+          {t('recovery.cases.noSeed')} {t('common.neverSeedPhrase')}
+        </p>
         <nav aria-label={t('recovery.cases.index')} data-slot="recovery-index">
           <ul role="list" className="flex list-disc flex-col gap-1 pl-6 marker:text-muted">
             {CASE_IDS.map((id) => (
               <li key={id}>
-                <CardLink href={`#${caseAnchor(id)}`}>{t(CASES[id].short)}</CardLink>
+                <CardLink href={`#${caseAnchor(id)}`}>{t(CASES[id])}</CardLink>
               </li>
             ))}
           </ul>
@@ -280,11 +310,16 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
               <p>{t('recovery.cases.stolen.newWallet', { amount: formatSol(SUGGESTED_RESCUE_LAMPORTS) })}</p>
               {newKeyRef}
             </li>
-            <li>
-              {t('recovery.cases.stolen.stakeward')} <PrintedLink href={appLinks.rescue(card.mainKey)} label={t('recovery.links.rescue')} />
+            {/* One step, two ways: Stakeward, or the command line without it. */}
+            <li className="space-y-2">
+              <p>
+                {t('recovery.cases.stolen.stakeward')} <PrintedLink href={appLinks.rescue(card.mainKey)} label={t('recovery.links.rescue')} />
+              </p>
+              <Lead>{t('recovery.cases.stolen.find')}</Lead>
+              {command('find')}
+              <Lead>{t('recovery.cases.stolen.cli')}</Lead>
+              {command('rescue')}
             </li>
-            <CommandStep lead={t('recovery.cases.stolen.find')}>{command('find')}</CommandStep>
-            <CommandStep lead={t('recovery.cases.stolen.cli')}>{command('rescue')}</CommandStep>
             <li>{t('recovery.cases.stolen.after')}</li>
           </Steps>
           <p>{t('recovery.cases.stolen.restake')}</p>
@@ -292,34 +327,32 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
 
         <Case id="lost-second">
           <p>{t('recovery.cases.lostSecond.body')}</p>
-          <Steps>
-            <li>{t('recovery.cases.lostSecond.reprotect')}</li>
-            <CommandStep lead={t('recovery.cases.lostSecond.after')}>{command('withdraw-alone')}</CommandStep>
-          </Steps>
+          <p>{t('recovery.cases.lostSecond.reprotect')}</p>
+          <p>
+            {t('recovery.cases.lostSecond.after')}{' '}
+            <CardLink href={`#${caseAnchor('withdraw')}`}>{t('recovery.cases.lostSecond.afterRef')}</CardLink>
+          </p>
         </Case>
 
         <Case id="ending">
           <p>{t('recovery.cases.ending.body', { date: dateTime(card.earliestEnd) })}</p>
-          <Steps>
-            <li>
-              {t('recovery.cases.ending.stakeward')} <PrintedLink href={appLinks.extend(card.route)} label={t('recovery.links.extend')} />
-            </li>
-            <li className="space-y-2">
-              <Lead>{t('recovery.cases.ending.cli')}</Lead>
-              {command('extend')}
-              <p>{t('recovery.cases.ending.date', { example })}</p>
-              <p>{t('recovery.cases.ending.mainPays')}</p>
-            </li>
-          </Steps>
+          <p>
+            {t('recovery.cases.ending.stakeward')} <PrintedLink href={appLinks.extend(card.route)} label={t('recovery.links.extend')} />
+          </p>
+          <Lead>{t('recovery.cases.ending.cli')}</Lead>
+          {command('extend', false)}
+          <p>{t('recovery.cases.ending.date', { example })}</p>
+          <p>
+            <WithOptions text={t('recovery.cases.ending.mainPays')} />
+          </p>
         </Case>
 
         <Case id="withdraw">
           <RiskNote risk="withdraw-compromised" tone="danger" variant="inline" className="print:break-inside-avoid" />
+          <p>
+            {t('recovery.cases.withdraw.stakeward')} <PrintedLink href={appLinks.withdraw(card.route)} label={t('recovery.links.withdraw')} />
+          </p>
           <Steps>
-            <li>
-              {t('recovery.cases.withdraw.stakeward')}{' '}
-              <PrintedLink href={appLinks.withdraw(card.route)} label={t('recovery.links.withdraw')} />
-            </li>
             <li className="space-y-2">
               <Lead>{t('recovery.cases.withdraw.deactivate')}</Lead>
               {command('deactivate')}
@@ -327,13 +360,12 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
             </li>
             {managed ? <li>{t('recovery.cases.withdraw.managed')}</li> : null}
             <CommandStep lead={t('recovery.cases.withdraw.withdraw')}>{command('withdraw')}</CommandStep>
-            <li className="space-y-2">
-              <Lead>{t('recovery.cases.withdraw.remove')}</Lead>
-              <RiskNote risk="unlock-opens-window" variant="inline" className="print:break-inside-avoid print:break-after-avoid" />
-              {command('remove-lock')}
-              {command('withdraw-alone')}
-            </li>
           </Steps>
+          {/* An alternative, not a next step: it opens a window for a thief, so its risk comes before its commands. */}
+          <Lead>{t('recovery.cases.withdraw.remove')}</Lead>
+          <RiskNote risk="unlock-opens-window" variant="inline" className="print:break-inside-avoid print:break-after-avoid" />
+          {command('remove-lock', false)}
+          {command('withdraw-alone', false)}
         </Case>
 
         <Case id="stolen-second">
@@ -381,27 +413,31 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
               <Placeholder names={KEY_PLACEHOLDERS}>{t('recovery.cli.keyPath')}</Placeholder>
             </dl>
           </li>
-          <li>{t('recovery.cli.fees', { amount: formatSol(LAMPORTS_PER_SIGNATURE) })}</li>
+          <li>
+            <WithOptions text={t('recovery.cli.fees', { amount: formatSol(LAMPORTS_PER_SIGNATURE) })} />
+          </li>
         </ol>
         <p className="text-sm">{t('recovery.cli.oneLine')}</p>
         <div className="flex flex-col gap-1 text-sm text-muted">
           <p>{t('recovery.cli.tested', { version: RECOVERY_CLI_VERSION })}</p>
           <p>{t('recovery.cli.untestedLedger')}</p>
         </div>
-        <p className="font-medium">
-          {t('recovery.cli.noSeed')} {t('common.neverSeedPhrase')}
-        </p>
       </CardSection>
 
       <CardSection id="recovery-errors" title={t('recovery.errors.title')}>
         <dl className={PANEL}>
           {ERROR_KEYS.map((key) => (
             <div key={key} data-cli-error={key} className="px-4 py-2 print:break-inside-avoid">
-              {/* Message and meaning run on in one paragraph: the monospace says where the message ends. */}
+              {/*
+               * Message and meaning run on in one paragraph. The message has its own background (on each of its lines), so
+               * where it ends shows even when the meaning starts on the same line.
+               */}
               <dt className="mr-2 inline">
-                <code className="font-mono wrap-anywhere">{CLI_ERROR_MESSAGES[key]}</code>
+                <code className="rounded-sm bg-subtle box-decoration-clone px-1 font-mono wrap-anywhere">{CLI_ERROR_MESSAGES[key]}</code>
               </dt>
-              <dd className="inline text-muted">{t(`recovery.errors.${key}`, key === 'date' ? { example } : undefined)}</dd>
+              <dd className="inline text-muted">
+                <WithOptions text={t(`recovery.errors.${key}`, key === 'date' ? { example } : undefined)} />
+              </dd>
             </div>
           ))}
         </dl>
@@ -422,7 +458,6 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         <p>
           {t('recovery.printed.again')} <span className="font-mono break-all">{absoluteUrl(`/recovery/${card.route}`)}</span>
         </p>
-        <p className="font-medium">{t('common.neverSeedPhrase')}</p>
         <p className="hidden print:block">{t('footer.license')}</p>
       </div>
     </div>
