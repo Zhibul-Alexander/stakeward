@@ -93,6 +93,14 @@ describe('/withdraw/:account: withdraw a protected stake (F3)', () => {
       await click(user, 'Review withdrawal');
       await connectAndContinue(user, 'Main key', 'Main Wallet');
       await screen.findByRole('button', { name: 'Sign in Main Wallet as Main key' }, WAIT);
+      // While signing, F3 step 3 is said once, right above the Sign button it guards (SigningPanel `risk`, as on
+      // /protect), with the way to Rescue.
+      const signRisks = document.querySelectorAll<HTMLElement>('[data-risk="withdraw-compromised"]');
+      expect(signRisks).toHaveLength(1);
+      const signRisk = signRisks[0] as HTMLElement;
+      expect(within(signRisk).getByRole('link', { name: 'Rescue your stake instead' })).toHaveAttribute('href', `/rescue?address=${w.A.address}`);
+      const signBar = signRisk.closest<HTMLElement>('[data-slot="action-bar"]') as HTMLElement;
+      expect(within(signBar).getByRole('button', { name: 'Sign in Main Wallet as Main key' })).toBeInTheDocument();
       const summaries = document.querySelectorAll<HTMLElement>('[data-slot="transaction-summary"]');
       expect(summaries).toHaveLength(1);
       const summary = summaries[0] as HTMLElement;

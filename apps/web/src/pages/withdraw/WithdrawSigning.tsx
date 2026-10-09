@@ -52,13 +52,9 @@ export function WithdrawSigning(props: WithdrawSigningProps) {
   const byLink = what === 'withdraw' && secondKey !== null && mode === 'link';
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
-          {title}
-        </h2>
-        {/* F3 step 3 stays in sight while the wallets sign: the SOL goes to the main key. */}
-        <WithdrawRisk mainKey={mainKey} />
-      </div>
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-balance">
+        {title}
+      </h2>
       {byLink ? (
         <NonceGate
           authority={mainKey}
@@ -108,6 +104,8 @@ function WithdrawRun({ what, account, mainKey, secondKey, runKey, signing, onFin
       roundSize={1}
       knownRoles={knownRoles}
       renderKeySlot={renderKeySlot}
+      // F3 step 3 right above the Sign button it guards, as on /protect: the SOL goes to the main key.
+      risk={<WithdrawRisk mainKey={mainKey} />}
       renderLinkCancel={
         link === undefined
           ? undefined
