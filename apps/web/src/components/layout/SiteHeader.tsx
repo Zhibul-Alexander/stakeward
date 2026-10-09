@@ -23,8 +23,8 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIc
 /**
  * The site header (DECISIONS.md D109): the mark and name, the network on devnet (a badge and, from 768 px, what it
  * means), and two links: Rescue, for someone whose main key was just stolen, and the accounts page. Below 640 px the
- * links take a second row rather than hiding their words; the ghost padding is pulled back so the words line up with
- * the name above them.
+ * links take a second row rather than hiding their words. Their boxes (the current page's pill, the focus ring) stay
+ * inside the content column, clear of the 16 px gutter.
  */
 export function SiteHeader() {
   return (
@@ -45,7 +45,7 @@ export function SiteHeader() {
             </>
           ) : null}
         </div>
-        <nav aria-label={t('nav.label')} className="-ml-3 flex w-full items-center gap-2 sm:-mr-3 sm:ml-0 sm:w-auto">
+        <nav aria-label={t('nav.label')} className="flex w-full items-center gap-2 sm:w-auto">
           <NavLink href="/rescue" icon={LifeBuoyIcon}>
             {t('nav.rescue')}
           </NavLink>

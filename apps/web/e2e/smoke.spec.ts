@@ -157,8 +157,9 @@ async function notFoundShows(page: Page) {
 }
 
 /**
- * The site header's rows (its row container's children, by where they sit), its height and the right edge of its
- * furthest visible part. Below 640 px the nav takes a second row by design (DECISIONS.md D109).
+ * The site header's rows (its row container's children, by where they sit), its height, and how far its furthest
+ * visible part passes the left and the right edge of the content column (the container inside its padding; 0 or less
+ * is inside). Below 640 px the nav takes a second row by design (DECISIONS.md D109).
  */
 async function headerLayout(page: Page) {
   return page.getByRole('banner').evaluate((header) => {
@@ -172,8 +173,17 @@ async function headerLayout(page: Page) {
       if (box.top >= rowBottom - 1) rows += 1;
       rowBottom = Math.max(rowBottom, box.bottom);
     }
+    const frame = container.getBoundingClientRect();
+    const style = getComputedStyle(container);
+    const contentLeft = frame.left + Number.parseFloat(style.paddingLeft);
+    const contentRight = frame.right - Number.parseFloat(style.paddingRight);
     const visible = [...container.querySelectorAll('*')].map((element) => element.getBoundingClientRect()).filter((box) => box.width > 0);
-    return { rows, height: header.getBoundingClientRect().height, right: Math.max(...visible.map((box) => box.right)) };
+    return {
+      rows,
+      height: header.getBoundingClientRect().height,
+      pastLeft: contentLeft - Math.min(...visible.map((box) => box.left)),
+      pastRight: Math.max(...visible.map((box) => box.right)) - contentRight,
+    };
   });
 }
 
@@ -331,15 +341,18 @@ test('every route renders under the production headers, without console errors o
       // Works at 360 px: nothing wider than the viewport.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBe(0);
-      // The header: at 360 px two rows at most, 104 px tall at most, nothing in the 16 px gutter; one row from 640 px.
+      // The header: at 360 px two rows at most and 104 px tall at most; one row from 640 px. At every width nothing,
+      // not even a link's box (the current page's pill, the focus ring), leaves the content column: at 360 px that is
+      // the 16 px gutter on each side.
       const header = await headerLayout(page);
       if (width < 640) {
         expect(header.rows).toBeLessThanOrEqual(2);
         expect(header.height).toBeLessThanOrEqual(104);
-        expect(header.right).toBeLessThanOrEqual(width - 16);
       } else {
         expect(header.rows).toBe(1);
       }
+      expect(header.pastLeft).toBeLessThanOrEqual(0.5);
+      expect(header.pastRight).toBeLessThanOrEqual(0.5);
       if (route === ROUTES[0] && width >= 640) {
         await page.setViewportSize({ width: 640, height: 800 });
         expect((await headerLayout(page)).rows).toBe(1);

@@ -12,7 +12,7 @@ import { t } from '@/i18n';
 export function NotFoundPage() {
   return (
     <Page width="flow">
-      <PageHeader title={t('common.notFoundTitle')} lead={t('common.notFoundBody')} meta={<p>{t('common.notFoundLink')}</p>} />
+      <PageHeader title={t('common.notFoundTitle')} lead={t('common.notFoundBody')} meta={<p className="text-pretty">{t('common.notFoundLink')}</p>} />
       <ActionBar
         primary={
           <Button asChild>
