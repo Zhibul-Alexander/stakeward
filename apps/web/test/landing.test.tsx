@@ -397,6 +397,25 @@ describe('landing words and numbers', () => {
     );
   });
 
+  // The 5000 px cut shortened these lines; each claim keeps the condition that makes it true.
+  it('keeps each short claim with its condition: who signs, while the lock holds, which programs, which phone browser', async () => {
+    renderLanding();
+    await depositShown();
+    const steps = [...section('how-it-works').querySelectorAll('ol > li')];
+    // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Rescue or withdraw": withdrawing
+    // takes both keys (F3), and a rescue needs a new wallet as well (F4: main key, second key and new wallet sign).
+    expect(steps[0]).toHaveTextContent('Both keys sign.');
+    expect(steps[2]).toHaveTextContent('Both keys withdraw. Main key stolen? They and a new wallet rescue the stake.');
+    // UX rule 6: the lock stops a thief only until it ends.
+    expect(within(section('protects')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
+    // CLAUDE.md 2.3: Phantom may append Lighthouse, so the claim is what Stakeward uses, and it names the programs.
+    expect(within(section('security')).getByText(/^Stakeward uses only Solana's stake, system and fee programs\. It owns no program or token\.$/)).toBeVisible();
+    // UX rule 10: only a phone wallet's own browser has a wallet to sign with; there is no Mobile Wallet Adapter.
+    expect(within(section('wallets')).getByText(/^In a phone wallet's browser: check, extend or remove a lock, and co-sign\./)).toBeVisible();
+    // CLAUDE.md section 11: with both keys from one seed phrase the lock protects nothing.
+    expect(section('cannot-do')).toHaveTextContent('Protect you if keys share a seed phrase.');
+  });
+
   it('keeps the second key for Stakeward, and says how to check a lock without Stakeward', async () => {
     renderLanding();
     await depositShown();

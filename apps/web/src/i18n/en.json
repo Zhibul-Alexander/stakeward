@@ -76,7 +76,7 @@
       "intro": "Every Solana stake account has a lock built in. Stakeward turns it on.",
       "step1": {
         "title": "Lock it with a second key",
-        "body": "Pick a wallet from a different seed phrase. Your stake keeps earning."
+        "body": "Pick a wallet from a different seed phrase. Both keys sign. Your stake keeps earning."
       },
       "step2": {
         "title": "Get alerts",
@@ -84,7 +84,7 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Main key stolen? Your two keys move the stake to a new wallet."
+        "body": "Both keys withdraw. Main key stolen? They and a new wallet rescue the stake."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
@@ -104,7 +104,7 @@
         "split": "Split it into smaller accounts",
         "manager": "Change the wallet that manages staking"
       },
-      "thief": "A thief with only your main key gets no SOL."
+      "thief": "A thief with only your main key gets no SOL while the lock holds."
     },
     "secondKey": {
       "title": "Before you pick a second key",
@@ -123,7 +123,7 @@
         "afterEnd": "Keep a thief out after the lock ends. Rescue before that date.",
         "lostKey": "Undo a lost key. Without your main key you cannot withdraw. Without your second key, you wait for the end date.",
         "freeze": "Stop whoever holds your second key from keeping your stake locked.",
-        "sameSeed": "Help if both keys share a seed phrase.",
+        "sameSeed": "Protect you if keys share a seed phrase.",
         "newAccounts": "Lock stake accounts you create later. Protect each new one.",
         "cliKeys": "Recover without Stakeward from a browser-only wallet.",
         "alerts": "Promise alerts. If Stakeward is down, they come late; the lock keeps working."
@@ -187,7 +187,7 @@
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer."
       },
       "ledgerLink": "What will my Ledger show?",
-      "phone": "On a phone: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
+      "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
     },
     "security": {
       "title": "How Stakeward keeps you safe",
@@ -196,7 +196,7 @@
         "browser": "Your browser builds each transaction and your wallets sign it.",
         "server": "Stakeward's server only relays Stakeward transactions. If it is down, you lose alerts, not SOL. The same server delivers this website.",
         "site": "If this site were hacked, it could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
-        "programs": "Transactions use only Solana's own programs. Stakeward has no program or token of its own.",
+        "programs": "Stakeward uses only Solana's stake, system and fee programs. It owns no program or token.",
         "open": "Open source under MIT, no warranty. No accounts, cookies or analytics."
       },
       "sourceLink": "Read the source code"
