@@ -16,12 +16,17 @@ type JobOutcomeProps = {
   job: JobView;
   /** The page's words for its plan's refusals. */
   refusalText: (reason: string) => string;
+  /** The page's words for any other outcome; the engine's (`defaultJobReason`) by default. */
+  reasonText?: ((job: JobView) => string | undefined) | undefined;
   /** Check again is reading the chain. */
   checking: boolean;
   /** The last Check again could not read the chain. */
   checkFailed: boolean;
-  /** A new run (offered when nothing was sent, or what was sent is known not to land). */
-  onRetry: () => void;
+  /**
+   * A new run (offered when nothing was sent, or what was sent is known not to land). Without it no Try again is shown
+   * (/cosign, where a link that failed needs a new link, not the same bytes again).
+   */
+  onRetry?: (() => void) | undefined;
   /** Read the chain again (offered for an uncertain outcome). */
   onCheckAgain: () => void;
   /** Back to the page's choice; without it no Back button is shown (/cosign has nowhere to go back to). */
@@ -63,6 +68,7 @@ export function JobOutcome({
   title,
   job,
   refusalText,
+  reasonText = defaultJobReason,
   checking,
   checkFailed,
   onRetry,
@@ -74,12 +80,13 @@ export function JobOutcome({
   const headingId = useId();
   const { state } = job;
   const item: JobStatusItem = { address: job.id as Address, status: jobStatus(state), signature: job.signature };
-  const reason = state.kind === 'refused' ? refusalText(state.reason) : defaultJobReason(job);
+  const reason = state.kind === 'refused' ? refusalText(state.reason) : reasonText(job);
   if (reason !== undefined) item.reason = reason;
   if (state.kind === 'failed' || state.kind === 'sim-failed') item.detail = state.error.detail;
   return (
     <section aria-labelledby={headingId} data-slot="job-outcome" className="flex flex-col gap-4">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl text-balance">
+      {/* Focused when the outcome replaces the step; a heading is not a control, so no focus ring on it. */}
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl text-balance outline-none">
         {outcomeHeading(item.status, title)}
       </h2>
       <JobStatusList items={[item]} label={title} />
@@ -91,7 +98,7 @@ export function JobOutcome({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        {isRetryable(job) ? (
+        {onRetry !== undefined && isRetryable(job) ? (
           <Button onClick={onRetry}>
             <RotateCcwIcon aria-hidden="true" />
             {t('common.tryAgain')}

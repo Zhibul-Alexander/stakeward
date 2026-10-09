@@ -74,9 +74,6 @@ function Refusal({ read }: { read: LinkRead }) {
   }
 }
 
-/** Problems that a thief's link would have: the owner should hear of it. */
-const HOSTILE: ReadonlySet<CosignLinkProblem> = new Set(['foreign-recipient', 'unexpected-fee-payer', 'nonce-not-fee-payer']);
-
 /** Bytes the inspector refuses: "Do not sign", its reason, and its own words under Details. */
 function Rejected({ error }: { error: InspectError }) {
   return (
@@ -91,24 +88,32 @@ function Rejected({ error }: { error: InspectError }) {
   );
 }
 
-/** A transaction Stakeward could read but never sends by link: "Do not sign" and why, with the addresses it is about. */
+/**
+ * A transaction Stakeward could read but never sends by link: "Do not sign" and why, with the addresses it is about.
+ * The addresses come from the summary, not from which rule failed first: a withdrawal to a wallet other than the Main
+ * key names both wallets even when the link is refused earlier (a thief's link on a recent blockhash is `not-nonce`).
+ * Every problem but "nothing to sign" is a link Stakeward never makes, so someone else made it: tell the owner.
+ */
 function Problem({ problem, summary }: { problem: CosignLinkProblem; summary: TransactionSummary }) {
   const { action } = summary;
+  const foreign = action.kind === 'withdraw' && action.recipient !== action.mainKey ? action : null;
+  const foreignText = foreign === null ? null : t('cosign.problem.foreign-recipient', { amount: formatSol(foreign.lamports) });
   let reason: ReactNode = t(`cosign.problem.${problem}`);
-  let addresses: StopPanelAddress[] = [];
-  if (problem === 'foreign-recipient' && action.kind === 'withdraw') {
-    reason = t('cosign.problem.foreign-recipient', { amount: formatSol(action.lamports) });
-    addresses = [
-      { label: t('cosign.stop.goesTo'), address: action.recipient },
-      { label: t('cosign.stop.mainKey'), address: action.mainKey },
-    ];
-  }
+  if (foreignText !== null) reason = problem === 'foreign-recipient' ? foreignText : `${foreignText} ${t(`cosign.problem.${problem}`)}`;
+  const addresses: StopPanelAddress[] =
+    foreign === null
+      ? []
+      : [
+          { label: t('cosign.stop.goesTo'), address: foreign.recipient },
+          { label: t('cosign.stop.mainKey'), address: foreign.mainKey },
+        ];
+  const hostile = problem !== 'nothing-to-sign' || foreign !== null;
   return (
     <StopPanel
       title={t('cosign.stop.title')}
       reason={reason}
       addresses={addresses}
-      whatToDo={HOSTILE.has(problem) ? t('cosign.stop.whatToDo') : undefined}
+      whatToDo={hostile ? t('cosign.stop.whatToDo') : undefined}
       action={<BackHome />}
       reasonCode={problem}
     />

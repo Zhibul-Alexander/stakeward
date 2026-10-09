@@ -134,12 +134,14 @@ describe('/cosign: the second device completes a link (DW7-2)', () => {
       const balanceBefore = w.testChain.balance(w.A.address);
       const { user, view } = renderCosignPage(w.chain, fragmentOf(link), [second]);
 
-      // What the link asks, before anything else: who sent it, the amount, and the main key that receives, in full,
-      // in a warning callout (a normal withdrawal is not red: red is kept for "Do not sign").
+      // What the link asks, before anything else: who sent it, the amount as the request's heading (the kind is the
+      // summary's title below, said once), and the main key that receives, in full, in a warning callout (a normal
+      // withdrawal is not red: red is kept for "Do not sign").
       const title = `Approve a withdrawal of ${formatSol(lamports)} to the Main key`;
       const ask = (await view.findByText(title, undefined, WAIT)).closest<HTMLElement>('[data-slot="cosign-ask"]') as HTMLElement;
       expect(ask).toHaveAttribute('data-kind', 'withdraw');
-      expect(within(ask).getByRole('heading', { level: 2, name: en.components.tx.kind.withdraw })).toBeInTheDocument();
+      expect(within(ask).getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
+      expect(within(ask).queryByText(en.components.tx.kind.withdraw)).not.toBeInTheDocument();
       expect(ask).toHaveTextContent('From: Main key');
       const check = ask.querySelector<HTMLElement>('[data-slot="cosign-check"]') as HTMLElement;
       expect(check).toHaveAttribute('data-tone', 'warning');
@@ -249,7 +251,14 @@ describe('/cosign: what a protect link asks of the second key (UX rule 6)', () =
  * Inputs that are not a link Stakeward makes, and the screen /cosign shows for each (DW7-3). `detail`: the inspector's
  * own words, under Details of a "Do not sign" screen (UX rule 8).
  */
-type BadCase = { name: string; fragment: () => Promise<string>; expected: () => Promise<string>; detail?: string };
+type BadCase = {
+  name: string;
+  fragment: () => Promise<string>;
+  expected: () => Promise<string>;
+  detail?: string;
+  /** The labelled addresses the panel names in full ("SOL would go to", "Main key of this stake"). */
+  addresses?: () => [string, string][];
+};
 
 describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
   let testChain: TestChain;
@@ -413,6 +422,34 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
       expected: problem('not-linkable-kind'),
     },
     {
+      // A thief with the Main key asks the second key to end the lock: refused for its kind, and the holder is told
+      // to warn the owner.
+      name: "an unlock on the main key's nonce, paid and signed by the main key",
+      fragment: () => fragment(built({ kind: 'unlock', stakeAccount: S, secondKey: K.address }, A.address, nonceA), [A]),
+      expected: problem('not-linkable-kind'),
+    },
+    {
+      // Refused first for its lifetime, but the panel still names where the SOL would go (from the summary).
+      name: 'a withdraw to another wallet on a recent blockhash, signed by the main key',
+      fragment: () =>
+        fragment(
+          built(
+            { kind: 'withdraw', stakeAccount: S, mainKey: A.address, secondKey: K.address, recipient: X, lamports: 1_000_000_000n },
+            A.address,
+            null,
+          ),
+          [A],
+        ),
+      expected: () =>
+        Promise.resolve(
+          `${en.cosign.problem['foreign-recipient'].replace('{amount}', formatSol(1_000_000_000n))} ${en.cosign.problem['not-nonce']}`,
+        ),
+      addresses: () => [
+        [en.cosign.stop.goesTo, X],
+        [en.cosign.stop.mainKey, A.address],
+      ],
+    },
+    {
       name: "a protect on the main key's nonce, not signed",
       fragment: () => fragment(built(protect(), A.address, nonceA)),
       expected: problem('fee-payer-unsigned'),
@@ -439,6 +476,10 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
           [A],
         ),
       expected: problem('foreign-recipient', 1_000_000_000n),
+      addresses: () => [
+        [en.cosign.stop.goesTo, X],
+        [en.cosign.stop.mainKey, A.address],
+      ],
     },
     {
       name: 'a protect signed by both keys, not sent',
@@ -447,7 +488,7 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
     },
   ];
 
-  it.each(cases)('$name', async ({ fragment: make, expected, detail }) => {
+  it.each(cases)('$name', async ({ fragment: make, expected, detail, addresses }) => {
     const chain = new CountingChain(lite);
     const wallet = await createTestWalletPort({ name: 'Second Wallet', signers: [K], connected: true });
     const [link, text] = await Promise.all([make(), expected()]);
@@ -466,6 +507,12 @@ describe('/cosign refuses what Stakeward never sends (DW7-3, C2)', () => {
         expect(refusal?.previousElementSibling).toHaveAttribute('data-slot', 'page-header');
         expect(view.queryByText(en.cosign.intro)).not.toBeInTheDocument();
         if (detail !== undefined) expect(refusal).toHaveTextContent(detail);
+        // Stakeward never makes any of these links, so someone else did: tell the owner. Only a link with nothing
+        // left to sign is not a reason to call them.
+        if (text === en.cosign.problem['nothing-to-sign']) expect(refusal).not.toHaveTextContent(en.cosign.stop.whatToDo);
+        else expect(refusal).toHaveTextContent(en.cosign.stop.whatToDo);
+        const rows = [...(refusal?.querySelectorAll('dt') ?? [])].map((term) => [term.textContent, term.nextElementSibling?.textContent]);
+        expect(rows).toEqual(addresses?.() ?? []);
       }
       expect(view.getByRole('link', { name: en.common.backHome })).toHaveAttribute('href', '/');
       // Refused before any chain read: no summary to sign, no signing panel, nothing asked.
@@ -571,6 +618,32 @@ describe('/cosign checks the chain before asking (C3)', () => {
   );
 
   it(
+    'sim-failed: the network would refuse the link; the page asks for a new link and offers no Try again',
+    async () => {
+      const w = await world();
+      const second = await createTestWalletPort({ name: 'Second Wallet', signers: [w.K], connected: true });
+      const link = await withdrawLink(w);
+      // The program refuses the transaction in the simulation (as LockupInForce would): the same bytes again cannot help.
+      w.chain.simulate = () =>
+        Promise.resolve({ ok: false, logs: [], unitsConsumed: null, error: { InstructionError: [3, { Custom: 1 }] } });
+      const { view } = renderCosignPage(w.chain, fragmentOf(link), [second]);
+
+      const heading = await view.findByRole('heading', { level: 2, name: 'This transaction did not go through' }, WAIT);
+      const outcome = heading.closest('[data-slot="job-outcome"]') as HTMLElement;
+      // One instruction (a new link) and one way out; no Try again, no filled button, no "try again" in the reason.
+      expect(within(outcome).getByText(en.cosign.outcome.simFailed)).toBeInTheDocument();
+      expect(within(outcome).getByText(en.cosign.ended.body)).toBeInTheDocument();
+      expect(within(outcome).queryByRole('button', { name: en.common.tryAgain })).not.toBeInTheDocument();
+      expect(outcome).not.toHaveTextContent(/try again/i);
+      expect(document.querySelectorAll('[data-slot="button"][data-variant="primary"], [data-slot="button"][data-variant="danger"]')).toHaveLength(0);
+      expect(within(outcome).getByRole('link', { name: en.common.backHome })).toHaveAttribute('data-variant', 'ghost');
+      expect(second.requests).toHaveLength(0);
+      expect(w.chain.count('send')).toBe(0);
+    },
+    SCENARIO_TIMEOUT,
+  );
+
+  it(
     'already done: the link landed before this page opened it',
     async () => {
       const w = await world();
@@ -668,7 +741,11 @@ describe('/cosign: the key that signs here is the one the link still needs', () 
 
       const ask = (await view.findByText(en.cosign.ask.rescue.title, undefined, WAIT)).closest('[data-slot="cosign-ask"]') as HTMLElement;
       expect(ask).toHaveTextContent('From: New wallet');
-      expect(within(ask.querySelector('[data-slot="cosign-check"]') as HTMLElement).getByText(D.address)).toBeInTheDocument();
+      const check = ask.querySelector('[data-slot="cosign-check"]') as HTMLElement;
+      expect(within(check).getByText(D.address)).toBeInTheDocument();
+      // The reader holds the Main key, so is the owner: they check that the New wallet is theirs, not "ask the owner".
+      expect(check).toHaveTextContent(`${en.cosign.ask.rescue.check}${en.cosign.ask.rescue.mine}${en.cosign.ask.rescue.mineOnly}`);
+      expect(check).not.toHaveTextContent(en.cosign.ask.rescue.only);
       // The Main key's own slot, asked for by its exact account.
       const slot = await view.findByRole('group', { name: 'Main key' }, WAIT);
       expect(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' })).toHaveAttribute('data-variant', 'primary');
@@ -696,11 +773,15 @@ describe('/cosign: the key that signs here is the one the link still needs', () 
       w.chain.getBalance = (address: Address) => (empty && address === w.A.address ? Promise.resolve(0n) : inner(address));
       const { user, view } = renderCosignPage(w.chain, fragmentOf(link), [second]);
 
-      await view.findByText(
+      const line = await view.findByText(
         "The sender's Main key has 0 SOL, too little for the network fee. Ask the sender to add a little SOL, then press Try again.",
         undefined,
         WAIT,
       );
+      // Its own title (one transaction, the sender's key), Try again, and the way out: the holder cannot add the SOL.
+      const short = line.closest('[data-slot="cosign-fee-short"]') as HTMLElement;
+      expect(short).toHaveTextContent(en.cosign.feeShortTitle);
+      expect(within(short).getByRole('link', { name: en.common.backHome })).toHaveAttribute('data-variant', 'ghost');
       expect(view.getAllByText(w.A.address).length).toBeGreaterThan(0);
       expect(view.queryByText(/^Your Main key has/)).not.toBeInTheDocument();
       expect(second.requests).toHaveLength(0);

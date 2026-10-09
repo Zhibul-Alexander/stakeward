@@ -1433,7 +1433,9 @@
         "title": "Approve moving this stake to a New wallet",
         "check": "Check this address before you sign",
         "thief": "A thief with the Main key would send exactly this, with their own wallet.",
-        "only": "Check the address with the owner by voice or in person, not in the chat that sent this link."
+        "only": "Check the address with the owner by voice or in person, not in the chat that sent this link.",
+        "mine": "Check that this New wallet is yours. A thief would put their own wallet here.",
+        "mineOnly": "Sign only if you created it for this rescue."
       }
     },
     "confirm": {
@@ -1441,6 +1443,7 @@
       "rescue": "I checked this New wallet address with the owner by voice or in person, or it is mine"
     },
     "stale": "Links work until used or cancelled. Not sure the owner still wants this? Ask first.",
+    "feeShortTitle": "The sender cannot pay the network fee yet",
     "feeBalance": "The sender's {role} has {balance}, too little for the network fee. Ask the sender to add a little SOL, then press Try again.",
     "tailHint": "This wallet changes transactions after another wallet signed, so it cannot co-sign here. Use another wallet app for this key.",
     "openInWallet": "No wallet found here. Open this link in your wallet app's browser, or turn on your wallet extension.",
@@ -1454,6 +1457,10 @@
       "body": "This transaction already went through. There is nothing for you to sign."
     },
     "result": "This transaction",
+    "outcome": {
+      "simFailed": "The network would refuse this transaction, so nothing was sent.",
+      "failed": "The network refused this transaction. This stake did not change."
+    },
     "refused": {
       "not-found": "The stake account in this link does not exist.",
       "not-stake-account": "The link points to an address that is not a stake account.",

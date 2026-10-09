@@ -37,7 +37,13 @@ export function StopPanel({ title, reason, addresses, whatToDo, detail, action, 
   return (
     <Alert tone="danger" size="lg" aria-labelledby={titleId} data-slot="stop-panel" data-reason={reasonCode} className={className}>
       <OctagonXIcon aria-hidden="true" />
-      <h2 id={titleId} ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1} className="text-2xl text-balance">
+      {/* Focused by the page when it replaces what was there; a heading is not a control, so no focus ring on it. */}
+      <h2
+        id={titleId}
+        ref={headingRef}
+        tabIndex={headingRef === undefined ? undefined : -1}
+        className="text-2xl text-balance outline-none"
+      >
         {title}
       </h2>
       <AlertDescription className="flex flex-col gap-4 text-foreground [&_p:not(:last-child)]:mb-0">

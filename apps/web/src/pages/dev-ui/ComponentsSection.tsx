@@ -688,7 +688,6 @@ export function ComponentsSection() {
           <Demo label={t('components.tx.kind.protect')}>
             <CosignRequest
               kind="protect"
-              title={t('components.tx.kind.protect')}
               from="main"
               ask={t('cosign.ask.protect.title', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' })}
               lines={[
@@ -702,7 +701,6 @@ export function ComponentsSection() {
           <Demo label={t('components.tx.kind.rescue')}>
             <CosignRequest
               kind="rescue"
-              title={t('components.tx.kind.rescue')}
               from="new"
               ask={t('cosign.ask.rescue.title')}
               check={{

@@ -4,6 +4,7 @@ import {
   actionTarget,
   formatSol,
   formatUtcDate,
+  missingSignatures,
   scannerStatus,
   stakeActivationStatus,
   type ChainClock,
@@ -30,6 +31,7 @@ import type { JobView, SigningState } from '@/signing/machine';
 import { slotSignerResolver } from '@/signing/resolve';
 import { PageSigningPanel } from '@/signing/SigningPanel';
 import { useSigningSession } from '@/signing/use-signing-session';
+import { defaultJobReason } from '@/signing/view';
 import { BackHome, CosignHeader } from './CosignHeader.tsx';
 import { cosignPlan, cosignRefusalText, cosignResolver } from './plan.ts';
 
@@ -41,8 +43,26 @@ type CosignSigningProps = {
   signing?: SigningTestOptions | undefined;
 };
 
-/** Outcomes this link cannot get past: the sender has to make a new one (nothing was sent from here, or it failed). */
+/**
+ * Outcomes this link cannot get past: the sender has to make a new one. The same bytes again would fail the same way
+ * (the program refused them) or cannot land (the nonce moved on), so /cosign offers no Try again for them.
+ */
 const NEEDS_NEW_LINK: readonly JobView['state']['kind'][] = ['failed', 'sim-failed', 'expired'];
+
+/**
+ * Why the run did not land, in words that fit "Ask the sender for a new link." (the engine's error texts say "try
+ * again", which this link cannot). The program's own words stay under Details.
+ */
+function cosignReason(job: JobView): string | undefined {
+  switch (job.state.kind) {
+    case 'sim-failed':
+      return t('cosign.outcome.simFailed');
+    case 'failed':
+      return t('cosign.outcome.failed');
+    default:
+      return defaultJobReason(job);
+  }
+}
 
 /** A finished run: its outcome for the link's stake account and the cluster clock it was read at. */
 type Outcome = { run: number; job: JobView; clock: ChainClock | null };
@@ -80,7 +100,8 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
     });
   const { session, snapshot } = useSigningSession(create, `cosign#${fragment}#${String(run)}`);
 
-  // Focus follows the page (UX rule 2): the outcome's heading once the run ends, never on the first render.
+  // Focus follows the page (UX rule 2): the outcome's heading once the run ends, also when the chain answers on load
+  // (refused, already done). Those headings draw no focus ring: they are not controls.
   const headingRef = useRef<HTMLHeadingElement>(null);
   const finished = outcome !== null && outcome.run === run;
   // A Check again that finds the landing swaps the outcome for the Done heading: focus follows it too.
@@ -136,6 +157,7 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
         </>
       );
     }
+    const needsNewLink = NEEDS_NEW_LINK.includes(state.kind);
     return (
       <>
         <CosignHeader lead />
@@ -144,18 +166,24 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
           title={t('cosign.result')}
           job={job}
           refusalText={cosignRefusalText}
+          reasonText={cosignReason}
           checking={checking}
           checkFailed={checkFailed}
-          onRetry={() => {
-            checkOp.current += 1;
-            setChecking(false);
-            setCheckFailed(false);
-            setRun((value) => value + 1);
-          }}
+          // A link that failed needs a new link: "Ask the sender for a new link" is the one instruction, Back the way out.
+          onRetry={
+            needsNewLink
+              ? undefined
+              : () => {
+                  checkOp.current += 1;
+                  setChecking(false);
+                  setCheckFailed(false);
+                  setRun((value) => value + 1);
+                }
+          }
           onCheckAgain={() => void checkAgain(outcome)}
           exit={<BackHome variant="ghost" />}
         >
-          {NEEDS_NEW_LINK.includes(state.kind) ? <p className="text-sm font-medium">{t('cosign.ended.body')}</p> : null}
+          {needsNewLink ? <p className="text-sm font-medium">{t('cosign.ended.body')}</p> : null}
         </JobOutcome>
       </>
     );
@@ -214,14 +242,13 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
         // is wrong with the link (red on /cosign means "Do not sign").
         <Alert tone="warning" data-slot="cosign-fee-short">
           <TriangleAlertIcon aria-hidden="true" />
-          <AlertTitle>{t('signing.prepareFailed')}</AlertTitle>
+          <AlertTitle>{t('cosign.feeShortTitle')}</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 text-foreground [&_p:not(:last-child)]:mb-0">
             <p>{t('cosign.feeBalance', { role: roleLabel(feeShort.role), balance: formatSol(feeShort.balance) })}</p>
             <AddressText address={feeShort.payer} variant="full" />
-            <div>
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => {
                   session?.retryPrepare();
                 }}
@@ -229,6 +256,7 @@ export function CosignSigning({ bytes, summary, fragment, signing }: CosignSigni
                 <RotateCcwIcon aria-hidden="true" />
                 {t('common.tryAgain')}
               </Button>
+              <BackHome variant="ghost" />
             </div>
           </AlertDescription>
         </Alert>
@@ -247,7 +275,7 @@ function senderRole(summary: TransactionSummary): WalletRole {
 /** What the link asks of this wallet, before anything else: the ask in plain words and the one address to check. */
 function Request({ summary, lamports }: { summary: TransactionSummary; lamports: bigint | null }) {
   const { action } = summary;
-  const common = { kind: action.kind, title: t(`components.tx.kind.${action.kind}`), from: senderRole(summary) };
+  const common = { kind: action.kind, from: senderRole(summary) };
   switch (action.kind) {
     case 'protect': {
       // The holder of the second key learns, with the date, what they take on: the owner then needs their signature.
@@ -271,9 +299,14 @@ function Request({ summary, lamports }: { summary: TransactionSummary; lamports:
       return <CosignRequest {...common} ask={t('cosign.ask.withdraw.title', { amount: formatSol(action.lamports) })} check={check} />;
     }
     case 'rescue': {
+      // A rescue link can leave the Main key to sign here (rescue/KeysStep.tsx `mainMode`): then the reader is the
+      // owner, who checks that the New wallet is their own, not someone who must ask the owner.
+      const mainSigns = missingSignatures(summary).includes(action.mainKey);
       const check: CosignCheck = {
         title: t('cosign.ask.rescue.check'),
-        lines: [t('cosign.ask.rescue.thief'), t('cosign.ask.rescue.only')],
+        lines: mainSigns
+          ? [t('cosign.ask.rescue.mine'), t('cosign.ask.rescue.mineOnly')]
+          : [t('cosign.ask.rescue.thief'), t('cosign.ask.rescue.only')],
         role: 'new',
         address: action.newWallet,
       };
@@ -327,7 +360,7 @@ function LinkEnded({ headingRef, reason, refusal }: { headingRef: Ref<HTMLHeadin
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} data-slot="link-ended" data-reason={refusal} className="flex flex-col gap-3">
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl text-balance">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl text-balance outline-none">
         <Link2OffIcon aria-hidden="true" className="size-6 shrink-0 text-muted" />
         {t('cosign.ended.title')}
       </h2>
@@ -373,7 +406,7 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
       data-outcome={already ? 'already' : 'done'}
       className="flex flex-col gap-4"
     >
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl outline-none">
         <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
         {already ? t('cosign.already.title') : t('cosign.done.title')}
       </h2>
