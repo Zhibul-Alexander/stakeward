@@ -851,7 +851,7 @@
       "announceNone": "No stake accounts found",
       "announceOne": "Found 1 stake account",
       "announceOther": "Found {count} stake accounts",
-      "rescueNote": "Main key stolen or seen by someone else?",
+      "rescueNote": "Main key stolen?",
       "rescue": "Rescue your stake"
     },
     "summary": {

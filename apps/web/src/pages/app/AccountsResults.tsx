@@ -122,15 +122,25 @@ export function AccountsResults({ address, loadHealth }: { address: Address; loa
       </p>
       {/* "Last checked" and Refresh in every state, the read error included: they matter most when the worker or the
           RPC may be down (UX rule 12). Alerts reach a second-key holder too; only an address with nothing to watch
-          has no Telegram. */}
-      <Summary
-        address={address}
-        view={view}
-        state={state.status}
-        monitoring={<MonitoringStatus state={health} now={now} />}
-        telegram={view === null || found > 0}
-        onRefresh={reload}
-      />
+          has no Telegram, and nothing to sum up: there the line stands without a card above the empty state. */}
+      {view !== null && found === 0 ? (
+        <section
+          aria-label={t('app.summary.label')}
+          data-slot="summary-line"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2"
+        >
+          <MonitoringStatus state={health} now={now} />
+          <RefreshButton onRefresh={reload} />
+        </section>
+      ) : (
+        <Summary
+          address={address}
+          view={view}
+          state={state.status}
+          monitoring={<MonitoringStatus state={health} now={now} />}
+          onRefresh={reload}
+        />
+      )}
       {state.status === 'loading' ? (
         <div aria-busy="true" className="flex flex-col gap-3">
           <p role="status" className="flex items-center gap-2 text-sm text-muted">
@@ -158,14 +168,12 @@ function Summary({
   view,
   state,
   monitoring,
-  telegram,
   onRefresh,
 }: {
   address: Address;
   view: AccountsView | null;
   state: 'loading' | 'error' | 'ready';
   monitoring: ReactNode;
-  telegram: boolean;
   onRefresh: () => void;
 }) {
   const owned = view === null ? 0 : view.owned.length;
@@ -204,30 +212,27 @@ function Summary({
       monitoring={monitoring}
       tools={
         <>
-          {telegram ? (
-            <Button asChild variant="outline" size="sm">
-              <a
-                href={telegramLinkPath(address)}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`${t('app.results.telegram')} ${t('common.opensInNewTab')}`}
-              >
-                <SendIcon aria-hidden="true" />
-                {t('app.results.telegram')}
-              </a>
-            </Button>
-          ) : null}
-          <Button variant="ghost" size="icon-sm" aria-label={t('app.results.refresh')} onClick={onRefresh}>
-            <RefreshCwIcon aria-hidden="true" />
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={telegramLinkPath(address)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${t('app.results.telegram')} ${t('common.opensInNewTab')}`}
+            >
+              <SendIcon aria-hidden="true" />
+              {t('app.results.telegram')}
+            </a>
           </Button>
+          <RefreshButton onRefresh={onRefresh} />
         </>
       }
       // For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
-      // knows no second key and so calls none of the locks Protected (D35).
-      footer={
+      // knows no second key and so calls none of the locks Protected (D35). Beside the answer from 640 px, so it takes
+      // no line of its own there; one line at 360.
+      action={
         owned === 0 ? undefined : (
-          <p className="flex flex-wrap items-center gap-x-2">
-            {t('app.results.rescueNote')}
+          <p className="text-sm sm:pt-1.5">
+            {t('app.results.rescueNote')}{' '}
             <Link
               href={appLinks.rescue(address)}
               className="rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
@@ -238,6 +243,14 @@ function Summary({
         )
       }
     />
+  );
+}
+
+function RefreshButton({ onRefresh }: { onRefresh: () => void }) {
+  return (
+    <Button variant="ghost" size="icon-sm" aria-label={t('app.results.refresh')} onClick={onRefresh}>
+      <RefreshCwIcon aria-hidden="true" />
+    </Button>
   );
 }
 

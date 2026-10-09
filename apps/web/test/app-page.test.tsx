@@ -488,6 +488,8 @@ describe('/app on LiteSvmChain', () => {
     expect(screen.queryByRole('link', { name: /Telegram/ })).toBeNull();
     expect(summary().querySelector('[data-slot="monitoring"]')).not.toBeNull();
     expect(within(summary()).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+    // Nothing to sum up: the line stands alone, not as a card with only "Last checked" in it above the empty state.
+    expect(summary()).toHaveAttribute('data-slot', 'summary-line');
   });
 
   it('lists only the second-key accounts when the address is no main key', async () => {

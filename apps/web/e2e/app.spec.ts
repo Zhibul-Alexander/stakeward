@@ -138,6 +138,14 @@ test('/app?address= shows every status, the red banner and the second-key list',
   const headline = await summary.getByText('1,293.25 of 1,490.45 SOL protected').boundingBox();
   expect(headline?.y ?? Infinity).toBeLessThan(740);
   await expect(page.locator('[data-slot="monitoring"]')).toHaveText('Last checked 2 min ago');
+  // "Main key stolen? Rescue your stake" in one line: beside the answer from 640 px, under it at 360.
+  const rescueLines = await summary.getByRole('link', { name: 'Rescue your stake' }).evaluate((link) => {
+    const line = link.parentElement ?? link;
+    const style = getComputedStyle(line);
+    const content = line.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    return Math.round(content / parseFloat(style.lineHeight));
+  });
+  expect(rescueLines).toBe(1);
   // Alerts for this main key: the worker redirects to its bot with /start <address>, in a new tab.
   const telegram = page.getByRole('link', { name: 'Get alerts in Telegram (opens in a new tab)' });
   await expect(telegram).toHaveAttribute('href', `/api/telegram/link?wallet=${MAIN}`);
