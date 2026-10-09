@@ -11,7 +11,8 @@ owner to fill in.
 - [ ] Prod runs the current build and has passed the mainnet checks of step 9. Then replace `<PROD_URL>` below
       (D84: the prod address is not published before that).
 - [ ] The numbers from `/stats` and the first users' quotes are filled in (section 8).
-- [ ] The business section is written (section 9).
+- [ ] The business section is written (section 9). TODO: the business model is not decided yet; the idea is in
+      [BUSINESS-MODEL.md](BUSINESS-MODEL.md).
 - [ ] Every incident below has a source link (section 11): links found and opened on 6 October 2026; the owner opens
       and checks each one before recording.
 - [ ] The wallet table on the landing page shows the wallet matrix results, and section 4 says the same.
@@ -274,7 +275,8 @@ locks set with other tools count too, the page says so):
 
 ## 9. How the free product becomes a business
 
-[TODO owner: write this section yourself.]
+[TODO owner: write this section yourself. The business model is not decided yet; the idea and open questions are in
+[BUSINESS-MODEL.md](BUSINESS-MODEL.md).]
 
 Notes only, from CLAUDE.md section 16. Nothing here is built, and the free base stays free.
 
