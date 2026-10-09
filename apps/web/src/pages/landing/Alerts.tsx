@@ -1,7 +1,6 @@
 import { getAddressDecoder } from '@solana/kit';
 import { formatAlert } from '@stakeward/core';
-import { cn } from 'cn';
-import { buttonVariants } from '@/components/ui/button';
+import { BellIcon } from 'lucide-react';
 import { t, type Messages } from '@/i18n';
 import { Section } from './Section.tsx';
 
@@ -23,29 +22,34 @@ const SAMPLE_ALERT = formatAlert(
   { withdrawer: SAMPLE_MAIN, custodian: SAMPLE_SECOND, lockUntil: 1n, now: 0n },
 );
 
-/** Alerts in Telegram (CLAUDE.md section 8): what triggers one, what one looks like, and what they can and cannot do. */
+/**
+ * Alerts in Telegram (CLAUDE.md section 8): every change that sends one, in view under the sentence it finishes (spec
+ * [landing] Must stay: the reminders with their days), then what one looks like and how to turn them on and off.
+ * From `md` the changes and the example stand side by side.
+ */
 export function Alerts({ params }: { params: Readonly<Record<string, string>> }) {
   return (
-    <Section id="alerts" title={t('landing.alerts.title')}>
-      <div className="flex max-w-prose flex-col gap-2">
-        <p>{t('landing.alerts.intro')}</p>
-        <ul className="flex list-disc flex-col gap-1 pl-5">
+    <Section id="alerts" title={t('landing.alerts.title')} intro={t('landing.alerts.intro')}>
+      <div className="grid items-start gap-3 sm:gap-4 md:grid-cols-2 md:gap-8">
+        <ul className="flex flex-col gap-1 text-sm">
           {EVENTS.map((event) => (
-            <li key={event}>{t(`landing.alerts.events.${event}`, params)}</li>
+            <li key={event} className="flex items-start gap-2">
+              <BellIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted" />
+              <span className="text-pretty">{t(`landing.alerts.events.${event}`, params)}</span>
+            </li>
           ))}
         </ul>
-      </div>
-      <figure className="flex max-w-md flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-sm">
-        <figcaption className="text-sm font-medium text-muted">{t('landing.alerts.exampleTitle')}</figcaption>
-        <p className="text-sm">{SAMPLE_ALERT.text}</p>
-        {/* The bot's link button, drawn: an example to look at, not a control. */}
-        <span className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'self-start')}>{SAMPLE_ALERT.buttonLabel}</span>
-      </figure>
-      <div className="flex max-w-prose flex-col gap-2">
-        <p>{t('landing.alerts.turnOn')}</p>
-        <p>{t('landing.alerts.anyWallet')}</p>
-        <p>{t('landing.alerts.safe')}</p>
-        <p className="text-sm text-muted">{t('landing.alerts.noGuarantee')}</p>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <figure className="flex max-w-md flex-col gap-2">
+            <figcaption className="text-sm font-medium text-muted">{t('landing.alerts.exampleTitle')}</figcaption>
+            <div className="flex flex-col overflow-hidden rounded-lg rounded-tl-sm border border-border bg-surface-raised">
+              <p className="px-4 py-3 text-sm text-pretty">{SAMPLE_ALERT.text}</p>
+              {/* The bot's link button, drawn: an example to look at, not a control. */}
+              <span className="border-t border-border px-4 py-2 text-center text-sm font-medium text-muted">{SAMPLE_ALERT.buttonLabel}</span>
+            </div>
+          </figure>
+          <p className="max-w-md text-sm text-pretty">{t('landing.alerts.howTo')}</p>
+        </div>
       </div>
     </Section>
   );

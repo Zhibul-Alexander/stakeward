@@ -79,7 +79,7 @@ const depositShown = () =>
 const ROLE_SYNONYMS = /\b(second wallet|main wallet|backup key|primary key|recovery key|co-?signer|guardian)\b/i;
 
 describe('landing page structure', () => {
-  it('has the hero, the three-step scheme, the thirteen limits, every section once and one primary button', async () => {
+  it('has the hero, the three-step scheme, the ten limits, every section once and one primary button', async () => {
     renderLanding();
     expect(screen.getByRole('heading', { level: 1, name: 'Protect your staked SOL' })).toBeInTheDocument();
 
@@ -89,15 +89,20 @@ describe('landing page structure', () => {
       'Get alerts',
       'Rescue or withdraw',
     ]);
-    expect(section('cannot-do').querySelectorAll('li')).toHaveLength(13);
+    // Never folded: the footer of every page links here (UX rule 12).
+    expect(section('cannot-do').querySelectorAll('li')).toHaveLength(10);
+    expect(section('cannot-do').closest('details')).toBeNull();
     expect(within(section('cannot-do')).getByRole('heading', { level: 2, name: 'What Stakeward cannot do' })).toHaveAttribute(
       'id',
       'cannot-do-title',
     );
 
-    for (const id of ['why', 'how-it-works', 'protects', 'second-key', 'cannot-do', 'who', 'for-second-key', 'fees', 'wallets', 'alerts', 'security', 'recover', 'faq']) {
+    for (const id of ['how-it-works', 'protects', 'second-key', 'alerts', 'fees', 'wallets', 'cannot-do', 'security', 'recover', 'for-second-key', 'faq']) {
       expect(document.querySelectorAll(`#${id}`), id).toHaveLength(1);
     }
+    // The sections that the shorter page folded into others are gone, and so is the table of contents.
+    for (const id of ['why', 'who']) expect(document.getElementById(id), id).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'On this page' })).toBeNull();
     // No id twice anywhere (a link or aria-labelledby would find the first one).
     const ids = [...document.querySelectorAll('[id]')].map((element) => element.id);
     expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
@@ -110,28 +115,31 @@ describe('landing page structure', () => {
   it('links only to targets that exist, to /app, and to the repository in a new tab', async () => {
     renderLanding();
     const hashLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
-    expect(hashLinks.length).toBeGreaterThan(10);
+    // Without the table of contents, every link into the page leads to an answer: from the second key's rules, the
+    // wallets, the recovery links, the co-sign callout and the Ledger answer.
+    expect(hashLinks.map((link) => link.getAttribute('href'))).toEqual(['#faq-good-second-key', '#faq-ledger', '#faq-on-chain', '#faq-co-sign', '#faq-terms']);
     expect(hashLinks.map((link) => link.getAttribute('href')).filter((href) => document.getElementById((href ?? '#').slice(1)) === null)).toEqual([]);
-    // The table of contents names each section by its own title.
-    const toc = screen.getByRole('navigation', { name: 'On this page' });
-    expect(within(toc).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([
-      '#how-it-works',
-      '#protects',
-      '#second-key',
-      '#cannot-do',
-      '#fees',
-      '#wallets',
-      '#alerts',
-      '#security',
-      '#recover',
-      '#faq',
-    ]);
-    expect(within(toc).getByRole('link', { name: 'Questions and answers' })).toHaveAttribute('href', '#faq');
 
-    const checkStake = screen.getAllByRole('link', { name: 'Check your stake' });
+    // Look first (UX rule 1): the hero's primary button and the closing call both go to /app; protecting is the
+    // hero's outline alternative.
+    const checkStake = screen.getAllByRole('link', { name: 'Check my stake' });
     expect(checkStake).toHaveLength(2);
     for (const link of checkStake) expect(link).toHaveAttribute('href', '/app');
-    expect(screen.getByRole('link', { name: 'Open your recovery cards from your accounts' })).toHaveAttribute('href', '/app');
+    expect(checkStake[0]).toHaveAttribute('data-variant', 'primary');
+    expect(checkStake[1]).toHaveAttribute('data-variant', 'outline');
+    const protect = screen.getByRole('link', { name: 'Protect my stake' });
+    expect(protect).toHaveAttribute('href', '/protect');
+    expect(protect).toHaveAttribute('data-variant', 'outline');
+    // If Stakeward disappears: the recovery cards, the guide, the source code and what changes on the network.
+    const recover = section('recover');
+    expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
+    expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
+    // The promise of recovery without Stakeward carries its condition where it is made.
+    expect(recover).toHaveTextContent('Solana CLI steps. They need keys on a Ledger or in keypair files.');
+    // Whoever was sent a link to co-sign: a word for them, and what to check first.
+    const coSign = section('for-second-key');
+    expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
+    expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '#faq-co-sign');
 
     const external = [
       ['Read the source code (opens in a new tab)', SOURCE_CODE_URL],
@@ -159,10 +167,25 @@ describe('landing fees', () => {
   it('shows the network fees from core and the deposit read from the network, once', async () => {
     const { chain } = renderLanding();
     const fees = section('fees');
-    expect(fees).toHaveTextContent('The network charges 0.000005 SOL for each signature');
-    for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(fees).toHaveTextContent(amount);
-    expect(fees).toHaveTextContent('If it has no SOL, your main key signs too and pays 0.0000106 SOL.');
-    expect(fees).toHaveTextContent('If the stake is still staking, stopping it first costs 0.0000056 SOL.');
+    // All in view, nothing folded (spec [landing] Must stay): free, network fees only, the fee per signature, and the
+    // fee for each action with who pays it.
+    expect(within(fees).getByText(/^Stakeward is free: no token, no subscription\./)).toBeVisible();
+    expect(within(fees).getByText(/^The network charges 0\.000005 SOL for each signature/)).toBeVisible();
+    expect(fees.querySelector('details')).toBeNull();
+    const rows = [...fees.querySelectorAll('dl > div')];
+    expect(rows.map((row) => row.querySelector('dt')?.textContent)).toEqual([
+      'Protect a stake account',
+      'Extend or remove a lock',
+      'Withdraw',
+      'Rescue a stake account',
+      'Link-signing deposit',
+    ]);
+    for (const row of rows) expect(row).toBeVisible();
+    for (const amount of ['0.0000106 SOL', '0.0000056 SOL', '0.0000156 SOL']) expect(within(fees).getAllByText(amount)[0]).toBeVisible();
+    expect(within(fees).getByText('Paid by your second key. If it has no SOL, your main key signs too and pays 0.0000106 SOL.')).toBeVisible();
+    expect(within(fees).getByText('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.')).toBeVisible();
+    // CLAUDE.md section 5: the new wallet pays for a rescue, never the stolen main key.
+    expect(within(fees).getByText('Paid by your new wallet.')).toBeVisible();
 
     await depositShown();
     expect(section('faq-deposit')).toHaveTextContent(`The network asks for ${DEPOSIT} to keep it open`);
@@ -213,8 +236,8 @@ describe('landing wallet table', () => {
     expect(verdicts).toHaveLength(2);
     expect(new Set(verdicts.map((badge) => badge.textContent))).toEqual(new Set(['Not verified yet']));
     expect(within(wallets).getByRole('note')).toHaveTextContent(en.landing.wallets.notVerified);
-    expect(within(wallets).getAllByText('Signing by link')).toHaveLength(1);
-    expect(within(wallets).getAllByText('Both wallets in this browser')).toHaveLength(1);
+    expect(within(wallets).getAllByText('By link')).toHaveLength(1);
+    expect(within(wallets).getAllByText('In one browser')).toHaveLength(1);
     expect(
       within(wallets).getByRole('heading', { level: 3, name: 'Phantom and Phantom, an account imported from another seed phrase' }),
     ).toBeInTheDocument();
@@ -258,6 +281,20 @@ describe('landing wallet table', () => {
 });
 
 describe('landing FAQ', () => {
+  it('folds the questions into five closed groups, each named by its h3 and how many questions it holds', async () => {
+    renderLanding();
+    const groups = [...section('faq').querySelectorAll<HTMLDetailsElement>('details[data-slot="faq-group"]')];
+    expect(groups.map((group) => group.querySelector('summary h3')?.textContent)).toEqual(FAQ_GROUPS.map((group) => en.faq.groups[group.id]));
+    expect(groups.map((group) => group.open)).toEqual(FAQ_GROUPS.map(() => false));
+    groups.forEach((group, index) => {
+      const { items } = FAQ_GROUPS[index] as (typeof FAQ_GROUPS)[number];
+      expect(group.querySelector('summary')).toHaveTextContent(`${String(items.length)} questions`);
+      // Its own questions, in reading order.
+      expect([...group.querySelectorAll('details[data-slot="faq-item"]')].map((item) => item.id)).toEqual(items.map((item) => `faq-${item}`));
+    });
+    await depositShown();
+  });
+
   it('asks every question once, each a <details> named faq-<id> with its question as the summary', async () => {
     renderLanding();
     const items = Object.keys(en.faq.items) as FaqId[];
@@ -271,7 +308,8 @@ describe('landing FAQ', () => {
       // One paragraph per blank-line block of the answer.
       expect(item.querySelectorAll(':scope > div > p').length, id).toBeGreaterThanOrEqual(en.faq.items[id].a.split('\n\n').length);
     }
-    expect(within(section('faq')).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(
+    // `hidden`: the group headings stand in closed <details> summaries, which jsdom reports as inaccessible.
+    expect(within(section('faq')).getAllByRole('heading', { level: 3, hidden: true }).map((heading) => heading.textContent)).toEqual(
       FAQ_GROUPS.map((group) => en.faq.groups[group.id]),
     );
     await depositShown();
@@ -329,7 +367,7 @@ describe('landing words and numbers', () => {
     await depositShown();
     expect(document.body.textContent).not.toMatch(/\{[a-zA-Z]+\}/);
     expect(section('faq-lock-ends')).toHaveTextContent('Stakeward reminds you 30, 14, 7, 3, and 1 days before.');
-    expect(section('alerts')).toHaveTextContent('the lock ends soon: 30, 14, 7, 3, and 1 days before, and when it ends');
+    expect(within(section('alerts')).getByText('the lock ends soon: 30, 14, 7, 3, and 1 days before, and when it ends')).toBeVisible();
     expect(section('faq-main-stolen')).toHaveTextContent('put about 0.01 SOL on it');
     expect(section('faq-cli')).toHaveTextContent('Solana CLI 4.3.0 refuses');
 
@@ -347,8 +385,10 @@ describe('landing words and numbers', () => {
   it('says that a thief can split a locked stake and that a rescue run moves at most 10 accounts', async () => {
     renderLanding();
     await depositShown();
-    expect(section('cannot-do')).toHaveTextContent(
-      'It cannot stop a thief with your main key from splitting your stake into many small stake accounts. Each part keeps the lock, but a rescue moves at most 10 of them per run: act early, and extend the lock with your second key first.',
+    const cannotDo = section('cannot-do');
+    expect(cannotDo).toHaveTextContent('Stop a thief with your main key from unstaking or moving your stake.');
+    expect(cannotDo).toHaveTextContent(
+      'Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most 10 stake accounts, so act early and extend the lock first.',
     );
     const mainStolen = section('faq-main-stolen');
     expect(mainStolen).toHaveTextContent('They may also split it into many small stake accounts. Each part keeps the lock.');
@@ -386,6 +426,8 @@ describe('landing words and numbers', () => {
     const server = within(security).getByText(/you lose alerts, not SOL/);
     expect(server.textContent).toMatch(/If it is down, you lose alerts, not SOL\./);
     expect(server.textContent).toMatch(/The same server delivers this website/);
+    // Each point stands alone: from md the list has two columns, so none may lean on the point before it.
+    for (const point of security.querySelectorAll(':scope > ul > li')) expect(point.textContent).not.toMatch(/^(So|Then|This|That)\b/);
     await depositShown();
   });
 
@@ -396,8 +438,14 @@ describe('landing words and numbers', () => {
       { type: 'DEACTIVATED', details: { deactivationEpoch: '0' }, stakeAccount: decode(7) },
       { withdrawer: decode(8), custodian: decode(9), lockUntil: 1n, now: 0n },
     );
+    // Every change that sends an alert is in view, finishing the intro's sentence; so is the example.
+    expect(section('alerts').querySelector('details')).toBeNull();
+    expect(within(section('alerts')).getByText(/messages you in Telegram when:$/)).toBeVisible();
+    const triggers = [...section('alerts').querySelectorAll('ul > li')];
+    expect(triggers).toHaveLength(8);
+    for (const trigger of triggers) expect(trigger).toBeVisible();
     const figure = section('alerts').querySelector('figure') as HTMLElement;
-    expect(figure.querySelector('figcaption')).toHaveTextContent('An alert looks like this');
+    expect(figure.querySelector('figcaption')).toHaveTextContent('Example');
     expect([...figure.querySelectorAll('p')].map((p) => p.textContent)).toEqual([alert.text]);
     expect(alert.text).toMatch(/^Stake \w{3}\.\.\.\w{3} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
     expect(within(figure).getByText('Open Rescue')).toBeInTheDocument();
@@ -414,6 +462,9 @@ describe('landing hash targets', () => {
     renderLanding();
     const ledger = section('faq-ledger') as HTMLDetailsElement;
     expect(ledger.open).toBe(true);
+    // Its group opens with it; the other groups stay closed.
+    const groups = [...section('faq').querySelectorAll<HTMLDetailsElement>('details[data-slot="faq-group"]')];
+    expect(groups.filter((group) => group.open)).toEqual([ledger.parentElement?.closest('details')]);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     expect(scrollIntoView.mock.contexts).toContain(ledger);
     expect((section('faq-co-sign') as HTMLDetailsElement).open).toBe(false);
@@ -423,10 +474,16 @@ describe('landing hash targets', () => {
     await waitFor(() => {
       expect((section('faq-co-sign') as HTMLDetailsElement).open).toBe(true);
     }, WAIT);
+    // A question in another, closed group (the recovery card links to it): that group opens as well.
+    window.location.hash = 'faq-locked-by-other';
+    await waitFor(() => {
+      expect((section('faq-locked-by-other') as HTMLDetailsElement).open).toBe(true);
+    }, WAIT);
+    expect(section('faq-locked-by-other').parentElement?.closest('details')?.open).toBe(true);
     await depositShown();
   });
 
-  it('scrolls to a section or card without opening anything, and ignores unknown or malformed hashes', async () => {
+  it('scrolls to a section or callout without opening anything, and ignores unknown or malformed hashes', async () => {
     window.history.replaceState(null, '', '/#for-second-key');
     renderLanding();
     expect(scrollIntoView.mock.contexts).toEqual(expect.arrayContaining([section('for-second-key')]));

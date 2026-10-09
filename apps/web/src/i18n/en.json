@@ -51,144 +51,119 @@
   },
   "landing": {
     "title": "Protect your staked SOL",
-    "lead": "Stakeward puts a lock on the stake accounts you already have. The lock answers to your second key: a wallet from a different seed phrase that only you control. While the lock holds, a thief with your main key, the wallet you stake from, cannot withdraw your stake or make it theirs.",
-    "checkStake": "Check your stake",
-    "checkStakeHint": "Paste a wallet address to see its stake accounts. No wallet connection, nothing to sign.",
-    "howItWorksLink": "How it works",
+    "lead": "Lock your existing stake accounts with a second key, so a thief with your main key cannot withdraw them.",
+    "checkStake": "Check my stake",
+    "protectStake": "Protect my stake",
+    "checkStakeHint": "Checking needs no wallet and signs nothing.",
     "points": {
-      "free": "Free. You pay only Solana network fees.",
-      "noCustody": "Your SOL stays in your own stake accounts."
+      "free": "Free: you pay only network fees",
+      "noCustody": "Your SOL stays in your stake accounts"
     },
     "network": {
       "mainnet": "Solana mainnet",
       "mainnetNote": "This site works with real SOL.",
       "devnet": "Solana devnet",
-      "devnetNote": "This is the test version. Devnet SOL has no value, so try every step here before you lock real stake."
-    },
-    "toc": {
-      "label": "On this page"
-    },
-    "why": {
-      "title": "Why your stake needs a lock",
-      "body1": "Your stake account obeys one key: the key of the wallet you staked from. Whoever gets that key can withdraw the stake, or quietly make it theirs.",
-      "body2": "Keys leak through fake websites, stolen seed phrases, malware, or a hidden step in a transaction you approved. In 2025 and 2026, hundreds of thousands of staked SOL were stolen.",
-      "body3": "Every Solana stake account has a lock built in. Stakeward turns it on for you, with a second key that you hold."
+      "devnetNote": "Test version: devnet SOL has no value."
     },
     "how": {
       "title": "How it works",
+      "intro": "Every Solana stake account has a lock built in. Stakeward turns it on.",
       "step1": {
         "title": "Lock it with a second key",
-        "body": "Choose a wallet made from a different seed phrase as your second key. Your main key and your second key approve the lock together, and it is written into your stake accounts on the Solana network. Your stake keeps earning."
+        "body": "Pick a wallet from a different seed phrase. Both keys sign the lock. Your stake keeps earning."
       },
       "step2": {
         "title": "Get alerts",
-        "body": "Stakeward checks your stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes, and before the lock ends."
+        "body": "Stakeward checks every few minutes. Telegram tells you when anything changes, and before the lock ends."
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Main key stolen? Before the lock ends, your main key, your second key and a new wallet sign together, and the stake moves to the new wallet, out of the thief's reach. To take your SOL out, your two keys withdraw it together."
+        "body": "Main key stolen? Your two keys and a new wallet move the stake out of reach. Withdrawing also takes both keys."
       },
-      "period": "The lock lasts 1, 3, 6 or 12 months. Your second key can extend it before it ends.",
-      "periodDevnet": "On devnet you can also try a 10-minute or 1-hour lock."
+      "period": "A lock lasts 1, 3, 6 or 12 months. Your second key can extend it.",
+      "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
     },
     "protects": {
-      "title": "What Stakeward protects",
-      "coveredTitle": "Covered",
-      "covered": "Native stake: SOL you delegated to a validator from your own wallet. It sits in a stake account that your keys control.",
-      "coveredHint": "Not sure what you have?",
-      "coveredLink": "Check your wallet address",
-      "notCoveredTitle": "Not covered",
-      "notCovered": {
-        "lst": "Liquid staking tokens (LSTs). They are tokens in your wallet, not stake accounts.",
-        "exchange": "Stake on an exchange. The exchange holds those keys.",
-        "balance": "SOL in your wallet balance.",
-        "vote": "Validator vote accounts."
-      },
-      "lockTitle": "While the lock holds",
+      "title": "What the lock stops",
       "needsSecondTitle": "Needs your second key",
       "needsSecond": {
-        "withdraw": "Withdrawing SOL from the stake account",
-        "owner": "Handing the stake to another wallet"
+        "withdraw": "Withdraw SOL",
+        "owner": "Hand the stake to another wallet",
+        "lock": "Extend, shorten or remove the lock"
       },
-      "lockOnlySecond": "Only your second key can extend, shorten or remove the lock.",
       "mainAloneTitle": "Your main key alone can still",
       "mainAlone": {
         "deactivate": "Stop staking",
         "redelegate": "Move the stake to another validator",
-        "split": "Split the stake account into smaller ones, each with the same lock",
+        "split": "Split it into smaller accounts, each with the same lock",
         "manager": "Change the wallet that manages staking"
       },
-      "thief": "So while the lock holds, a thief with only your main key can stop your rewards, or move your stake to a validator of their choice. They cannot take the SOL. If an alert surprises you, rescue your stake before the lock ends."
+      "thief": "So a thief with only your main key cannot take the SOL. If an alert surprises you, rescue before the lock ends."
     },
     "secondKey": {
-      "title": "Your second key: read this first",
+      "title": "Before you pick a second key",
       "freeze": "It cannot take your SOL, but it can keep it locked, even for years.",
-      "differentSeed": "Make it from a different seed phrase. If one seed phrase makes both keys, whoever steals it has both, and the lock stops nothing.",
-      "apart": "Keep it apart from your main key: a hardware wallet, another device, or a person you trust.",
-      "lost": "If you lose it, your SOL is safe but stays locked until the lock's end date. Then your main key alone can withdraw it.",
-      "stolen": "If someone steals it, they cannot take your SOL, but they can keep it locked. Hand the lock to a new second key at once: your recovery card has the command.",
+      "differentSeed": "Make it from a different seed phrase. One phrase for both keys stops nothing.",
+      "apart": "Keep it apart from your main key: a hardware wallet, another device or a person you trust.",
       "more": "What makes a good second key"
     },
     "cannotDo": {
       "title": "What Stakeward cannot do",
       "intro": "Read this before you protect your stake.",
       "items": {
-        "scope": "It cannot protect liquid staking tokens, stake on an exchange, SOL in your wallet balance or validator vote accounts.",
-        "mainKeyActions": "It cannot stop a thief with your main key from stopping your staking or moving it to another validator. While the lock holds, they still cannot take the SOL.",
-        "split": "It cannot stop a thief with your main key from splitting your stake into many small stake accounts. Each part keeps the lock, but a rescue moves at most {max} of them per run: act early, and extend the lock with your second key first.",
-        "afterEnd": "It cannot keep a thief out after the lock ends. If your main key may be stolen, rescue your stake before that date.",
-        "lostMain": "It cannot help if you lose your main key. Withdrawing always needs the main key, with or without the lock.",
-        "lostSecond": "It cannot shorten the wait if you lose your second key. The lock ends on its date, not before.",
-        "freeze": "It cannot stop whoever holds your second key from keeping your stake locked.",
-        "sameSeed": "It cannot protect you if one seed phrase makes both of your keys.",
-        "newAccounts": "It cannot lock stake accounts you create later in your wallet. Protect each new one too.",
-        "cliKeys": "It cannot make recovery without Stakeward work with keys that live only in a browser: the Solana command line needs your keys on a Ledger or in keypair files.",
-        "noPower": "It cannot move your SOL, sign for you or change your lock. Only your own wallets can.",
-        "alerts": "It cannot promise alerts. If Stakeward is down, alerts come late or not at all. The lock itself keeps working.",
-        "noKeys": "It cannot see your keys or your seed phrase, and it never holds your SOL."
+        "scope": "Protect liquid staking tokens, exchange stake, SOL in your wallet balance or vote accounts.",
+        "mainKeyActions": "Stop a thief with your main key from unstaking or moving your stake.",
+        "split": "Stop that thief from splitting the stake into many parts. Each part keeps the lock. One rescue moves at most {max} stake accounts, so act early and extend the lock first.",
+        "afterEnd": "Keep a thief out after the lock ends. Rescue before that date.",
+        "lostKey": "Undo a lost key. Without your main key you cannot withdraw. Without your second key, you wait for the end date.",
+        "freeze": "Stop whoever holds your second key from keeping your stake locked.",
+        "sameSeed": "Protect you if one seed phrase makes both keys.",
+        "newAccounts": "Lock stake accounts you create later. Protect each new one.",
+        "cliKeys": "Recover without Stakeward from a browser-only wallet. The Solana CLI needs a Ledger or keypair files.",
+        "alerts": "Promise alerts. If Stakeward is down, they come late; the lock keeps working."
       }
     },
-    "who": {
-      "title": "Who it is for",
-      "holder": {
-        "title": "You hold a large stake",
-        "body": "You staked from your own wallet, perhaps with a Ledger, and you want a leaked key not to cost you the stake. Protect it in a few minutes. Your keys stay in your wallets."
+    "alerts": {
+      "title": "Alerts in Telegram",
+      "intro": "Stakeward messages you in Telegram when:",
+      "events": {
+        "deactivated": "your stake stops staking",
+        "delegation": "your stake moves to another validator",
+        "manager": "the wallet that manages staking changes",
+        "owner": "the main key changes",
+        "lock": "the lock or its second key changes",
+        "balance": "SOL leaves the stake account",
+        "closed": "the stake account is closed",
+        "reminders": "the lock ends soon: {days} days before, and when it ends"
       },
-      "team": {
-        "title": "You run a validator or a team treasury",
-        "body": "Lock many stake accounts, one transaction each. Every protected account gets a printable recovery card with Solana command-line steps that work without Stakeward."
-      },
-      "secondKeyHolder": {
-        "title": "Someone sent you a link to co-sign",
-        "body": "Someone made your wallet the second key of their stake. The link shows exactly what their transaction does. Sign only if they asked you by voice or in person. Co-signing costs you nothing and never moves your own SOL.",
-        "more": "What to check before you co-sign"
-      }
+      "exampleTitle": "Example",
+      "howTo": "Turn alerts on from your accounts page. Send /stop to the bot to turn them off. The bot never asks for your seed phrase."
     },
     "fees": {
       "title": "What it costs",
-      "intro": "Stakeward is free. There is no token and no subscription. You pay only the Solana network fee for each transaction, and Stakeward gets none of it.",
+      "intro": "Stakeward is free: no token, no subscription. You pay only network fees, and Stakeward gets none of them.",
       "perSignature": "The network charges {amount} for each signature, plus a tiny fixed priority fee:",
-      "protect": "Protect one stake account",
+      "protect": "Protect a stake account",
       "protectPayer": "Paid by your main key.",
-      "extend": "Extend or remove the lock",
+      "extend": "Extend or remove a lock",
       "extendPayer": "Paid by your second key. If it has no SOL, your main key signs too and pays {amount}.",
       "withdraw": "Withdraw",
-      "withdrawPayer": "Paid by your main key. If the stake is still staking, stopping it first costs {amount}.",
-      "rescue": "Rescue one stake account",
+      "withdrawPayer": "Paid by your main key, plus {amount} if the stake must stop staking first.",
+      "rescue": "Rescue a stake account",
       "rescuePayer": "Paid by your new wallet.",
-      "deposit": "Link-signing account",
-      "depositPayer": "A deposit, not a fee: it comes back when you close the account. You need one to sign on another device, and every rescue uses one.",
+      "deposit": "Link-signing deposit",
+      "depositPayer": "Comes back when you close the account.",
       "depositUnknown": "A small amount set by the network",
       "depositFallback": "a small deposit"
     },
     "wallets": {
       "title": "Which wallets work",
-      "intro": "You need two wallets made from different seed phrases. Stakeward talks to browser wallets through the Wallet Standard, such as Phantom, Solflare and Backpack. A Ledger connects through one of them. So far only Phantom has been tested with Stakeward. Solflare, Backpack and Ledger have not been tested yet.",
-      "notVerified": "A pair marked Not verified yet has not been tested. Until a pair says Works, try it with a small stake first.",
+      "intro": "So far only Phantom has been tested. Solflare, Backpack and Ledger have not been tested yet.",
+      "notVerified": "Until a pair says Works, try a small stake first.",
       "checkedOn": "Tested on Solana devnet on {date}.",
       "pairLabel": "{main} and {second}",
-      "here": "Both wallets in this browser",
-      "link": "Signing by link",
+      "here": "In one browser",
+      "link": "By link",
       "setups": {
         "phantom": "Phantom",
         "solflare": "Solflare",
@@ -207,52 +182,35 @@
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer."
       },
       "ledgerLink": "What will my Ledger show?",
-      "phone": "On a phone, a wallet app's own browser offers only that wallet. There you can check your stake, extend or remove a lock, and co-sign by link. Protect and rescue on a computer."
-    },
-    "alerts": {
-      "title": "Alerts in Telegram",
-      "intro": "Stakeward checks your protected stake accounts every few minutes. The Stakeward bot sends you a Telegram message when:",
-      "events": {
-        "deactivated": "your stake stops staking",
-        "delegation": "it moves to another validator",
-        "manager": "the wallet that manages staking changes",
-        "owner": "the main key changes",
-        "lock": "the lock is extended, shortened, removed or handed to another key",
-        "balance": "SOL leaves the stake account",
-        "closed": "the stake account is closed",
-        "reminders": "the lock ends soon: {days} days before, and when it ends"
-      },
-      "exampleTitle": "An alert looks like this",
-      "turnOn": "To turn alerts on, open your accounts and press Get alerts in Telegram. The bot needs only your public wallet address. Send /stop to the bot to turn alerts off.",
-      "anyWallet": "Stake data is public, so anyone can follow any wallet. Alerts never contain a key.",
-      "safe": "The bot only writes to chats that started it, only links to the Stakeward site and never asks for your seed phrase.",
-      "noGuarantee": "Alerts are a free service with no guarantee. If Stakeward is down, alerts come late, but your lock keeps working."
+      "phone": "In a phone wallet's browser you can check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
     },
     "security": {
       "title": "How Stakeward keeps you safe",
       "items": {
-        "chain": "The lock lives on the Solana network, inside your stake accounts. It does not depend on Stakeward.",
-        "browser": "Your browser builds every transaction, and your own wallets sign it. Stakeward's server never signs anything and never sees a key.",
-        "summary": "Before each signature you see what the transaction does and what it cannot do. That summary is read from the exact transaction your wallet receives.",
-        "programs": "Transactions use only Solana's own stake program, its system program for signing by link, and fee settings. Stakeward has no program of its own and no token.",
-        "server": "Stakeward's server passes only Stakeward transactions to the network. If it is down, you lose alerts, not SOL. The same server delivers this website, so a hacked server means a hacked website: see the next point.",
-        "site": "If this website were ever hacked, it could ask you to sign something harmful. So read your wallet or Ledger before you approve: wherever it shows the second key or the new wallet, that address must be yours.",
-        "data": "Stakeward keeps only public network data and, if you turn on alerts, your Telegram chat id. No accounts, no logins, no email, no cookies, no analytics.",
-        "open": "The code is open source under the MIT license, with no warranty. Anyone can read it."
+        "chain": "The lock lives in your stake accounts on Solana. It works without Stakeward.",
+        "browser": "Your browser builds each transaction and your wallets sign it. Stakeward never holds SOL, sees a key or signs for you.",
+        "server": "Stakeward's server only passes Stakeward transactions to the network. If it is down, you lose alerts, not SOL. The same server delivers this website.",
+        "site": "If this site were hacked, it could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
+        "programs": "Only Solana's own stake and system programs and fee settings. Stakeward has no program or token of its own.",
+        "open": "Open source under MIT, no warranty. No accounts, cookies or analytics."
       },
       "sourceLink": "Read the source code"
     },
     "recover": {
       "title": "If Stakeward disappears",
-      "body1": "Your lock keeps working without Stakeward. It ends on its date, and nothing on Stakeward's side can change it.",
-      "body2": "If your keys are on a Ledger or in keypair files, the Solana command line can do most of what Stakeward does: withdraw with both keys, move the stake to a new wallet, extend or remove the lock, hand the lock to a new second key. Keys that live only in a browser wallet cannot do this; your main key can withdraw alone once the lock ends.",
-      "body3": "Every protected stake account has a recovery card with these commands and what to do in each case. Print it and keep it with your keys. It holds no secrets.",
-      "cardLink": "Open your recovery cards from your accounts",
-      "guideLink": "Recovery guide on GitHub"
+      "body": "Each protected account has a printable recovery card with Solana CLI steps. They need keys on a Ledger or in keypair files.",
+      "cards": "Find your recovery cards",
+      "guideLink": "Recovery guide on GitHub",
+      "onChain": "What changes on the network"
+    },
+    "coSign": {
+      "title": "Got a link to co-sign?",
+      "body": "Someone made your wallet their second key. Sign only if they asked you by voice or in person. Co-signing never moves your own SOL.",
+      "more": "What to check before you co-sign"
     },
     "cta": {
       "title": "Start by looking",
-      "body": "Paste a wallet address and see which of its stake accounts are protected. It takes seconds and signs nothing."
+      "body": "Paste a wallet address and see which stake accounts are protected. Nothing to sign."
     }
   },
   "status": {
@@ -1839,6 +1797,7 @@
       "costs": "Costs, alerts and privacy",
       "developers": "For validators and developers"
     },
+    "groupCount": "{count} questions",
     "items": {
       "what": {
         "q": "What is Stakeward?",
