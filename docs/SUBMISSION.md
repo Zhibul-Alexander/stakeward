@@ -80,7 +80,7 @@ that, only the custodian can change it. We checked this and every rule Stakeward
 program v5.1.0 on LiteSVM, devnet and mainnet (docs/gate.md).
 
 **What Stakeward does.** It makes a second wallet of yours, from a different seed phrase, the custodian of the
-lockup on your existing stake accounts, for 1, 3, 6 or 12 months. Your stake keeps earning with its validator.
+lockup on your existing stake accounts, for 1, 3, 6 or 12 months or until a date you pick. Your stake keeps earning with its validator.
 
 - **Protect.** Check any wallet's stake by its address, without connecting anything. Then your main key and your
   second key sign one `SetLockupChecked` per stake account. The joint signature on the network is the proof that
@@ -360,7 +360,7 @@ before submitting.
 
 | Fact | Value | Where it comes from |
 | --- | --- | --- |
-| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
+| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Or a custom date from tomorrow to 5 years ahead, ending at 00:00 UTC on it (D118). Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
 | Network fee | 0.000005 SOL per signature plus 600 lamports priority (limit 60,000 CU at 10,000 micro-lamports) | `packages/core/src/constants.ts`, `fees.ts`, D16 |
 | Protect one stake account | 2 signatures, 0.0000106 SOL, paid by the Main key | `networkFeeFor`, D23 |
 | Rescue one stake account | 3 signatures, 0.0000156 SOL, paid by the New wallet | same |

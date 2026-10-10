@@ -70,22 +70,22 @@ describe('TransactionSummary', () => {
     render(<TransactionSummary summary={await inspected(protect, MAIN)} current={{ lockup: NO_LOCK, clock: NOW }} />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Protect this stake' })).toBeInTheDocument();
-    expect(screen.getByText('Read from the exact bytes you sign.')).toBeInTheDocument();
+    // Trimmed to what matters (owner, 10.10.2026): no intro line, no Ledger note, one "cannot" line plus the seed phrase.
+    expect(screen.queryByText('Read from the exact bytes you sign.')).not.toBeInTheDocument();
     expect(screen.getByText(STAKE)).toBeInTheDocument();
     expect(screen.getByText('No lock')).toBeInTheDocument();
     expect(screen.getByText('Locked until 12 April 2027')).toBeInTheDocument();
-    // What a Ledger calls the new second key, said under its row (D80: from its sources, not checked on a device).
-    expect(screen.getByText('A Ledger should show this as “New authority”. Not yet checked on a device.')).toBeInTheDocument();
+    expect(screen.queryByText(/New authority/)).not.toBeInTheDocument();
     expect(signers()).toEqual([
       `Main keyNot signed yetPays the network fee${MAIN}`,
       `Second keyNot signed yet${SECOND}`,
     ]);
     expect(screen.getByText('Up to 0.0000106 SOL')).toBeInTheDocument();
     expect(screen.getByText('This transaction cannot move your SOL.')).toBeInTheDocument();
-    expect(screen.getByText('It cannot change who can withdraw. Only the lock and its second key change.')).toBeInTheDocument();
+    expect(screen.queryByText(/cannot change who can withdraw/)).not.toBeInTheDocument();
     expect(screen.getByText('Stakeward never asks for your seed phrase.')).toBeInTheDocument();
-    // Phantom warns about these transactions; the screen says why before the wallet does (D110).
-    expect(screen.getByText(/^Your wallet may warn that this transaction could steal your funds in the future\./)).toBeInTheDocument();
+    // Phantom warns about or blocks these transactions; the screen says why before the wallet does (D110, D116).
+    expect(screen.getByText(/^Phantom may flag this as unsafe or block it/)).toBeInTheDocument();
     expect(screen.getByText('Valid for about a minute. If it expires, sign again.')).toBeInTheDocument();
     // A recent blockhash without checks added by a wallet: nothing technical to fold away.
     expect(screen.queryByText('Technical details')).not.toBeInTheDocument();
