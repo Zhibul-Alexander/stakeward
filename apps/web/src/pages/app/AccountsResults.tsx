@@ -8,6 +8,7 @@ import {
   LoaderCircleIcon,
   RefreshCwIcon,
   SendIcon,
+  Share2Icon,
   ShieldCheckIcon,
   ShieldXIcon,
 } from 'lucide-react';
@@ -223,6 +224,15 @@ function Summary({
               {t('app.results.telegram')}
             </a>
           </Button>
+          {/* The public proof page of this stake (D124): small and secondary, for a fund or a validator to share. */}
+          {owned === 0 ? null : (
+            <Button asChild variant="ghost" size="sm">
+              <Link href={appLinks.proof(address)}>
+                <Share2Icon aria-hidden="true" />
+                {t('app.results.shareProof')}
+              </Link>
+            </Button>
+          )}
           <RefreshButton onRefresh={onRefresh} />
         </>
       }

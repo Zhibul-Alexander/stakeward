@@ -352,6 +352,17 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'recovery',
   },
   {
+    // The public proof of the smoke main key's stake (D124): read from the network with no wallet, never "Protected".
+    path: `/proof/${MAIN}`,
+    heading: text('proof.title'),
+    shows: async (page) => {
+      await expect(page.getByText(text('proof.headline', { locked: '1,250.5', total: '1,250.5' }))).toBeVisible();
+      await expect(page.locator('article[data-slot="account-row"]')).toHaveAttribute('data-status', 'locked-by-other');
+      await expect(page.getByText(text('proof.limits'))).toBeVisible();
+    },
+    screen: 'proof',
+  },
+  {
     path: '/stats',
     heading: text('stats.title'),
     shows: async (page) => {

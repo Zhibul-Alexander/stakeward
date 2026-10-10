@@ -860,7 +860,8 @@
       "announceOne": "Found 1 stake account",
       "announceOther": "Found {count} stake accounts",
       "rescueNote": "Main key stolen?",
-      "rescue": "Rescue your stake"
+      "rescue": "Rescue your stake",
+      "shareProof": "Share proof page"
     },
     "summary": {
       "label": "Summary",
@@ -2255,5 +2256,43 @@
     "copyFailed": "Copy failed. Select the text below and copy it by hand.",
     "show": "Show the question",
     "newTab": "(opens in a new tab)"
+  },
+  "proof": {
+    "title": "Stake lock proof",
+    "intro": "A public check of one wallet's native stake: which stake accounts are locked, until when, and by which second key. Anyone can open this page, no wallet needed.",
+    "wallet": "Wallet",
+    "summaryLabel": "Summary",
+    "headline": "{locked} SOL locked of {total} SOL staked",
+    "accountsOne": "{locked} of 1 stake account locked",
+    "accounts": "{locked} of {count} stake accounts locked",
+    "earliestEnd": "Earliest lock end: {date}",
+    "refresh": "Refresh",
+    "listTitle": "Stake accounts",
+    "listNote": "Until a lock ends, withdrawing SOL or changing who owns the stake also needs the second key shown on its row.",
+    "fresh": "Read from the Solana network just now. Stakeward holds no funds and cannot move this stake.",
+    "limits": "A lock stops withdrawals without the second key; it does not stop unstaking or redelegation.",
+    "whoHolds": "The network does not say who holds a second key. Ask the owner of this wallet which second key is theirs and compare the address.",
+    "loading": "Reading stake accounts from the network",
+    "announce": "Read {count} stake accounts",
+    "errorTitle": "Could not read this wallet's stake",
+    "emptyTitle": "No stake accounts",
+    "emptyBody": "This wallet is not the main key of any native stake account, so there is no stake here to prove. Liquid staking tokens and stake held on exchanges do not show here.",
+    "emptyAction": "Check another address",
+    "invalidTitle": "This is not a Solana address",
+    "invalidBody": "Check the link: it should end with the wallet's address, 32 to 44 letters and digits.",
+    "ai": {
+      "task": "Explain to me, as someone deciding whether to trust this organisation, what this proof page shows and what it does not guarantee.",
+      "wallet": "Wallet (main key of the stake)",
+      "network": "Network",
+      "solLocked": "SOL locked",
+      "accountsLocked": "Stake accounts locked",
+      "earliestEnd": "Earliest lock end",
+      "none": "none",
+      "account": "Stake account {address}",
+      "lockedUntil": "{amount}, locked until {date} by second key {key}",
+      "lockedNoDate": "{amount}, locked by second key {key}",
+      "notLocked": "{amount}, not locked",
+      "ofTotal": "{part} of {total}"
+    }
   }
 }
