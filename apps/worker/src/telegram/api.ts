@@ -2,11 +2,21 @@ import { attemptPost } from '../upstream.ts';
 
 /**
  * Telegram Bot API sendMessage on plain fetch (CLAUDE.md section 8): plain text without markup, link previews off, at
- * most one link button and never a callback button. The URL carries the bot token, so neither it nor the chat id is
+ * most one button: a link, or the one callback button D118 allows ("Rescue now" of a rescue kit, `rk:<stake account>`,
+ * only in the chat bound to the kit; the webhook checks the chat again before it sends anything). The URL carries the bot token, so neither it nor the chat id is
  * ever logged; the answer body (and Telegram's error description) is not read at all, only the status.
  */
 
 export type TelegramOutcome = 'sent' | 'blocked' | 'rejected' | 'rate-limited' | 'retry' | 'config';
+
+/** One inline keyboard button: a link to the site, or a rescue kit's callback (D118). */
+export type TelegramButton = { label: string; url: string } | { label: string; callbackData: string };
+
+/** The Bot API inline keyboard of one button. */
+export function inlineKeyboard(button: TelegramButton): { inline_keyboard: Record<string, string>[][] } {
+  const key = 'url' in button ? { text: button.label, url: button.url } : { text: button.label, callback_data: button.callbackData };
+  return { inline_keyboard: [[key]] };
+}
 
 /**
  * Sends one message and maps the answer:
@@ -21,7 +31,7 @@ export async function sendTelegramMessage(opts: {
   token: string | null;
   chatId: string;
   text: string;
-  button?: { label: string; url: string };
+  button?: TelegramButton;
   fetch: typeof fetch;
   timeoutMs: number;
 }): Promise<TelegramOutcome> {
@@ -30,9 +40,7 @@ export async function sendTelegramMessage(opts: {
     chat_id: opts.chatId,
     text: opts.text,
     link_preview_options: { is_disabled: true },
-    ...(opts.button === undefined
-      ? {}
-      : { reply_markup: { inline_keyboard: [[{ text: opts.button.label, url: opts.button.url }]] } }),
+    ...(opts.button === undefined ? {} : { reply_markup: inlineKeyboard(opts.button) }),
   };
   const result = await attemptPost(`https://api.telegram.org/bot${opts.token}/sendMessage`, JSON.stringify(body), {
     timeoutMs: opts.timeoutMs,
@@ -54,6 +62,26 @@ export async function sendTelegramMessage(opts: {
     default:
       return 'retry';
   }
+}
+
+/**
+ * answerCallbackQuery: the toast under a tapped callback button (the rescue kit's "Rescue now", D118). Best effort,
+ * never throws; like sendMessage, nothing is logged.
+ */
+export async function answerCallbackQuery(opts: {
+  token: string;
+  callbackQueryId: string;
+  text: string;
+  fetch: typeof fetch;
+  timeoutMs: number;
+}): Promise<boolean> {
+  if (opts.token === '') return false;
+  const body = JSON.stringify({ callback_query_id: opts.callbackQueryId, text: opts.text });
+  const result = await attemptPost(`https://api.telegram.org/bot${opts.token}/answerCallbackQuery`, body, {
+    timeoutMs: opts.timeoutMs,
+    fetch: opts.fetch,
+  });
+  return typeof result !== 'string' && result.status >= 200 && result.status < 300;
 }
 
 /**

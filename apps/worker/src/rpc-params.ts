@@ -9,7 +9,7 @@ import * as z from 'zod';
  */
 
 /** Base64 length of the largest wire transaction core accepts (1232 bytes, the packet size). */
-const MAX_TRANSACTION_BASE64 = 4 * Math.ceil(MAX_TRANSACTION_BYTES / 3);
+export const MAX_TRANSACTION_BASE64 = 4 * Math.ceil(MAX_TRANSACTION_BYTES / 3);
 /** Largest Solana account (10 MiB): bounds dataSlice and getMinimumBalanceForRentExemption. */
 const MAX_ACCOUNT_BYTES = 10 * 1024 * 1024;
 /** RPC limits: getMultipleAccounts takes 100 keys, getSignatureStatuses 256 signatures. */

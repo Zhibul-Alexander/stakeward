@@ -38,7 +38,9 @@
       "withdraw": "Withdraw",
       "extend": "Extend the lock",
       "rescue": "Rescue your stake",
-      "cosign": "Co-sign a transaction"
+      "cosign": "Co-sign a transaction",
+      "rescueKit": "Prepare one-tap rescue",
+      "rescueNow": "One-tap rescue"
     }
   },
   "nav": {
@@ -1049,6 +1051,11 @@
         "title": "Keep a recovery card",
         "body": "What to do if a key is lost or stolen, with CLI steps that work without Stakeward. Print it; it holds no secrets.",
         "open": "Open recovery card"
+      },
+      "rescueKit": {
+        "title": "Optional: prepare a one-tap rescue",
+        "body": "Sign the rescue now with a new wallet, while all your keys are safe. If a thief touches this stake, it moves to the new wallet in one tap.",
+        "open": "Prepare one-tap rescue"
       }
     }
   },
@@ -1638,7 +1645,8 @@
       "unsupported-lock": "Locked by the main key itself or by no key: Stakeward cannot move it.",
       "key-rule": "The new wallet, the main key and the second key must all be different wallets.",
       "not-new-wallet": "Your new wallet does not manage staking for this stake account.",
-      "no-validator": "This stake was never delegated, so there is no validator to return to."
+      "no-validator": "This stake was never delegated, so there is no validator to return to.",
+      "kit-not-locked": "Not locked by your second key now: a one-tap rescue needs a lock in force."
     }
   },
   "recovery": {
@@ -2142,6 +2150,48 @@
       "title": "Telegram",
       "from": "Stakeward bot",
       "note": "The exact text the bot sends."
+    }
+  },
+  "rescueKit": {
+    "intro": "Sign the rescue of your locked stake now, while all your keys are safe. If a thief touches it later, the rescue is sent in one tap, or by itself when the thief changes who manages staking.",
+    "desktop": "Best on a desktop. Your main key, second key and new wallet all sign here.",
+    "steps": {
+      "sign": "Sign the rescue"
+    },
+    "keys": {
+      "noLink": "Not for a one-tap rescue: a link would send it at once."
+    },
+    "sign": {
+      "heading": "Sign the rescue of each account",
+      "lead": "Nothing moves now. Stakeward keeps each signed rescue and sends it only after it sees a change you did not make. All it can ever do is move the stake to your new wallet below; the lock stays.",
+      "progress": "Account {current} of {count}",
+      "nonceBlocked": "Connect another new wallet for this account."
+    },
+    "done": {
+      "heading": "One-tap rescue is ready",
+      "noneHeading": "No one-tap rescue was saved",
+      "lead": "Your stake has not moved. Connect Telegram below: when Stakeward sees someone change this stake, the alert has a Rescue now button that sends it. A change of who manages staking sends it by itself.",
+      "newWallet": "The stake moves to this new wallet",
+      "notSaved": "Not saved. Try again.",
+      "keepNewWallet": "Keep the new wallet's seed phrase as safe as the other two, and keep a little SOL on it: it pays the rescue's fee. Do not use it for anything else.",
+      "toAccounts": "Back to your accounts",
+      "telegram": "Connect Telegram for Rescue now",
+      "telegramOnce": "The link works once: open it in the Telegram chat that should be able to send this rescue.",
+      "noTelegram": "Telegram is not set up here. The rescue is still sent by itself if someone changes who manages staking."
+    },
+    "now": {
+      "lead": "Where the rescue you signed in advance stands. It is sent from the linked Telegram chat, or by itself when someone changes who manages staking.",
+      "loading": "Reading the rescue…",
+      "loadError": "Could not read the rescue",
+      "stakeAccount": "Stake account",
+      "none": "There is no one-tap rescue for this stake account. You can still rescue it with your keys.",
+      "openRescue": "Open Rescue",
+      "stale": "This rescue can no longer be sent: the new wallet used its signing account. Rescue with your keys instead.",
+      "alreadySent": "This rescue was sent already.",
+      "ready": "The rescue is ready. If Stakeward sees a change you did not make, press Rescue now under the alert in the linked Telegram chat.",
+      "readyNoTelegram": "The rescue is ready, but no Telegram chat is linked to it yet. It is still sent by itself if someone changes who manages staking. To link a chat, prepare the rescue again.",
+      "sent": "The rescue was sent. The stake now belongs to your new wallet.",
+      "viewTransaction": "View the transaction on Solana Explorer"
     }
   }
 }

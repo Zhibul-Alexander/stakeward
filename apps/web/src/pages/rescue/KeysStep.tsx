@@ -30,6 +30,8 @@ type KeysStepProps = {
   onSecondMode: (mode: SignMode) => void;
   onBack: () => void;
   onContinue: () => void;
+  /** Why signing by link is off for both keys (one-tap rescue kits: /cosign would send the kit at once). */
+  linkDisabled?: string | undefined;
 };
 
 function blockerText(blocker: RescueBlocker): string {
@@ -157,14 +159,14 @@ export function KeysStep(props: KeysStepProps) {
             </p>
           </SignerRow>
           <SignerRow role="main" address={mainKey}>
-            <WhereCards role="main" value={mainMode} onChange={props.onMainMode} />
+            <WhereCards role="main" value={mainMode} onChange={props.onMainMode} disabledLink={props.linkDisabled} />
           </SignerRow>
           <SignerRow role="second" address={secondKey}>
             <WhereCards
               role="second"
               value={secondMode}
               onChange={props.onSecondMode}
-              disabledLink={choices.length === 0 ? t('rescue.keys.noLockLink') : undefined}
+              disabledLink={props.linkDisabled ?? (choices.length === 0 ? t('rescue.keys.noLockLink') : undefined)}
             />
           </SignerRow>
         </ul>

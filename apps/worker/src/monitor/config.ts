@@ -88,6 +88,10 @@ export const MONITOR_LIMITS = {
   webhookErrorWindowMs: 600_000,
   rpcDownPasses: 3,
   telegramTimeoutMs: 8_000,
+  /** Rescue kits a pass sends by itself (pass.ts autoSendKits); the rest wait for the next pass. */
+  maxKitSends: 3,
+  /** Stake accounts meta.kit_queue holds at most. */
+  kitQueueMax: 100,
 } as const;
 
 export type MonitorConfig = {

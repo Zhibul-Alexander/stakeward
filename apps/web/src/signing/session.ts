@@ -686,6 +686,7 @@ export class SigningSession {
   /** Sends every ready transaction of the round, in order; each send's outcome is its own (accounts are independent). */
   private async send(work: Work): Promise<void> {
     const { chain } = this.options;
+    const { deliver } = this.options.plan;
     const round = this.state.round;
     if (round === null) return;
     // Sent (or about to be): never build on this nonce value again, even if a lagging node still shows it.
@@ -703,6 +704,12 @@ export class SigningSession {
       if (this.state.jobs[tx.id]?.state.kind !== 'ready') continue;
       this.dispatch({ type: 'job', id: tx.id, state: { kind: 'sending' }, signature: transactionIdOf(tx.bytes), bytes: tx.bytes });
       try {
+        if (deliver !== undefined) {
+          await deliver(tx.bytes);
+          if (this.stale(work)) return;
+          this.dispatch({ type: 'job', id: tx.id, state: { kind: 'done', after: this.state.jobs[tx.id]?.before ?? null } });
+          continue;
+        }
         await chain.send(tx.bytes);
         if (this.stale(work)) return;
         this.dispatch({ type: 'job', id: tx.id, state: { kind: 'confirming', indefinite: false } });
@@ -888,7 +895,7 @@ function buildOwn(action: TransactionAction, feePayer: Address, lifetime: Lifeti
 function checkLinkPlan(plan: SigningPlan): void {
   const remote = plan.remote ?? [];
   if (remote.length === 0) return;
-  if (plan.nonce === undefined || remote.includes(plan.nonce.nonceAuthority)) {
+  if (plan.nonce === undefined || plan.deliver !== undefined || remote.includes(plan.nonce.nonceAuthority)) {
     throw new PrepareFailure({ kind: 'inspector', error: { code: 'bad-layout', message: 'link plan misconfigured' } });
   }
 }

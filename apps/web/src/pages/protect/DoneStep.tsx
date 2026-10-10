@@ -11,6 +11,7 @@ import {
   SearchIcon,
   SendIcon,
   TriangleAlertIcon,
+  ZapIcon,
 } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -247,6 +248,16 @@ export function ProtectDoneView({
                 <Link href={appLinks.recovery(firstProtected.job.id as Address)}>
                   <FileTextIcon aria-hidden="true" />
                   {t('protect.done.recovery.open')}
+                </Link>
+              </Button>
+            </div>
+          </NextStep>
+          <NextStep n={3} title={t('protect.done.rescueKit.title')} body={t('protect.done.rescueKit.body')}>
+            <div>
+              <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
+                <Link href={`/rescue-kit?${new URLSearchParams({ address: mainKey }).toString()}`}>
+                  <ZapIcon aria-hidden="true" />
+                  {t('protect.done.rescueKit.open')}
                 </Link>
               </Button>
             </div>

@@ -268,6 +268,7 @@ function monitorRound(data: SyntheticData, report: WarmUpReport): void {
     withdrawer: data.main,
     custodian: data.second,
     lock_until: data.lockUntil.toString(),
+    kit_chat_id: null,
   });
   const reminder = JSON.stringify({ days: 30, lockUntil: data.lockUntil.toString() });
   const pending = [

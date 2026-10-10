@@ -51,6 +51,8 @@ export type PendingRow = {
   withdrawer: Address;
   custodian: Address;
   lock_until: string;
+  /** The chat bound to the account's ready rescue kit, null without one. */
+  kit_chat_id: string | null;
 };
 
 /** A LINKS_FOR row. */
@@ -153,9 +155,12 @@ WHERE accounts.stake_account = r.value ->> '$.a'
   AND accounts.slot = r.value ->> '$.ps' AND accounts.checked_at = r.value ->> '$.pc'`,
 
   // ?1 = how many. Walks the partial index events_pending (id) WHERE notified_at IS NULL (migration 0003): it reads
-  // the undelivered rows only, however many events were delivered before.
+  // the undelivered rows only, however many events were delivered before. kit_chat_id: the chat bound to the
+  // account's ready rescue kit (migration 0005), whose alerts carry the "Rescue now" button; null otherwise.
   PENDING: `SELECT e.id, e.stake_account, e.type, e.details_json, e.detected_at,
-       a.withdrawer, a.custodian, CAST(a.lock_until AS TEXT) AS lock_until
+       a.withdrawer, a.custodian, CAST(a.lock_until AS TEXT) AS lock_until,
+       (SELECT k.chat_id FROM rescue_kits k WHERE k.stake_account = e.stake_account AND k.status = 'ready')
+         AS kit_chat_id
 FROM events e JOIN accounts a ON a.stake_account = e.stake_account
 WHERE e.notified_at IS NULL ORDER BY e.id LIMIT ?1`,
 
@@ -236,6 +241,56 @@ FROM alert_links l WHERE l.chat_id = ?1 ORDER BY l.created_at, l.wallet`,
   STOP: `DELETE FROM alert_links WHERE chat_id = ?1`,
 
   LAST_PASS_AT: `SELECT value FROM meta WHERE key = 'last_pass_at'`,
+
+  // One-tap rescue kits (migration 0005, rescue-kits.ts, telegram/webhook.ts).
+
+  // ?1 stake account
+  WATCHED_LIVE: `SELECT 1 AS watched FROM accounts WHERE stake_account = ?1 AND state != 'closed'`,
+
+  // ?1 stake account, ?2 tx (base64), ?3 main key, ?4 new wallet, ?5 nonce account, ?6 nonce value, ?7 now ms,
+  // ?8 link token hash. A new kit, or one that replaces the account's kit whatever its status: a new token, and the
+  // chat the old one bound is let go. Only while the account is watched (0 changes otherwise).
+  KIT_UPSERT: `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at,
+                         status, sent_at, signature, link_token_hash, chat_id, attempted_at)
+SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready', NULL, NULL, ?8, NULL, NULL
+WHERE EXISTS (SELECT 1 FROM accounts WHERE stake_account = ?1 AND state != 'closed')
+ON CONFLICT (stake_account) DO UPDATE SET
+  tx = excluded.tx, main_key = excluded.main_key, new_wallet = excluded.new_wallet,
+  nonce_account = excluded.nonce_account, nonce_value = excluded.nonce_value, created_at = excluded.created_at,
+  status = 'ready', sent_at = NULL, signature = NULL, link_token_hash = excluded.link_token_hash, chat_id = NULL,
+  attempted_at = NULL`,
+
+  // ?1 stake account. Never the bytes, the token hash or the chat.
+  KIT_STATUS: `SELECT status, new_wallet, signature, sent_at, chat_id IS NOT NULL AS linked
+FROM rescue_kits WHERE stake_account = ?1`,
+
+  // ?1 token hash, ?2 chat. One-time: the hash is cleared as the chat is bound.
+  KIT_BIND: `UPDATE rescue_kits SET chat_id = ?2, link_token_hash = NULL WHERE link_token_hash = ?1
+RETURNING stake_account, main_key`,
+
+  // ?1 chat: /stop and a blocked bot let go of the chat's kits too.
+  KIT_UNBIND_CHAT: `UPDATE rescue_kits SET chat_id = NULL WHERE chat_id = ?1`,
+
+  // ?1 stake account, ?2 chat, ?3 now ms, ?4 cooldown ms. Claims a send from the "Rescue now" button: only the bound
+  // chat, a ready kit, and no other claim within the cooldown (two taps send once).
+  KIT_CLAIM: `UPDATE rescue_kits SET attempted_at = ?3
+WHERE stake_account = ?1 AND chat_id = ?2 AND status = 'ready' AND (attempted_at IS NULL OR attempted_at <= ?3 - ?4)
+RETURNING tx, main_key, new_wallet`,
+
+  // ?1 stake account, ?2 chat: why a claim failed (null row: no kit bound to this chat).
+  KIT_OF_CHAT: `SELECT status FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2`,
+
+  // ?1 = [stake account]: the ready kits among them, for the monitor's auto-send.
+  KITS_READY_FOR: `SELECT stake_account, tx FROM rescue_kits
+WHERE status = 'ready' AND stake_account IN (SELECT value FROM json_each(?1)) ORDER BY stake_account`,
+
+  // ?1 = [{a, tx, status, sig, at}]: the outcome of sends, each only on the kit that was sent (same bytes) and only
+  // while it is still ready: a kit replaced or settled meanwhile stays as it is.
+  KIT_SETTLE: `UPDATE rescue_kits SET status = s.value ->> '$.status', sent_at = s.value ->> '$.at',
+  signature = s.value ->> '$.sig'
+FROM json_each(?1) AS s
+WHERE rescue_kits.stake_account = s.value ->> '$.a' AND rescue_kits.tx = s.value ->> '$.tx'
+  AND rescue_kits.status = 'ready'`,
 
   // ?1 wallet
   ACCOUNTS_FOR_WALLET: `SELECT stake_account, withdrawer, custodian, CAST(lock_until AS TEXT) AS lock_until, lamports, state, checked_at

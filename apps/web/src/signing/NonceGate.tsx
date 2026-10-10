@@ -25,6 +25,8 @@ type NonceGateProps = {
   /** The page's way out while the account is not ready (e.g. Back), shown below the gate; never next to `children`. */
   actions?: ReactNode;
   signing?: SigningTestOptions | undefined;
+  /** Another nonce account of the same key: a one-tap rescue kit's (core `rescueKitNonceSeed`, D118). */
+  seed?: string | undefined;
 };
 
 /**
@@ -33,16 +35,25 @@ type NonceGateProps = {
  * wait is explained and an error has Try again (UX rules 7 and 8). An address taken by another account cannot be
  * used: the gate says so with the page's way around it.
  */
-export function NonceGate({ authority, role, blockedHint, variant, children, actions, signing }: NonceGateProps) {
+export function NonceGate({ authority, role, blockedHint, variant, children, actions, signing, seed }: NonceGateProps) {
   const chain = useChain();
   const [attempt, setAttempt] = useState(0);
-  const nonce = useNonceAccount(chain, authority, attempt);
+  const nonce = useNonceAccount(chain, authority, attempt, seed);
   const again = () => {
     setAttempt((value) => value + 1);
   };
   if (nonce.status === 'ready' && nonce.value.state.kind === 'ready') return children(nonce.value.address);
   const gate = (
-    <GateState nonce={nonce} authority={authority} role={role} blockedHint={blockedHint} variant={variant} again={again} signing={signing} />
+    <GateState
+      nonce={nonce}
+      authority={authority}
+      role={role}
+      blockedHint={blockedHint}
+      variant={variant}
+      again={again}
+      signing={signing}
+      seed={seed}
+    />
   );
   if (actions === undefined) return gate;
   return (
@@ -59,7 +70,7 @@ type GateStateProps = Omit<NonceGateProps, 'children' | 'actions'> & {
 };
 
 /** The gate while the account is not ready to use: reading it, a read error, setting it up, or its address taken. */
-function GateState({ nonce, authority, role, blockedHint, variant, again, signing }: GateStateProps) {
+function GateState({ nonce, authority, role, blockedHint, variant, again, signing, seed }: GateStateProps) {
   switch (nonce.status) {
     case 'idle':
     case 'loading':
@@ -88,6 +99,7 @@ function GateState({ nonce, authority, role, blockedHint, variant, again, signin
               amount={deposit}
               onDone={again}
               signing={signing}
+              seed={seed}
             />
           );
         case 'unusable':
