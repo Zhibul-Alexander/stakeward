@@ -196,6 +196,10 @@ site with devnet SOL. In the voice-over, call it devnet once at the start.
 6. Rehearse once end to end. Expected CLI output is below; if a line differs, film the failed transaction in
    Solana Explorer instead (docs/gate.md has the same failures on devnet).
 7. Browser at 1280 px, light theme, zoom 110%. Close other tabs and wallet pop-ups.
+8. Phantom may block the rescue signatures: on 10 Oct it showed "Request blocked" ("You are allowing this website
+   to transfer away your staked SOL") on dev, where on 8 Oct it only warned (D116). In the take, press "Proceed
+   anyway (unsafe)" and keep it on screen; voice-over below. If the wallet offers no way through, film the rescue
+   with the recovery card's CLI commands instead (docs/recovery-cli.md).
 
 ### Script
 
@@ -213,7 +217,7 @@ site with devnet SOL. In the voice-over, call it devnet once at the start.
 | 1:45-2:00 | Cut ("2 minutes later"). Phone: the bot's message "Stake <short address> was deactivated. If this was not you, your main key may be stolen. Your SOL cannot be withdrawn without the second key." with the button "Open Rescue". | Two minutes later my phone tells me. |
 | 2:00-2:10 | Telegram Desktop: press "Open Rescue". `/rescue` opens with the Main key filled in; "Find its stake" shows "Your stake is locked until ...". | One tap opens the rescue with my main key filled in. |
 | 2:10-2:20 | Step "New wallet": connect the New wallet, tick "My new wallet comes from a new seed phrase that no one else has seen", balance check passes. Step "Keys": the Second key co-signs here. | I connect a new wallet from a new seed phrase. It pays the fees, so the stolen key never has to. |
-| 2:20-2:35 | Step "Move": "New owner of your stake" with the full address, and the warning (already shown on the New wallet and Keys steps) that the new wallet shares Phantom with the main key and the second key. "Create the link-signing account", then each stake account signed by the New wallet, the Main key and the Second key (montage at 4x, Phantom account switches visible). | Three keys sign: my old main key, which I still have, my second key and the new wallet. Each transaction runs on a durable nonce, so nothing expires while I switch wallets. |
+| 2:20-2:35 | Step "Move": "New owner of your stake" with the full address, and the warning (already shown on the New wallet and Keys steps) that the new wallet shares Phantom with the main key and the second key. "Create the link-signing account", then each stake account signed by the New wallet, the Main key and the Second key (montage at 4x, Phantom account switches visible). | Three keys sign: my old main key, which I still have, my second key and the new wallet. Each transaction runs on a durable nonce, so nothing expires while I switch wallets. (If Phantom blocks it, add: "Phantom blocks this, because a thief's transaction looks the same. Here all three keys are mine, and I checked every address on screen.") |
 | 2:35-2:45 | Done: "2 stake accounts are safe", "Now controlled by your new wallet", "Earn rewards again". | My stake now belongs to the new wallet, still locked. The thief's key controls nothing. |
 | 2:45-2:55 | Solana Explorer on one stake account: stake and withdraw authority = New wallet, lockup custodian = Second key. End card: logo, repository URL, "Free. Non-custodial. No program, no token." | Verified on chain. Stakeward: free, open source, and it never touches your SOL. |
 
