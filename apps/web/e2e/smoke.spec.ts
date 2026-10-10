@@ -356,9 +356,9 @@ const ROUTES: readonly SmokeRoute[] = [
     path: `/proof/${MAIN}`,
     heading: text('proof.title'),
     shows: async (page) => {
-      await expect(page.getByText(text('proof.headline', { locked: '1,250.5', total: '1,250.5' }))).toBeVisible();
+      await expect(page.getByText(text('proof.headline', { locked: '1,250.5', total: '1,250.5' }), { exact: true })).toBeVisible();
       await expect(page.locator('article[data-slot="account-row"]')).toHaveAttribute('data-status', 'locked-by-other');
-      await expect(page.getByText(text('proof.limits'))).toBeVisible();
+      await expect(page.getByText(text('proof.limits'), { exact: true })).toBeVisible();
     },
     screen: 'proof',
   },
