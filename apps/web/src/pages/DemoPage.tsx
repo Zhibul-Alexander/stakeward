@@ -66,6 +66,8 @@ const SCRIPTS: Record<'steal' | 'protect' | 'attack' | 'rescue', { lines: readon
       { key: 'demo.lines.attackWithdrawRejected', actor: 'network', tone: 'success' },
       { key: 'demo.lines.attackDeactivate', actor: 'thief', tone: 'neutral' },
       { key: 'demo.lines.attackDeactivateAccepted', actor: 'network', tone: 'warning' },
+      { key: 'demo.lines.attackRetry', actor: 'thief', tone: 'neutral' },
+      { key: 'demo.lines.attackAuthorizeRejected', actor: 'network', tone: 'success' },
       { key: 'demo.lines.monitorAlert', actor: 'monitor', tone: 'neutral' },
     ],
     next: 'alerted',
