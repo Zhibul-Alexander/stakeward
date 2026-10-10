@@ -40,6 +40,7 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
+      "changeKey": "Change the second key",
       "rescueNow": "Rescue status",
       "steal": "Try to steal it"
     }
@@ -310,6 +311,7 @@
         "deactivate": "Deactivate the stake",
         "delegate": "Delegate the stake",
         "rescue": "Move this stake to your new wallet",
+        "change-second-key": "Hand the lock to a new second key",
         "nonce-setup": "Set up signing by link",
         "nonce-close": "Close the link-signing account"
       },
@@ -319,6 +321,7 @@
       "now": "Now",
       "after": "After",
       "lock": "Lock",
+      "lockEnd": "Lock end",
       "noLock": "No lock",
       "lockedUntil": "Locked until {date}",
       "lockEnded": "Lock ended on {date}",
@@ -350,6 +353,7 @@
         "onlyRecipient": "It can only send SOL to the address shown above.",
         "noKeyChange": "It does not change any key or the lock.",
         "keepsLock": "It does not change the lock.",
+        "keepsEnd": "It does not change when the lock ends.",
         "rescueNoMove": "It cannot move your SOL out of the stake account: only its keys change.",
         "stakeStays": "This transaction cannot move your SOL: it stays in the stake account.",
         "noStake": "It cannot touch your stake accounts."
@@ -909,6 +913,7 @@
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
       "more": "More for stake account {address}",
+      "changeKey": "Change second key",
       "steal": "Try to steal it"
     },
     "noLongerProtected": {
@@ -1203,6 +1208,40 @@
       "other-second-key": "Another key holds this lock now. Only that key can change it.",
       "not-later": "The lock already ends later than this. Choose again.",
       "lock-end-passed": "The chosen end is too close or has passed. Choose again."
+    }
+  },
+  "changeKey": {
+    "intro": "Hand the lock to a new second key. Do it at once if your second key may be stolen: until then its holder can move the lock date or hand the lock to their own key.",
+    "heading": "Your new second key",
+    "body": "Connect a new wallet: it becomes the second key. Your second key now and the new one both sign, and the new one pays the fee of about 0.00001 SOL. The lock keeps its end date, and your SOL does not move.",
+    "newSeed": "Make it from a new seed phrase: a new Ledger, a spare Ledger reset with a new seed phrase, or a new wallet in an app. Never use the Ledger that holds your main key or your second key, not even another account on it.",
+    "slot": "Signs and pays. It becomes your second key.",
+    "seedCheck": "My new second key comes from a new seed phrase, not from my main key's or my old second key's",
+    "needNew": "Connect the new wallet first.",
+    "fixProblem": "Connect another wallet as the new second key.",
+    "needSeedCheck": "Confirm that the new second key comes from a new seed phrase.",
+    "problem": {
+      "is-second": "This wallet already holds the lock. Connect a new wallet.",
+      "is-main": "This wallet is the main key of this stake. The second key must be another wallet.",
+      "is-staker": "This wallet manages the staking of this stake. The second key must be another wallet.",
+      "is-stake-account": "This is the stake account itself. Connect a wallet."
+    },
+    "review": "Review the change",
+    "signHeading": "Hand the lock to the new second key",
+    "notLocked": "No second key holds a lock on this stake account now, so there is nothing to hand on. Protect it with your main key and a new second key instead.",
+    "protect": "Protect this stake",
+    "result": "Second key change",
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-locked": "This stake account has no lock in force any more.",
+      "other-second-key": "Another key holds this lock now. Only that key can change it.",
+      "bad-new-key": "The new second key must be a wallet other than the keys of this stake. Connect another one."
+    },
+    "done": {
+      "title": "Your new second key holds the lock",
+      "body": "The old second key can no longer change this lock. Keep the new one apart from your main key, and print a new recovery card: the old one names the old key.",
+      "recovery": "Print the new recovery card"
     }
   },
   "devCosign": {
@@ -1750,7 +1789,8 @@
       "extend": "Extend in Stakeward",
       "withdraw": "Withdraw in Stakeward",
       "source": "Stakeward source code",
-      "lockedByOther": "Why a stake account says Locked by a second key"
+      "lockedByOther": "Why a stake account says Locked by a second key",
+      "changeKey": "Change second key in Stakeward"
     },
     "commands": {
       "find": "List the stake accounts of the main key",
@@ -1816,7 +1856,8 @@
         "title": "Your second key is stolen, or someone saw its seed phrase",
         "body": "The thief cannot take your SOL, but can freeze it by moving the lock date.",
         "newKey": "Act first: make a new second key.",
-        "cli": "Hand the lock to it. Both second keys sign; the new one pays:",
+        "stakeward": "In Stakeward, use Change second key with both second keys:",
+        "cli": "Or, without Stakeward, hand the lock to it. Both second keys sign; the new one pays:",
         "late": "If the thief acts first, the stake stays locked until the date they chose."
       },
       "down": {
@@ -2048,7 +2089,7 @@
       },
       "second-stolen": {
         "q": "My second key was stolen. What now?",
-        "a": "The thief cannot take your SOL. They can move the lock date far ahead, or hand the lock to another key.\n\nIf you still have the second key, hand the lock to a new second key at once. Your recovery card has the one command for it; it needs the Solana command line. In Stakeward today: remove the lock with the old second key, then protect the stake again with a new one right away. In between, your main key alone controls the stake.\n\nIf the thief changed the lock first, your SOL is still yours, but it stays locked until the date they set."
+        "a": "The thief cannot take your SOL. They can move the lock date far ahead, or hand the lock to another key.\n\nIf you still have the second key, hand the lock to a new second key at once: Change second key on your accounts page. The old and the new second key sign, the new one pays, and the end date stays. Your recovery card has the same step as one command.\n\nIf the thief changed the lock first, your SOL is still yours, but it stays locked until the date they set."
       },
       "both-stolen": {
         "q": "What if both keys are stolen?",
@@ -2056,7 +2097,7 @@
       },
       "change-second-key": {
         "q": "Can I change my second key?",
-        "a": "Not in Stakeward yet. The Solana command line does it in one step: see your recovery card. In Stakeward, remove the lock with your old second key, then protect the stake again with the new one right away. In between, your main key alone controls the stake."
+        "a": "Yes, while the lock holds. On your accounts page, open More on the stake account and choose Change second key. Connect the second key that holds the lock and a new wallet from a new seed phrase. Both sign, the new one pays, and the lock keeps its end date. Then print a new recovery card: the old one names the old key."
       },
       "locked-by-other": {
         "q": "Why does my stake account say Locked by a second key?",

@@ -381,7 +381,15 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
               <p>{t('recovery.cases.stolenSecond.newKey')}</p>
               {newKeyRef}
             </li>
-            <CommandStep lead={t('recovery.cases.stolenSecond.cli')}>{command('change-second-key')}</CommandStep>
+            {/* One step, two ways: Stakeward, or the command line without it. */}
+            <li className="space-y-2">
+              <p>
+                {t('recovery.cases.stolenSecond.stakeward')}{' '}
+                <PrintedLink href={appLinks.changeKey(card.route)} label={t('recovery.links.changeKey')} />
+              </p>
+              <Lead>{t('recovery.cases.stolenSecond.cli')}</Lead>
+              {command('change-second-key')}
+            </li>
           </Steps>
           <p>{t('recovery.cases.stolenSecond.late')}</p>
         </Case>
