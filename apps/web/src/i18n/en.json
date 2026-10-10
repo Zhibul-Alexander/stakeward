@@ -2195,7 +2195,17 @@
       "ready": "The rescue is ready. If Stakeward sees a change you did not make, press Rescue now under the alert in the linked Telegram chat.",
       "readyNoTelegram": "The rescue is ready, but no Telegram chat is linked to it yet. It is still sent by itself if someone changes who manages staking. To link a chat, prepare the rescue again.",
       "sent": "The rescue was sent. The stake now belongs to your new wallet.",
-      "viewTransaction": "View the transaction on Solana Explorer"
+      "viewTransaction": "View the transaction on Solana Explorer",
+      "auto": {
+        "off": "Sent by itself: never.",
+        "staker": "Sent by itself: when someone changes who manages staking.",
+        "any": "Sent by itself: on any change the alerts report (stopping staking, another validator, less SOL, a new staking manager).",
+        "change": "Change it with /kits in the linked Telegram chat."
+      }
+    },
+    "revoke": {
+      "heading": "Cancel this rescue for good",
+      "body": "Deleting the rescue in Telegram only removes Stakeward's copy. To make the signed rescue useless everywhere, your new wallet closes the signing account behind it and gets its deposit back."
     }
   }
 }

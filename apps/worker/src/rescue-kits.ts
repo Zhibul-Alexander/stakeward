@@ -19,7 +19,9 @@ import { botUsernameOf } from './monitor/config.ts';
 import { readChunk, type ChunkRead, type RawItem } from './monitor/read.ts';
 import { SQL } from './monitor/store.ts';
 import { describeIssue, MAX_TRANSACTION_BASE64 } from './rpc-params.ts';
+import { siteUrl, type TelegramButton } from './telegram/api.ts';
 import { telegramStartUrl } from './telegram/link.ts';
+import { kitAutoLabel, kitAutoText, kitCardText, kitDeletedText, type KitAutoWords } from './telegram/texts.ts';
 import { isRecord } from './stake-accounts.ts';
 import { callUpstream, type UpstreamEndpoints, type UpstreamOptions } from './upstream.ts';
 import type { AppEnv } from './app.ts';
@@ -39,7 +41,11 @@ import type { AppEnv } from './app.ts';
  *   of that account (monitor/deliver.ts). A tap sends the kit (rescueFromButton) from that chat only. There is no
  *   public send route: anyone could fire someone's rescue with it.
  * - GET /api/rescue-kits?account=: the status, never the bytes, the token or the chat.
- * - The monitor sends a ready kit by itself after a STAKER_CHANGED (monitor/pass.ts autoSendKits).
+ * - The monitor sends a ready kit by itself after a STAKER_CHANGED, or as the kit's auto mode says (monitor/pass.ts
+ *   autoSendKits).
+ * - Management (D120): the bound chat is the only proof of who owns a kit (no login, no signMessage). /kits there lists
+ *   its kits with buttons to cycle the auto mode (`rka:`) and to delete the kit (`rkd:`); like `rk:`, each acts only
+ *   for the chat bound to the kit.
  *
  * `sent` means an RPC node took the transaction, not that it landed: the monitor sees the new authorities on the
  * chain like any other change.
@@ -73,11 +79,89 @@ export function rescueKitCallbackData(stakeAccount: Address): string {
   return `rk:${stakeAccount}`;
 }
 
-/** The stake account of `rk:<stake account>`, else null. */
-export function parseRescueKitCallback(data: string): Address | null {
-  if (!data.startsWith('rk:')) return null;
-  const account = data.slice(3);
-  return isAddressText(account) && account !== ZERO_ADDRESS ? account : null;
+/** A kit callback: `rk:` sends (D118), `rka:` cycles the auto mode, `rkd:` deletes (D120). At most 48 bytes. */
+export type KitCallback = { action: 'rescue' | 'mode' | 'delete'; stakeAccount: Address };
+
+const KIT_CALLBACK = /^(rk|rka|rkd):(.+)$/;
+const KIT_ACTIONS = { rk: 'rescue', rka: 'mode', rkd: 'delete' } as const;
+
+/** The action and stake account of a kit callback, else null. */
+export function parseKitCallback(data: string): KitCallback | null {
+  const match = KIT_CALLBACK.exec(data);
+  if (match === null) return null;
+  const [, prefix, account] = match;
+  if (account === undefined || !isAddressText(account) || account === ZERO_ADDRESS) return null;
+  return { action: KIT_ACTIONS[prefix as keyof typeof KIT_ACTIONS], stakeAccount: account };
+}
+
+/**
+ * When the monitor sends a kit by itself (migration 0006, D120): 'off' never, 'staker' after a STAKER_CHANGED (the
+ * default), 'any' after any of RESCUE_KIT_EVENTS.
+ */
+export type KitAutoMode = 'off' | 'staker' | 'any';
+
+/** A stored auto mode; anything unknown reads as the default. */
+export function autoModeOf(value: unknown): KitAutoMode {
+  return value === 'off' || value === 'any' ? value : 'staker';
+}
+
+/** Kits /kits lists in one go (one message each). */
+export const MAX_KITS_LISTED = 10;
+
+/** A kit card of /kits (D120): the text and its keyboard. */
+export type KitCard = { text: string; keyboard: TelegramButton[][] };
+
+const AUTO_WORDS: Record<KitAutoMode, KitAutoWords> = { off: 'off', staker: 'key-change', any: 'any-change' };
+
+/** The card of a kit: mode and Delete, and "Rescue now" while it is ready. */
+export function kitCard(row: { stake_account: Address; new_wallet: Address; status: string; auto_mode: string }): KitCard {
+  const auto = AUTO_WORDS[autoModeOf(row.auto_mode)];
+  const keyboard: TelegramButton[][] = [
+    [
+      { label: kitAutoLabel(auto), callbackData: `rka:${row.stake_account}` },
+      { label: 'Delete', callbackData: `rkd:${row.stake_account}` },
+    ],
+  ];
+  if (row.status === 'ready') keyboard.push([{ label: 'Rescue now', callbackData: rescueKitCallbackData(row.stake_account) }]);
+  const text = kitCardText({ stakeAccount: row.stake_account, newWallet: row.new_wallet, status: row.status, auto });
+  return { text, keyboard };
+}
+
+type KitCardRow = { stake_account: Address; new_wallet: Address; status: string; auto_mode: string };
+
+/** /kits: the cards of the kits bound to `chatId`, at most MAX_KITS_LISTED. */
+export async function kitCardsOfChat(db: D1Database, chatId: string): Promise<KitCard[]> {
+  const { results } = await db.prepare(SQL.KITS_OF_CHAT).bind(chatId, MAX_KITS_LISTED).all<KitCardRow>();
+  return results.map(kitCard);
+}
+
+/** What a tap on a card's mode or Delete button comes to: the toast and the card's new text, or null (not this chat's). */
+export type CardResult = { answer: string; card: { text: string; keyboard: TelegramButton[][] } } | null;
+
+/** `rka:`: the next auto mode, off -> staker -> any -> off, for the bound chat only. */
+export async function cycleKitMode(db: D1Database, chatId: string, stakeAccount: Address): Promise<CardResult> {
+  const row = await db.prepare(SQL.KIT_CYCLE_MODE).bind(stakeAccount, chatId).first<KitCardRow>();
+  if (row === null) return null;
+  console.log(JSON.stringify({ msg: 'rescue kit mode', mode: autoModeOf(row.auto_mode) }));
+  return { answer: kitAutoText(AUTO_WORDS[autoModeOf(row.auto_mode)]), card: kitCard(row) };
+}
+
+/**
+ * `rkd:`: deletes the kit, for the bound chat only. The signed bytes stay valid while the new wallet keeps the kit's
+ * nonce account: the card says where to close it.
+ */
+export async function deleteKit(
+  db: D1Database,
+  chatId: string,
+  stakeAccount: Address,
+  origin: string | null,
+): Promise<CardResult> {
+  const row = await db.prepare(SQL.KIT_DELETE).bind(stakeAccount, chatId).first<{ stake_account: Address }>();
+  if (row === null) return null;
+  console.log(JSON.stringify({ msg: 'rescue kit deleted' }));
+  const keyboard: TelegramButton[][] =
+    origin === null ? [] : [[{ label: 'Open Stakeward', url: siteUrl(origin, `/rescue-kit/${stakeAccount}`) }]];
+  return { answer: 'Deleted.', card: { text: kitDeletedText(stakeAccount, origin), keyboard } };
 }
 
 /** The token of a `kit-<token>` start parameter, else null. */
@@ -124,6 +208,8 @@ export type RescueKitStatusJson = {
   sentAt: number | null;
   /** A Telegram chat used the kit's bot link. */
   telegramLinked: boolean;
+  /** When the monitor sends it by itself (D120); null without a kit. */
+  autoMode: KitAutoMode | null;
 };
 
 type ChainRefusal =
@@ -336,6 +422,7 @@ type KitStatusRow = {
   signature: string | null;
   sent_at: number | null;
   linked: number;
+  auto_mode: string;
 };
 
 /** GET /api/rescue-kits?account=<stake account>: the kit's status and whether a Telegram chat is bound to it. */
@@ -351,7 +438,7 @@ export function rescueKitStatusHandler() {
     const status = statusOf(row?.status);
     const body: RescueKitStatusJson =
       row === null || status === 'none'
-        ? { stakeAccount, status: 'none', newWallet: null, signature: null, sentAt: null, telegramLinked: false }
+        ? { stakeAccount, status: 'none', newWallet: null, signature: null, sentAt: null, telegramLinked: false, autoMode: null }
         : {
             stakeAccount,
             status,
@@ -359,6 +446,7 @@ export function rescueKitStatusHandler() {
             signature: row.signature,
             sentAt: row.sent_at,
             telegramLinked: row.linked === 1,
+            autoMode: autoModeOf(row.auto_mode),
           };
     return c.json(body);
   };

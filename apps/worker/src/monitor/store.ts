@@ -248,8 +248,9 @@ FROM alert_links l WHERE l.chat_id = ?1 ORDER BY l.created_at, l.wallet`,
   WATCHED_LIVE: `SELECT 1 AS watched FROM accounts WHERE stake_account = ?1 AND state != 'closed'`,
 
   // ?1 stake account, ?2 tx (base64), ?3 main key, ?4 new wallet, ?5 nonce account, ?6 nonce value, ?7 now ms,
-  // ?8 link token hash. A new kit, or one that replaces the account's kit whatever its status: a new token, and the
-  // chat the old one bound is let go. Only while the account is watched (0 changes otherwise).
+  // ?8 link token hash. A new kit, or one that replaces the account's kit whatever its status: a new token, the chat
+  // the old one bound is let go, and the auto mode starts again at 'staker' (migration 0006). Only while the account
+  // is watched (0 changes otherwise).
   KIT_UPSERT: `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at,
                          status, sent_at, signature, link_token_hash, chat_id, attempted_at)
 SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready', NULL, NULL, ?8, NULL, NULL
@@ -258,10 +259,10 @@ ON CONFLICT (stake_account) DO UPDATE SET
   tx = excluded.tx, main_key = excluded.main_key, new_wallet = excluded.new_wallet,
   nonce_account = excluded.nonce_account, nonce_value = excluded.nonce_value, created_at = excluded.created_at,
   status = 'ready', sent_at = NULL, signature = NULL, link_token_hash = excluded.link_token_hash, chat_id = NULL,
-  attempted_at = NULL`,
+  attempted_at = NULL, auto_mode = 'staker'`,
 
   // ?1 stake account. Never the bytes, the token hash or the chat.
-  KIT_STATUS: `SELECT status, new_wallet, signature, sent_at, chat_id IS NOT NULL AS linked
+  KIT_STATUS: `SELECT status, new_wallet, signature, sent_at, chat_id IS NOT NULL AS linked, auto_mode
 FROM rescue_kits WHERE stake_account = ?1`,
 
   // ?1 token hash, ?2 chat. One-time: the hash is cleared as the chat is bound.
@@ -280,9 +281,25 @@ RETURNING tx, main_key, new_wallet`,
   // ?1 stake account, ?2 chat: why a claim failed (null row: no kit bound to this chat).
   KIT_OF_CHAT: `SELECT status FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2`,
 
-  // ?1 = [stake account]: the ready kits among them, for the monitor's auto-send.
-  KITS_READY_FOR: `SELECT stake_account, tx FROM rescue_kits
-WHERE status = 'ready' AND stake_account IN (SELECT value FROM json_each(?1)) ORDER BY stake_account`,
+  // ?1 = [{a: stake account, t: 'staker' | 'any'}]: the ready kits among them whose auto mode (migration 0006) the
+  // trigger matches, for the monitor's auto-send. A STAKER_CHANGED ('staker') sends in modes 'staker' and 'any', the
+  // other alarming events ('any') in mode 'any' only; 'off' never.
+  KITS_READY_FOR: `SELECT k.stake_account, k.tx FROM rescue_kits k JOIN json_each(?1) AS q ON k.stake_account = q.value ->> '$.a'
+WHERE k.status = 'ready'
+  AND (k.auto_mode = 'any' OR (k.auto_mode = 'staker' AND q.value ->> '$.t' = 'staker'))
+ORDER BY k.stake_account`,
+
+  // ?1 chat: the kits bound to it, for /kits (D120), at most ?2.
+  KITS_OF_CHAT: `SELECT stake_account, new_wallet, status, auto_mode FROM rescue_kits WHERE chat_id = ?1
+ORDER BY stake_account LIMIT ?2`,
+
+  // ?1 stake account, ?2 chat: the next auto mode, off -> staker -> any -> off; only the bound chat (D120).
+  KIT_CYCLE_MODE: `UPDATE rescue_kits SET auto_mode = CASE auto_mode WHEN 'off' THEN 'staker' WHEN 'staker' THEN 'any' ELSE 'off' END
+WHERE stake_account = ?1 AND chat_id = ?2
+RETURNING stake_account, new_wallet, status, auto_mode`,
+
+  // ?1 stake account, ?2 chat: deletes the kit; only the bound chat (D120).
+  KIT_DELETE: `DELETE FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2 RETURNING stake_account`,
 
   // ?1 = [{a, tx, status, sig, at}]: the outcome of sends, each only on the kit that was sent (same bytes) and only
   // while it is still ready: a kit replaced or settled meanwhile stays as it is.

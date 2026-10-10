@@ -15,6 +15,8 @@ export type RescueKitStatus = {
   sentAt: number | null;
   /** A chat opened the kit's one-time Telegram link. */
   telegramLinked: boolean;
+  /** When the monitor sends the kit by itself (D120); null without a kit. Set from the linked chat's /kits. */
+  autoMode: 'off' | 'staker' | 'any' | null;
 };
 
 export type StoredRescueKit = {
@@ -106,6 +108,7 @@ function parseStatus(body: unknown): RescueKitStatus {
     signature: text(b.signature) as Signature | null,
     sentAt: typeof b.sentAt === 'number' ? b.sentAt : null,
     telegramLinked: b.telegramLinked === true,
+    autoMode: b.autoMode === 'off' || b.autoMode === 'staker' || b.autoMode === 'any' ? b.autoMode : null,
   };
 }
 

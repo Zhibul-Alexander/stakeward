@@ -11,7 +11,7 @@ import {
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
-import { kitSettlement, sendKit } from '../rescue-kits.ts';
+import { kitSettlement, RESCUE_KIT_EVENTS, sendKit } from '../rescue-kits.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
 import { getBotIdentity, sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
 import { TELEGRAM_WEBHOOK_PATH } from '../telegram/webhook.ts';
@@ -73,8 +73,9 @@ import {
  * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
  *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
  *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front; accounts
- *              with a STAKER_CHANGED join meta.kit_queue in the same batch.
- * 3b. kits   - the ready rescue kits of meta.kit_queue are sent (D118), at most MONITOR_LIMITS.maxKitSends a pass.
+ *              with an alarming event (rescue-kits.ts RESCUE_KIT_EVENTS) join meta.kit_queue in the same batch.
+ * 3b. kits   - the ready rescue kits of meta.kit_queue whose auto mode the event matches are sent (D118, D120), at
+ *              most MONITOR_LIMITS.maxKitSends a pass.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
  * 4b. bot    - every pass getWebhookInfo, once a day from 06:00 UTC getMe too (meta.bot_check_day): a webhook that is
@@ -225,9 +226,16 @@ type LoadedMeta = {
   readFailures: number;
   adminAlerts: Record<string, number>;
   alertsSent: number;
-  /** meta.kit_queue: stake accounts with a STAKER_CHANGED whose rescue kit, if ready, is still to be sent. */
-  kitQueue: Address[];
+  /** meta.kit_queue: stake accounts with an alarming event whose rescue kit, if ready and in a mode that takes it, is
+   * still to be sent. */
+  kitQueue: KitQueued[];
 };
+
+/**
+ * A meta.kit_queue entry: the account and its trigger, 'staker' for a STAKER_CHANGED, 'any' for another alarming
+ * event. The kit's auto mode (D120, KITS_READY_FOR) decides whether the trigger sends it.
+ */
+type KitQueued = { a: Address; t: 'staker' | 'any' };
 
 /**
  * The daily stage a pass works on: the UTC day it started, and the last stake account
@@ -290,8 +298,8 @@ type LoadedPass = PassContext & {
   storedPairs: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
-  /** meta.kit_queue with this pass's STAKER_CHANGED accounts; storedKitQueue is it as last written (or loaded). */
-  kitQueue: Address[];
+  /** meta.kit_queue with this pass's alarming events; storedKitQueue is it as last written (or loaded). */
+  kitQueue: KitQueued[];
   storedKitQueue: string;
   /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
   lastRead: { clock: ChainClock; clockMs: number } | null;
@@ -507,8 +515,10 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   if (cursor !== null) entries.cursor = cursor;
   const stored = out.rescan.length > 0 ? queueEntries(pass, withUrgent(pass), entries) : null;
   // Like the rescan queue: once the events are in, no later pass would see this change again.
-  const attacked = out.events.filter((e) => e.type === 'STAKER_CHANGED').map((e) => e.stakeAccount);
-  const kitQueue = uniqueAccounts([...pass.kitQueue, ...attacked]);
+  const attacked = out.events
+    .filter((e) => RESCUE_KIT_EVENTS.has(e.type))
+    .map((e): KitQueued => ({ a: e.stakeAccount, t: e.type === 'STAKER_CHANGED' ? 'staker' : 'any' }));
+  const kitQueue = uniqueKitQueue([...pass.kitQueue, ...attacked]);
   const storedKitQueue = JSON.stringify(kitQueue);
   if (storedKitQueue !== pass.storedKitQueue) entries.kit_queue = storedKitQueue;
   if (Object.keys(entries).length > 0) statements.push(putMetaStatement(db, entries, pass.passId));
@@ -520,9 +530,10 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
 }
 
 /**
- * Stage 3b (DECISIONS.md D118): sends the ready rescue kits of the accounts in meta.kit_queue, those whose staker
- * changed. A changed staker is the thief's first move (it lets them deactivate and delegate, and the owner's main key
- * can no longer); DEACTIVATED is not a trigger: the owner's own unstake looks the same. One KITS_READY_FOR, then at
+ * Stage 3b (DECISIONS.md D118, D120): sends the ready rescue kits of the accounts in meta.kit_queue whose auto mode
+ * takes the trigger. By default ('staker') only a changed staker sends: it is the thief's first move (it lets them
+ * deactivate and delegate, and the owner's main key can no longer), while a DEACTIVATED may be the owner's own
+ * unstake. The bound chat may choose 'any' (every alarming event) or 'off' (/kits). One KITS_READY_FOR, then at
  * most MONITOR_LIMITS.maxKitSends sends (one attempt each) while the budget keeps the daily stage, the bot check and
  * the delivery possible, then one batch: the outcomes (KIT_SETTLE) and the queue. An account leaves the queue when its
  * kit was sent, turned stale, was refused (it stays ready for the owner's own tap) or is not ready; a send without an
@@ -543,8 +554,9 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
   const db = deps.db;
   const [result] = await budget.batch(db, [db.prepare(SQL.KITS_READY_FOR).bind(JSON.stringify(pass.kitQueue))]);
   const kits = rowsOf<{ stake_account: Address; tx: string }>(result);
+  // Accounts without a ready kit, or whose kit's mode does not take the trigger, leave the queue.
   const ready = new Set<string>(kits.map((kit) => kit.stake_account));
-  let queue = pass.kitQueue.filter((account) => ready.has(account));
+  let queue = pass.kitQueue.filter((entry) => ready.has(entry.a));
   const settled: ReturnType<typeof kitSettlement>[] = [];
   for (const kit of kits) {
     if (report.kitSends >= MONITOR_LIMITS.maxKitSends) break;
@@ -558,7 +570,7 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
       if (outcome.kind === 'sent') report.kitsSent += 1;
       else report.kitsStale += 1;
     }
-    if (outcome.kind !== 'upstream') queue = queue.filter((account) => account !== kit.stake_account);
+    if (outcome.kind !== 'upstream') queue = queue.filter((entry) => entry.a !== kit.stake_account);
   }
   const statements: D1PreparedStatement[] = [];
   if (settled.length > 0) statements.push(db.prepare(SQL.KIT_SETTLE).bind(JSON.stringify(settled)));
@@ -1153,20 +1165,42 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     readFailures: parseCount(values.get('read_failures')),
     adminAlerts: parseAdminAlerts(values.get('admin_alerts')),
     alertsSent: parseCount(values.get('alerts_sent')),
-    kitQueue: parseAccounts(values.get('kit_queue')),
+    kitQueue: parseKitQueue(values.get('kit_queue')),
   };
 }
 
-/** meta.kit_queue: an array of addresses, deduplicated, at most MONITOR_LIMITS.kitQueueMax; anything else is dropped. */
-function parseAccounts(text: string | undefined): Address[] {
+/**
+ * meta.kit_queue: an array of {a: address, t: 'staker' | 'any'} (uniqueKitQueue); a bare address, as D118 stored
+ * them, is a 'staker' entry. Anything else is dropped.
+ */
+function parseKitQueue(text: string | undefined): KitQueued[] {
   const json = parseJson(text);
   if (!Array.isArray(json)) return [];
-  return uniqueAccounts((json as unknown[]).filter((value): value is Address => typeof value === 'string' && isAddressText(value)));
+  const entries: KitQueued[] = [];
+  for (const value of json as unknown[]) {
+    if (typeof value === 'string') {
+      if (isAddressText(value)) entries.push({ a: value, t: 'staker' });
+      continue;
+    }
+    if (typeof value !== 'object' || value === null) continue;
+    const { a, t } = value as Record<string, unknown>;
+    if (typeof a === 'string' && isAddressText(a) && (t === 'staker' || t === 'any')) entries.push({ a, t });
+  }
+  return uniqueKitQueue(entries);
 }
 
-/** First occurrence of each address, in order, at most MONITOR_LIMITS.kitQueueMax (the oldest stay). */
-function uniqueAccounts(accounts: readonly Address[]): Address[] {
-  return [...new Set(accounts)].slice(0, MONITOR_LIMITS.kitQueueMax);
+/**
+ * One entry per account, where it first appears, at most MONITOR_LIMITS.kitQueueMax (the oldest stay). 'staker' wins
+ * over 'any': it sends in every mode 'any' sends in, and in 'staker' too.
+ */
+function uniqueKitQueue(entries: readonly KitQueued[]): KitQueued[] {
+  const byAccount = new Map<Address, KitQueued>();
+  for (const entry of entries) {
+    const seen = byAccount.get(entry.a);
+    if (seen === undefined) byAccount.set(entry.a, { ...entry });
+    else if (entry.t === 'staker') seen.t = 'staker';
+  }
+  return [...byAccount.values()].slice(0, MONITOR_LIMITS.kitQueueMax);
 }
 
 function parseLease(text: string | undefined): Lease | null {

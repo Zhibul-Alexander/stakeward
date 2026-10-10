@@ -140,6 +140,48 @@ describe('monitor: rescue kit auto-send', () => {
     expect(message?.button?.url).toMatch(/^https:\/\/stakeward\.test\//);
   });
 
+  it("auto mode 'any' sends on a DEACTIVATED too (D120); 'staker' does not", async () => {
+    const other = key(11);
+    const { h } = await withKits([STAKE, other]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'any' WHERE stake_account = ?1").bind(STAKE).run();
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    h.chain.putStake(other, { ...SPEC, deactivationEpoch: 951n });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 2, kitSends: 1, kitsSent: 1 });
+    expect(await kits()).toEqual([
+      expect.objectContaining({ stake_account: STAKE, status: 'sent' }),
+      expect.objectContaining({ stake_account: other, status: 'ready' }),
+    ]);
+    // The 'staker' kit left the queue: its mode does not take a DEACTIVATED.
+    expect((await h.readMeta()).kit_queue).toBe('[]');
+  });
+
+  it("auto mode 'any' sends on a delegation or balance change", async () => {
+    const { h } = await withKits([STAKE]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'any'").run();
+    h.chain.putStake(STAKE, SPEC, 9_000_000_000n);
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', kitSends: 1, kitsSent: 1 });
+  });
+
+  it("auto mode 'off' never sends, not even on a STAKER_CHANGED; the kit stays ready", async () => {
+    const { h } = await withKits([STAKE]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'off'").run();
+    h.chain.putStake(STAKE, { ...SPEC, staker: THIEF });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1, kitSends: 0 });
+    expect(sends(h)).toEqual([]);
+    expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
+    expect((await h.readMeta()).kit_queue).toBe('[]');
+  });
+
+  it('a queue stored by D118 (bare addresses) reads as STAKER_CHANGED entries', async () => {
+    const { h } = await withKits([STAKE]);
+    await h.setMeta({ kit_queue: JSON.stringify([STAKE, 'not an address']) });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 0, kitSends: 1, kitsSent: 1 });
+  });
+
   it('a nonce that moved on marks the kit stale; an RPC failure keeps it queued for the next pass', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { h } = await withKits();
@@ -148,7 +190,7 @@ describe('monitor: rescue kit auto-send', () => {
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', kitSends: 1, kitsSent: 0 });
     expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
-    expect(JSON.parse((await h.readMeta()).kit_queue ?? '[]')).toEqual([STAKE]);
+    expect(JSON.parse((await h.readMeta()).kit_queue ?? '[]')).toEqual([{ a: STAKE, t: 'staker' }]);
 
     h.chain.sendReply = () => ({
       error: { code: -32002, message: 'Transaction simulation failed: Blockhash not found', data: { err: 'BlockhashNotFound' } },

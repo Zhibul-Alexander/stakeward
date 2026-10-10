@@ -1,7 +1,7 @@
 // Matcher types for this tsconfig (src/test/setup.ts registers them at run time).
 import '@testing-library/jest-dom/vitest';
 import { generateKeyPairSigner, type Address, type Signature } from '@solana/kit';
-import { checkRescueKit } from '@stakeward/core';
+import { buildTransaction, checkRescueKit, deriveNonceAccountAddress, NONCE_ACCOUNT_SIZE, rescueKitNonceSeed } from '@stakeward/core';
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort } from '@stakeward/core/test/test-wallet-port';
@@ -63,7 +63,7 @@ describe('/rescue-kit', () => {
       expect(screen.getByRole('heading', { level: 1, name: en.common.pages.rescueKit })).toBeInTheDocument();
       await click(user, en.rescue.next.newWallet);
       await heading(en.rescue.newWallet.heading);
-      await connect(user, 'New wallet', 'New Wallet');
+    await connect(user, 'New wallet', 'New Wallet');
       await user.click(screen.getByRole('checkbox', { name: en.rescue.newWallet.seedCheck }));
       await screen.findByText(/^Balance /, undefined, WAIT);
       await click(user, en.rescue.next.keys);
@@ -137,7 +137,7 @@ describe('/rescue-kit/:account', () => {
 
   it('a ready kit: the new owner in full, sent from the linked Telegram chat; no button here', async () => {
     const testChain = await TestChain.create();
-    const rescueKits = port({ status: 'ready', newWallet: NEW, signature: null, sentAt: null, telegramLinked: true });
+    const rescueKits = port({ status: 'ready', newWallet: NEW, signature: null, sentAt: null, telegramLinked: true, autoMode: 'staker' });
     renderStakePage(new LiteSvmChain(testChain), `/rescue-kit/${ACCOUNT}`, [], { rescueKits });
 
     await screen.findByText(en.rescueKit.now.ready, undefined, WAIT);
@@ -148,7 +148,7 @@ describe('/rescue-kit/:account', () => {
   it('a ready kit with no linked chat says so', async () => {
     const testChain = await TestChain.create();
     renderStakePage(new LiteSvmChain(testChain), `/rescue-kit/${ACCOUNT}`, [], {
-      rescueKits: port({ status: 'ready', newWallet: NEW, signature: null, sentAt: null, telegramLinked: false }),
+      rescueKits: port({ status: 'ready', newWallet: NEW, signature: null, sentAt: null, telegramLinked: false, autoMode: 'staker' }),
     });
     await screen.findByText(en.rescueKit.now.readyNoTelegram, undefined, WAIT);
   });
@@ -156,9 +156,42 @@ describe('/rescue-kit/:account', () => {
   it('a sent kit links its transaction', async () => {
     const testChain = await TestChain.create();
     renderStakePage(new LiteSvmChain(testChain), `/rescue-kit/${ACCOUNT}`, [], {
-      rescueKits: port({ status: 'sent', newWallet: NEW, signature: SIG, sentAt: 1, telegramLinked: true }),
+      rescueKits: port({ status: 'sent', newWallet: NEW, signature: SIG, sentAt: 1, telegramLinked: true, autoMode: null }),
     });
     await screen.findByText(en.rescueKit.now.sent, undefined, WAIT);
     expect(screen.getByRole('link', { name: en.rescueKit.now.viewTransaction })).toHaveAttribute('href', expect.stringContaining(SIG));
   });
+
+  it('a ready kit says when it is sent by itself; its new wallet closes the kit nonce for good', async () => {
+    const testChain = await TestChain.create();
+    const D = await testChain.fundedKey();
+    const stakeAccount = await testChain.createStakeAccount({ staker: D.address, withdrawer: D.address });
+    const nonceAccount = await deriveNonceAccountAddress(D.address, rescueKitNonceSeed(stakeAccount));
+    const lamports = testChain.svm.minimumBalanceForRentExemption(BigInt(NONCE_ACCOUNT_SIZE));
+    const setup = buildTransaction(
+      { kind: 'nonce-setup', nonceAccount, nonceAuthority: D.address, seed: rescueKitNonceSeed(stakeAccount), lamports },
+      { feePayer: D.address, lifetime: testChain.blockhashLifetime() },
+    );
+    expect((await testChain.send(setup.bytes, [D])).ok).toBe(true);
+    // A nonce account cannot be closed in the block it was made in (NonceBlockhashNotExpired).
+    testChain.svm.expireBlockhash();
+    const wallet = await createTestWalletPort({ name: 'New Wallet', signers: [D] });
+    const rescueKits: RescueKitPort = {
+      store: () => Promise.reject(new Error('not used')),
+      status: () =>
+        Promise.resolve({ stakeAccount, status: 'ready', newWallet: D.address, signature: null, sentAt: null, telegramLinked: true, autoMode: 'any' }),
+    };
+    const { user } = renderStakePage(new LiteSvmChain(testChain), `/rescue-kit/${stakeAccount}`, [wallet], { rescueKits });
+
+    await screen.findByText(en.rescueKit.now.auto.any, undefined, WAIT);
+    expect(screen.getByRole('heading', { name: en.rescueKit.revoke.heading })).toBeInTheDocument();
+    // The kit's new wallet goes into its own slot first, so the signing step names it New wallet.
+    await click(user, /^Connect a wallet/);
+    await click(user, 'New Wallet');
+    await click(user, en.nonce.close.action);
+    await click(user, 'Sign in New Wallet as New wallet');
+    await waitFor(() => {
+      expect(testChain.account(nonceAccount)).toBeNull();
+    }, WAIT);
+  }, SCENARIO_TIMEOUT);
 });

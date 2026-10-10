@@ -14,8 +14,11 @@ import { t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { InvalidAccountParam } from '@/pages/account/AccountView';
 import { parseAccountParam } from '@/pages/account/load';
-import { useRescueKits } from '@/ports';
+import { rescueKitNonceSeed } from '@stakeward/core';
+import { KeySlot } from '@/pages/app/KeySlot';
+import { useRescueKits, useSlot } from '@/ports';
 import type { SigningTestOptions } from '@/signing/create';
+import { NonceCloseCard } from '@/signing/NonceCloseCard';
 import { RescueWizard } from './rescue/RescueWizard.tsx';
 
 /**
@@ -87,6 +90,7 @@ function KitState({ kit }: { kit: RescueKitStatus }) {
           {account}
           <p className="max-w-prose">{t('rescueKit.now.none')}</p>
           {rescue}
+          <RevokeKit stakeAccount={kit.stakeAccount} newWallet={null} />
         </div>
       );
     case 'stale':
@@ -117,9 +121,42 @@ function KitState({ kit }: { kit: RescueKitStatus }) {
             </div>
           )}
           <p className="max-w-prose">{kit.telegramLinked ? t('rescueKit.now.ready') : t('rescueKit.now.readyNoTelegram')}</p>
+          {kit.autoMode === null ? null : (
+            <p className="max-w-prose text-sm">
+              <span className="font-medium">{t(`rescueKit.now.auto.${kit.autoMode}`)}</span>{' '}
+              <span className="text-muted">{t('rescueKit.now.auto.change')}</span>
+            </p>
+          )}
+          <RevokeKit stakeAccount={kit.stakeAccount} newWallet={kit.newWallet} />
         </div>
       );
   }
+}
+
+/**
+ * Cancels a kit for good (D120): the new wallet closes the kit's own nonce account, so the signed rescue can never
+ * land, wherever its bytes are. Deleting it on the worker (/kits in Telegram) does not do that. Without a known new
+ * wallet (a kit deleted already) the user connects one first; a known one is connected to its own slot first too.
+ * Nothing shows once that nonce account is gone.
+ */
+function RevokeKit({ stakeAccount, newWallet }: { stakeAccount: Address; newWallet: Address | null }) {
+  const slot = useSlot('new');
+  const connected = slot?.ready === true ? slot.slot.address : null;
+  const authority = newWallet ?? connected;
+  return (
+    <section aria-labelledby="revoke-kit" className="flex w-full flex-col gap-3 border-t border-border pt-4">
+      <h2 id="revoke-kit" className="text-base font-semibold">
+        {t('rescueKit.revoke.heading')}
+      </h2>
+      <p className="max-w-prose text-sm text-muted">{t('rescueKit.revoke.body')}</p>
+      {/* The new wallet signs from its own slot, so the signing step names it New wallet. */}
+      {authority === null || connected !== authority ? (
+        <KeySlot role="new" expected={authority ?? undefined} />
+      ) : (
+        <NonceCloseCard authority={authority} role="new" seed={rescueKitNonceSeed(stakeAccount)} />
+      )}
+    </section>
+  );
 }
 
 function TransactionLink({ signature }: { signature: Signature }) {
