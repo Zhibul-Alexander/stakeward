@@ -1,5 +1,6 @@
 // The public "Try to steal it" wallet on devnet (see challenge-wallet/challenge.ts). Usage:
-//   pnpm challenge-wallet [--sol 1]
+//   pnpm challenge-wallet [--sol 1] [--undelegated]
+// --undelegated skips the 1 SOL minimum delegation: any amount, but the account is not delegated.
 // Keys: .keys/challenge-main.json (the main key, published), .keys/challenge-second.json (the second key, kept),
 // both created on first use; paid by .keys/devnet-funder.json. Devnet only, checked by the genesis hash.
 // Every run creates a new stake account for the same two keys. Exit code 0: created; 1: refused or failed.
@@ -19,7 +20,7 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const { values } = parseArgs({
     args: argv[0] === '--' ? argv.slice(1) : argv,
-    options: { sol: { type: 'string', default: '1' } },
+    options: { sol: { type: 'string', default: '1' }, undelegated: { type: 'boolean', default: false } },
     strict: true,
   });
   const stakeLamports = parseSol(values.sol, '--sol');
@@ -34,7 +35,7 @@ async function main(): Promise<void> {
   const challenge = await createChallenge(
     chain,
     { funder, main, second },
-    { stakeLamports, runId: `ch-${Date.now().toString(36)}` },
+    { stakeLamports, runId: `ch-${Date.now().toString(36)}`, undelegated: values.undelegated },
     log,
   );
   const secretKey = base58SecretKey(Uint8Array.from(JSON.parse(readFileSync(keyPath('challenge-main'), 'utf8')) as number[]));

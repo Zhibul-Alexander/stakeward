@@ -33,7 +33,7 @@ export function base58SecretKey(keyFileBytes: Uint8Array): string {
 export async function createChallenge(
   chain: GateChain,
   keys: { funder: KeyPairSigner; main: KeyPairSigner; second: KeyPairSigner },
-  options: { stakeLamports: bigint; runId: string },
+  options: { stakeLamports: bigint; runId: string; undelegated?: boolean },
   log: (line: string) => void = () => undefined,
 ): Promise<Challenge> {
   const { funder, main, second } = keys;
@@ -42,9 +42,9 @@ export async function createChallenge(
   }
   const plan = await planDevAccounts(chain, funder.address, {
     target: main.address,
-    kinds: ['delegated'],
+    kinds: [options.undelegated === true ? 'undelegated' : 'delegated'],
     delegatedLamports: options.stakeLamports,
-    undelegatedLamports: 0n,
+    undelegatedLamports: options.stakeLamports,
     runId: options.runId,
   });
   const { accounts } = await createDevAccounts(chain, funder, plan, log);
@@ -71,6 +71,9 @@ export async function createChallenge(
   const { lockup, staker, withdrawer } = decoded.account;
   if (lockup.unixTimestamp !== CHALLENGE_LOCK_UNTIL || lockup.custodian !== second.address) {
     throw new Error(`${created.address} is not locked as planned after ${outcome.signature}`);
+  }
+  if (options.undelegated !== true && decoded.account.kind !== 'delegated') {
+    throw new Error(`${created.address} is not delegated after ${outcome.signature}`);
   }
   if (staker !== main.address || withdrawer !== main.address) {
     throw new Error(`${created.address} has unexpected keys after ${outcome.signature}`);

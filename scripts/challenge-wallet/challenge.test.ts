@@ -67,4 +67,20 @@ describe('challenge wallet on LiteSVM', () => {
     expect(printed).toContain('.keys/challenge-second.json');
     expect(printed).toContain(`/proof/${signer.address}`);
   });
+
+  it('locks an undelegated account below the minimum delegation with --undelegated', async () => {
+    const chain = await createLiteSvmChain();
+    const [funder, main, second] = await Promise.all([generateKeyPairSigner(), generateKeyPairSigner(), generateKeyPairSigner()]);
+    chain.fund(funder.address, LAMPORTS_PER_SOL);
+    const challenge = await createChallenge(
+      chain,
+      { funder, main, second },
+      { stakeLamports: LAMPORTS_PER_SOL / 10n, runId: 'u', undelegated: true },
+    );
+    expect(challenge.state).toMatchObject({
+      kind: 'initialized',
+      delegation: null,
+      lockup: { unixTimestamp: CHALLENGE_LOCK_UNTIL, custodian: second.address },
+    });
+  });
 });
