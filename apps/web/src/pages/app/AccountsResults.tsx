@@ -32,6 +32,7 @@ import { useKnownSecondKeys, usePorts, useProtectedAccounts, useSlot, useWalletS
 import { useHealth, useNow, useStakeAccounts } from './hooks.ts';
 import { KeySlot } from './KeySlot.tsx';
 import { MonitoringStatus } from './MonitoringStatus.tsx';
+import { ProtectionCheckSection } from './ProtectionCheckSection.tsx';
 import {
   appLinks,
   attentionNote,
@@ -356,6 +357,8 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
           <Rows label={lockedKnown ? t('app.groups.locked') : t('app.groups.lockedUnknown')} rows={locked} clock={clock} actions={() => ({})} />
         </Section>
       )}
+      {/* After the lists it checks (D125): a checklist with a score, then Ask your AI. */}
+      <ProtectionCheckSection address={address} accounts={view.owned.map((row) => row.account)} clock={clock} />
       {secondKeyForSection}
     </>
   );

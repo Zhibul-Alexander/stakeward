@@ -103,7 +103,7 @@ describe('monitor: rescue kit auto-send', () => {
     expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
     expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Rescue now', callbackData: `rk:${STAKE}` }]);
     expect(h.telegram.delivered(otherChat).map((m) => m.button)).toEqual([
-      { label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` },
+      { label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}&event=DEACTIVATED&stake=${STAKE}` },
     ]);
   });
 
@@ -112,7 +112,7 @@ describe('monitor: rescue kit auto-send', () => {
     h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
     h.advance(120_000);
     await h.pass();
-    expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` }]);
+    expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}&event=DEACTIVATED&stake=${STAKE}` }]);
   });
 
   it('delegation and balance alerts carry it too, and a message with another account takes the kit account', async () => {

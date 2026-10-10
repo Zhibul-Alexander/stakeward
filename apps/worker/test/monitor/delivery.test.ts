@@ -1,7 +1,7 @@
 // Done-when of step 5: a failed send is retried, 403 removes the link (step 5 spec sections 7 and 12.2). Monitor
 // passes against the fake chain, the fake Telegram and the real local D1; every chat gets every event once.
 import { getAddressDecoder, type Address } from '@solana/kit';
-import { formatAlert, type MonitorEventDetails } from '@stakeward/core';
+import { formatAlert, parseAlertLink, type MonitorEventDetails } from '@stakeward/core';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TelegramReply } from './fake-telegram.ts';
@@ -28,6 +28,14 @@ const DEACTIVATED: StakeAccountSpec = { ...SPEC, deactivationEpoch: 951n };
 const SITE = 'https://stakeward.test';
 const [CHAT_A, CHAT_B, CHAT_C, CHAT_D] = ['100001', '100002', '100003', '100004'] as const;
 const DAY_MS = 86_400_000;
+
+/**
+ * An alert button's link: the site path of the alert, then the alert's event type and stake account, so the page it
+ * opens can explain it (D125). Always on the Stakeward site.
+ */
+function buttonUrl(path: string, event: string, stake: Address): string {
+  return `${SITE}${path}${path.includes('?') ? '&' : '?'}event=${event}&stake=${stake}`;
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -153,8 +161,12 @@ describe('messages', () => {
       first,
     );
     expect(messages.flatMap((m) => alertsIn(m.text))).toEqual([balance, ...rest.map(deactivatedText)]);
+    // Each message's button opens Rescue for its first deactivated account.
+    expect(messages.map((m) => m.button)).toEqual([rest[0], rest[4]].map((stake = STAKE) => ({
+      label: 'Open Rescue',
+      url: buttonUrl(`/rescue?address=${MAIN}`, 'DEACTIVATED', stake),
+    })));
     for (const message of messages) {
-      expect(message.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` });
       expect(new URL(message.button?.url ?? '').origin).toBe(SITE);
       expect(message.linkPreviewDisabled).toBe(true);
     }
@@ -194,7 +206,7 @@ describe('messages', () => {
       const [message] = h.telegram.delivered(chat);
       expect(message?.text).toBe(`Devnet: ${text}`);
       // A routine renewal looks the same: the lock page offers a new end and the removal, not the removal alone.
-      expect(message?.button).toEqual({ label: 'Review the lock', url: `${SITE}/extend/${STAKE}` });
+      expect(message?.button).toEqual({ label: 'Review the lock', url: buttonUrl(`/extend/${STAKE}`, 'LOCKUP_CHANGED', STAKE) });
       expect(new URL(message?.button?.url ?? '').origin).toBe(SITE);
     }
   });
@@ -215,7 +227,7 @@ describe('messages', () => {
     expect(moved).not.toContain('remove the lock');
     expect(moved).toContain('If this was not you, your second key may be stolen.');
     expect(handedOver).toContain('The second key of stake');
-    expect(message?.button).toEqual({ label: 'Open Stakeward', url: `${SITE}/app?address=${MAIN}` });
+    expect(message?.button).toEqual({ label: 'Open Stakeward', url: buttonUrl(`/app?address=${MAIN}`, 'LOCKUP_CHANGED', STAKE) });
   });
 
   it('a date-move alert and a rescue alert in one message: the button opens Rescue (D73)', async () => {
@@ -229,7 +241,7 @@ describe('messages', () => {
     const [message] = h.telegram.delivered(CHAT_A);
     expect(alertsIn(message?.text ?? '')).toHaveLength(2);
     expect(alertsIn(message?.text ?? '')[0]).toContain('remove the lock with it now');
-    expect(message?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` });
+    expect(message?.button).toEqual({ label: 'Open Rescue', url: buttonUrl(`/rescue?address=${MAIN}`, 'DEACTIVATED', deactivated) });
   });
 
   it('a chat that follows both keys of an account gets each alert once', async () => {
@@ -240,6 +252,19 @@ describe('messages', () => {
     expect(await next(h)).toMatchObject({ messages: 1, alertsDelivered: 1 });
     expect(texts(h, CHAT_A)).toEqual([`Devnet: ${deactivatedText()}`]);
     expect((await h.readLinks()).map((l) => l.last_event_id)).toEqual([1, 1]);
+  });
+
+  it('the button names the alert for "Explain this alert" (D125): the event and the stake account, on the site only', async () => {
+    const h = await watched();
+    await h.linkChat(MAIN, CHAT_A);
+    h.chain.putStake(STAKE, DEACTIVATED);
+    expect(await next(h)).toMatchObject({ messages: 1 });
+    const [message] = h.telegram.delivered(CHAT_A);
+    const url = new URL(message?.button?.url ?? '');
+    expect(url.origin).toBe(SITE);
+    expect(url.pathname).toBe('/rescue');
+    expect(url.searchParams.get('address')).toBe(MAIN);
+    expect(parseAlertLink(url.search)).toEqual({ event: 'DEACTIVATED', stake: STAKE });
   });
 
   it('a link already past an event (made after it) does not get it; the event is closed', async () => {
@@ -264,7 +289,10 @@ describe('recipients', () => {
     for (const chat of [CHAT_A, CHAT_B, CHAT_C]) {
       const [message] = h.telegram.delivered(chat);
       expect(message?.text).toBe(`Devnet: ${text}`);
-      expect(message?.button).toEqual({ label: 'Open Stakeward', url: `${SITE}/app?address=${NEW_MAIN}` });
+      expect(message?.button).toEqual({
+        label: 'Open Stakeward',
+        url: buttonUrl(`/app?address=${NEW_MAIN}`, 'WITHDRAWER_CHANGED', STAKE),
+      });
     }
   });
 
@@ -440,7 +468,7 @@ describe('events that are not sent', () => {
     expect(await h.pass()).toMatchObject({ reminders: 1, messages: 1, alertsDelivered: 0 });
     const [message] = h.telegram.delivered(CHAT_A);
     expect(message?.text).toMatch(/^Devnet: The lock on stake .* ends on 13 April 2027 \(in 30 days\)\./);
-    expect(message?.button).toEqual({ label: 'Extend lock', url: `${SITE}/extend/${STAKE}` });
+    expect(message?.button).toEqual({ label: 'Extend lock', url: buttonUrl(`/extend/${STAKE}`, 'REMINDER_30', STAKE) });
     expect((await h.readMeta()).alerts_sent).toBeUndefined();
   });
 });
@@ -525,7 +553,8 @@ describe('a busy chat does not hold back the others', () => {
       ...busyTexts.slice(0, 5),
       'And 95 more alerts for the wallets this chat follows. The Stakeward accounts page lists every change.',
     ]);
-    expect(first?.button).toEqual({ label: 'Open Rescue', url: `${SITE}/rescue?address=${busyWallet}` });
+    const firstStake = getAddressDecoder().decode(new Uint8Array(32).fill(0x44).fill(0, 0, 2));
+    expect(first?.button).toEqual({ label: 'Open Rescue', url: buttonUrl(`/rescue?address=${busyWallet}`, 'DEACTIVATED', firstStake) });
 
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', pending: 51, messages: 2 });

@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useLoad } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount } from '@/pages/account/AccountView';
+import { AlertFromLink } from '@/pages/alert/AlertFromLink';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
 import { useDeviceClock, usePorts } from '@/ports';
@@ -117,6 +118,8 @@ export function ExtendPage({ signing }: ExtendPageProps) {
         lead={t('extend.intro')}
         meta={<p>{t('common.neverSeedPhrase')}</p>}
       />
+      {/* Opened from a Telegram alert (D125): the account's main key names its watched accounts. */}
+      <AlertFromLink wallet={loaded?.account.withdrawer ?? null} waiting={load.status === 'loading' || load.status === 'idle'} onRetry={reread} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (

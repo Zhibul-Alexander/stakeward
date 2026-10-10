@@ -297,7 +297,7 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'extend',
   },
   {
-    // F7: hand the lock to a new second key (D127). Reads the stake with no wallet; the new key connects here.
+    // F7: hand the lock to a new second key (D128). Reads the stake with no wallet; the new key connects here.
     path: `/change-key/${SMOKE_STAKE}`,
     heading: text('common.pages.changeKey'),
     ready: text('changeKey.heading'),
