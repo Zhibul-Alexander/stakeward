@@ -313,6 +313,11 @@ curl -sS "$API/getWebhookInfo"
 
 - [ ] `/app` с защищённым аккаунтом → «More» → «Try to steal it». Кнопка «Try to steal it»: обе строки «Blocked by the lock», внизу «Your SOL stays put». В эксплорере ничего не изменилось, кошелёк не открывался. «Ask ChatGPT» и «Ask Claude» открывают вопрос в своём аккаунте.
 - [ ] То же на незащищённом аккаунте: «Would succeed» (на делегированном вывод — «Possible after unstaking»), красная строка и кнопка «Protect this stake».
+### Проверка защиты и объяснение тревоги (D125, после деплоя в dev)
+
+- [ ] `/app?address=<Main key>` с аккаунтами разных видов (защищённый, истекающий, незащищённый): под списками раздел «Protection check» со строкой «N of M checks pass». Проваленные проверки раскрыты сами и ведут к действию: «Protect these accounts» → `/protect` с этими аккаунтами, «Extend» у истекающего → `/extend/<аккаунт>`, «Set up one-tap rescue» → `/rescue-kit`. Пройденные свёрнуты, раскрываются с клавиатуры (Tab, Enter). «Telegram alerts» — Unknown и «Not scored», ссылка «Connect Telegram alerts» открывает бота. «Recovery card» — Reminder со ссылкой на карточку каждого замка. Тот же адрес в окне инкогнито (второй ключ не известен): «Each lock is held by your second key» — Unknown, и счёт её не учитывает.
+- [ ] Под проверкой «Ask your AI»: «Ask ChatGPT» и «Ask Claude» открывают новую вкладку с вопросом «Review my Stakeward protection setup…», в нём каждая проверка и её результат; «Show the question» показывает тот же текст. Ответ ИИ ничего не меняет на странице.
+- [ ] Тревога в dev-боте (снять делегирование с защищённого аккаунта): кнопка «Open Rescue» ведёт на `stakeward-dev…/rescue?address=…&event=DEACTIVATED&stake=<аккаунт>`, то есть на наш домен. Вверху страницы «About this alert»: «The stake was deactivated: unstaking started.», время, аккаунт, «Locked · delegated», дата конца замка и прежние изменения этого аккаунта; под ним «Ask your AI» с вопросом «Explain what this stake alert means for me…». То же для «Open Stakeward» (`/app?…`) и «Extend lock» из напоминания (`/extend/<аккаунт>?…`).
 
 ## Шаг 8. Тексты
 

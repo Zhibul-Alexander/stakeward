@@ -33,6 +33,7 @@ export {
   useRescueKits,
   useSlot,
   useWallets,
+  useWatchedAccounts,
   useWalletSlots,
   type Ports,
 } from './react.tsx';

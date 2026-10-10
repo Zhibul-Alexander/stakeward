@@ -89,7 +89,7 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Both keys withdraw. Main key stolen? They and a new wallet rescue the stake."
+        "body": "You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 5 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
@@ -728,7 +728,9 @@
       "withDanger": "With a danger option",
       "danger": "Danger",
       "caution": "Caution",
-      "ok": "OK"
+      "ok": "OK",
+      "allPass": "Everything passes",
+      "fromAlert": "Opened from an alert"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -798,7 +800,9 @@
       "disclosure": "Disclosure",
       "keyList": "KeyList",
       "askAi": "AskAi",
-      "transactionCheck": "TransactionCheck"
+      "transactionCheck": "TransactionCheck",
+      "protectionCheck": "ProtectionCheck",
+      "alertExplanation": "AlertExplanation"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -2449,6 +2453,152 @@
       "lockedNoDate": "{amount}, locked by second key {key}",
       "notLocked": "{amount}, not locked",
       "ofTotal": "{part} of {total}"
+    }
+  },
+  "setupCheck": {
+    "title": "Protection check",
+    "intro": "A fixed list of checks, worked out from the network and what this browser knows. Nothing here is guessed.",
+    "score": "{passed} of {total} checks pass",
+    "scoreNone": "Nothing to score yet",
+    "loading": "Checking how this stake is protected",
+    "emptyTitle": "Nothing to check yet",
+    "empty": "This main key has no stake account. Once it has one, this check shows what protects it.",
+    "errorTitle": "Could not run the protection check",
+    "optional": "Optional",
+    "notScored": "Not scored",
+    "status": {
+      "pass": "Pass",
+      "fail": "Fix",
+      "warning": "Check",
+      "unknown": "Unknown",
+      "notApplicable": "Not applicable",
+      "info": "Reminder"
+    },
+    "checks": {
+      "locked": {
+        "title": "Every stake account is locked",
+        "pass": "Every stake account of this main key has a lock in force.",
+        "fail": "Some stake accounts have no lock: the main key alone can withdraw them.",
+        "notApplicable": "There is no stake account to lock.",
+        "action": "Protect these accounts"
+      },
+      "notEnding": {
+        "title": "No lock ends within 30 days",
+        "pass": "Every lock has more than 30 days left.",
+        "fail": "Some locks end within 30 days. Your second key can extend them before they end.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Extend"
+      },
+      "secondKey": {
+        "title": "Each lock is held by your second key",
+        "pass": "Each lock is held by a second key this browser knows, and that key is not the main key, the key that manages staking or the stake account.",
+        "fail": "Some locks are held by a key that is not your second key, or by a key that cannot be one.",
+        "unknown": "This browser does not know your second key yet, so it cannot tell whose key holds the locks. Connect your second key on this page to confirm.",
+        "notApplicable": "There is no lock yet."
+      },
+      "alerts": {
+        "title": "Telegram alerts",
+        "pass": "Telegram alerts are on for this main key.",
+        "fail": "Telegram alerts are off for this main key.",
+        "unknown": "Stakeward does not publish which wallets get alerts, so this page cannot tell. Open the bot and send /status to see.",
+        "notApplicable": "There is no stake account to watch.",
+        "action": "Connect Telegram alerts"
+      },
+      "rescueKit": {
+        "title": "One-tap rescue kit",
+        "pass": "Each locked account has a ready one-tap rescue kit.",
+        "fail": "Some locked accounts have no ready one-tap rescue kit. It lets you move the stake to a new wallet from a Telegram alert.",
+        "unknown": "Could not read the one-tap rescue kits. Refresh the page to try again.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Set up one-tap rescue"
+      },
+      "staker": {
+        "title": "Your main key manages staking",
+        "pass": "On every account, staking is managed by your main key.",
+        "fail": "On some accounts another key manages staking.",
+        "notApplicable": "There is no stake account to check.",
+        "action": "Open Rescue"
+      },
+      "recoveryCard": {
+        "title": "Recovery card",
+        "info": "Print the recovery card of each lock and keep it offline. It says how to get your SOL back, also without Stakeward.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Recovery card"
+      }
+    },
+    "reasons": {
+      "no-lock": "No lock: the main key alone can withdraw.",
+      "ends-soon": "The lock ends on {date}.",
+      "zero-key": "The lock has no second key: nobody can lift it before it ends.",
+      "main-key": "The lock is held by the main key itself, so it protects nothing.",
+      "staker": "The second key is also the key that manages staking.",
+      "stake-account": "The second key is the stake account itself.",
+      "locked-by-other": "Locked by a key that is not a second key this browser knows. If you did not set this lock, someone else holds it.",
+      "second-key-not-known": "Locked by a second key this browser does not know yet.",
+      "no-kit": "No ready one-tap rescue kit.",
+      "kit-unknown": "The kit could not be read.",
+      "staker-changed": "Another key manages staking under your lock. If you did not do this, your main key may be stolen.",
+      "managed-by-service": "A staking service may manage this stake. With a lock, it may fail to rebalance or merge it.",
+      "card": "Locked with your second key."
+    },
+    "accountAction": "{action} for stake account {address}",
+    "ai": {
+      "task": "Review my Stakeward protection setup and tell me in plain words what to fix first.",
+      "accounts": "Stake accounts of this main key",
+      "sol": "SOL in them",
+      "locked": "Locked accounts",
+      "score": "Score",
+      "check": "Check “{title}”",
+      "optional": "optional",
+      "account": "Stake account {address}"
+    }
+  },
+  "alertExplain": {
+    "title": "About this alert",
+    "lead": "You opened this page from a Stakeward alert. This is what the monitor saw on the network.",
+    "loading": "Reading this account's recent changes",
+    "errorTitle": "Could not read this account's recent changes",
+    "error": "What the alert said still stands. Check the account on this page, or try again.",
+    "event": "What happened",
+    "when": "Seen",
+    "unknown": "Not known",
+    "account": "Stake account",
+    "now": "Now",
+    "lockEnd": "Lock ends",
+    "noLock": "No lock",
+    "notWatched": "Not watched any more",
+    "recent": "Recent changes of this account",
+    "noRecent": "No other change is recorded.",
+    "lock": {
+      "in-force": "Locked",
+      "ending-soon": "Locked, ends within 30 days",
+      "ended": "No lock in force"
+    },
+    "state": {
+      "initialized": "not staked",
+      "delegated": "delegated",
+      "closed": "closed"
+    },
+    "events": {
+      "DEACTIVATED": "The stake was deactivated: unstaking started.",
+      "DELEGATION_CHANGED": "The validator this stake is delegated to changed.",
+      "STAKER_CHANGED": "The key that can deactivate and delegate this stake changed.",
+      "WITHDRAWER_CHANGED": "The main key of this stake changed.",
+      "LOCKUP_CHANGED": "The lock on this stake changed.",
+      "BALANCE_DECREASED": "SOL left this stake account.",
+      "ACCOUNT_CLOSED": "The stake account was closed.",
+      "EXPIRED": "The lock on this stake ended.",
+      "REMINDER": "Reminder: the lock on this stake ends soon.",
+      "other": "The monitor saw a change on this stake account."
+    },
+    "ai": {
+      "task": "Explain what this stake alert means for me and what I should do now.",
+      "event": "Event",
+      "time": "Seen at",
+      "account": "Stake account",
+      "status": "Current status",
+      "lockEnd": "Lock ends",
+      "recent": "Earlier change"
     }
   }
 }
