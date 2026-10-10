@@ -52,6 +52,8 @@ describe('/demo', () => {
     expect(holder()).toBe('main');
     const log = screen.getByRole('log');
     expect(within(log).getByText('Rejected. The Second key must co-sign.')).toBeInTheDocument();
+    // Each line copies as "Actor: text".
+    expect(within(log).getAllByRole('listitem')[0]).toHaveTextContent('Main key: Signs: lock this stake until 14 April 2027.', { normalizeWhitespace: false });
     const alert = document.querySelector<HTMLElement>('[data-slot="demo-alert"]');
     expect(alert).not.toBeNull();
     expect(alert).toHaveTextContent('was deactivated. If this was not you, your main key may be stolen.');
