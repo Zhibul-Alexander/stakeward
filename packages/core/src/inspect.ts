@@ -754,6 +754,15 @@ function stakeAction(step: StakeStep): TransactionAction {
     case 'set-lockup-checked': {
       const lockUntil = someValue(step.unixTimestamp);
       if (step.newAuthority === null) notBuilt('SetLockupChecked without a new custodian');
+      // F7: only the custodian changes; the end and the epoch stay. Protect always sets an end.
+      if (lockUntil === null && !isSome(step.epoch)) {
+        return {
+          kind: 'change-second-key',
+          stakeAccount: step.stake,
+          secondKey: step.authority,
+          newWallet: step.newAuthority,
+        };
+      }
       if (lockUntil === null || lockUntil <= 0n) notBuilt('SetLockupChecked without a future lockup end');
       if (isSome(step.epoch)) notBuilt('SetLockupChecked that changes the lockup epoch');
       return {

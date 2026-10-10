@@ -125,6 +125,7 @@ describe('cosign link rules', () => {
     unlock: () => Promise.resolve({ kind: 'unlock', stakeAccount: S, secondKey: K }),
     deactivate: () => Promise.resolve({ kind: 'deactivate', stakeAccount: S, staker: A }),
     delegate: () => Promise.resolve({ kind: 'delegate', stakeAccount: S, staker: A, voteAccount: key(5) }),
+    'change-second-key': () => Promise.resolve({ kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D }),
     'nonce-setup': async () => ({
       kind: 'nonce-setup',
       nonceAccount: await deriveNonceAccountAddress(A),

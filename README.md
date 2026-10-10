@@ -64,7 +64,6 @@ So a thief with only your main key can stop your rewards, move your stake to a v
 - It cannot move your SOL, sign for you or change your lock. Only your own wallets can.
 - It cannot promise alerts. If Stakeward is down, alerts come late or not at all. The lock itself keeps working.
 - It cannot see your keys or your seed phrase, and it never holds your SOL.
-- It cannot yet hand the lock to a new second key in one step. The Solana command line can: see [Second key stolen](#second-key-stolen).
 
 ## What it costs
 
@@ -296,7 +295,7 @@ solana stake-set-lockup \
 
 ### Second key stolen
 
-The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
+The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. In Stakeward, open More on the stake account and choose Change second key; without Stakeward, run the command below. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
 
 ```sh
 solana stake-set-lockup-checked \

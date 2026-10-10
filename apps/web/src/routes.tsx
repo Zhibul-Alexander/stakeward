@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
+import { ChangeKeyPage } from '@/pages/ChangeKeyPage';
 import { CosignPage } from '@/pages/CosignPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
@@ -53,6 +54,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/extend/:account">
         <ExtendPage />
+      </Route>
+      <Route path="/change-key/:account">
+        <ChangeKeyPage />
       </Route>
       <Route path="/rescue">
         <RescuePage />

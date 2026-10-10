@@ -185,9 +185,18 @@ describe('/app on LiteSvmChain', () => {
       `/protect?account=${stake.service}`,
     );
 
-    // Protected by the connected second key: lock end date, the group says once what the lock does, extend and
-    // withdraw behind More (D112).
+    // Protected by the connected second key: lock end date, the group says once what the lock does, Withdraw on the
+    // row, Extend and Change second key behind More.
     const lockedRow = within(row(stake.locked));
+    expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
+      'href',
+      `/withdraw/${stake.locked}`,
+    );
+    // An open lock: the main key withdraws alone, so Withdraw stands on its row too.
+    expect(within(row(stake.open)).getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.open)}` })).toHaveAttribute(
+      'href',
+      `/withdraw/${stake.open}`,
+    );
     expect(lockedRow.getByText('Protected')).toBeInTheDocument();
     expect(lockedRow.getByText(`until ${formatUtcDate(NOW + 100n * DAY) ?? ''}`)).toBeInTheDocument();
     expect(within(section('Protected')).getByText(en.app.groups.protectedNote)).toBeInTheDocument();
@@ -196,9 +205,9 @@ describe('/app on LiteSvmChain', () => {
       'href',
       `/extend/${stake.locked}`,
     );
-    expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
+    expect(lockedRow.getByRole('link', { name: `Change second key stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
-      `/withdraw/${stake.locked}`,
+      `/change-key/${stake.locked}`,
     );
     // The recovery card of the keys that lock it (D74): on protected and expiring rows, never on someone else's lock
     // (nor on an open one: its More holds only Protect).
@@ -248,6 +257,7 @@ describe('/app on LiteSvmChain', () => {
     expect(within(secondKeyRow).getByRole('link', { name: /^Extend/ })).toHaveAttribute('href', `/extend/${stake.secondKeyFor}`);
     await openMore(stake.secondKeyFor);
     expect(within(secondKeyRow).getByRole('link', { name: /^Recovery card/ })).toHaveAttribute('href', `/recovery/${stake.secondKeyFor}`);
+    expect(within(secondKeyRow).getByRole('link', { name: /^Change second key/ })).toHaveAttribute('href', `/change-key/${stake.secondKeyFor}`);
 
     // The answer: SOL under the viewer's own lock out of all SOL of the main key, and how many accounts.
     expect(within(summary()).getByText(`${sol(lamportsOf(stake.locked) + lamportsOf(stake.expiring))} of ${sol(ownedLamports())} SOL protected`)).toBeInTheDocument();

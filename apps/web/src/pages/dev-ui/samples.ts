@@ -337,6 +337,12 @@ export async function sampleSummaries(clock: ClockView): Promise<SampleSummary[]
       { kind: 'nonce', nonceAccount, nonceAuthority: SAMPLE.newWallet, nonceValue: SAMPLE.nonceValue },
     ),
     inspect(
+      'change-second-key',
+      { kind: 'change-second-key', stakeAccount: SAMPLE.stakeA, secondKey: SAMPLE.secondKey, newWallet: SAMPLE.newWallet },
+      SAMPLE.newWallet,
+      locked(SAMPLE_LOCK_END, SAMPLE.secondKey),
+    ),
+    inspect(
       'unlock',
       { kind: 'unlock', stakeAccount: SAMPLE.stakeA, secondKey: SAMPLE.secondKey },
       SAMPLE.secondKey,

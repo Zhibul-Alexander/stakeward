@@ -274,6 +274,13 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'extend',
   },
   {
+    // F7: hand the lock to a new second key (D122). Reads the stake with no wallet; the new key connects here.
+    path: `/change-key/${SMOKE_STAKE}`,
+    heading: text('common.pages.changeKey'),
+    ready: text('changeKey.heading'),
+    screen: 'change-key',
+  },
+  {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
     heading: text('common.pages.rescue'),
