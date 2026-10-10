@@ -312,3 +312,75 @@
 | `assets/index-D_XFECCg.css` | 50105 | `9fffcedf372b5ed23d74c7d8f9ec33fce991fc4597a7285e01254507f8836bf4` |
 | `favicon.svg` | 325 | `7c88716d99402fcf990c7d778fdfefccb7581c467c8dee53354f4c4686c3be24` |
 | `index.html` | 565 | `cf7d9fbcd7a57e4b3617faabeb81d6cd1390bacbffddc9e33ae11dccadaaa6f4` |
+
+## dev · 2026-10-10 21:44:42 UTC
+
+- Коммит: `43e24ecd9d0f5e0eef3a93fe77e3948dea20203c`, ветка `main`, совпадает с origin/main.
+- CI: не проверялся (dev).
+- Version ID: `9ba0a919-8286-4396-aae3-9fa77325c982`.
+- Запуск: GitHub Actions deploy (D115).
+- Цели: `https://stakeward-dev.stakeward.workers.dev`, `schedule: */2 * * * *`.
+- Сборка сайта: devnet; Node v24.21.0, pnpm 12.8.1, wrangler 4.146.0.
+- На этой папке прошли `build-output.test.ts` и `test-code-guard.test.ts`; после выгрузки файлы не изменились.
+- Сверить сайт с коммитом: `pnpm verify-deploy --env dev --commit 43e24ecd9d0f5e0eef3a93fe77e3948dea20203c`.
+
+| файл | байт | sha256 |
+|---|---|---|
+| `_headers` | 710 | `53fa331e2041fd9fa0cee0eafd85263b3c396891499e4cf93819bf1e727b6bd0` |
+| `assets/ComponentsSection-DEvty-gf.js` | 23378 | `f08856e236254a5977f8558479f6d9da66cf1b31903774a5a937b464e6e182a6` |
+| `assets/DevCosignPage-BBK8CUXt.js` | 43457 | `921bf3a59df9034c6676fe2247cc7232067661e211790c3a4decfb0f1c44fba2` |
+| `assets/DevUiPage-B-SxMkWk.js` | 30200 | `f4977f23c154bcb668ac7b0d7e21fe2de9b9ed090bb39bdd42122e808c18a0d0` |
+| `assets/FlowsSection-aIFGDX0l.js` | 10692 | `5eea8e4b8e32a0097f54b5c8c9f9dfe814b54a1fc969af635b88801b5bb3beb6` |
+| `assets/action-bar-DYmZdLCM.js` | 4011 | `b805124f133d74a8dd13a70731715e86441d2d4e77c4c9754bee6b1eabd364ea` |
+| `assets/command-block-B4Ho54y5.js` | 31785 | `fef3502590e705e6612b3ef3f2fc682df322ee4157c5ef43c9e9783bf3c714d5` |
+| `assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2` | 7420 | `2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e` |
+| `assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2` | 15084 | `6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09` |
+| `assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2` | 16512 | `824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f` |
+| `assets/geist-latin-wght-normal-BgDaEnEv.woff2` | 29400 | `19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1` |
+| `assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2` | 6176 | `cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4` |
+| `assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2` | 12940 | `4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df` |
+| `assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2` | 14696 | `1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b` |
+| `assets/geist-mono-latin-wght-normal-XN7g48iV.woff2` | 23128 | `684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc` |
+| `assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2` | 5812 | `5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad` |
+| `assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2` | 7696 | `d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175` |
+| `assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2` | 8004 | `8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1` |
+| `assets/index-B2GRDqkr.js` | 532845 | `abad2c7f268705042ac53b6664666dfb3f6825f8f78c01511ca803426769e230` |
+| `assets/index-wdtkSFSp.css` | 50702 | `aa5c408f6e5cf3594b0635b42da429766dfc5f95dc1632bc152021dcf4f7611e` |
+| `assets/info-B5ACwP-2.js` | 238 | `7c10b255a2cf5d8b52e4e6286c27e89c6cf71581d7dabc30bb401b80ef55919b` |
+| `assets/nonce-BQxVUWJG.js` | 4021 | `0fa7a5dd9baa381924fbc7b167103262135eb7d116d9ca912256c3ae1b3ed3a2` |
+| `assets/risk-note-2roQcwcC.js` | 326918 | `5a39ac57ef08e9cebcb6bc4029d3e157875328375ecc3d396bb435227a480e71` |
+| `assets/rolldown-runtime-hePW80VL.js` | 716 | `580ad8c58061a4dde99bde0a56905e382f0568516ee2f5b84dbfb52085709021` |
+| `assets/samples-DTQRkp7L.js` | 9634 | `1a558e800d21d0d1df7cc7ac419ccdb3a5c161fa499a171b982998d851a0f8a7` |
+| `assets/use-load-DULoWWy3.js` | 47304 | `69c04be0cb8697f9233d30216bad5eaaa6b72914a4ad4d17181db481329fdd3b` |
+| `favicon.svg` | 325 | `7c88716d99402fcf990c7d778fdfefccb7581c467c8dee53354f4c4686c3be24` |
+| `index.html` | 1127 | `0b7eec8819156cf61381b0ca581cdf35f022446089a0fbaed627d22f44dae398` |
+
+## prod · 2026-10-10 21:45:47 UTC
+
+- Коммит: `43e24ecd9d0f5e0eef3a93fe77e3948dea20203c`, ветка `main`, совпадает с origin/main.
+- CI: задача `check` на этом коммите прошла (GitHub Actions).
+- Version ID: `a0e1092e-d544-4487-bb11-f04c56e19984`.
+- Запуск: GitHub Actions deploy (D115).
+- Цели: `https://stakeward-prod.stakeward.workers.dev`, `schedule: */2 * * * *`.
+- Сборка сайта: mainnet; Node v24.21.0, pnpm 12.8.1, wrangler 4.146.0.
+- На этой папке прошли `build-output.test.ts` и `test-code-guard.test.ts`; после выгрузки файлы не изменились.
+- Сверить сайт с коммитом: `pnpm verify-deploy --env prod --commit 43e24ecd9d0f5e0eef3a93fe77e3948dea20203c`.
+
+| файл | байт | sha256 |
+|---|---|---|
+| `_headers` | 710 | `53fa331e2041fd9fa0cee0eafd85263b3c396891499e4cf93819bf1e727b6bd0` |
+| `assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2` | 7420 | `2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e` |
+| `assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2` | 15084 | `6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09` |
+| `assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2` | 16512 | `824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f` |
+| `assets/geist-latin-wght-normal-BgDaEnEv.woff2` | 29400 | `19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1` |
+| `assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2` | 6176 | `cd8800999070b729e1cc0bf7a48da6c3ac096a044251171b9a7574b56d96d4b4` |
+| `assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2` | 12940 | `4866787fc952dbdbd591d6923d67bc21c2d894b93f34ab69d0cdf25d47bfb2df` |
+| `assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2` | 14696 | `1a189eb997c3e2ece68373e387afaec9e8617424186c4b1ab3cff7c54ba6223b` |
+| `assets/geist-mono-latin-wght-normal-XN7g48iV.woff2` | 23128 | `684ad5b531f81d43c1e8c7038262d5db7cdc1f68006e04d6c7769efa8d33c8cc` |
+| `assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2` | 5812 | `5bb66d8319ba1602bb2eb67dce8d79c2b4687be8ce183a0574433e949b3c60ad` |
+| `assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2` | 7696 | `d39b60889a94a527a7f73c7988a2d6efb6c081614aef683b0b386c02d74c2175` |
+| `assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2` | 8004 | `8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1` |
+| `assets/index-VspvanKb.js` | 898430 | `baab53389f648c3979a9aed1d0b8f0c3b8988a607850d0e5683c67b7d6d4fcc3` |
+| `assets/index-wdtkSFSp.css` | 50702 | `aa5c408f6e5cf3594b0635b42da429766dfc5f95dc1632bc152021dcf4f7611e` |
+| `favicon.svg` | 325 | `7c88716d99402fcf990c7d778fdfefccb7581c467c8dee53354f4c4686c3be24` |
+| `index.html` | 565 | `d2c5f4a55292bf2b109efa211c99f0c88758312a53332617556ec976a919c6a5` |
