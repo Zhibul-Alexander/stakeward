@@ -40,7 +40,7 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
-      "changeKey": "Change the second key"
+      "changeKey": "Change the second key",
       "rescueNow": "Rescue status"
     }
   },
