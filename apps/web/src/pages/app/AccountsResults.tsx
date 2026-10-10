@@ -9,8 +9,10 @@ import {
   LoaderCircleIcon,
   RefreshCwIcon,
   SendIcon,
+  Share2Icon,
   ShieldCheckIcon,
   ShieldXIcon,
+  VenetianMaskIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -226,6 +228,19 @@ function Summary({
           </Button>
           <RefreshButton onRefresh={onRefresh} />
         </>
+      }
+      // The public proof page of this stake (D124): small and secondary, for a fund or a validator to share. A footer
+      // line, not a tool: the tools row keeps Telegram and Refresh together on one line at 360 px.
+      footer={
+        owned === 0 ? undefined : (
+          <Link
+            href={appLinks.proof(address)}
+            className="inline-flex items-center gap-1 rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+          >
+            <Share2Icon aria-hidden="true" className="size-4" />
+            {t('app.results.shareProof')}
+          </Link>
+        )
       }
       // For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
       // knows no second key and so calls none of the locks Protected (D35). Beside the answer from 640 px, so it takes
@@ -496,8 +511,27 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
       account={account}
     />
   );
+  const steal = <StealLink account={account} />;
   // Without a lock the main key withdraws alone; the row shows the way, the group's button protects.
-  return row.managedByService ? { action: protect, more: <WithdrawLink account={account} /> } : { action: <WithdrawLink account={account} />, more: protect };
+  return row.managedByService
+    ? {
+        action: protect,
+        more: (
+          <>
+            <WithdrawLink account={account} />
+            {steal}
+          </>
+        ),
+      }
+    : {
+        action: <WithdrawLink account={account} />,
+        more: (
+          <>
+            {protect}
+            {steal}
+          </>
+        ),
+      };
 }
 
 /**
@@ -507,41 +541,28 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
 function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
   const account = row.account.address;
   const extend = <ExtendLink account={account} primary={primary} />;
-  const card = (
-    <>
-      <ChangeKeyLink account={account} />
-      <RecoveryCardLink account={account} />
-    </>
-  );
-  if (row.protection === 'expiring') {
-    return {
-      action: extend,
-      more: (
-        <>
-          <WithdrawLink account={account} />
-          {card}
-        </>
-      ),
-    };
-  }
+  if (row.protection === 'expiring') return { action: extend, more: <LockedRest account={account} /> };
   return {
     action: <WithdrawLink account={account} />,
     more: (
       <>
         {extend}
-        {card}
+        <ChangeKeyLink account={account} />
+        <RecoveryCardLink account={account} />
+        <StealLink account={account} />
       </>
     ),
   };
 }
 
-/** Behind More on a lock the viewer holds: withdrawing with both keys, a new second key, and the recovery card. */
+/** Behind More on a lock the viewer holds: withdrawing with both keys, a new second key, the recovery card, and the thief's view. */
 function LockedRest({ account }: { account: Address }) {
   return (
     <>
       <WithdrawLink account={account} />
       <ChangeKeyLink account={account} />
       <RecoveryCardLink account={account} />
+      <StealLink account={account} />
     </>
   );
 }
@@ -552,6 +573,19 @@ function WithdrawLink({ account }: { account: Address }) {
       href={appLinks.withdraw(account)}
       label={t('app.actions.withdraw')}
       icon={<ArrowDownToLineIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
+    />
+  );
+}
+
+/** What a thief with only the main key could do to this account now, by simulation (DECISIONS.md D123). */
+function StealLink({ account }: { account: Address }) {
+  return (
+    <ActionLink
+      href={appLinks.steal(account)}
+      label={t('app.actions.steal')}
+      icon={<VenetianMaskIcon aria-hidden="true" />}
       variant="outline"
       account={account}
     />

@@ -1,9 +1,10 @@
-import { cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
+import { aiPrompt, cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
 import { RotateCcwIcon, SendIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { AccountList, AccountListItem, AccountListSkeleton, AccountRow, AccountRowError } from '@/components/product/account-row';
 import { ActionBar } from '@/components/product/action-bar';
+import { AskAi } from '@/components/product/ask-ai';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
 import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
 import { CosignRequest } from '@/components/product/cosign-request';
@@ -25,6 +26,7 @@ import { StepProgress } from '@/components/product/step-progress';
 import { StopPanel } from '@/components/product/stop-panel';
 import { SummaryBar } from '@/components/product/summary-bar';
 import { SupportBadge, type SupportVerdict } from '@/components/product/support-badge';
+import { TransactionCheck } from '@/components/product/transaction-check';
 import {
   TransactionSummary,
   TransactionSummaryError,
@@ -46,6 +48,7 @@ import {
   SAMPLE,
   SAMPLE_ERROR_DETAIL,
   SAMPLE_LOCK_END,
+  SAMPLE_SCANS,
   SAMPLE_SIGNATURE,
   SAMPLE_TX,
   SAMPLE_WALLETS,
@@ -792,6 +795,42 @@ export function ComponentsSection() {
             <RiskNote risk="unlock-opens-window" tone="danger" variant="inline" />
           </Demo>
         </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.transactionCheck')}>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <Demo label={t('devUi.states.danger')}>
+            <TransactionCheck state={{ status: 'ready', report: SAMPLE_SCANS.danger }} headingLevel={3} />
+          </Demo>
+          <Demo label={t('devUi.states.caution')}>
+            <TransactionCheck state={{ status: 'ready', report: SAMPLE_SCANS.caution }} headingLevel={3} />
+          </Demo>
+          <Demo label={t('devUi.states.ok')}>
+            <TransactionCheck state={{ status: 'ready', report: SAMPLE_SCANS.ok }} headingLevel={3} />
+          </Demo>
+          <Demo label={t('devUi.states.empty')}>
+            <TransactionCheck state={{ status: 'idle' }} headingLevel={3} />
+          </Demo>
+          <Demo label={t('devUi.states.loading')}>
+            <TransactionCheck state={{ status: 'checking' }} headingLevel={3} />
+          </Demo>
+          <Demo label={t('devUi.states.error')}>
+            <TransactionCheck state={{ status: 'error', code: 'malformed', detail: 'Not a transaction: SolanaError' }} headingLevel={3} />
+          </Demo>
+        </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.askAi')}>
+        <AskAi
+          prompt={aiPrompt({
+            task: t('devUi.sample.aiPrompt'),
+            facts: [
+              ['Stake account', SAMPLE.stakeA],
+              ['Event', 'Deactivated'],
+            ],
+            verdict: 'Protected: the SOL cannot be withdrawn without the second key.',
+          })}
+        />
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.radioCardGroup')}>

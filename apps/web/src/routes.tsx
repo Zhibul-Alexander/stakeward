@@ -3,17 +3,20 @@ import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
 import { ChangeKeyPage } from '@/pages/ChangeKeyPage';
+import { CheckPage } from '@/pages/CheckPage';
 import { CosignPage } from '@/pages/CosignPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { LearnPage } from '@/pages/LearnPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProofPage } from '@/pages/ProofPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { StatsPage } from '@/pages/StatsPage';
+import { StealPage } from '@/pages/StealPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 
 // Devnet-only pages (CLAUDE.md section 9). The literal comparison (not IS_DEVNET from config.ts) is what lets the
@@ -74,14 +77,23 @@ export function AppRoutes() {
       <Route path="/cosign">
         <CosignPage />
       </Route>
+      <Route path="/try-steal/:account">
+        <StealPage />
+      </Route>
       <Route path="/recovery/:account">
         <RecoveryPage />
       </Route>
       <Route path="/demo">
         <DemoPage />
       </Route>
+      <Route path="/proof/:wallet">
+        <ProofPage />
+      </Route>
       <Route path="/stats">
         <StatsPage />
+      </Route>
+      <Route path="/check">
+        <CheckPage />
       </Route>
       {DevUiPage === null ? null : (
         <Route path="/dev/ui">

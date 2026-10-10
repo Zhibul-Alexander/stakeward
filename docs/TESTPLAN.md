@@ -287,8 +287,8 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Опустошить и основной кошелёк: страница просит пополнить Second key, а не Main key.
 - [ ] С `/withdraw` пройти «Remove the lock first»: галочка, подписывает Second key, затем вывод одним Main key. Перед снятием видно предупреждение, что это открывает окно для вора.
 - [ ] Снять делегированный аккаунт с делегирования и сравнить отсчёт с концом эпохи в эксплорере.
-- [ ] На `/app?address=<Main key>` у защищённого аккаунта в строке видна кнопка Withdraw, у аккаунта без замка тоже (D122).
-- [ ] Смена второго ключа (F7, D122): на защищённом аккаунте More → Change second key. Подключить новый кошелёк из другой seed-фразы с ~0,001 SOL как New wallet, поставить галочку, Review the change. Подписывают New wallet (платит) и Second key. Phantom может предупредить или заблокировать (D116). В эксплорере у аккаунта новый Lockup Custodian, дата замка та же, комиссия списана с нового кошелька. Затем «Extend» старым вторым ключом падает, новым проходит. Карточка восстановления (`/recovery/<аккаунт>`) называет новый ключ.
+- [ ] На `/app?address=<Main key>` у защищённого аккаунта в строке видна кнопка Withdraw, у аккаунта без замка тоже (D127).
+- [ ] Смена второго ключа (F7, D127): на защищённом аккаунте More → Change second key. Подключить новый кошелёк из другой seed-фразы с ~0,001 SOL как New wallet, поставить галочку, Review the change. Подписывают New wallet (платит) и Second key. Phantom может предупредить или заблокировать (D116). В эксплорере у аккаунта новый Lockup Custodian, дата замка та же, комиссия списана с нового кошелька. Затем «Extend» старым вторым ключом падает, новым проходит. Карточка восстановления (`/recovery/<аккаунт>`) называет новый ключ.
 
 ## Шаг 7. Спасение, nonce, подпись по ссылке
 
@@ -308,6 +308,11 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Вор меняет staker из CLI (`solana stake-authorize-checked … --new-stake-authority <thief.json> --stake-authority stolen-main.json`): через один-два цикла монитора набор уходит сам, в эксплорере staker и withdrawer — новый кошелёк, замок тот же; в Telegram тревога о смене владельца.
 - [ ] Вор снимает делегирование с другого аккаунта с набором: в привязанном чате тревога с кнопкой «Rescue now», нажатие отправляет набор, бот отвечает «Rescue sent». В другом чате, подписанном через `/start <адрес>`, у той же тревоги обычная кнопка «Open Rescue».
 - [ ] Управление (D120): миграция 0006 применена. В привязанном чате `/kits`: у набора кнопка режима, три нажатия проходят off → staker change → any change → off, `/rescue-kit/<аккаунт>` показывает тот же режим. В режиме any снятие делегирования отправляет набор само. В чужом чате кнопки отвечают «Not linked to this chat.». Delete убирает набор у воркера; на странице «Cancel this rescue for good» новый кошелёк закрывает nonce набора, и залог возвращается.
+
+### Try to steal it (D123, после деплоя в dev)
+
+- [ ] `/app` с защищённым аккаунтом → «More» → «Try to steal it». Кнопка «Try to steal it»: обе строки «Blocked by the lock», внизу «Your SOL stays put». В эксплорере ничего не изменилось, кошелёк не открывался. «Ask ChatGPT» и «Ask Claude» открывают вопрос в своём аккаунте.
+- [ ] То же на незащищённом аккаунте: «Would succeed» (на делегированном вывод — «Possible after unstaking»), красная строка и кнопка «Protect this stake».
 
 ## Шаг 8. Тексты
 
@@ -329,6 +334,8 @@ curl -sS "$API/getWebhookInfo"
 - [ ] `/protect` шаги 1–5, `/withdraw/<аккаунт>`, `/extend/<аккаунт>`, `/rescue?address=<Main key>`, `/cosign` (битая ссылка и живая).
 - [ ] `/recovery/<аккаунт>`: экран и печать (Ctrl+P → предпросмотр). Особенно: предупреждение «Check the second key first» вверху, время «00:00 UTC», шаги «Your main key is stolen», «If a command fails», «What no one can undo».
 - [ ] `/stats` и `/no-such-page`.
+- [ ] `/proof/<Main key>` (D124), в обычном и приватном окне, без кошелька: «X SOL locked of Y SOL staked», «N of M stake accounts locked», самая ранняя дата окончания; у каждого аккаунта бейдж «Locked by a second key» или «Not protected», дата и адрес второго ключа, слова Protected нет; строки «Read from the Solana network just now…» и «A lock stops withdrawals…»; Ask ChatGPT / Ask Claude открывают вопрос с итогами. На `/app?address=<Main key>` ссылка «Share proof page» ведёт туда же. `/proof/<адрес без стейка>` — «No stake accounts», `/proof/abc` — «This is not a Solana address».
+- [ ] `/check` (D126), на 1280 и 360: пустое поле → «Paste a transaction first.»; мусор → «Stakeward cannot read…» и Details; адрес → «This is an address…»; 12 слов → «Never paste this anywhere», поле очищено. Ссылка `/cosign#tx=…` из шага 7 и её base64 → «This is a transaction Stakeward itself builds.». Транзакция, где стейк-аккаунт передают другому адресу (например, `solana stake-authorize <аккаунт> --new-withdraw-authority <адрес> --sign-only --blockhash <хэш> --dump-transaction-message`, флаги сверить с `--help`): Danger, новый адрес целиком; с `?address=<Main key>` — «Your wallet loses control here.». DevTools → Network: при нажатии Check запросов нет. «Ask ChatGPT» открывает вопрос без байтов транзакции. FAQ «Can Stakeward check a transaction from another site?» ведёт на /check.
 - [ ] Telegram в dev-боте: /start, /status, /stop, тревога каждого типа, напоминания.
 - [ ] Факты в вопросе FAQ «Has staked SOL really been stolen like this?» верны, называть компании можно.
 - [ ] FAQ «How can I check my lock without Stakeward?»: открыть защищённый devnet-аккаунт на explorer.solana.com (сеть Devnet) и сверить надписи из ответа: баннер «Account is locked! Lockup expires on …», Lockup Authority Address (второй ключ), Withdraw Authority Address (основной ключ). Надписи взяты из исходников эксплорера, на живой странице не сверены (SECURITY-CHECK П26).

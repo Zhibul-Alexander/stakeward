@@ -22,6 +22,7 @@ import {
   type Lockup,
   type NonceLifetime,
   type ProtectionStatus,
+  type ScanReport,
   type StakeAccount,
   type TransactionAction,
   type TransactionSummary,
@@ -458,3 +459,107 @@ export const SAMPLE_WALLET_PAIRS: readonly PairSupport[] = [
 
 /** The matrix date of the sample wallet table. */
 export const SAMPLE_MATRIX_DATE = '2026-10-06';
+
+const COMPUTE_BUDGET_PROGRAM = address('ComputeBudget111111111111111111111111111111');
+const SYSTEM_PROGRAM = address('11111111111111111111111111111111');
+const STAKE_PROGRAM = address('Stake11111111111111111111111111111111111111');
+
+/**
+ * /check results (TransactionCheck, D126): the SwissBorg shape (a transfer and a compute budget around a hidden
+ * AuthorizeChecked to a stranger, viewed with the main key as "Your wallet"), a v0 transaction with a lookup table and
+ * an unknown program, and a plain transfer.
+ */
+export const SAMPLE_SCANS: Record<'danger' | 'caution' | 'ok', ScanReport> = {
+  danger: {
+    version: 'legacy',
+    feePayer: SAMPLE.mainKey,
+    requiredSigners: [SAMPLE.mainKey, SAMPLE.stranger],
+    instructions: [
+      {
+        index: 0,
+        programAddress: COMPUTE_BUDGET_PROGRAM,
+        effect: { kind: 'program', program: 'compute-budget', name: 'SetComputeUnitLimit' },
+        risk: 'ok',
+        usesLookupTable: false,
+        wallet: null,
+      },
+      {
+        index: 1,
+        programAddress: SYSTEM_PROGRAM,
+        effect: { kind: 'program', program: 'system', name: 'TransferSol' },
+        risk: 'ok',
+        usesLookupTable: false,
+        wallet: null,
+      },
+      {
+        index: 2,
+        programAddress: STAKE_PROGRAM,
+        effect: {
+          kind: 'authorize',
+          variant: 'AuthorizeChecked',
+          role: 'withdrawer',
+          stake: SAMPLE.stakeA,
+          authority: SAMPLE.mainKey,
+          newAuthority: SAMPLE.stranger,
+          custodian: null,
+        },
+        risk: 'danger',
+        usesLookupTable: false,
+        wallet: 'replaced',
+      },
+    ],
+    lookupTables: [],
+    messageOnly: false,
+    risk: 'danger',
+    touchesStake: true,
+    stakeward: null,
+  },
+  caution: {
+    version: 0,
+    feePayer: SAMPLE.mainKey,
+    requiredSigners: [SAMPLE.mainKey],
+    instructions: [
+      {
+        index: 0,
+        programAddress: STAKE_PROGRAM,
+        effect: { kind: 'deactivate', stake: SAMPLE.stakeB, authority: SAMPLE.mainKey },
+        risk: 'caution',
+        usesLookupTable: false,
+        wallet: null,
+      },
+      {
+        index: 1,
+        programAddress: SAMPLE.otherKey,
+        effect: { kind: 'program', program: 'unknown', name: null },
+        risk: 'caution',
+        usesLookupTable: true,
+        wallet: null,
+      },
+    ],
+    lookupTables: [SAMPLE.stakeJ],
+    messageOnly: false,
+    risk: 'caution',
+    touchesStake: true,
+    stakeward: null,
+  },
+  ok: {
+    version: 'legacy',
+    feePayer: SAMPLE.mainKey,
+    requiredSigners: [SAMPLE.mainKey],
+    instructions: [
+      {
+        index: 0,
+        programAddress: SYSTEM_PROGRAM,
+        effect: { kind: 'program', program: 'system', name: 'TransferSol' },
+        risk: 'ok',
+        usesLookupTable: false,
+        wallet: null,
+      },
+    ],
+    lookupTables: [],
+    messageOnly: false,
+    risk: 'ok',
+    touchesStake: false,
+    stakeward: null,
+  },
+};

@@ -297,7 +297,7 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'extend',
   },
   {
-    // F7: hand the lock to a new second key (D122). Reads the stake with no wallet; the new key connects here.
+    // F7: hand the lock to a new second key (D127). Reads the stake with no wallet; the new key connects here.
     path: `/change-key/${SMOKE_STAKE}`,
     heading: text('common.pages.changeKey'),
     ready: text('changeKey.heading'),
@@ -342,6 +342,12 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'cosign-broken',
   },
   {
+    // "Try to steal it" (D123): the account read with no wallet; the simulation runs only on the button.
+    path: `/try-steal/${SMOKE_STAKE}`,
+    heading: text('common.pages.steal'),
+    ready: text('steal.heading'),
+  },
+  {
     // The card of the smoke stake's pair of keys, read from the network with no wallet.
     path: `/recovery/${SMOKE_STAKE}`,
     heading: text('recovery.title'),
@@ -359,12 +365,34 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'recovery',
   },
   {
+    // The public proof of the smoke main key's stake (D124): read from the network with no wallet, never "Protected".
+    path: `/proof/${MAIN}`,
+    heading: text('proof.title'),
+    shows: async (page) => {
+      await expect(page.getByText(text('proof.headline', { locked: '1,250.5', total: '1,250.5' }), { exact: true })).toBeVisible();
+      await expect(page.locator('article[data-slot="account-row"]')).toHaveAttribute('data-status', 'locked-by-other');
+      await expect(page.getByText(text('proof.limits'), { exact: true })).toBeVisible();
+    },
+    screen: 'proof',
+  },
+  {
     path: '/stats',
     heading: text('stats.title'),
     shows: async (page) => {
       await expect(page.getByRole('definition')).toHaveText(['12', '1,234 SOL', '7']);
     },
     screen: 'stats',
+  },
+  {
+    // Check a transaction (D126): decoding is local, so the page asks the API for nothing.
+    path: '/check',
+    heading: text('check.title'),
+    shows: async (page) => {
+      await expect(page.getByText(text('check.local'))).toBeVisible();
+      await expect(page.getByRole('heading', { name: text('check.emptyTitle') })).toBeVisible();
+    },
+    noApi: true,
+    screen: 'check',
   },
   { path: '/demo', heading: text('demo.title'), noApi: true, screen: 'demo' },
   { path: '/no-such-page', ...NOT_FOUND, noApi: true, screen: 'not-found' },

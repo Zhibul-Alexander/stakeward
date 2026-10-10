@@ -237,4 +237,8 @@ export const appLinks = {
   rescue: (mainKey: Address) => `/rescue?${new URLSearchParams({ address: mainKey }).toString()}`,
   /** The recovery card of the pair of keys that locks this account (DECISIONS.md D74). */
   recovery: (account: Address) => `/recovery/${account}`,
+  /** What a thief with only the main key could do to this account now, by simulation (DECISIONS.md D123). */
+  steal: (account: Address) => `/try-steal/${account}`,
+  /** The public proof page of this main key's stake (DECISIONS.md D124). */
+  proof: (mainKey: Address) => `/proof/${mainKey}`,
 };
