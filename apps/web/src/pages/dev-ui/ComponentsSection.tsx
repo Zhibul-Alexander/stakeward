@@ -41,6 +41,7 @@ import { MonitoringStatus } from '@/pages/app/MonitoringStatus';
 import { appLinks } from '@/pages/app/view';
 import { FaqAnswer } from '@/pages/landing/Faq.tsx';
 import { REMINDER_DAYS_TEXT } from '@/pages/landing/faq.ts';
+import { AlertExplanationDemos, ProtectionCheckDemos } from './CheckDemos.tsx';
 import { DarkPreview } from './DarkPreview.tsx';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
 import {
@@ -807,6 +808,10 @@ export function ComponentsSection() {
           })}
         />
       </DemoGroup>
+
+      <ProtectionCheckDemos clock={clock} />
+
+      <AlertExplanationDemos />
 
       <DemoGroup title={t('devUi.names.radioCardGroup')}>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">

@@ -87,8 +87,9 @@ describe('setupCheck', () => {
     expect(check.findings.every((f) => f.reason === 'no-lock')).toBe(true);
     // The self-held lock breaks the second-key rule too.
     expect(byId(result, 'second-key').findings).toEqual([{ account: self.address, reason: 'main-key' }]);
-    // Only the real lock is in the locked totals.
+    // Only the real lock is in the locked totals; every lock in force has its end.
     expect(result.lockedCount).toBe(1);
+    expect(result.lockEnds).toEqual({ [self.address]: NOW + 100n * DAY, [good.address]: NOW + 100n * DAY });
   });
 
   it('flags a lock that ends within 30 days, never one that has 30 days left exactly or one its epoch holds', () => {

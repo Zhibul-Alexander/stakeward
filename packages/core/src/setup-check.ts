@@ -86,6 +86,8 @@ export type SetupCheck = {
   /** Of them, under a lock in force held by another key than the main key. */
   lockedCount: number;
   lockedLamports: bigint;
+  /** Lock end (unix seconds) of each account of the main key whose lock is in force, for "ends on <date>". */
+  lockEnds: Partial<Record<Address, bigint>>;
 };
 
 /** A lock that counts as one: in force, and not held by the main key itself (core `scannerStatus`). */
@@ -206,6 +208,9 @@ export function setupCheck(input: SetupCheckInput): SetupCheck {
     lamports: sum(owned),
     lockedCount: locked.length,
     lockedLamports: sum(locked),
+    lockEnds: Object.fromEntries(
+      owned.filter((account) => isLockupInForce(account.lockup, clock)).map((account) => [account.address, account.lockup.unixTimestamp]),
+    ),
   };
 }
 
