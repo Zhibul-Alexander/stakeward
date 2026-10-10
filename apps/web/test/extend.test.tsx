@@ -15,7 +15,7 @@ import {
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { LAMPORTS_PER_SOL, START_EPOCH, START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { createSlotStore } from '@/ports';
 import {
@@ -308,6 +308,41 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
   );
 });
 
+describe('/extend/:account: a custom end date (D119)', () => {
+  it(
+    'the second key moves the lock to 00:00 UTC of a date it picks; never to or before the current end, never past five years',
+    async () => {
+      const w = await world(LAMPORTS_PER_SOL / 100n);
+      const S = await stake(w);
+      const second = await secondWallet(w);
+      const { user } = renderStakePage(w.chain, `/extend/${S}`, [second]);
+      await periodRadio('6 months', SIX_MONTHS);
+      await user.click(screen.getByRole('radio', { name: 'Custom date' }));
+      const field = screen.getByLabelText('Lock until');
+      // The lock ends on 9 January 2027 (START + 100 days): the day after it is the earliest; five years from 1 October 2026 the latest.
+      expect(field).toHaveAttribute('min', '2027-01-10');
+      expect(field).toHaveAttribute('max', '2031-10-01');
+      expect(screen.getByRole('button', { name: 'Review new end date' })).toBeDisabled();
+      expect(screen.getByText('Pick the date the lock ends.')).toBeInTheDocument();
+      fireEvent.change(field, { target: { value: '2027-01-09' } });
+      expect(screen.getByRole('alert')).toHaveTextContent('Pick a date from 10 January 2027 on: a new end must be later than the current one.');
+      fireEvent.change(field, { target: { value: '2031-10-02' } });
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2031\./);
+      fireEvent.change(field, { target: { value: '2027-05-20' } });
+      expect(screen.queryByRole('alert')).toBeNull();
+      const until = BigInt(Date.UTC(2027, 4, 20) / 1000);
+      expect(document.querySelector('[data-risk="lose-second-key"]')).toHaveTextContent(formatUtcDate(until) ?? '');
+
+      await click(user, 'Review new end date');
+      await connectAndContinue(user, 'Second key', 'Second Wallet');
+      await click(user, 'Sign in Second Wallet as Second key');
+      await heading(`The lock now ends on ${formatUtcDate(until) ?? ''}`);
+      expect(w.testChain.stakeAccount(S)?.lockup).toEqual({ unixTimestamp: until, epoch: 0n, custodian: w.K.address });
+    },
+    SCENARIO_TIMEOUT,
+  );
+});
+
 describe('/extend/:account: after a removal (SECURITY-CHECK П9)', () => {
   it(
     'Protect again opens the wizard for this stake, and the wizard warns that the second key still connected held its lock',
@@ -416,14 +451,16 @@ describe('/extend/:account: gates', () => {
   );
 
   it(
-    'E4a3: no period ends later than the lock: removing is offered without a lone radio card',
+    'E4a3: no period ends later than the lock: a custom date or removing; removing is the default',
     async () => {
       const w = await world(LAMPORTS_PER_SOL / 100n);
       const S = await stake(w, { unixTimestamp: START_UNIX_TIMESTAMP + 400n * DAY, epoch: 0n, custodian: w.K.address });
       renderStakePage(w.chain, `/extend/${S}`, []);
-      await heading('Remove the lock now');
-      expect(screen.getByText('No period ends later than the current lock. You can still remove it.')).toBeInTheDocument();
-      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+      await heading('New end of the lock');
+      expect(screen.getByText('No fixed period ends later than the current lock. Pick a later date, or remove the lock.')).toBeInTheDocument();
+      expect(screen.getAllByRole('radio')).toHaveLength(2);
+      expect(screen.getByRole('radio', { name: 'Custom date' })).not.toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Remove the lock now' })).toBeChecked();
       expect(document.querySelector('[data-risk="unlock-opens-window"]')).toHaveAttribute('data-tone', 'danger');
       expect(screen.getByRole('button', { name: 'Review lock removal' })).toHaveAttribute('data-variant', 'danger');
     },

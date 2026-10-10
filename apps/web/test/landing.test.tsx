@@ -13,6 +13,9 @@ import { GATE_RESULTS_URL, README_RECOVERY_URL, SOURCE_CODE_URL } from '@/config
 import en from '@/i18n/en.json';
 import { CosignPage } from '@/pages/CosignPage';
 import { LandingPage } from '@/pages/LandingPage';
+import { useNonceDeposit } from '@/pages/landing/deposit.ts';
+import { useFaqParams } from '@/pages/landing/faq.ts';
+import { LEARN_TABS, LearnTabBody } from '@/pages/LearnPage';
 import { FAQ_GROUPS, type FaqId } from '@/pages/landing/faq.ts';
 import { Wallets } from '@/pages/landing/Wallets.tsx';
 import { LEDGER_CHECKED_ON, type PairSupport } from '@/pages/landing/wallet-support.ts';
@@ -49,6 +52,20 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
+/** Every /learn tab at once, so the content tests read the whole site's copy as the one-page layout did. */
+function AllLearnTabs() {
+  const deposit = useNonceDeposit();
+  const params = useFaqParams(deposit);
+  return (
+    <div data-testid="learn-tabs">
+      {LEARN_TABS.map((tab) => (
+        <LearnTabBody key={tab} tab={tab} deposit={deposit} params={params} />
+      ))}
+    </div>
+  );
+}
+
+/** `/` and, below it, every /learn tab (alerts, costs, wallets, safety, FAQ moved there from the landing page). */
 function renderLanding({ chain = new CountingChain(lite), cluster = 'devnet' }: { chain?: CountingChain; cluster?: Cluster } = {}) {
   const location = memoryLocation({ path: '/', record: true });
   render(
@@ -56,6 +73,7 @@ function renderLanding({ chain = new CountingChain(lite), cluster = 'devnet' }: 
       <Router hook={location.hook} searchHook={location.searchHook}>
         <PortsProvider ports={testPorts(chain, [])}>
           <LandingPage cluster={cluster} />
+          <AllLearnTabs />
         </PortsProvider>
       </Router>
     </StrictMode>,
@@ -114,11 +132,21 @@ describe('landing page structure', () => {
 
   it('links only to targets that exist, to /app, and to the repository in a new tab', async () => {
     renderLanding();
-    const hashLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
-    // Without the table of contents, every link into the page leads to an answer: from the second key's rules, the
-    // wallets, the recovery links, the co-sign callout and the Ledger answer.
-    expect(hashLinks.map((link) => link.getAttribute('href'))).toEqual(['#faq-good-second-key', '#faq-ledger', '#faq-on-chain', '#faq-co-sign', '#faq-terms']);
-    expect(hashLinks.map((link) => link.getAttribute('href')).filter((href) => document.getElementById((href ?? '#').slice(1)) === null)).toEqual([]);
+    const hashLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href*="#"]:not([href^="http"])')];
+    // Every link to an answer leads to the FAQ tab: from the second key's rules and the co-sign callout on `/`, then
+    // (tabs in order: FAQ, alerts, costs, wallets, safety) the Ledger answer, the wallets and the recovery links.
+    expect(hashLinks.map((link) => link.getAttribute('href'))).toEqual([
+      '/learn/faq#faq-good-second-key',
+      '/learn/faq#faq-co-sign',
+      '#faq-terms',
+      '/learn/faq#faq-ledger',
+      '/learn/faq#faq-on-chain',
+    ]);
+    const target = (href: string | null) => (href ?? '#').slice((href ?? '#').indexOf('#') + 1);
+    expect(hashLinks.map((link) => link.getAttribute('href')).filter((href) => document.getElementById(target(href)) === null)).toEqual([]);
+    // The way to the details: one link per /learn tab.
+    const learnMore = section('learn-more-title').closest('section') as HTMLElement;
+    expect([...learnMore.querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual(LEARN_TABS.map((tab) => `/learn/${tab}`));
 
     // Look first (UX rule 1): the hero's primary button and the closing call both go to /app; protecting is the
     // hero's outline alternative.
@@ -133,13 +161,13 @@ describe('landing page structure', () => {
     // If Stakeward disappears: the recovery cards, the guide, the source code and what changes on the network.
     const recover = section('recover');
     expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
-    expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
+    expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '/learn/faq#faq-on-chain');
     // The promise of recovery without Stakeward carries its condition where it is made.
     expect(recover).toHaveTextContent('Its Solana CLI steps need a Ledger or keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
     expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
-    expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '#faq-co-sign');
+    expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '/learn/faq#faq-co-sign');
 
     const external = [
       ['Read the source code (opens in a new tab)', SOURCE_CODE_URL],
@@ -466,7 +494,7 @@ describe('landing words and numbers', () => {
     const figure = section('alerts').querySelector('figure') as HTMLElement;
     expect(figure.querySelector('figcaption')).toHaveTextContent('Example');
     expect([...figure.querySelectorAll('p')].map((p) => p.textContent)).toEqual([alert.text]);
-    expect(alert.text).toMatch(/^Stake \w{3}\.\.\.\w{3} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
+    expect(alert.text).toMatch(/^Stake \w{4}\.\.\.\w{4} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
     expect(within(figure).getByText('Open Rescue')).toBeInTheDocument();
     // An example, not a control.
     expect(within(figure).queryByRole('button')).toBeNull();

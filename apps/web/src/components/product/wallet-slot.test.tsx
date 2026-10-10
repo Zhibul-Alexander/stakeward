@@ -48,7 +48,7 @@ describe('WalletSlot', () => {
     render(<WalletSlot role="main" status="connected" wallet={ALPHA} address={MAIN} onDisconnect={onDisconnect} />);
     expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.getByText('Alpha Wallet')).toBeInTheDocument();
-    expect(screen.getByText('B1a...Xu8')).toBeInTheDocument();
+    expect(screen.getByText('B1ag...uXu8')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Disconnect Alpha Wallet from Main key' }));
     expect(onDisconnect).toHaveBeenCalledOnce();
   });
@@ -175,7 +175,7 @@ describe('WalletSlot', () => {
     const onDisconnect = vi.fn();
     render(<WalletSlot role="main" status="connected" wallet={ALPHA} address={MAIN} onDisconnect={onDisconnect} layout="inline" />);
     const group = screen.getByRole('group', { name: 'Main key' });
-    expect(group).toHaveTextContent(/^Main key\s*Alpha Wallet\s*B1a\.\.\.Xu8/);
+    expect(group).toHaveTextContent(/^Main key\s*Alpha Wallet\s*B1ag\.\.\.uXu8/);
     await user.click(within(group).getByRole('button', { name: 'Disconnect Alpha Wallet from Main key' }));
     expect(onDisconnect).toHaveBeenCalledOnce();
   });

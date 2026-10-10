@@ -772,15 +772,10 @@ describe('/protect step gates', () => {
       const { user } = renderProtect(w, [S1, theirs, locked], [main, second]);
 
       expect(screen.getByText('From your link: 3 stake accounts. Connect their main key to continue.')).toBeInTheDocument();
-      // Without the main key its Connect is the step's one filled button; the step button is outline and says why
-      // before any click. Pressed, it says what is missing and moves focus there.
+      // Without the main key its Connect is the step's one action: no step button ("Continue with 0 accounts") yet.
       const slot = screen.getByRole('group', { name: 'Main key' });
       expect(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' })).toHaveAttribute('data-variant', 'primary');
-      expect(continueButton()).toHaveAttribute('data-variant', 'outline');
-      expect(continueButton()).toHaveAccessibleDescription('Connect your main key first.');
-      await user.click(continueButton());
-      const needMain = screen.getByText('Connect your main key first.');
-      expect(needMain.closest('[data-slot="step-blockers"]')).toHaveFocus();
+      expect(screen.queryByRole('button', { name: /^Continue with \d+ accounts?$/ })).toBeNull();
 
       await connect(user, 'Main key', 'Main Wallet');
       await waitFor(() => {

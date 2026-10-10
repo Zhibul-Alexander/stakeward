@@ -148,7 +148,7 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const verifyNote = verify.closest('[data-slot="recovery-verify"]') as HTMLElement;
       expect(within(verifyNote).getByRole('link', { name: `Why a stake account says ${en.status.lockedByOther}` })).toHaveAttribute(
         'href',
-        '/#faq-locked-by-other',
+        '/learn/faq#faq-locked-by-other',
       );
 
       // The route first, then the other account of this pair; neither the open one nor another second key's.

@@ -14,7 +14,7 @@ function leaves(node: unknown, prefix = ''): [string, string][] {
 describe('t()', () => {
   it('reads nested keys and fills placeholders', () => {
     expect(t('common.roles.second')).toBe('Second key');
-    expect(t('components.accountRow.label', { address: '7xK...9fQ' })).toBe('Stake account 7xK...9fQ');
+    expect(t('components.accountRow.label', { address: '7xKT...A9fQ' })).toBe('Stake account 7xKT...A9fQ');
     expect(t('errors.lockup-in-force', { date: '12 April 2027' })).toBe(
       'Locked until 12 April 2027: your second key must co-sign.',
     );

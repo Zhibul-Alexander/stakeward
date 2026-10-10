@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AddressText } from './address-text.tsx';
 
 const ADDRESS = 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW';
-const SHORT = 'AYA...DfW';
+const SHORT = 'AYA9...9DfW';
 
 describe('AddressText', () => {
   afterEach(() => {

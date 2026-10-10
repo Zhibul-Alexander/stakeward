@@ -1,4 +1,7 @@
 import {
+  customLockBounds,
+  customLockEnd,
+  type CustomLockProblem,
   isLockupInForce,
   lockPeriodsFor,
   lockupEnd,
@@ -26,8 +29,11 @@ export function extendStage(account: StakeAccount, clock: ClockView): ExtendStag
   return 'ready';
 }
 
-/** A new end for the lock (a period from now), or removing it now. */
-export type ExtendChoice = { kind: 'period'; period: LockPeriod; until: bigint } | { kind: 'remove' };
+/** A new end for the lock (a period from now, or a date the owner picks, D119), or removing it now. */
+export type ExtendChoice =
+  | { kind: 'period'; period: LockPeriod; until: bigint }
+  | { kind: 'custom'; until: bigint }
+  | { kind: 'remove' };
 
 /**
  * The choices on /extend: every period of `cluster` whose end (from the cluster clock) is later than the lock's current
@@ -52,12 +58,36 @@ export function defaultChoice(choices: readonly ExtendChoice[], removeParam: boo
   );
 }
 
-/** The radio value of a choice: the period, or `remove`. */
+/** The radio value of a choice: the period, `custom` or `remove`. */
 export function choiceValue(choice: ExtendChoice): string {
-  return choice.kind === 'remove' ? 'remove' : choice.period;
+  return choice.kind === 'period' ? choice.period : choice.kind;
 }
 
 /** The lock end a choice signs: its date, or 0 to remove the lock. */
 export function choiceLockUntil(choice: ExtendChoice): bigint {
   return choice.kind === 'remove' ? 0n : choice.until;
+}
+
+const DAY = 86_400n;
+
+/**
+ * The dates Custom date may take on /extend (D119): from the later of tomorrow and the day after the lock's current
+ * end (never a shorter lock), to five years from now. `YYYY-MM-DD`, UTC.
+ */
+export function customExtendBounds(currentEnd: bigint, clock: ClockView): { min: string; max: string } {
+  const bounds = customLockBounds(clock.unixTimestamp);
+  const afterEnd = new Date(Number((currentEnd / DAY + 1n) * DAY) * 1000).toISOString().slice(0, 10);
+  return { min: afterEnd > bounds.min ? afterEnd : bounds.min, max: bounds.max };
+}
+
+/** A typed custom end on /extend: 00:00 UTC of the date, within `customExtendBounds`. */
+export function customExtendEnd(
+  date: string,
+  currentEnd: bigint,
+  clock: ClockView,
+): { ok: true; until: bigint } | { ok: false; problem: CustomLockProblem } {
+  const result = customLockEnd(date, clock.unixTimestamp);
+  if (!result.ok) return result;
+  if (result.lockUntil <= currentEnd) return { ok: false, problem: 'too-soon' };
+  return { ok: true, until: result.lockUntil };
 }

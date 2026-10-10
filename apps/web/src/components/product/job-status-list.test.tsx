@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { JobStatusList, type JobStatus, type JobStatusItem } from './job-status-list.tsx';
 
 const STAKE = 'AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW' as Address;
-const STAKE_SHORT = 'AYA...DfW';
+const STAKE_SHORT = 'AYA9...9DfW';
 const STAKE_2 = '2Xtq6iZ2mXjxTNsv5FrYCzayG5qYRJwZ6837A1X3TjF6' as Address;
 const SIGNATURE = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW' as Signature;
-const SIGNATURE_SHORT = '5VE...QUW';
+const SIGNATURE_SHORT = '5VER...kQUW';
 
 // UX rule 5: every status is a word, a colour (tone) and an icon, never colour alone.
 const EXPECTED: [JobStatus, string, string][] = [

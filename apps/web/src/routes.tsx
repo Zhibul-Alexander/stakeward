@@ -7,6 +7,7 @@ import { CosignPage } from '@/pages/CosignPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
+import { LearnPage } from '@/pages/LearnPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
@@ -42,6 +43,9 @@ export function AppRoutes() {
     <Switch>
       <Route path="/">
         <LandingPage />
+      </Route>
+      <Route path="/learn/:tab?">
+        <LearnPage />
       </Route>
       <Route path="/app">
         <AppPage />

@@ -38,6 +38,11 @@ export function SiteFooter() {
                 </a>
               </li>
               <li>
+                <Link className={LINK_CLASS} href="/learn/faq">
+                  {t('footer.learn')}
+                </Link>
+              </li>
+              <li>
                 <Link className={LINK_CLASS} href="/stats">
                   {t('footer.stats')}
                 </Link>

@@ -249,7 +249,7 @@ describe('review: what the summary exposes (accepted on purpose; the screens mus
   });
 
   // Withdraw and nonce close accept any recipient; nonce setup accepts any deposit. Shown in full on screen (a
-  // short "7xK...9fQ" form can be matched by a ground vanity address).
+  // short "7xKT...A9fQ" form can be matched by a ground vanity address).
   it('S4: recipients and deposits are taken from the bytes', async () => {
     const toThief = await summaryOf(build({ ...ACTIONS.withdraw, recipient: THIEF }, BLOCKHASH).bytes);
     expect(toThief.action).toMatchObject({ kind: 'withdraw', recipient: THIEF });
