@@ -18,6 +18,7 @@ export const FAQ_GROUPS: readonly { id: FaqGroupId; items: readonly FaqId[] }[] 
       'different-seed',
       'someone-else',
       'main-stolen',
+      'one-tap-rescue',
       'main-lost',
       'second-lost',
       'second-stolen',
@@ -35,12 +36,13 @@ export const FAQ_GROUPS: readonly { id: FaqGroupId; items: readonly FaqId[] }[] 
 
 /**
  * Answers with more than text: the Ledger's fields (`ledger`), a link to the gate results (`gate-link`), a link to
- * Rescue (`rescue-link`).
+ * Rescue (`rescue-link`), a link to Prepare one-tap rescue (`rescue-kit-link`).
  */
-export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-link'>> = {
+export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-link' | 'rescue-kit-link'>> = {
   ledger: 'ledger',
   'existing-accounts': 'gate-link',
   'main-stolen': 'rescue-link',
+  'one-tap-rescue': 'rescue-kit-link',
 };
 
 /** The reminder days as a sentence fragment: "30, 14, 7, 3, and 1" (core REMINDER_DAYS, the worker's thresholds). */
