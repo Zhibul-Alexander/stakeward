@@ -3,6 +3,7 @@ import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
 import { CosignPage } from '@/pages/CosignPage';
+import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
@@ -60,6 +61,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/recovery/:account">
         <RecoveryPage />
+      </Route>
+      <Route path="/demo">
+        <DemoPage />
       </Route>
       <Route path="/stats">
         <StatsPage />

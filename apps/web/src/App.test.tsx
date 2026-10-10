@@ -24,6 +24,7 @@ describe('app shell', () => {
     ['/cosign', 'Co-sign a transaction'],
     ['/recovery/Stake11111111111111111111111111111111111111', 'Stakeward recovery card'],
     ['/stats', 'Stakeward in numbers'],
+    ['/demo', 'See a theft, then see it fail'],
     ['/no-such-page', 'Page not found'],
   ])('%s shows its heading inside the layout', (path, heading) => {
     renderAt(path);

@@ -45,7 +45,8 @@
     "label": "Main",
     "rescue": "Rescue",
     "home": "Stakeward home",
-    "app": "Your accounts"
+    "app": "Your accounts",
+    "demo": "Demo"
   },
   "footer": {
     "label": "Footer",
@@ -185,7 +186,7 @@
         "new-site-warning": "The wallet may warn that this site is new. The warning goes away after a few days.",
         "ledger-blind": "The Ledger asks for blind signing here. Use another pair with a Ledger.",
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer.",
-    "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
+        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
       },
       "ledgerLink": "What will my Ledger show?",
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
@@ -217,7 +218,8 @@
     "cta": {
       "title": "Start by looking",
       "body": "Paste a wallet address and see which stake accounts are protected. Nothing to sign."
-    }
+    },
+    "demoLink": "Watch a theft play out in the demo"
   },
   "status": {
     "protected": "Protected",
@@ -2024,6 +2026,115 @@
       "withdrawNote": "When you withdraw, the Ledger does not show your second key. The Stakeward screen shows it in full.",
       "phantom": "Phantom may add its own safety checks to a transaction. If it does that for a Ledger account, the Ledger cannot read them and asks for blind signing. Whether it does is not known.",
       "termsLink": "What custodian, withdrawer and staker mean"
+    }
+  },
+  "demo": {
+    "title": "See a theft, then see it fail",
+    "lead": "Click through what happens to a native stake when a thief gets your main key, first without Stakeward, then with it.",
+    "simulation": "A simulation in your browser: no wallets, no transactions, no network. The rules are the stake program's real ones.",
+    "parts": {
+      "without": "Part 1 of 2: without Stakeward",
+      "with": "Part 2 of 2: with Stakeward"
+    },
+    "wallets": {
+      "title": "Wallets",
+      "main": "Your Main key",
+      "second": "Your Second key",
+      "new": "Your New wallet",
+      "thief": "Thief",
+      "mainNote": "The thief has a copy: a phished seed phrase.",
+      "mainStolenNote": "Stolen. It controls nothing now.",
+      "secondNote": "From a different seed phrase.",
+      "newNote": "Empty until a rescue.",
+      "thiefNote": "Has a copy of your main key.",
+      "holds": "Holds",
+      "nothing": "Nothing",
+      "stake": "Stake account",
+      "signing": "Signing",
+      "newRescuedNote": "Owns the stake now."
+    },
+    "stake": {
+      "title": "The stake",
+      "amount": "Amount",
+      "owner": "Belongs to",
+      "state": "State",
+      "staked": "Staked, earning rewards",
+      "unstaked": "Unstaked",
+      "lock": "Lock",
+      "noLock": "None",
+      "stolen": "Stolen"
+    },
+    "log": {
+      "title": "What the network saw",
+      "empty": "Nothing yet. Press the button below."
+    },
+    "actions": {
+      "steal": "Steal the stake",
+      "addStakeward": "Now add Stakeward",
+      "protect": "Protect with Stakeward",
+      "rescue": "Open Rescue",
+      "restart": "Start over",
+      "protectReal": "Protect my stake",
+      "working": "Signing…"
+    },
+    "steps": {
+      "intro": {
+        "title": "Your stake, and a thief with your main key",
+        "body": "You staked 100 SOL. A thief got a copy of your main key: a phished seed phrase, malware, or a hidden instruction in a transaction you signed."
+      },
+      "stolen": {
+        "title": "Gone. One stolen key, one signature.",
+        "body": "A native stake account obeys its main key, so whoever holds it can take the stake. SwissBorg lost 192,600 SOL this way in September 2025."
+      },
+      "setup": {
+        "title": "Same stake, same thief. Now add Stakeward.",
+        "body": "You add a Second key from a different seed phrase. It holds a lock that the stake program itself enforces. Your New wallet stays empty until a rescue.",
+        "risk": "Whoever holds the Second key can freeze this stake, so keep it as safe as the main key."
+      },
+      "protected": {
+        "title": "Protected until {date}",
+        "body": "Nothing moved: the SOL is still staked and still yours. Stakeward never held it. The thief tries again."
+      },
+      "alerted": {
+        "title": "The thief failed. You got an alert.",
+        "body": "The thief could only unstake. Your SOL stays locked in the stake account until you act."
+      },
+      "rescued": {
+        "title": "Saved: 100 SOL is in your New wallet",
+        "body": "The stolen main key now controls nothing, and the thief is left with nothing. Stake it again from your New wallet whenever you like."
+      }
+    },
+    "lines": {
+      "stealSign": "Signs with your stolen main key: “give this stake to the thief”.",
+      "stealAccepted": "Accepted. The main key alone was enough.",
+      "stealWithdraw": "Unstakes it and withdraws 100 SOL when the epoch ends.",
+      "protectMain": "Signs: lock this stake until {date}.",
+      "protectSecond": "Co-signs: it now holds the lock.",
+      "protectAccepted": "Accepted. Protected until {date}.",
+      "attackAuthorize": "Tries: “give this stake to the thief”.",
+      "attackAuthorizeRejected": "Rejected. The Second key must co-sign.",
+      "attackWithdraw": "Tries: “withdraw 100 SOL”.",
+      "attackWithdrawRejected": "Rejected. Locked until {date}: your second key must co-sign.",
+      "attackDeactivate": "Unstakes it: the main key alone can do that.",
+      "attackDeactivateAccepted": "Accepted. The SOL stays in your stake account.",
+      "monitorAlert": "Noticed the change and sent you an alert.",
+      "rescueNew": "Pays the fee and signs: it becomes the stake's owner.",
+      "rescueMain": "Signs: it can still hand the stake over.",
+      "rescueSecond": "Co-signs the hand-over.",
+      "rescueAccepted": "Accepted. The stake now belongs to your New wallet."
+    },
+    "actors": {
+      "main": "Main key",
+      "second": "Second key",
+      "new": "New wallet",
+      "thief": "Thief",
+      "network": "Network",
+      "monitor": "Stakeward"
+    },
+    "alert": {
+      "title": "Telegram",
+      "from": "Stakeward bot",
+      "note": "The exact text the bot sends."
     }
   }
 }

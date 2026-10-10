@@ -435,5 +435,16 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - Деплой из Actions: dev и prod на f802765 (версии 75ff9ab4 и fcdda220), миграций не было, `verify-deploy` PASS оба. Секреты Cloudflare только в окружениях GitHub. У prod пока нет обязательного ревьюера — включить владельцу.
 - TESTPLAN этап 6: время смены эпох уточнено, добавлен пункт 4а (Phantom на телефоне).
 - TODO (после прохода mainnet, этап 6): кнопка вверху `/app` подписана «Connect main key» (`app.connect.mainButton`, `AppPage.tsx:47`), хотя ею подключают любой кошелёк, в том числе Second key: страница показывает и его стейк, и «You are the second key for». Держатель второго ключа на телефоне решает, что попал не туда (владелец, 10.10.2026). Поправить подпись (например, «Connect wallet»), проверить, что внутри KeySlot роль main не мешает подключить Acc 2, обновить тест и снимки `docs/screens`, выкатить. Prod до конца этапа 6 не трогать.
+
+## Интерактивное демо /demo (10.10.2026)
+
+### Сделано
+
+- Страница `/demo` (вкладка Demo в шапке, ссылка под кнопками на лендинге): часть 1 без Stakeward — вор с копией основного ключа забирает стейк одной подписью; часть 2 — Second key и New wallet, защита, вор получает отказы сети и может только снять с делегирования, тревога в Telegram (текст из core `formatAlert`), по клику Rescue стейк переходит на New wallet.
+- Всё симуляция в браузере: без кошельков, без запросов к сети и к /api; адреса выдуманные. Что сеть принимает и отклоняет — по правилам раздела 4 и docs/gate.md.
+
+### Чем проверено
+
+- `pnpm typecheck`, `eslint apps/web`; web 109 файлов тестов, новый `test/demo.test.tsx` проходит сценарий целиком; e2e smoke на 1280 и 360 с `/demo` (axe, консоль, без запросов к /api). Снимки `docs/screens/demo-*`.
 - TODO (после запуска prod): Phantom блокирует подпись спасения (D116). Владелец подаёт заявку в форму domain review Phantom (https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform, ссылка с docs.phantom.com, «Domain and transaction warnings») на постоянный prod-домен: что делает спасение, почему передача staker и withdrawer легитимна, скрин блока.
 - Ручной прогон 10.10 на dev (Паша, Phantom + Solana CLI): вор с основным ключом под замком получил `lockup has not yet expired` и `custodian address not present`, переделегирование прошло, тревога «delegated again» пришла в Telegram через один цикл монитора. `pnpm qa:dev`: из 28 запущенных 27 прошли, мобильный F5 упал на 429 (лимит dev), повтор зелёный.
