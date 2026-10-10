@@ -3,6 +3,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { accountsHandler, healthHandler, noStore, statsHandler } from './public-api.ts';
 import { securityHeaders } from './security-headers.ts';
 import { rateLimit } from './rate-limit.ts';
+import { createRescueKitHandler, MAX_RESCUE_KIT_BODY_BYTES, rescueKitStatusHandler } from './rescue-kits.ts';
 import { JSON_RPC_ERRORS, jsonRpcError, MAX_RPC_BODY_BYTES, rpcHandler } from './rpc.ts';
 import { stakeAccountsHandler } from './stake-accounts.ts';
 import { telegramLinkHandler } from './telegram/link.ts';
@@ -68,13 +69,29 @@ export function createApp(options: AppOptions = {}) {
     watchHandler(upstream),
   );
 
+  // One-tap rescue kits (rescue-kits.ts). A write costs RPC calls like a watch and shares its limit. There is no send
+  // route: a kit is sent by the monitor or by the "Rescue now" button in the chat bound to it (telegram/webhook.ts).
+  app.post(
+    '/rescue-kits',
+    rateLimit('WATCH_RATE_LIMIT', WATCH_RATE_LIMIT_PERIOD_SECONDS, (c) =>
+      c.json({ error: 'rate-limited', message: 'Too many requests, try again in a minute' }, 429),
+    ),
+    bodyLimit({
+      maxSize: MAX_RESCUE_KIT_BODY_BYTES,
+      onError: (c) => c.json({ error: 'too-large', message: 'Request body too large' }, 413),
+    }),
+    createRescueKitHandler(upstream, now),
+  );
+
+  app.get('/rescue-kits', noStore(), lookupLimit, rescueKitStatusHandler());
+
   // The secret first: nothing reads the body or D1 for a request that is not from Telegram. An oversized update is
   // answered 200 {} so that Telegram does not resend it forever.
   app.post(
     '/telegram/webhook',
     telegramSecret(),
     bodyLimit({ maxSize: MAX_TELEGRAM_UPDATE_BYTES, onError: noReply }),
-    telegramWebhookHandler(now),
+    telegramWebhookHandler(now, upstream),
   );
 
   app.get('/telegram/link', noStore(), telegramLinkHandler());

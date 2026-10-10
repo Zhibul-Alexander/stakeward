@@ -9,6 +9,7 @@ import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
+import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { StatsPage } from '@/pages/StatsPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
@@ -55,6 +56,12 @@ export function AppRoutes() {
       </Route>
       <Route path="/rescue">
         <RescuePage />
+      </Route>
+      <Route path="/rescue-kit">
+        <RescueKitPage />
+      </Route>
+      <Route path="/rescue-kit/:account">
+        <RescueNowPage />
       </Route>
       <Route path="/cosign">
         <CosignPage />

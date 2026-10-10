@@ -1,4 +1,4 @@
-// Test-only rendering of the pages that sign (/withdraw/:account, /extend/:account, /cosign, /rescue, /protect) for
+// Test-only rendering of the pages that sign (/withdraw/:account, /extend/:account, /cosign, /rescue, /rescue-kit, /protect) for
 // scenario tests: the real routes and pages over a LiteSvmChain and test wallets, in StrictMode as in main.tsx. Never imported
 // from src.
 import { getSignatureFromTransaction, getTransactionDecoder, type Signature } from '@solana/kit';
@@ -14,6 +14,7 @@ import { memoryLocation } from 'wouter/memory-location';
 import { CosignPage } from '@/pages/CosignPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { ProtectPage } from '@/pages/ProtectPage';
+import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
@@ -92,6 +93,12 @@ export function renderStakePage(
             </Route>
             <Route path="/rescue">
               <RescuePage signing={signing} />
+            </Route>
+            <Route path="/rescue-kit">
+              <RescueKitPage signing={signing} />
+            </Route>
+            <Route path="/rescue-kit/:account">
+              <RescueNowPage />
             </Route>
             <Route path="/protect">
               <ProtectPage signing={signing} />

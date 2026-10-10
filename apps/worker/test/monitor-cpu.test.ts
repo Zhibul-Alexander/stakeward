@@ -137,6 +137,7 @@ describe('CPU of the monitor pass (measurement)', () => {
       withdrawer: address(200 + (i % 25)),
       custodian: SECOND,
       lockUntil: LOCK_UNTIL,
+      kitChatId: null,
     }));
     const links: Link[] = Array.from({ length: 25 }, (_, c) => ({ wallet: address(200 + c), chatId: String(1_000_000 + c), lastEventId: 0 }));
     const opts = {

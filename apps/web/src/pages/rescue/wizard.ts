@@ -103,6 +103,15 @@ export function rescueMinimum(input: { count: number; nonceReady: boolean; nonce
   return setup + BigInt(count) * (networkFeeFor(3) + networkFeeFor(1)) + networkFeeFor(1) + rentExempt0;
 }
 
+/**
+ * What the new wallet must hold for one-tap rescue kits (D118): per account a nonce account of its own (deposit and its
+ * setup fee) and the rescue's fee later, when the kit is sent; plus the minimum balance a wallet must keep.
+ */
+export function rescueKitMinimum(input: { count: number; nonceDeposit: bigint; rentExempt0: bigint }): bigint {
+  const { count, nonceDeposit, rentExempt0 } = input;
+  return BigInt(count) * (nonceDeposit + networkFeeFor(1) + networkFeeFor(3)) + rentExempt0;
+}
+
 export type NewWalletProblem = 'zero-key' | 'main-key' | 'second-key' | 'stake-account';
 
 /** Why `d` cannot be the new wallet: the zero key, the (possibly stolen) main key, a second key, a stake account. */

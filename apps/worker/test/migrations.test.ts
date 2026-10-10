@@ -66,6 +66,30 @@ describe('D1 migrations', () => {
     ]);
   });
 
+  it('0005 creates rescue_kits, one kit per stake account, with the bot link columns', async () => {
+    expect((await columns('rescue_kits')).map((c) => [c.name, c.type, c.notnull])).toEqual([
+      ['stake_account', 'TEXT', 0],
+      ['tx', 'TEXT', 1],
+      ['main_key', 'TEXT', 1],
+      ['new_wallet', 'TEXT', 1],
+      ['nonce_account', 'TEXT', 1],
+      ['nonce_value', 'TEXT', 1],
+      ['created_at', 'INTEGER', 1],
+      ['status', 'TEXT', 1],
+      ['sent_at', 'INTEGER', 0],
+      ['signature', 'TEXT', 0],
+      ['link_token_hash', 'TEXT', 0],
+      ['chat_id', 'TEXT', 0],
+      ['attempted_at', 'INTEGER', 0],
+    ]);
+    const insert = env.DB.prepare(
+      `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at, status)
+       VALUES (?1, 'AA==', 'A', 'D', 'N', 'V', 1, 'ready')`,
+    );
+    await insert.bind('Stake1').run();
+    await expect(insert.bind('Stake1').run()).rejects.toThrow(/UNIQUE|PRIMARY KEY/);
+  });
+
   it('0002 adds alert_links.last_event_id, INTEGER NOT NULL DEFAULT 0', async () => {
     expect((await columns('alert_links')).find((c) => c.name === 'last_event_id')).toEqual({
       name: 'last_event_id',

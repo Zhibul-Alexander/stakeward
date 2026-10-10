@@ -94,7 +94,10 @@ export type NonceSetupAction = {
   kind: 'nonce-setup';
   nonceAccount: Address;
   nonceAuthority: Address;
-  /** Address-derivation seed, always `NONCE_ACCOUNT_SEED` (a plain label, not a key); the builder refuses others. */
+  /**
+   * Address-derivation seed (a plain label, not a key): `NONCE_ACCOUNT_SEED`, or `rescueKitNonceSeed(stake)` for a
+   * one-tap rescue kit (D118). The builder refuses others.
+   */
   seed: string;
   /** Rent-exempt deposit for 80 bytes, returned when the account is closed. */
   lamports: bigint;

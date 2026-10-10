@@ -1,3 +1,5 @@
+import { shortAddress } from '@stakeward/core';
+
 /**
  * Replies of the Stakeward bot (step 5 spec section 8.3): plain text without markup. Key roles keep the site's words
  * (CLAUDE.md section 9, rule 4); test/telegram/texts.review.test.ts checks that no chain role name slips in.
@@ -106,4 +108,17 @@ export function stopText(): string {
     'Alerts are off. This chat no longer follows any wallet, and Stakeward no longer keeps its id. ' +
     'Send /start followed by a wallet address to turn them on again.'
   );
+}
+
+/** /start kit-<token>: the chat is bound to the rescue kit of `stakeAccount` (D118). */
+export function kitLinkedText(stakeAccount: string): string {
+  return (
+    `One-tap rescue is linked for stake ${shortAddress(stakeAccount)}. If Stakeward sees a change you did not make, ` +
+    'press Rescue now under the alert.'
+  );
+}
+
+/** /start kit-<token> with a token no kit holds: used already, replaced by a newer kit, or never issued. */
+export function kitLinkInvalidText(): string {
+  return 'This link was already used or is not valid.';
 }

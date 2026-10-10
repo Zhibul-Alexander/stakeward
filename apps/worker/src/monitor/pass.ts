@@ -11,6 +11,7 @@ import {
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
+import { kitSettlement, sendKit } from '../rescue-kits.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
 import { getBotIdentity, sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
 import { TELEGRAM_WEBHOOK_PATH } from '../telegram/webhook.ts';
@@ -71,7 +72,9 @@ import {
  *              not get the lease writes nothing and returns 'skipped-lease'.
  * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
  *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
- *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front.
+ *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front; accounts
+ *              with a STAKER_CHANGED join meta.kit_queue in the same batch.
+ * 3b. kits   - the ready rescue kits of meta.kit_queue are sent (D118), at most MONITOR_LIMITS.maxKitSends a pass.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
  * 4b. bot    - every pass getWebhookInfo, once a day from 06:00 UTC getMe too (meta.bot_check_day): a webhook that is
@@ -117,7 +120,17 @@ export type MonitorDeps = {
   adminMemory: Map<string, number>;
 };
 
-export type Stage = 'config' | 'load' | 'chunks' | 'daily' | 'bot' | 'sends' | 'rescans' | 'admin' | 'finish';
+export type Stage =
+  | 'config'
+  | 'load'
+  | 'chunks'
+  | 'kits'
+  | 'daily'
+  | 'bot'
+  | 'sends'
+  | 'rescans'
+  | 'admin'
+  | 'finish';
 
 export type PassOutcome = 'ok' | 'skipped-lease' | 'read-failed' | 'telegram-config' | 'error';
 
@@ -136,6 +149,10 @@ export type PassReport = {
   deferred: boolean;
   closed: number;
   events: number;
+  /** Rescue kits this pass tried to send, and how many a node took or found stale (autoSendKits). */
+  kitSends: number;
+  kitsSent: number;
+  kitsStale: number;
   reminders: number;
   daily: boolean;
   /** The bot check of this pass (null: not run, past the soft deadline or the budget). */
@@ -208,6 +225,8 @@ type LoadedMeta = {
   readFailures: number;
   adminAlerts: Record<string, number>;
   alertsSent: number;
+  /** meta.kit_queue: stake accounts with a STAKER_CHANGED whose rescue kit, if ready, is still to be sent. */
+  kitQueue: Address[];
 };
 
 /**
@@ -271,6 +290,9 @@ type LoadedPass = PassContext & {
   storedPairs: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
+  /** meta.kit_queue with this pass's STAKER_CHANGED accounts; storedKitQueue is it as last written (or loaded). */
+  kitQueue: Address[];
+  storedKitQueue: string;
   /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
   lastRead: { clock: ChainClock; clockMs: number } | null;
   readFailed: boolean;
@@ -310,6 +332,7 @@ export async function runMonitorPass(deps: MonitorDeps): Promise<PassReport> {
       return ctx.report;
     }
     await readChunks(pass);
+    await autoSendKits(pass);
     await daily(pass);
     await checkBot(pass);
     await deliver(pass);
@@ -371,6 +394,8 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     pairs: meta.pairsSweep,
     storedPairs: JSON.stringify(meta.pairsSweep),
     urgent: [],
+    kitQueue: [...meta.kitQueue],
+    storedKitQueue: JSON.stringify(meta.kitQueue),
     lastRead: null,
     readFailed: false,
     telegramConfigFailed: false,
@@ -481,11 +506,69 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   const entries: Record<string, string> = {};
   if (cursor !== null) entries.cursor = cursor;
   const stored = out.rescan.length > 0 ? queueEntries(pass, withUrgent(pass), entries) : null;
+  // Like the rescan queue: once the events are in, no later pass would see this change again.
+  const attacked = out.events.filter((e) => e.type === 'STAKER_CHANGED').map((e) => e.stakeAccount);
+  const kitQueue = uniqueAccounts([...pass.kitQueue, ...attacked]);
+  const storedKitQueue = JSON.stringify(kitQueue);
+  if (storedKitQueue !== pass.storedKitQueue) entries.kit_queue = storedKitQueue;
   if (Object.keys(entries).length > 0) statements.push(putMetaStatement(db, entries, pass.passId));
   if (statements.length === 0) return;
   const results = await pass.budget.batch(db, statements);
   if (out.events.length > 0) pass.report.events += results[0]?.meta.changes ?? 0;
   if (stored !== null) Object.assign(pass, stored);
+  Object.assign(pass, { kitQueue, storedKitQueue });
+}
+
+/**
+ * Stage 3b (DECISIONS.md D118): sends the ready rescue kits of the accounts in meta.kit_queue, those whose staker
+ * changed. A changed staker is the thief's first move (it lets them deactivate and delegate, and the owner's main key
+ * can no longer); DEACTIVATED is not a trigger: the owner's own unstake looks the same. One KITS_READY_FOR, then at
+ * most MONITOR_LIMITS.maxKitSends sends (one attempt each) while the budget keeps the daily stage, the bot check and
+ * the delivery possible, then one batch: the outcomes (KIT_SETTLE) and the queue. An account leaves the queue when its
+ * kit was sent, turned stale, was refused (it stays ready for the owner's own tap) or is not ready; a send without an
+ * answer and the accounts past the cap stay for the next pass. One log line per send, no chat ids.
+ */
+async function autoSendKits(pass: LoadedPass): Promise<void> {
+  const { budget, report, deps, config } = pass;
+  if (pass.kitQueue.length === 0) return;
+  const keep =
+    COST.sendLoad +
+    COST.sendCommit +
+    1 +
+    (pass.dailyDue ? COST.daily : 0) +
+    COST.webhookCheck +
+    (pass.botCheckDue ? COST.usernameCheck : 0);
+  if (pass.pastDeadline() || budget.left() < COST.kitLoad + COST.kitSend + COST.kitCommit + keep) return;
+  report.stage = 'kits';
+  const db = deps.db;
+  const [result] = await budget.batch(db, [db.prepare(SQL.KITS_READY_FOR).bind(JSON.stringify(pass.kitQueue))]);
+  const kits = rowsOf<{ stake_account: Address; tx: string }>(result);
+  const ready = new Set<string>(kits.map((kit) => kit.stake_account));
+  let queue = pass.kitQueue.filter((account) => ready.has(account));
+  const settled: ReturnType<typeof kitSettlement>[] = [];
+  for (const kit of kits) {
+    if (report.kitSends >= MONITOR_LIMITS.maxKitSends) break;
+    if (pass.pastDeadline() || budget.left() < COST.kitSend + COST.kitCommit + keep) break;
+    report.kitSends += 1;
+    const outcome = await sendKit(kit.tx, { endpoints: config.rpc, options: pass.upstream });
+    const signature = outcome.kind === 'sent' ? outcome.signature : null;
+    deps.log({ msg: 'rescue kit auto-send', stakeAccount: kit.stake_account, outcome: outcome.kind, signature });
+    if (outcome.kind === 'sent' || outcome.kind === 'stale') {
+      settled.push(kitSettlement(kit.stake_account, kit.tx, outcome, deps.now()));
+      if (outcome.kind === 'sent') report.kitsSent += 1;
+      else report.kitsStale += 1;
+    }
+    if (outcome.kind !== 'upstream') queue = queue.filter((account) => account !== kit.stake_account);
+  }
+  const statements: D1PreparedStatement[] = [];
+  if (settled.length > 0) statements.push(db.prepare(SQL.KIT_SETTLE).bind(JSON.stringify(settled)));
+  const storedKitQueue = JSON.stringify(queue);
+  if (storedKitQueue !== pass.storedKitQueue) {
+    statements.push(putMetaStatement(db, { kit_queue: storedKitQueue }, pass.passId));
+  }
+  if (statements.length > 0) await budget.batch(db, statements);
+  pass.kitQueue = queue;
+  pass.storedKitQueue = storedKitQueue;
 }
 
 /**
@@ -1032,6 +1115,9 @@ function emptyReport(): PassReport {
     deferred: false,
     closed: 0,
     events: 0,
+    kitSends: 0,
+    kitsSent: 0,
+    kitsStale: 0,
     reminders: 0,
     daily: false,
     botCheck: null,
@@ -1067,7 +1153,20 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     readFailures: parseCount(values.get('read_failures')),
     adminAlerts: parseAdminAlerts(values.get('admin_alerts')),
     alertsSent: parseCount(values.get('alerts_sent')),
+    kitQueue: parseAccounts(values.get('kit_queue')),
   };
+}
+
+/** meta.kit_queue: an array of addresses, deduplicated, at most MONITOR_LIMITS.kitQueueMax; anything else is dropped. */
+function parseAccounts(text: string | undefined): Address[] {
+  const json = parseJson(text);
+  if (!Array.isArray(json)) return [];
+  return uniqueAccounts((json as unknown[]).filter((value): value is Address => typeof value === 'string' && isAddressText(value)));
+}
+
+/** First occurrence of each address, in order, at most MONITOR_LIMITS.kitQueueMax (the oldest stay). */
+function uniqueAccounts(accounts: readonly Address[]): Address[] {
+  return [...new Set(accounts)].slice(0, MONITOR_LIMITS.kitQueueMax);
 }
 
 function parseLease(text: string | undefined): Lease | null {

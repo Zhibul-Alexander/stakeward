@@ -4,7 +4,14 @@ import { t } from '@/i18n';
 import type { JobPlan, SigningPlan } from '@/signing/types';
 
 /** Why the plan will not move an account to the new wallet (the Done screen says it with `rescueRefusalText`). */
-export type RescueRefusal = 'not-found' | 'not-stake-account' | 'not-main-key' | 'other-second-key' | 'unsupported-lock' | 'key-rule';
+export type RescueRefusal =
+  | 'not-found'
+  | 'not-stake-account'
+  | 'not-main-key'
+  | 'other-second-key'
+  | 'unsupported-lock'
+  | 'key-rule'
+  | 'kit-not-locked';
 
 /** Why the plan will not delegate a moved account again. */
 export type DelegateRefusal = 'not-found' | 'not-stake-account' | 'not-new-wallet' | 'no-validator';
@@ -16,6 +23,7 @@ const REFUSALS: readonly (RescueRefusal | DelegateRefusal)[] = [
   'other-second-key',
   'unsupported-lock',
   'key-rule',
+  'kit-not-locked',
   'not-new-wallet',
   'no-validator',
 ];
@@ -96,6 +104,36 @@ export function rescuePlan(input: {
         };
       });
       return { clock, jobs };
+    },
+  };
+}
+
+/**
+ * One-tap rescue kit (D118) of one stake account: the rescue pair exactly as `rescuePlan` decides it, on the new wallet's
+ * kit nonce (core `rescueKitNonceSeed`), signed here by all three keys and handed to `deliver` (the worker keeps it)
+ * instead of the chain. Only for a lock in force: without one the kit could not stop a thief, and the worker refuses it.
+ */
+export function rescueKitPlan(input: {
+  mainKey: Address;
+  secondKey: Address;
+  newWallet: Address;
+  nonceAccount: Address;
+  deliver: (bytes: Uint8Array) => Promise<void>;
+}): SigningPlan {
+  const { mainKey, secondKey, newWallet, nonceAccount, deliver } = input;
+  const base = rescuePlan({ mainKey, secondKey, newWallet, nonce: { nonceAccount, nonceAuthority: newWallet }, remote: [] });
+  return {
+    nonce: base.nonce,
+    deliver,
+    async prepare(chain, ids) {
+      const decided = await base.prepare(chain, ids);
+      const jobs: Record<string, JobPlan> = { ...decided.jobs };
+      for (const [id, job] of Object.entries(jobs)) {
+        if (job.kind === 'build' && (job.before === null || !isLockupInForce(job.before.lockup, decided.clock))) {
+          jobs[id] = { kind: 'refused', reason: 'kit-not-locked', before: job.before };
+        }
+      }
+      return { clock: decided.clock, jobs };
     },
   };
 }

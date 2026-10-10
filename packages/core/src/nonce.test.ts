@@ -3,7 +3,7 @@ import { getNonceEncoder, NonceState, NonceVersion } from '@solana-program/syste
 import { describe, expect, it } from 'vitest';
 import { LIGHTHOUSE_PROGRAM_ADDRESS, NONCE_ACCOUNT_SIZE, SYSTEM_PROGRAM_ADDRESS } from './constants.ts';
 import type { RawAccount } from './decode.ts';
-import { readNonceAccount } from './nonce.ts';
+import { isRescueKitNonceSeed, readNonceAccount, rescueKitNonceSeed } from './nonce.ts';
 
 // Nonce accounts crafted with the generated system client's encoder; test/nonce.svm.test.ts reads one the chain made.
 
@@ -52,5 +52,16 @@ describe('readNonceAccount', () => {
     ['wrong authority', nonceAccount({ authority: key(4) }), 'authority'],
   ] as const)('%s -> unusable (%s)', (_name, raw, reason) => {
     expect(readNonceAccount(raw, OWNER)).toEqual({ kind: 'unusable', reason, lamports: raw.lamports });
+  });
+});
+
+describe('rescueKitNonceSeed', () => {
+  it('fits the 32-byte seed limit and is recognised; other seeds are not', () => {
+    const seed = rescueKitNonceSeed(key(9));
+    expect(seed.length).toBeLessThanOrEqual(32);
+    expect(isRescueKitNonceSeed(seed)).toBe(true);
+    expect(isRescueKitNonceSeed('stakeward-nonce')).toBe(false);
+    expect(isRescueKitNonceSeed(`${seed}x`)).toBe(false);
+    expect(isRescueKitNonceSeed('stakeward-kit-0OIl0OIl0OIl0OIl0O')).toBe(false);
   });
 });

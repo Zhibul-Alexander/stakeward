@@ -7,6 +7,7 @@ import {
   createTransactionMessage,
   getAddressDecoder,
   getAddressEncoder,
+  getBase58Encoder,
   getI64Encoder,
   getTransactionEncoder,
   getU32Encoder,
@@ -17,7 +18,14 @@ import {
   type Address,
   type Nonce,
 } from '@solana/kit';
-import { buildTransaction, SYSTEM_PROGRAM_ADDRESS, U64_MAX } from '@stakeward/core';
+import {
+  buildTransaction,
+  deriveNonceAccountAddress,
+  NONCE_ACCOUNT_SIZE,
+  rescueKitNonceSeed,
+  SYSTEM_PROGRAM_ADDRESS,
+  U64_MAX,
+} from '@stakeward/core';
 import { newTestWallet, type TestWallet } from '@stakeward/core/test/wallet';
 import { encodeBase64 } from '../src/base64.ts';
 
@@ -117,6 +125,60 @@ export async function signedNonceRescue(): Promise<Uint8Array> {
     bytes = signed;
   }
   return bytes;
+}
+
+export type RescueKitSetup = {
+  bytes: Uint8Array;
+  stakeAccount: Address;
+  mainKey: TestWallet;
+  secondKey: TestWallet;
+  newWallet: TestWallet;
+  nonceAccount: Address;
+  nonceValue: Nonce;
+};
+
+/**
+ * A one-tap rescue kit (D118) of `stakeAccount`: the rescue on the new wallet's kit nonce account
+ * (rescueKitNonceSeed), signed by the new wallet, the main key and the second key; `sign` leaves signers out. Fresh
+ * keys unless `keys` gives some (a replacement kit by the same main key and second key).
+ */
+export async function signedRescueKit(
+  stakeAccount: Address,
+  options: {
+    keys?: { mainKey: TestWallet; secondKey: TestWallet };
+    nonceValue?: Nonce;
+    sign?: readonly ('newWallet' | 'mainKey' | 'secondKey')[];
+  } = {},
+): Promise<RescueKitSetup> {
+  const [mainKey, secondKey] = options.keys === undefined
+    ? await Promise.all([newTestWallet(), newTestWallet()])
+    : [options.keys.mainKey, options.keys.secondKey];
+  const newWallet = await newTestWallet();
+  const nonceAccount = await deriveNonceAccountAddress(newWallet.address, rescueKitNonceSeed(stakeAccount));
+  const nonceValue = options.nonceValue ?? (BLOCKHASH as string as Nonce);
+  const built = buildTransaction(
+    { kind: 'rescue', stakeAccount, mainKey: mainKey.address, secondKey: secondKey.address, newWallet: newWallet.address },
+    { feePayer: newWallet.address, lifetime: { kind: 'nonce', nonceAccount, nonceAuthority: newWallet.address, nonceValue } },
+  );
+  const wallets = { newWallet, mainKey, secondKey };
+  let bytes = built.bytes;
+  for (const name of options.sign ?? (['newWallet', 'mainKey', 'secondKey'] as const)) {
+    const [signed] = await wallets[name].signTransactions([bytes]);
+    if (signed === undefined) throw new Error('wallet returned nothing');
+    bytes = signed;
+  }
+  return { bytes, stakeAccount, mainKey, secondKey, newWallet, nonceAccount, nonceValue };
+}
+
+/** Durable nonce account data (80 bytes, core nonce.ts): initialized, held by `authority`, with `value`. */
+export function nonceAccountData(authority: Address, value: string): Uint8Array {
+  const data = new Uint8Array(NONCE_ACCOUNT_SIZE);
+  data.set(getU32Encoder().encode(1), 0);
+  data.set(getU32Encoder().encode(1), 4);
+  data.set(getAddressEncoder().encode(authority), 8);
+  data.set(getBase58Encoder().encode(value), 40);
+  data.set(getU64Encoder().encode(5_000n), 72);
+  return data;
 }
 
 /** A System transfer signed by a fresh wallet: a well-formed transaction the inspector must refuse. */

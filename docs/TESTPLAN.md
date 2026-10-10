@@ -215,7 +215,7 @@ set -a; . ~/.config/stakeward/dev.vars; set +a
 API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
 curl -sS "$API/setWebhook" --data-urlencode "url=$SITE_ORIGIN/api/telegram/webhook" \
   --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
-  --data-urlencode 'allowed_updates=["message","my_chat_member"]' -d drop_pending_updates=true
+  --data-urlencode 'allowed_updates=["message","my_chat_member","callback_query"]' -d drop_pending_updates=true
 curl -sS "$API/setMyCommands" -H 'Content-Type: application/json' -d '{"commands":[
   {"command":"start","description":"Get alerts for a wallet: /start <address>"},
   {"command":"status","description":"Wallets this chat follows"},
@@ -245,7 +245,7 @@ curl -sS "$API/getWebhookInfo"
    ( read -rsp 'New bot token: ' TOKEN; echo; read -rsp 'New webhook secret: ' SECRET; echo
      curl -sS "https://api.telegram.org/bot$TOKEN/setWebhook" \
        --data-urlencode "url=https://stakeward-dev.stakeward.workers.dev/api/telegram/webhook" \
-       --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member"]'
+       --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member","callback_query"]'
      curl -sS "https://api.telegram.org/bot$TOKEN/getWebhookInfo" )
    ```
 5. Проверить: `getWebhookInfo` — наш URL, нет `last_error_message`; /start в боте отвечает; в Workers Logs у следующей записи `monitor pass` поле `botCheck: "ok"`. На отсутствие тревоги bot-mismatch не полагаться: она приходит не чаще раза в час (D89), а ротацию обычно начинают как раз после неё. Если вор менял описания бота, повторить `setMyDescription` и `setMyShortDescription` из блока выше с новым токеном: `API` задать через `read -rsp`, как в шаге 4, `SITE_ORIGIN` — адрес окружения (в `dev.vars` и `prod.vars` остался отозванный токен). У dev-бота оба описания начинаются с «Devnet test bot.».
@@ -296,6 +296,15 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Отменить ссылку и открыть её снова: «already used or cancelled».
 - [ ] Защита по ссылке с вставленным адресом второго ключа. Подсказка под полем: «Paste only the address of a wallet you or a person you trust created…».
 - [ ] Строки матрицы кошельков: меняет ли Phantom (Solflare, Backpack) байты, которые уже подписал другой кошелёк; предупреждения на nonce-транзакциях; что показывает Ledger.
+
+### Спасение в одно нажатие (D118, после деплоя в dev)
+
+- [ ] Перед проверкой: миграция 0005 применена к базе dev; вебхук бота перерегистрирован с `allowed_updates` из шага 5 (там теперь есть `callback_query`, без него кнопка «Rescue now» молчит).
+
+- [ ] `/rescue-kit?address=<Main key>` с защищённым аккаунтом: новый кошелёк с ~0,01 SOL на аккаунт, все три ключа подписывают здесь (вариант «по ссылке» выключен). Phantom может заблокировать подпись (D116). «Готово»: «One-tap rescue is ready» и кнопка «Connect Telegram for Rescue now»; открыть её в своём чате, бот отвечает, что спасение привязано. Повторное открытие ссылки: «already used». В эксплорере стейк не сдвинулся, у нового кошелька появился nonce-аккаунт.
+- [ ] `/rescue-kit/<аккаунт>`: статус «ready», новый владелец целиком, кнопки отправки нет.
+- [ ] Вор меняет staker из CLI (`solana stake-authorize-checked … --new-stake-authority <thief.json> --stake-authority stolen-main.json`): через один-два цикла монитора набор уходит сам, в эксплорере staker и withdrawer — новый кошелёк, замок тот же; в Telegram тревога о смене владельца.
+- [ ] Вор снимает делегирование с другого аккаунта с набором: в привязанном чате тревога с кнопкой «Rescue now», нажатие отправляет набор, бот отвечает «Rescue sent». В другом чате, подписанном через `/start <адрес>`, у той же тревоги обычная кнопка «Open Rescue».
 
 ## Шаг 8. Тексты
 

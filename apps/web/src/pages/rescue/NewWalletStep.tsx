@@ -20,6 +20,7 @@ import { readNonceInfo } from '@/signing/nonce';
 import { SameWalletWarning, type SameWallet } from './SameWalletWarning.tsx';
 import {
   rescueBlockers,
+  rescueKitMinimum,
   rescueMinimum,
   SUGGESTED_RESCUE_LAMPORTS,
   type NewWalletProblem,
@@ -36,6 +37,8 @@ type NewWalletStepProps = {
   problems: readonly NewWalletProblem[];
   /** Stake accounts this run moves (each one's fees count). */
   count: number;
+  /** One-tap rescue kits (D118): a nonce account per account, and the rescue fees stay for later. */
+  kit?: boolean | undefined;
   seedConfirmed: boolean;
   onSeed: (value: boolean) => void;
   onBack: () => void;
@@ -85,7 +88,7 @@ export function NewWalletStep(props: NewWalletStepProps) {
     return { balance, nonceReady: nonce.state.kind === 'ready', nonceDeposit: nonce.deposit, rentExempt0 };
   });
   const ready = funds.status === 'ready' ? funds.value : null;
-  const needed = ready === null ? null : rescueMinimum({ count, ...ready });
+  const needed = ready === null ? null : props.kit === true ? rescueKitMinimum({ count, ...ready }) : rescueMinimum({ count, ...ready });
   const blockers = rescueBlockers('new-wallet', {
     mainKey,
     movable: count,

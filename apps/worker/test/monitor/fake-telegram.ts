@@ -9,7 +9,8 @@ export type TelegramRequest = {
   method: string;
   chatId: string;
   text: string;
-  button: { label: string; url: string } | null;
+  /** A link button (`url`) or a rescue kit's callback button (`callbackData`). */
+  button: { label: string; url?: string; callbackData?: string } | null;
   linkPreviewDisabled: boolean;
   reply: TelegramReply;
 };
@@ -78,7 +79,7 @@ export class FakeTelegram {
       chat_id: string | number;
       text: string;
       link_preview_options?: { is_disabled?: boolean };
-      reply_markup?: { inline_keyboard: { text: string; url: string }[][] };
+      reply_markup?: { inline_keyboard: { text: string; url?: string; callback_data?: string }[][] };
     };
     const chatId = String(json.chat_id);
     const reply = this.replyFor(chatId);
@@ -88,7 +89,12 @@ export class FakeTelegram {
       method,
       chatId,
       text: json.text,
-      button: key === undefined ? null : { label: key.text, url: key.url },
+      button:
+        key === undefined
+          ? null
+          : key.callback_data !== undefined
+            ? { label: key.text, callbackData: key.callback_data }
+            : { label: key.text, url: key.url ?? '' },
       linkPreviewDisabled: json.link_preview_options?.is_disabled === true,
       reply,
     });
