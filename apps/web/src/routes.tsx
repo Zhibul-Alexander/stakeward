@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
+import { CheckPage } from '@/pages/CheckPage';
 import { CosignPage } from '@/pages/CosignPage';
 import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
@@ -86,6 +87,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/stats">
         <StatsPage />
+      </Route>
+      <Route path="/check">
+        <CheckPage />
       </Route>
       {DevUiPage === null ? null : (
         <Route path="/dev/ui">

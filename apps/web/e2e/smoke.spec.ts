@@ -376,6 +376,17 @@ const ROUTES: readonly SmokeRoute[] = [
     },
     screen: 'stats',
   },
+  {
+    // Check a transaction (D126): decoding is local, so the page asks the API for nothing.
+    path: '/check',
+    heading: text('check.title'),
+    shows: async (page) => {
+      await expect(page.getByText(text('check.local'))).toBeVisible();
+      await expect(page.getByRole('heading', { name: text('check.emptyTitle') })).toBeVisible();
+    },
+    noApi: true,
+    screen: 'check',
+  },
   { path: '/demo', heading: text('demo.title'), noApi: true, screen: 'demo' },
   { path: '/no-such-page', ...NOT_FOUND, noApi: true, screen: 'not-found' },
   // The devnet-only pages are not in a mainnet build (on devnet, dev-ui.spec.ts and dev-cosign.spec.ts cover them).

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -37,6 +38,7 @@ export function PrimitivesSection() {
     invalid: useId(),
     invalidHint: useId(),
     disabled: useId(),
+    textarea: useId(),
     checkbox: useId(),
     checkboxOn: useId(),
     period: useId(),
@@ -147,6 +149,10 @@ export function PrimitivesSection() {
           <div className="flex flex-col gap-2">
             <Label htmlFor={ids.disabled}>{t('devUi.disabled')}</Label>
             <Input id={ids.disabled} disabled placeholder={t('devUi.inputPlaceholder')} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={ids.textarea}>{t('devUi.textareaLabel')}</Label>
+            <Textarea id={ids.textarea} rows={3} placeholder={t('devUi.textareaPlaceholder')} spellCheck={false} className="font-mono" />
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
