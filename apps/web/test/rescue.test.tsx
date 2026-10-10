@@ -138,7 +138,7 @@ async function setUpNonce(user: UserEvent) {
 
 type Signer = { role: RoleName; wallet: string };
 
-/** The Sign button of a signer: one transaction ("Sign in …") or a batch of them ("Sign 3 transactions in …", D120). */
+/** The Sign button of a signer: one transaction ("Sign in …") or a batch of them ("Sign 3 transactions in …", D121). */
 function signName(signer: Signer): RegExp {
   return new RegExp(`^Sign (?:in|\\d+ transactions in) ${signer.wallet} as ${signer.role}$`);
 }
@@ -185,7 +185,7 @@ function sameLockup(after: StakeAccount | null, before: StakeAccount | null) {
   expect(after?.lockup).toEqual(before?.lockup);
 }
 
-/** Every request of `wallet` from `from` on is a rescue paid by D on `lifetime` (blockhash with every key here, D120). */
+/** Every request of `wallet` from `from` on is a rescue paid by D on `lifetime` (blockhash with every key here, D121). */
 async function expectRescueOn(lifetime: 'blockhash' | 'nonce', wallet: TestWalletPort, D: Address, from = 0) {
   for (const request of wallet.requests.slice(from)) {
     const inspected = await inspectTransaction(request.transactions[0] ?? new Uint8Array());
@@ -363,7 +363,7 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       }
       await click(user, en.rescue.next.move);
       await heading(en.rescue.move.heading);
-      // Every key here: no link-signing account, one round on a recent blockhash (D120).
+      // Every key here: no link-signing account, one round on a recent blockhash (D121).
       await user.click(await screen.findByRole('button', { name: signName({ role: 'New wallet', wallet: 'Shared Wallet' }) }, WAIT));
 
       const MAIN_HERE: Signer = { role: 'Main key', wallet: 'Shared Wallet' };
@@ -491,7 +491,7 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await throughKeys(user, { secondMode: 'here', chooseSecond: w.K.address, choices: [w.K.address, K2.address] });
       expect(ports.secondKeys.getSnapshot()).toEqual([]);
       expect(screen.getAllByText(w.D.address).length).toBeGreaterThan(0);
-      // Every key signs here: no link-signing account, the move runs on a recent blockhash (D120). Phantom on mainnet
+      // Every key signs here: no link-signing account, the move runs on a recent blockhash (D121). Phantom on mainnet
       // moves the compute budget in front of AdvanceNonceAccount, so a nonce move signed by Phantom first never lands.
       // On a blockhash the three accounts go in one round: each wallet approves them in one request.
       await signAll(user, [NEW, MAIN, SECOND]);
@@ -639,7 +639,7 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       }
       sameLockup(w.testChain.stakeAccount(S1), before);
       expect(w.main.requests).toHaveLength(2);
-      // The page never held the second key; a key signing by link keeps the move on the new wallet's nonce (D120).
+      // The page never held the second key; a key signing by link keeps the move on the new wallet's nonce (D121).
       expect(w.second.requests).toHaveLength(0);
       await expectRescueOn('nonce', w.main, w.D.address);
     },
@@ -676,7 +676,7 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       const split = made.split;
       if (split === null) throw new Error('no split');
       expect(w.testChain.stakeAccount(split)?.lockup.custodian).toBe(w.K.address);
-      // On a recent blockhash (every key here, D120) the thief's transaction moved the blockhash on: the page says the
+      // On a recent blockhash (every key here, D121) the thief's transaction moved the blockhash on: the page says the
       // move expired, nothing changed, and every wallet signs once more.
       await screen.findByText('The transaction expired before every wallet signed', undefined, WAIT);
       await click(user, 'Sign again');

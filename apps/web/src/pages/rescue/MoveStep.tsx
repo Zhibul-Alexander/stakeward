@@ -36,7 +36,7 @@ type MoveStepProps = {
 /**
  * Step 4 (F4 steps 3-5): one transaction per stake account, one after another: the new wallet signs here, the main key
  * and the second key here or by link. With every key here it runs on a recent blockhash; with a key signing by link,
- * on the new wallet's link-signing account (durable nonce), set up first (D120, a change to F4.3). The new owner is
+ * on the new wallet's link-signing account (durable nonce), set up first (D121, a change to F4.3). The new owner is
  * shown in full before anything is signed.
  */
 export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, sameWallet, signing, onFinished, onBack }: MoveStepProps) {
@@ -96,7 +96,7 @@ export function MoveStep({ headingRef, run, mainKey, mainMode, secondMode, sameW
 type RescueSigningProps = {
   run: RescueRun;
   mainKey: Address;
-  /** The new wallet's nonce when a key signs by link; null when every key is here (a recent blockhash, D120). */
+  /** The new wallet's nonce when a key signs by link; null when every key is here (a recent blockhash, D121). */
   nonceAccount: Address | null;
   /** Keys that sign on another device by link. */
   remote: readonly Address[];
