@@ -2117,6 +2117,7 @@
       "attackWithdrawRejected": "Rejected. Locked until {date}: your second key must co-sign.",
       "attackDeactivate": "Unstakes it: the main key alone can do that.",
       "attackDeactivateAccepted": "Accepted. The SOL stays in your stake account.",
+      "attackRetry": "Tries again: “give this stake to the thief”.",
       "monitorAlert": "Noticed the change and sent you an alert.",
       "rescueNew": "Pays the fee and signs: it becomes the stake's owner.",
       "rescueMain": "Signs: it can still hand the stake over.",

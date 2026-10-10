@@ -51,7 +51,8 @@ describe('/demo', () => {
     await screen.findByRole('heading', { name: 'The thief failed. You got an alert.' });
     expect(holder()).toBe('main');
     const log = screen.getByRole('log');
-    expect(within(log).getByText('Rejected. The Second key must co-sign.')).toBeInTheDocument();
+    // Rejected before the unstake and again after it.
+    expect(within(log).getAllByText('Rejected. The Second key must co-sign.')).toHaveLength(2);
     // Each line copies as "Actor: text".
     expect(within(log).getAllByRole('listitem')[0]).toHaveTextContent('Main key: Signs: lock this stake until 14 April 2027.', { normalizeWhitespace: false });
     const alert = document.querySelector<HTMLElement>('[data-slot="demo-alert"]');
