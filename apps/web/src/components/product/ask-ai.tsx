@@ -10,6 +10,8 @@ import { useCopy } from './use-copy.ts';
 export type AskAiProps = {
   /** The whole question (core `aiPrompt`): public data only. */
   prompt: string;
+  /** The line under the title; the default says the page is checked against the network. */
+  body?: string | undefined;
   className?: string | undefined;
 };
 
@@ -26,7 +28,7 @@ const PROVIDERS: readonly { provider: AiProvider; label: 'askAi.chatgpt' | 'askA
  * Plain links: no request from this page, no key, nothing stored (CSP connect-src stays 'self'). The AI explains; the
  * page's own verdict stays the truth.
  */
-export function AskAi({ prompt, className }: AskAiProps) {
+export function AskAi({ prompt, body, className }: AskAiProps) {
   const titleId = useId();
   const { state, copy } = useCopy();
   return (
@@ -36,7 +38,7 @@ export function AskAi({ prompt, className }: AskAiProps) {
           <SparklesIcon aria-hidden="true" className="size-4 text-muted" />
           {t('askAi.title')}
         </h3>
-        <p className="text-sm text-muted">{t('askAi.body')}</p>
+        <p className="text-sm text-muted">{body ?? t('askAi.body')}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {PROVIDERS.map(({ provider, label }) => (
