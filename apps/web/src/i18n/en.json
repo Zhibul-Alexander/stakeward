@@ -902,6 +902,10 @@
       "stale": "Alerts may be late.",
       "notYet": "Monitoring has not run yet",
       "unavailable": "Monitoring status unavailable. Press Refresh to try again."
+    },
+    "forgetKeys": {
+      "button": "Forget keys on this device",
+      "hint": "This browser forgets the wallets you connected as Main key, Second key and New wallet, and the second keys it remembers. Nothing changes on the network; connect again any time."
     }
   },
   "protect": {
