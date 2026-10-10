@@ -89,7 +89,7 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Both keys withdraw. Main key stolen? They and a new wallet rescue the stake."
+        "body": "You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 5 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
