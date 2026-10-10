@@ -433,7 +433,7 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
   );
 });
 
-describe('/protect: a custom lock end (D118)', () => {
+describe('/protect: a custom lock end (D119)', () => {
   it(
     'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than five years, and Back keeps the date',
     async () => {

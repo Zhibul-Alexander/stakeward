@@ -104,7 +104,7 @@ export type Blocker =
   | 'second-key-problem'
   | 'need-seed-check'
   | 'need-clock'
-  /** Step 3 with Custom date chosen: no valid date typed yet (D118). */
+  /** Step 3 with Custom date chosen: no valid date typed yet (D119). */
   | 'need-date';
 
 export type BlockerInput = {
@@ -143,7 +143,7 @@ export function blockers(step: 'accounts' | 'second-key' | 'period', input: Bloc
   }
 }
 
-/** A lock period card of step 3: a fixed period, or a date the owner picks (D118). */
+/** A lock period card of step 3: a fixed period, or a date the owner picks (D119). */
 export type PeriodChoice = LockPeriod | 'custom';
 
 export type WizardState = {
@@ -154,7 +154,7 @@ export type WizardState = {
   /** The second key's address as typed or pasted for signing by link (kept while the user goes back and forth). */
   linkKey: string;
   period: PeriodChoice;
-  /** The date typed for Custom date (`YYYY-MM-DD`), kept while the user goes back and forth (D118). */
+  /** The date typed for Custom date (`YYYY-MM-DD`), kept while the user goes back and forth (D119). */
   customDate: string;
   /** T, fixed when the period step's Continue is pressed; reused by every retry of the run. */
   lockUntil: bigint | null;

@@ -125,7 +125,7 @@ describe('validateSecondKey', () => {
   });
 });
 
-describe('customLockEnd (D118)', () => {
+describe('customLockEnd (D119)', () => {
   // Saturday 10 October 2026, 21:30 UTC.
   const now = BigInt(Date.UTC(2026, 9, 10, 21, 30) / 1000);
 

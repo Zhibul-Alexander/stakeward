@@ -61,7 +61,7 @@ export function lockupEndForPeriod(now: Date | bigint, months: 1 | 3 | 6 | 12): 
   return BigInt(Date.UTC(year, month, day + 1) / 1000);
 }
 
-/** The furthest custom lock end, in years from today (DECISIONS.md D118): a typo in the year cannot freeze a stake for decades. */
+/** The furthest custom lock end, in years from today (DECISIONS.md D119): a typo in the year cannot freeze a stake for decades. */
 export const CUSTOM_LOCK_MAX_YEARS = 5;
 
 export type CustomLockProblem = 'invalid' | 'too-soon' | 'too-late';
@@ -82,7 +82,7 @@ export function customLockBounds(now: Date | bigint): { min: string; max: string
 }
 
 /**
- * A custom lock end (D118): the lock holds until 00:00 UTC of `date` (`YYYY-MM-DD`), as the cards of the month periods
+ * A custom lock end (D119): the lock holds until 00:00 UTC of `date` (`YYYY-MM-DD`), as the cards of the month periods
  * say "until <date>". The date must be a real calendar date within `customLockBounds(now)`.
  */
 export function customLockEnd(
