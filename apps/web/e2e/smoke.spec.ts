@@ -59,13 +59,13 @@ async function bodyColours(page: Page) {
 }
 
 /**
- * The landing page: the hero's answer and its one button in the first screen, fees with the deposit read from the
- * network, the three steps, the limits, the network, the FAQ in closed groups.
+ * The landing page: the hero's answer and its one button in the first screen, the three steps, the limits, the network
+ * and the way to the details (one link per /learn tab).
  */
 async function landingShows(page: Page) {
-  await expect(page.locator('#fees')).toContainText('0.00105664 SOL');
   await expect(page.locator('#how-it-works ol > li')).toHaveCount(3);
   await expect(page.locator('#cannot-do')).toBeVisible();
+  await expect(page.locator('#learn-more-title + ul a')).toHaveCount(5);
   const network = page.locator('[data-slot="network"]');
   await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
   await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
@@ -82,22 +82,7 @@ async function landingShows(page: Page) {
     const titleBox = await page.getByRole('heading', { level: 1, name: text('landing.title') }).boundingBox();
     expect(titleBox?.height ?? Infinity).toBeLessThanOrEqual(32);
   }
-  // The questions come folded into their groups.
-  const groups = page.locator('#faq details[data-slot="faq-group"]');
-  await expect(groups).toHaveCount(5);
-  for (const group of await groups.all()) await expect(group).not.toHaveAttribute('open');
-  // What a visitor first gets, before the answers below are opened.
   if (DEVNET) await recordScreenMetrics(page, 'landing-initial');
-  // Every disclosure on the page open (the FAQ groups and their answers, and any other fold), so the overflow check,
-  // axe in both themes and the screenshot cover all of the page's text.
-  const questions = page.locator('main details');
-  expect(await questions.count()).toBeGreaterThan(0);
-  await questions.evaluateAll((items) => {
-    for (const item of items) (item as HTMLDetailsElement).open = true;
-  });
-  // The type holds its levels at both widths: no h3 outsizes an h2, an FAQ group's name outsizes its questions, and an
-  // answer keeps a reading measure. "What Stakeward cannot do" stands on its panel at every width, and no recovery link
-  // breaks inside its label.
   const layout = await page.evaluate(() => {
     const main = document.querySelector('main');
     const all = (selector: string) => [...(main?.querySelectorAll(selector) ?? [])];
@@ -105,34 +90,52 @@ async function landingShows(page: Page) {
     return {
       smallestH2: Math.min(...all('h2').map(size)),
       largestH3: Math.max(...all('h3').map(size)),
-      smallestGroup: Math.min(...all('[data-slot="faq-group"] > summary h3').map(size)),
-      largestQuestion: Math.max(...all('[data-slot="faq-item"] > summary').map(size)),
-      widestAnswer: Math.max(...all('[data-slot="faq-item"] > div').map((answer) => answer.getBoundingClientRect().width)),
       cannotDoPanel: getComputedStyle(all('#cannot-do ul')[0] ?? document.body).backgroundColor,
-      brokenLinks: all('#recover a').filter((link) => link.getClientRects().length !== 1).map((link) => link.textContent),
     };
   });
   expect(layout.largestH3).toBeLessThanOrEqual(layout.smallestH2);
-  expect(layout.smallestGroup).toBeGreaterThan(layout.largestQuestion);
-  expect(layout.widestAnswer).toBeLessThanOrEqual(720);
   expect(layout.cannotDoPanel).not.toBe('rgba(0, 0, 0, 0)');
-  expect(layout.brokenLinks).toEqual([]);
 }
 
 /**
- * Deep links into the landing page: the footer's `/#cannot-do` followed from another page (a fresh load) shows that
- * section; a later `/#faq-ledger` (a hash change, as an in-page link makes) opens that question and its group and
- * shows it.
+ * /learn/faq: the questions folded into five groups; then every disclosure open, so the overflow check, axe in both
+ * themes and the screenshot cover all of its text. The type holds its levels: an FAQ group's name outsizes its
+ * questions, and an answer keeps a reading measure.
+ */
+async function learnFaqShows(page: Page) {
+  const groups = page.locator('#faq details[data-slot="faq-group"]');
+  await expect(groups).toHaveCount(5);
+  for (const group of await groups.all()) await expect(group).not.toHaveAttribute('open');
+  const questions = page.locator('main details');
+  await questions.evaluateAll((items) => {
+    for (const item of items) (item as HTMLDetailsElement).open = true;
+  });
+  const layout = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const all = (selector: string) => [...(main?.querySelectorAll(selector) ?? [])];
+    const size = (element: Element) => parseFloat(getComputedStyle(element).fontSize);
+    return {
+      smallestGroup: Math.min(...all('[data-slot="faq-group"] > summary h3').map(size)),
+      largestQuestion: Math.max(...all('[data-slot="faq-item"] > summary').map(size)),
+      widestAnswer: Math.max(...all('[data-slot="faq-item"] > div').map((answer) => answer.getBoundingClientRect().width)),
+    };
+  });
+  expect(layout.smallestGroup).toBeGreaterThan(layout.largestQuestion);
+  expect(layout.widestAnswer).toBeLessThanOrEqual(720);
+}
+
+/**
+ * Deep links: the footer's `/#cannot-do` followed from another page (a fresh load) shows that section on `/`; an old
+ * `/#faq-ledger` link goes to /learn/faq, where its question and its group open and it is shown.
  */
 async function landingDeepLinks(page: Page) {
   await page.goto('/stats');
   await page.goto('/#cannot-do');
   await expect(page.locator('#cannot-do')).toBeInViewport();
-  const ledger = page.locator('#faq-ledger');
-  await expect(ledger).not.toHaveAttribute('open');
   await page.goto('/#faq-ledger');
+  await expect(page).toHaveURL(/\/learn\/faq#faq-ledger$/);
+  const ledger = page.locator('#faq-ledger');
   await expect(ledger).toHaveAttribute('open', '');
-  // The question sits in a closed group: the group opens with it, and the question is shown.
   await expect(page.locator('details[data-slot="faq-group"]:has(#faq-ledger)')).toHaveAttribute('open', '');
   await expect(ledger).toBeInViewport();
 }
@@ -239,6 +242,26 @@ const NOT_FOUND = { heading: text('common.notFoundTitle'), shows: notFoundShows 
 const ROUTES: readonly SmokeRoute[] = [
   { path: '/', heading: text('landing.title'), shows: landingShows, after: landingDeepLinks, screen: 'landing' },
   { path: '/app', heading: text('app.title') },
+  { path: '/learn/faq', heading: text('learn.title'), shows: learnFaqShows, noApi: false },
+  {
+    path: '/learn/costs',
+    heading: text('learn.title'),
+    // The fees with the deposit read from the network.
+    shows: async (page) => {
+      await expect(page.locator('#fees')).toContainText('0.00105664 SOL');
+    },
+  },
+  {
+    path: '/learn/safety',
+    heading: text('learn.title'),
+    // No recovery link breaks inside its label.
+    shows: async (page) => {
+      const broken = await page.evaluate(() =>
+        [...document.querySelectorAll('#recover a')].filter((link) => link.getClientRects().length !== 1).map((link) => link.textContent),
+      );
+      expect(broken).toEqual([]);
+    },
+  },
   {
     path: '/protect',
     heading: text('common.pages.protect'),
