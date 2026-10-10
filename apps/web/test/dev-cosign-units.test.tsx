@@ -99,7 +99,7 @@ describe('describeMessageChange', () => {
     });
   });
 
-  it('reports a Lighthouse tail from a wallet that recompiles (and reorders) the message as a tail-layout change', async () => {
+  it('reports a Lighthouse tail from a wallet that recompiles (and reorders) the message as an accepted tail (D117)', async () => {
     const bytes = await protectBytes();
     const compiled = getCompiledTransactionMessageDecoder().decode(getTransactionDecoder().decode(bytes).messageBytes);
     const recompiled = compileTransaction(
@@ -109,10 +109,7 @@ describe('describeMessageChange', () => {
       ),
     );
     const changed = describeMessageChange(bytes, new Uint8Array(getTransactionEncoder().encode(recompiled)));
-    expect(changed.kind).toBe('other');
-    if (changed.kind !== 'other') return;
-    expect(changed.parts.map((part) => part.code)).toContain('tail-layout');
-    expect(changed.parts.find((part) => part.code === 'instructions')?.text).toMatch(/^Instructions: 3 -> 4; .*added at the end: L2T\.\.\.S95$/);
+    expect(changed).toStrictEqual({ kind: 'lighthouse-tail', instructions: 1, addedAccounts: [LIGHTHOUSE_PROGRAM_ADDRESS] });
   });
 
   it('reports bytes that are not a transaction', async () => {

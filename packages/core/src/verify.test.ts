@@ -10,6 +10,7 @@ import {
   build,
   craft,
   craftV0,
+  decodeMessage,
   editMessage,
   instructionsOf,
   key,
@@ -86,6 +87,77 @@ describe('checkSigningStep', () => {
     }
   });
 
+  it('accepts a Lighthouse tail from a wallet that recompiles the message and sorts the accounts its own way (D117)', async () => {
+    for (const lifetimeKind of ['blockhash', 'nonce'] as const) {
+      const { main, second, action, built } = await protect(lifetimeKind);
+      const token = decodeMessage(built.bytes).lifetimeToken;
+      const original = decodeMessage(built.bytes).staticAccounts;
+      // Phantom on mainnet: the tail compiled into a new message, the accounts in the compiler's order.
+      const recompiled = craft(
+        [
+          ...instructionsOf(built.bytes),
+          lighthouseInstruction([
+            { address: STAKE, role: AccountRole.READONLY },
+            { address: X, role: AccountRole.READONLY },
+          ]),
+        ],
+        main.address,
+        token,
+      );
+      expect(decodeMessage(recompiled).staticAccounts.slice(0, original.length)).not.toStrictEqual(original);
+      // The same tail with every non-signer group in reverse order: any order of the same accounts and roles.
+      const reversed = editMessage(appendLighthouseTail(built.bytes, [STAKE, X]), (message) => {
+        const signers = message.header.numSignerAccounts;
+        const readonly = message.staticAccounts.length - message.header.numReadonlyNonSignerAccounts;
+        const accounts = [
+          ...message.staticAccounts.slice(0, signers),
+          ...message.staticAccounts.slice(signers, readonly).reverse(),
+          ...message.staticAccounts.slice(readonly).reverse(),
+        ];
+        return relist(message, accounts);
+      });
+      for (const tailed of [recompiled, reversed]) {
+        const byPhantom = await sign(main, tailed);
+        expect(await verdict(built.bytes, byPhantom)).toBe('ok:1');
+        const bySecond = await sign(second, byPhantom);
+        expect(await verdict(byPhantom, bySecond)).toBe('ok:0');
+        expect(await verifyAllSignatures(bySecond)).toStrictEqual({ ok: true });
+        const inspected = await inspectTransaction(bySecond);
+        expect(inspected.ok && inspected.summary).toMatchObject({
+          action,
+          presentSignatures: [main.address, second.address],
+          lighthouseTail: { instructionCount: 1 },
+        });
+      }
+    }
+  });
+
+  it('rejects a re-sorted tail that changes the role of an original account or moves the fee payer (D117)', async () => {
+    const { main, built } = await protect();
+    const tailed = appendLighthouseTail(built.bytes, [X]);
+    const swap = (from: Address, to: Address) =>
+      editMessage(tailed, (message) => {
+        const accounts = [...message.staticAccounts];
+        const [i, j] = [accounts.indexOf(from), accounts.indexOf(to)];
+        [accounts[i], accounts[j]] = [to, from];
+        return relist(message, accounts);
+      });
+    const last = (message: Uint8Array) => decodeMessage(message).staticAccounts.at(-1) ?? X;
+    // The stake account (writable) swapped with a read-only account: it loses write access, the other one gains it.
+    expect(await verdict(built.bytes, swap(STAKE, last(tailed)))).not.toMatch(/^ok/);
+    // The fee payer moved out of the first slot.
+    const second = decodeMessage(tailed).staticAccounts[1] ?? X;
+    expect(await verdict(built.bytes, swap(main.address, second))).not.toMatch(/^ok/);
+    // Accounts re-sorted without any tail: not a change a wallet may make.
+    const noTail = editMessage(built.bytes, (message) => {
+      const accounts = [...message.staticAccounts];
+      const [a, b] = [accounts.length - 1, accounts.length - 2];
+      [accounts[a], accounts[b]] = [accounts[b] ?? X, accounts[a] ?? X];
+      return relist(message, accounts);
+    });
+    expect(await verdict(built.bytes, noTail)).toBe('message-changed');
+  });
+
   it('rejects a Lighthouse tail from a wallet that was not the first to sign', async () => {
     const { main, second, built } = await protect();
     const byMain = await sign(main, built.bytes);
@@ -143,13 +215,7 @@ describe('checkSigningStep', () => {
       return relist(message, accounts);
     });
     expect(await changed(reordered)).toBe('message-changed');
-    // A Lighthouse tail compiled by a wallet that re-sorts the accounts; a tail account nobody uses.
-    const resorted = craft(
-      [...body, lighthouseInstruction([{ address: X, role: AccountRole.READONLY }])],
-      main.address,
-      token,
-    );
-    expect(await changed(resorted)).toBe('message-changed');
+    // A tail account nobody uses.
     const unused = editMessage(appendLighthouseTail(built.bytes), (message) =>
       relist(message, [...message.staticAccounts, X], {
         ...message.header,
