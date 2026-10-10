@@ -154,7 +154,7 @@ const TITLES = {
   unknown: 'Something went wrong. Refresh to see the current state, then try again.',
 } as const;
 
-const INSUFFICIENT_STAKE_BALANCE =
+export const INSUFFICIENT_STAKE_BALANCE =
   'There is not enough free SOL in this stake. If it is still deactivating, wait until the epoch ends, then try again.';
 const INSUFFICIENT_FEE_BALANCE =
   'The wallet paying the network fee does not have enough SOL. Add a little SOL to it and try again.';
