@@ -8,6 +8,7 @@ import {
   LoaderCircleIcon,
   RefreshCwIcon,
   SendIcon,
+  Share2Icon,
   ShieldCheckIcon,
   ShieldXIcon,
   VenetianMaskIcon,
@@ -226,6 +227,19 @@ function Summary({
           </Button>
           <RefreshButton onRefresh={onRefresh} />
         </>
+      }
+      // The public proof page of this stake (D124): small and secondary, for a fund or a validator to share. A footer
+      // line, not a tool: the tools row keeps Telegram and Refresh together on one line at 360 px.
+      footer={
+        owned === 0 ? undefined : (
+          <Link
+            href={appLinks.proof(address)}
+            className="inline-flex items-center gap-1 rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+          >
+            <Share2Icon aria-hidden="true" className="size-4" />
+            {t('app.results.shareProof')}
+          </Link>
+        )
       }
       // For any stake of this main key, locked or not (D70 moves both): a victim is sent to another computer, which
       // knows no second key and so calls none of the locks Protected (D35). Beside the answer from 640 px, so it takes

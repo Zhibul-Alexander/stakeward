@@ -8,6 +8,7 @@ import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { LearnPage } from '@/pages/LearnPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { ProofPage } from '@/pages/ProofPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
@@ -79,6 +80,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/demo">
         <DemoPage />
+      </Route>
+      <Route path="/proof/:wallet">
+        <ProofPage />
       </Route>
       <Route path="/stats">
         <StatsPage />
