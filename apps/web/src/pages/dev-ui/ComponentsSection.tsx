@@ -1,9 +1,10 @@
-import { cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
+import { aiPrompt, cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
 import { RotateCcwIcon, SendIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { AccountList, AccountListItem, AccountListSkeleton, AccountRow, AccountRowError } from '@/components/product/account-row';
 import { ActionBar } from '@/components/product/action-bar';
+import { AskAi } from '@/components/product/ask-ai';
 import { AddressText, AddressTextSkeleton } from '@/components/product/address-text';
 import { CommandBlock, CommandBlockSkeleton } from '@/components/product/command-block';
 import { CosignRequest } from '@/components/product/cosign-request';
@@ -792,6 +793,19 @@ export function ComponentsSection() {
             <RiskNote risk="unlock-opens-window" tone="danger" variant="inline" />
           </Demo>
         </div>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.askAi')}>
+        <AskAi
+          prompt={aiPrompt({
+            task: t('devUi.sample.aiPrompt'),
+            facts: [
+              ['Stake account', SAMPLE.stakeA],
+              ['Event', 'Deactivated'],
+            ],
+            verdict: 'Protected: the SOL cannot be withdrawn without the second key.',
+          })}
+        />
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.radioCardGroup')}>

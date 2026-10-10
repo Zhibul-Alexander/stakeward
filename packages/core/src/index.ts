@@ -1,5 +1,6 @@
 // @stakeward/core: pure TypeScript, no I/O. Used by the site, the worker, scripts and tests.
 export * from './actions.ts';
+export * from './ai-prompt.ts';
 export * from './applied.ts';
 export * from './builders.ts';
 export * from './compare.ts';

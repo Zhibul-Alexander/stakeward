@@ -762,7 +762,8 @@
       "newEnd": "New end of the lock",
       "technical": "Technical details",
       "signingAccount": "Signing account",
-      "slotDescription": "The wallet that holds your stake. Connecting signs nothing."
+      "slotDescription": "The wallet that holds your stake. Connecting signs nothing.",
+      "aiPrompt": "Explain what this stake alert means for me and what I should do now."
     },
     "names": {
       "statusBadge": "StatusBadge",
@@ -791,7 +792,8 @@
       "summaryBar": "SummaryBar",
       "radioCardGroup": "RadioCardGroup",
       "disclosure": "Disclosure",
-      "keyList": "KeyList"
+      "keyList": "KeyList",
+      "askAi": "AskAi"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -2242,5 +2244,16 @@
       "wallets": "Wallets",
       "safety": "Safety"
     }
+  },
+  "askAi": {
+    "title": "Ask your AI",
+    "body": "Opens this question in your own ChatGPT or Claude account. Stakeward sends nothing, stores nothing and holds no AI key. The AI only explains; what this page shows is checked against the network.",
+    "chatgpt": "Ask ChatGPT",
+    "claude": "Ask Claude",
+    "copy": "Copy the question",
+    "copied": "Copied",
+    "copyFailed": "Copy failed. Select the text below and copy it by hand.",
+    "show": "Show the question",
+    "newTab": "(opens in a new tab)"
   }
 }
