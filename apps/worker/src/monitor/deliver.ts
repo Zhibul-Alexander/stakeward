@@ -1,5 +1,6 @@
 import type { Address } from '@solana/kit';
 import {
+  alertLinkPath,
   formatAlert,
   formatReminder,
   MONITOR_EVENT_TYPES,
@@ -144,7 +145,7 @@ export type DeliveryPlan = {
  * 4. Text: "Devnet: " on devnet, then the alerts separated by a blank line. Button: "Rescue now" when a covered
  *    alarming alert (RESCUE_KIT_EVENTS) is of an account whose ready rescue kit is bound to this chat (a callback
  *    button, D118); else the first covered alert that opens Rescue, else the first alert, always on `siteOrigin`
- *    (siteUrl). Without a site origin no message is planned.
+ *    (siteUrl), with that alert's `event` and `stake` in the query (core alertLinkPath, D125). Without a site origin no message is planned.
  */
 export function planDeliveries(
   pending: readonly PendingEvent[],
@@ -209,7 +210,9 @@ export function planDeliveries(
     const covered = opts.fullWindow ? list : items;
     if (covered.length > items.length) text = `${text}\n\n${moreAlertsText(covered.length - items.length)}`;
     const kit = covered.find((item) => item.event.kitChatId === chatId && RESCUE_KIT_EVENTS.has(item.event.type));
-    const buttonAlert = covered.find((item) => isRescuePath(item.alert.path))?.alert ?? first.alert;
+    const buttonItem = covered.find((item) => isRescuePath(item.alert.path)) ?? first;
+    // The page the button opens explains this alert (D125): its event type and stake account ride along, on our site.
+    const buttonPath = alertLinkPath(buttonItem.alert.path, { event: buttonItem.event.type, stake: buttonItem.event.stakeAccount });
     const eventIds = covered.map((item) => item.event.id);
     plan.messages.push({
       chatId,
@@ -219,7 +222,7 @@ export function planDeliveries(
       text,
       button:
         kit === undefined
-          ? { label: buttonAlert.buttonLabel, url: siteUrl(origin, buttonAlert.path) }
+          ? { label: buttonItem.alert.buttonLabel, url: siteUrl(origin, buttonPath) }
           : { label: 'Rescue now', callbackData: rescueKitCallbackData(kit.event.stakeAccount) },
     });
   }
