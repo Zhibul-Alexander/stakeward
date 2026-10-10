@@ -93,7 +93,7 @@ export function SigningView({
   confirm,
   renderLinkCancel,
   risk,
-  summaryIntro = true,
+  summaryIntro = false,
   hideSingleSigner = false,
   refusalText,
 }: SigningViewProps) {
@@ -340,7 +340,6 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, risk }: 
         step.walletName !== null && (round?.steps.some((other) => other !== step && other.walletName === step.walletName) ?? false);
       const mustConfirm = confirm !== undefined && !confirmed;
       const confirmError = confirmAsked && mustConfirm;
-      const firstHint = phase.step === 0 ? t('signing.firstHint', { wallet }) : null;
       return (
         <div className="flex flex-col gap-3">
           {phase.refreshed ? (
@@ -376,7 +375,6 @@ function PhaseActions({ state, actions, renderKeySlot, onBack, confirm, risk }: 
             </div>
           )}
           {/* The hint comes before the risk, so the Sign button stands right under the risk it guards. */}
-          {firstHint === null ? null : <p className="text-sm text-muted">{firstHint}</p>}
           <ActionBar
             risk={risk}
             primary={

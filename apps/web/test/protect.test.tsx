@@ -14,7 +14,7 @@ import { deriveNonceAccountAddress, formatUtcDate, formatUtcDateTime, lockupEnd,
 import { LiteSvmChain } from '@stakeward/core/test/litesvm-chain';
 import { START_UNIX_TIMESTAMP, TestChain } from '@stakeward/core/test/svm';
 import { createTestWalletPort, type TestWalletPort } from '@stakeward/core/test/test-wallet-port';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -433,6 +433,60 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
   );
 });
 
+describe('/protect: a custom lock end (D118)', () => {
+  it(
+    'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than five years, and Back keeps the date',
+    async () => {
+      const w = await world();
+      const { S1 } = await twoAccounts(w);
+      const [main, second] = await twoWallets(w);
+      const page = renderProtect(w, [S1], [main, second]);
+      const { user } = page;
+      await connect(user, 'Main key', 'Main Wallet');
+      await screen.findAllByRole('checkbox', { name: /^Protect stake account / }, WAIT);
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'Connect your second key' });
+      await connect(user, 'Second key', 'Second Wallet');
+      await user.click(screen.getByRole('checkbox', { name: 'My second key comes from a different seed phrase' }));
+      await user.click(continueButton());
+      await screen.findByRole('heading', { name: 'How long should the lock hold?' });
+      await screen.findByText(`until ${formatUtcDate(T) ?? ''}`, undefined, WAIT);
+
+      await user.click(screen.getByRole('radio', { name: 'Custom date' }));
+      const field = screen.getByLabelText('Lock until');
+      // START_UNIX_TIMESTAMP is 1 October 2026: tomorrow to five years on.
+      expect(field).toHaveAttribute('min', '2026-10-02');
+      expect(field).toHaveAttribute('max', '2031-10-01');
+      expect(screen.getByText('The lock ends at 00:00 UTC on this date. From 2 October 2026 to 1 October 2031.')).toBeInTheDocument();
+      // Nothing typed: the step button says what is missing.
+      await user.click(continueButton());
+      expect(screen.getByText('Pick the date the lock ends.')).toBeInTheDocument();
+      fireEvent.change(field, { target: { value: '2026-10-01' } });
+      expect(screen.getByRole('alert')).toHaveTextContent('Pick a date from 2 October 2026 on.');
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      fireEvent.change(field, { target: { value: '2031-10-02' } });
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2031\./);
+      fireEvent.change(field, { target: { value: '2027-03-15' } });
+      expect(screen.queryByRole('alert')).toBeNull();
+      const until = BigInt(Date.UTC(2027, 2, 15) / 1000);
+      expect(screen.getByRole('radio', { name: 'Custom date' })).toHaveAccessibleDescription(`until ${formatUtcDate(until) ?? ''}`);
+
+      // Back and forth keeps the choice and the date.
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+      await user.click(continueButton());
+      expect(await screen.findByRole('radio', { name: 'Custom date' })).toBeChecked();
+      expect(screen.getByLabelText('Lock until')).toHaveValue('2027-03-15');
+
+      await user.click(screen.getByRole('button', { name: 'Review 1 transaction' }));
+      await click(user, 'Sign in Main Wallet as Main key');
+      await click(user, 'Sign in Second Wallet as Second key');
+      await finished('1 stake account is protected');
+      expect(lockOf(w, S1)).toEqual({ unixTimestamp: until, epoch: 0n, custodian: w.K.address });
+    },
+    TIMEOUT,
+  );
+});
+
 describe('/protect: one stake account at a time', () => {
   it(
     'stopping in round 2 shows and records what round 1 protected; nothing claims that nothing was sent',
@@ -703,7 +757,7 @@ describe('/protect step gates', () => {
   );
 
   it(
-    'names link accounts before the main key; leaves out other keys’ accounts; locks held by others cannot be chosen; the seed box is required; devnet offers 6 periods',
+    'names link accounts before the main key; leaves out other keys’ accounts; locks held by others cannot be chosen; the seed box is required; devnet offers 6 periods and a custom date',
     async () => {
       const w = await world();
       const other = await w.testChain.fundedKey();
@@ -765,7 +819,8 @@ describe('/protect step gates', () => {
       expect(screen.queryByText('Confirm that your second key comes from a different seed phrase.')).toBeNull();
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'How long should the lock hold?' });
-      expect(screen.getAllByRole('radio')).toHaveLength(6);
+      expect(screen.getAllByRole('radio')).toHaveLength(7);
+      expect(screen.getByRole('radio', { name: 'Custom date' })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: '10 minutes (devnet test)' })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: '1 hour (devnet test)' })).toBeInTheDocument();
 
