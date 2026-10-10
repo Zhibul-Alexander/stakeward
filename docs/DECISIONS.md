@@ -910,6 +910,15 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - Каждый сценарий проверяет итог в сети (§12), а не только на экране. Две ширины: 1280 и 360 (Pixel 5, касания, мобильный user agent).
 - Новых зависимостей нет: Playwright и axe уже в apps/web, LiteSVM — в core.
 
+## D115. Деплой из GitHub Actions, в GitHub только ключи Cloudflare (10.10.2026, по слову владельца; поправка к D96 и SECURITY-CHECK П19, В3)
+
+- Workflow `.github/workflows/deploy.yml`, только ручной запуск (`workflow_dispatch`, env = dev или prod) и только с main. Внутри та же обёртка `scripts/deploy.ts`: чистое дерево, HEAD = origin/main, для prod зелёный `check`, frozen install, сборка без секретов, guard-тесты на выгружаемой папке. После кода — миграции D1 (D90).
+- В GitHub лежат два секрета: `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`. Это секреты окружений GitHub `dev` и `prod`, а не репозитория. У `prod` обязательный ревьюер (владелец), деплой только с main. Ключ Helius, токены ботов и секрет вебхука в GitHub не попадают: они уже лежат в секретах воркера (`wrangler secret put`), а лишняя копия добавила бы ещё одно место утечки без пользы.
+- Секреты доходят до обёртки через pipe (`--secrets-file <(printf …)`, /dev/fd/N): на диске файла нет, в окружении обёртки их нет. Обёртка читает pipe до установки зависимостей, а дальше их получает только `wrangler deploy`. Кэша зависимостей в этом задании нет.
+- Запись деплоя (`docs/deploys.md`) задание не пушит, у него только `contents: read`. Запись видна в Summary и лежит в артефакте `deploys-md-<env>`, коммитим её руками.
+- Локальный `pnpm deploy:*` остаётся запасным путём. После перехода на Actions файл `~/.config/stakeward/secrets.env` с токенами ботов и ключом Helius можно удалить (П19).
+- История git проверена 10.10.2026: 322 коммита, все ветки. Ключей Helius, токенов ботов и приватных ключей нет, файлы `.dev.vars*`, `.env*` и `.keys/` ни разу не коммитились. Нашлись только заглушки из тестов.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.

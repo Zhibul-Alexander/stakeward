@@ -1,0 +1,75 @@
+name: deploy
+
+# Manual deploy of main through the same wrapper as a local deploy (scripts/deploy.ts, SECURITY-CHECK P18 and P19).
+# GitHub keeps only CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, as secrets of the GitHub environments `dev` and
+# `prod` (prod: required reviewer, main only). The Helius key and the bot tokens stay in the Worker's own secrets
+# (`wrangler secret put`) and never enter GitHub. DECISIONS D115.
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'dev (devnet) or prod (mainnet)'
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.env }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ${{ inputs.env }}
+    steps:
+      # A branch ref checks out as a local branch, which the wrapper requires (no detached HEAD).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0, pnpm version from package.json "packageManager"
+      # No dependency cache: this job holds the deploy token.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      # The two values reach the wrapper as a pipe (/dev/fd/N), never as a file on disk or an exported variable:
+      # the wrapper reads it before the install and gives them to `wrangler deploy` only. Names other than
+      # CLOUDFLARE_* here, because the wrapper refuses an environment that exports those.
+      - name: deploy
+        id: deploy
+        env:
+          CF_DEPLOY_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_DEPLOY_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DEPLOY_ENV: ${{ inputs.env }}
+        run: |
+          token="$CF_DEPLOY_TOKEN"; account="$CF_DEPLOY_ACCOUNT"
+          unset CF_DEPLOY_TOKEN CF_DEPLOY_ACCOUNT
+          confirm=(); [ "$DEPLOY_ENV" = prod ] && confirm=(--prod-confirm)
+          node scripts/deploy.ts --env "$DEPLOY_ENV" "${confirm[@]}" \
+            --secrets-file <(printf 'CLOUDFLARE_API_TOKEN=%s\nCLOUDFLARE_ACCOUNT_ID=%s\n' "$token" "$account")
+      # D1 migrations after the code (D90); "No migrations to apply!" is a success. Only wrangler gets the two values.
+      - name: migrate D1
+        env:
+          CF_DEPLOY_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_DEPLOY_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DEPLOY_ENV: ${{ inputs.env }}
+        working-directory: apps/worker
+        run: |
+          exec env -i PATH="$PATH" HOME="$HOME" CI=true \
+            CLOUDFLARE_API_TOKEN="$CF_DEPLOY_TOKEN" CLOUDFLARE_ACCOUNT_ID="$CF_DEPLOY_ACCOUNT" \
+            ./node_modules/.bin/wrangler d1 migrations apply DB --remote --env "$DEPLOY_ENV"
+      # The wrapper appends the record to docs/deploys.md; the job cannot push, so it is kept for a commit by hand.
+      - name: deploy record
+        if: always() && steps.deploy.outcome == 'success'
+        run: |
+          { echo '### docs/deploys.md'; echo; git diff --no-color -U0 docs/deploys.md | sed -n 's/^+//p' | tail -n +2; } >> "$GITHUB_STEP_SUMMARY"
+      - if: always() && steps.deploy.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deploys-md-${{ inputs.env }}
+          path: docs/deploys.md
+          retention-days: 30

@@ -340,6 +340,22 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [x] Старый preview-адрес `https://037f86ff-stakeward-prod.stakeward.workers.dev/` больше не открывается (SECURITY-CHECK В5): 404, 09.10.2026.
 - [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
 
+### в) Через GitHub Actions (D115, с 10.10.2026)
+
+Один раз:
+
+- [ ] Cloudflare → My Profile → API Tokens → Create Token → шаблон «Edit Cloudflare Workers». Добавить право Account → D1 → Edit. Account Resources — только свой аккаунт, срок — до 20.10.2026. Скопировать токен. Account ID — на главной Workers & Pages, справа.
+- [ ] GitHub → репозиторий → Settings → Environments → New environment `prod`: Required reviewers — вы; Deployment branches — Selected branches → `main`. Затем Add environment secret: `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
+- [ ] То же для окружения `dev`, без ревьюера. Можно и из терминала: команда сама спросит значение, и оно не останется в истории оболочки:
+  `gh secret set CLOUDFLARE_API_TOKEN --env prod` и `gh secret set CLOUDFLARE_ACCOUNT_ID --env prod` (и с `--env dev`).
+- [ ] После первого удачного деплоя из Actions — удалить `~/.config/stakeward/secrets.env`, `dev.vars` и `prod.vars` с машины, откуда деплоили (П19). Старый токен Cloudflare отозвать.
+
+Каждый деплой:
+
+- [ ] Actions → deploy → Run workflow → branch `main`, env `dev` или `prod`. Prod ждёт вашего Approve. Нужен зелёный `check` на этом коммите.
+- [ ] Задание само применяет миграции D1: это закрывает 0004 в пунктах а) и б) выше. Запись для `docs/deploys.md` — в Summary запуска; пришлите ссылку на запуск, я закоммичу.
+- [ ] `pnpm verify-deploy --env <env> --commit <sha>` — PASS.
+
 ## Перед подачей: за владельцем
 
 Пункты В1–В9 из docs/SECURITY-CHECK.md, «За владельцем».
