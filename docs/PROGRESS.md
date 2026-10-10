@@ -432,3 +432,5 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - Colosseum: владелец зарегистрирован, черновик проекта Stakeward создан 10.10 (категория Security Tools), colosseum.com/arena/projects/stakeward. Финальная подача — до 12.10 23:59 PT.
 - Владелец: завести окружения и секреты в GitHub; первый запуск deploy в dev, затем в prod.
 - Затем этап 6 TESTPLAN (mainnet через Phantom) и отдельно Phantom на телефоне во встроенном браузере.
+- Деплой из Actions: dev и prod на f802765 (версии 75ff9ab4 и fcdda220), миграций не было, `verify-deploy` PASS оба. Секреты Cloudflare только в окружениях GitHub. У prod пока нет обязательного ревьюера — включить владельцу.
+- TESTPLAN этап 6: время смены эпох уточнено, добавлен пункт 4а (Phantom на телефоне).
