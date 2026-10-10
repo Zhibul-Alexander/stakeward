@@ -40,9 +40,10 @@ function decodeOrRefuse(raw: Parameters<typeof decodeStakeAccount>[0] | null): D
 
 /**
  * F4 step 4: per stake account, AuthorizeChecked(Staker -> D) and AuthorizeChecked(Withdrawer -> D) in one transaction,
- * signed by the main key A, the new wallet D and the second key K; D pays, always on D's durable nonce (F4.3: three
- * signatures never race a blockhash; the compromised key never pays nor owns the nonce). `remote` are the keys that
- * sign on another device by link. Every round reads the accounts and the clock again; the first match decides:
+ * signed by the main key A, the new wallet D and the second key K; D pays (the compromised key never pays nor owns the
+ * nonce). With every key in this browser it runs on a recent blockhash; with a key signing by link, on D's durable
+ * nonce. Phantom on mainnet moves the compute budget in front of AdvanceNonceAccount when it signs first, and the
+ * runtime then no longer sees a nonce transaction (D120). `remote` are the keys that sign on another device by link. Every round reads the accounts and the clock again; the first match decides:
  * 1. no account -> not-found (merged or closed); 2. not a stake account -> not-stake-account;
  * 3. both keys are D already -> done; 4. A no longer withdraws -> not-main-key;
  * 5. a lock in force held by A itself or by no key -> unsupported-lock; 6. one held by another key than K ->
@@ -53,12 +54,13 @@ export function rescuePlan(input: {
   mainKey: Address;
   secondKey: Address;
   newWallet: Address;
-  nonce: { nonceAccount: Address; nonceAuthority: Address };
+  /** D's durable nonce; none when every key signs in this browser (D120). */
+  nonce?: { nonceAccount: Address; nonceAuthority: Address } | undefined;
   remote: readonly Address[];
 }): SigningPlan {
   const { mainKey, secondKey, newWallet, nonce, remote } = input;
   return {
-    nonce,
+    ...(nonce === undefined ? {} : { nonce }),
     remote,
     async prepare(chain, ids) {
       const addresses = ids.map((id) => address(id));

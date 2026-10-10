@@ -81,7 +81,7 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 | Rescue one stake account | 3 | 0.0000156 SOL | the new wallet |
 | Open or close a link-signing account | 1 | 0.0000056 SOL | the wallet that owns it |
 
-**The link-signing account is a deposit, not a fee.** To sign on another device, and in every rescue, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
+**The link-signing account is a deposit, not a fee.** To sign on another device, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
 
 For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
 
@@ -342,11 +342,11 @@ The site says Main key, Second key and New wallet. The stake program and the Sol
 | Extend or remove | `SetLockup`: only `unix_timestamp` (0 removes the lock) | second key, and the main key when it pays | second key, or the main key if the second key has no SOL |
 | Stop staking | `Deactivate` | staker | staker |
 | Withdraw | `Withdraw` of the whole balance to the main key, custodian signing | main key, second key (the main key alone once the lock is gone) | main key |
-| Rescue | `AuthorizeChecked(Staker → new wallet)` + `AuthorizeChecked(Withdrawer → new wallet)`, always on a nonce owned by the new wallet | main key, second key, new wallet | new wallet |
+| Rescue | `AuthorizeChecked(Staker → new wallet)` + `AuthorizeChecked(Withdrawer → new wallet)`; on a recent blockhash when every key signs in this browser, on a nonce owned by the new wallet when a key signs by link | main key, second key, new wallet | new wallet |
 | Stake again after a rescue | `DelegateStake` | new wallet | new wallet |
 | Link-signing account | System `CreateAccountWithSeed` + `InitializeNonceAccount`; closing is `WithdrawNonceAccount` | its owner | its owner |
 
-Every transaction has one shape: `[AdvanceNonceAccount, if on a nonce] [compute unit limit] [compute unit price] [one stake instruction on one stake account]`, where a rescue is the one allowed pair. Messages are legacy, with no address lookup tables. Stake instructions use the legacy account order with sysvars, which the Ledger Solana app parses ([D1](docs/DECISIONS.md)). Phantom's Lighthouse instructions are accepted only at the end.
+Every transaction has one shape: `[AdvanceNonceAccount, if on a nonce] [compute unit limit] [compute unit price] [one stake instruction on one stake account]`, where a rescue is the one allowed pair. Messages are legacy, with no address lookup tables. Stake instructions use the legacy account order with sysvars, which the Ledger Solana app parses ([D1](docs/DECISIONS.md)). Phantom's Lighthouse instructions are accepted only at the end. Phantom on mainnet also moves the compute budget instructions to the front when it signs first; on a nonce transaction that breaks the nonce, so signing by link does not work when Phantom signs first (D120).
 
 `inspectTransaction(bytes)` in `packages/core` reads a transaction only from its bytes and returns a typed summary: kind, stake account, amount, new keys, new lock, fee payer, lifetime, required and present signatures. It accepts only the shape above and rejects any other program, instruction or lookup table. It runs on every signing screen, on `/cosign`, and in the worker's RPC proxy before `simulateTransaction` and `sendTransaction`. Signing order: Phantom first, on an unsigned transaction; then the fee payer; then the rest. After each signature, `checkSigningStep` compares the message with the one sent; before sending, `verifyAllSignatures` checks every signature.
 
