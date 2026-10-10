@@ -13,6 +13,9 @@ export type AskAiProps = {
   className?: string | undefined;
 };
 
+/** A new tab that cannot reach back into this page or learn where it came from. */
+const NEW_TAB_REL = 'noopener noreferrer';
+
 const PROVIDERS: readonly { provider: AiProvider; label: 'askAi.chatgpt' | 'askAi.claude' }[] = [
   { provider: 'chatgpt', label: 'askAi.chatgpt' },
   { provider: 'claude', label: 'askAi.claude' },
@@ -38,7 +41,7 @@ export function AskAi({ prompt, className }: AskAiProps) {
       <div className="flex flex-wrap items-center gap-2">
         {PROVIDERS.map(({ provider, label }) => (
           <Button key={provider} variant="outline" asChild>
-            <a href={aiPromptUrl(provider, prompt)} target="_blank" rel="noopener noreferrer">
+            <a href={aiPromptUrl(provider, prompt)} target="_blank" rel={NEW_TAB_REL}>
               {t(label)}
               <ExternalLinkIcon aria-hidden="true" />
               <span className="sr-only">{t('askAi.newTab')}</span>
