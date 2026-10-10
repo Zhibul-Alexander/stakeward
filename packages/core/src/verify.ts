@@ -440,7 +440,10 @@ export function compareMessages(original: LegacyMessage, candidate: LegacyMessag
     const other = after[index];
     if (other === undefined) return changed('Instructions were removed');
     if (!sameInstruction(ix, other)) {
-      return changed(`Instruction ${String(index + 1)} was changed or a new instruction was inserted before it`);
+      return changed(
+        `Instruction ${String(index + 1)} was changed or a new instruction was inserted before it ` +
+          `(sent: ${describeInstructions(before)}; returned: ${describeInstructions(after)})`,
+      );
     }
   }
   if (after.length === before.length) return changed('The account list or the message header changed');
@@ -532,6 +535,20 @@ function sameInstruction(a: StakeIx, b: StakeIx): boolean {
     a.accounts.every((meta, index) => meta.address === b.accounts[index]?.address) &&
     bytesEqual(a.data, b.data)
   );
+}
+
+/**
+ * The instructions in a few public words for an error's Details: program (shortened), account count, first data bytes.
+ * Lets a report from a wallet that changed the message say what it changed (Phantom on mainnet, D117).
+ */
+function describeInstructions(instructions: readonly StakeIx[]): string {
+  return instructions
+    .map((ix, index) => {
+      const program = `${ix.programAddress.slice(0, 4)}…${ix.programAddress.slice(-4)}`;
+      const data = [...ix.data.slice(0, 8)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+      return `${String(index + 1)} ${program} ${String(ix.accounts.length)}acc ${data}${ix.data.length > 8 ? '…' : ''}`;
+    })
+    .join(', ');
 }
 
 function bytesEqual(a: ReadonlyUint8Array, b: ReadonlyUint8Array): boolean {
