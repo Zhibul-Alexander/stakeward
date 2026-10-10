@@ -1,4 +1,4 @@
-import { FlaskConicalIcon, LifeBuoyIcon, type LucideIcon } from 'lucide-react';
+import { FlaskConicalIcon, LifeBuoyIcon, PlayIcon, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +48,9 @@ export function SiteHeader() {
         <nav aria-label={t('nav.label')} className="flex w-full items-center gap-2 sm:w-auto">
           <NavLink href="/rescue" icon={LifeBuoyIcon}>
             {t('nav.rescue')}
+          </NavLink>
+          <NavLink href="/demo" icon={PlayIcon}>
+            {t('nav.demo')}
           </NavLink>
           <NavLink href="/app">{t('nav.app')}</NavLink>
         </nav>

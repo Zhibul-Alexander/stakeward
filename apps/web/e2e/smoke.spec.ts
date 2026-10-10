@@ -320,6 +320,7 @@ const ROUTES: readonly SmokeRoute[] = [
     },
     screen: 'stats',
   },
+  { path: '/demo', heading: text('demo.title'), noApi: true, screen: 'demo' },
   { path: '/no-such-page', ...NOT_FOUND, noApi: true, screen: 'not-found' },
   // The devnet-only pages are not in a mainnet build (on devnet, dev-ui.spec.ts and dev-cosign.spec.ts cover them).
   ...(DEVNET ? [] : [{ path: '/dev/ui', ...NOT_FOUND }, { path: '/dev/cosign', ...NOT_FOUND }]),
