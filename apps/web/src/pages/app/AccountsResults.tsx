@@ -10,6 +10,7 @@ import {
   SendIcon,
   ShieldCheckIcon,
   ShieldXIcon,
+  VenetianMaskIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -495,7 +496,17 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
       account={account}
     />
   );
-  return row.managedByService ? { action: protect } : { more: protect };
+  const steal = <StealLink account={account} />;
+  return row.managedByService
+    ? { action: protect, more: steal }
+    : {
+        more: (
+          <>
+            {protect}
+            {steal}
+          </>
+        ),
+      };
 }
 
 /**
@@ -529,7 +540,21 @@ function LockedRest({ account }: { account: Address }) {
         account={account}
       />
       <RecoveryCardLink account={account} />
+      <StealLink account={account} />
     </>
+  );
+}
+
+/** What a thief with only the main key could do to this account now, by simulation (DECISIONS.md D123). */
+function StealLink({ account }: { account: Address }) {
+  return (
+    <ActionLink
+      href={appLinks.steal(account)}
+      label={t('app.actions.steal')}
+      icon={<VenetianMaskIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
+    />
   );
 }
 

@@ -335,6 +335,12 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'cosign-broken',
   },
   {
+    // "Try to steal it" (D123): the account read with no wallet; the simulation runs only on the button.
+    path: `/try-steal/${SMOKE_STAKE}`,
+    heading: text('common.pages.steal'),
+    ready: text('steal.heading'),
+  },
+  {
     // The card of the smoke stake's pair of keys, read from the network with no wallet.
     path: `/recovery/${SMOKE_STAKE}`,
     heading: text('recovery.title'),

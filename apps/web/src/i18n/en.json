@@ -40,7 +40,8 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
-      "rescueNow": "Rescue status"
+      "rescueNow": "Rescue status",
+      "steal": "Try to steal it"
     }
   },
   "nav": {
@@ -896,7 +897,8 @@
       "rescue": "Rescue",
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
-      "more": "More for stake account {address}"
+      "more": "More for stake account {address}",
+      "steal": "Try to steal it"
     },
     "noLongerProtected": {
       "titleOne": "1 stake account is no longer protected",
@@ -2255,5 +2257,39 @@
     "copyFailed": "Copy failed. Select the text below and copy it by hand.",
     "show": "Show the question",
     "newTab": "(opens in a new tab)"
+  },
+  "steal": {
+    "intro": "See what a thief holding only your main key could do to this stake right now. The network answers, not Stakeward.",
+    "simulationOnly": "Simulation only. Nothing is signed or sent, and no wallet is needed.",
+    "heading": "What could a thief with your main key do?",
+    "run": "Try to steal it",
+    "runAgain": "Try again",
+    "running": "Asking the network",
+    "attempts": {
+      "withdraw": "Move the SOL out",
+      "remove-lock": "Remove the lock"
+    },
+    "verdicts": {
+      "blocked": "Blocked by the lock",
+      "would-succeed": "Would succeed",
+      "after-unstaking": "Possible after unstaking",
+      "unknown": "Could not test"
+    },
+    "explain": {
+      "blocked": "The network refused: your second key must co-sign.",
+      "would-succeed": "The network accepted it. A thief with your main key could do this now.",
+      "after-unstaking": "Only unstaking stands in the way: a thief unstakes first and takes the SOL when the epoch ends.",
+      "unknown": "{reason}"
+    },
+    "noFee": "The main key holds no SOL to pay the fee, so the network would not run the test. Add a little SOL to it to try.",
+    "summary": {
+      "safe": "Your SOL stays put: a stolen main key cannot move it or remove the lock.",
+      "exposed": "This stake is exposed: a stolen main key could take it. Protect it with a second key.",
+      "partial": "Some attempts could not be tested. See each line."
+    },
+    "still": "A thief with your main key can still unstake, redelegate, split the account or change who stakes it. Alerts tell you, and Rescue moves the stake to a new wallet.",
+    "protect": "Protect this stake",
+    "details": "Details",
+    "aiTask": "Explain what this test shows about my stake and what I should do."
   }
 }
