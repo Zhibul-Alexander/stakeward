@@ -724,7 +724,10 @@
       "inlineError": "Inline, error (the full card)",
       "connectLabel": "With its own Connect label",
       "lockPeriod": "Lock period, with Recommended",
-      "withDanger": "With a danger option"
+      "withDanger": "With a danger option",
+      "danger": "Danger",
+      "caution": "Caution",
+      "ok": "OK"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -793,7 +796,8 @@
       "radioCardGroup": "RadioCardGroup",
       "disclosure": "Disclosure",
       "keyList": "KeyList",
-      "askAi": "AskAi"
+      "askAi": "AskAi",
+      "transactionCheck": "TransactionCheck"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -830,7 +834,9 @@
       "nonceGateBlocked": "Address taken before set up: the page's way around it",
       "recovery": "Recovery card",
       "landingWallets": "Landing: wallet table"
-    }
+    },
+    "textareaLabel": "Transaction",
+    "textareaPlaceholder": "Base64 or base58"
   },
   "app": {
     "title": "Your stake accounts",
@@ -1854,6 +1860,115 @@
     "errorTitle": "Could not load the numbers",
     "errorBody": "Could not get the numbers from the Stakeward server. Wait a minute, then try again."
   },
+  "check": {
+    "title": "Check a transaction",
+    "lead": "Paste a transaction from any site before you sign it. Stakeward reads its bytes and tells you whether it touches stake accounts, and how.",
+    "inputLabel": "Transaction",
+    "inputHint": "Base64 or base58, as a site or a wallet's developer view shows it, or a Stakeward co-sign link.",
+    "walletLabel": "Your wallet (optional)",
+    "walletHint": "Instructions that take control away from this address are marked.",
+    "walletInvalid": "This is not a Solana address. Leave the field empty or paste your wallet address.",
+    "submit": "Check",
+    "local": "Checked in your browser. Nothing is sent.",
+    "neverSeed": "Never paste a private key or a recovery phrase here or anywhere else. Stakeward never asks for them.",
+    "checking": "Reading the transaction…",
+    "resultTitle": "What this transaction does",
+    "emptyTitle": "Nothing checked yet",
+    "emptyBody": "Paste a transaction above and press Check. Stakeward does not sign or send it.",
+    "errors": {
+      "empty": "Paste a transaction first.",
+      "malformedTitle": "Stakeward cannot read this as a transaction",
+      "malformedBody": "Copy the whole transaction again, in base64 or base58. Text that was cut or changed cannot be read. If a site will not show you what you are signing, do not sign.",
+      "addressTitle": "This is an address, not a transaction",
+      "addressBody": "Paste the transaction itself: the long text a site or a wallet shows before you sign.",
+      "secretTitle": "Never paste this anywhere",
+      "secretBody": "This looks like a private key, a recovery phrase or a signature, not a transaction. The field has been cleared. Stakeward never asks for a private key or a recovery phrase. If you pasted one into any site, move your funds to a new wallet."
+    },
+    "verdict": {
+      "danger": {
+        "title": "Do not sign unless you expected this",
+        "body": "This transaction changes who controls a stake account or its lock, or moves staked SOL. A hidden change like this is how staked SOL gets stolen."
+      },
+      "caution": {
+        "title": "Check before you sign",
+        "body": "As far as Stakeward can read, this transaction cannot take your staked SOL or the control of it, but it unstakes, moves stake, or uses something Stakeward cannot check."
+      },
+      "ok": {
+        "title": "No stake accounts touched",
+        "body": "This transaction has no stake instruction. Stakeward checks stake only: other instructions, such as a transfer, are listed but not judged."
+      }
+    },
+    "stakeward": "This is a transaction Stakeward itself builds.",
+    "lookupTable": "This transaction hides some accounts behind a lookup table; Stakeward cannot see them.",
+    "lookupTableAddress": "Lookup table",
+    "messageOnly": "This is a transaction message without its signature section.",
+    "signers": "Must be signed by",
+    "instruction": "Instruction {n}",
+    "risk": {
+      "ok": "OK",
+      "caution": "Caution",
+      "danger": "Danger"
+    },
+    "program": {
+      "stake": "Stake program",
+      "system": "System program",
+      "computeBudget": "Compute budget",
+      "lighthouse": "Lighthouse (wallet checks)",
+      "unknown": "Unknown program"
+    },
+    "effect": {
+      "authorizeWithdrawer": "Gives the right to withdraw this stake to another address. Whoever holds it can take the SOL.",
+      "authorizeStaker": "Gives the right to manage this stake (unstake, delegate, split) to another address.",
+      "setLockup": "Changes the lock of this stake account.",
+      "lockDate": "The lock ends on {date}.",
+      "lockRemoved": "The date lock is removed.",
+      "lockEpoch": "The lock ends at epoch {epoch}.",
+      "lockNewKey": "A new second key holds the lock.",
+      "withdraw": "Withdraws {amount} from this stake account.",
+      "merge": "Merges one stake account into another. The source account closes and its SOL moves.",
+      "deactivate": "Unstakes this stake account. It stops earning; this alone does not move SOL.",
+      "delegate": "Delegates this stake to a validator.",
+      "split": "Splits {amount} into a new stake account with the same keys and lock.",
+      "moveStake": "Moves {amount} of active stake to another stake account with the same keys.",
+      "moveLamports": "Moves {amount} to another stake account with the same keys.",
+      "initialize": "Sets up a new stake account with these keys.",
+      "initializeLock": "It also sets a lock on the new account.",
+      "deactivateDelinquent": "Unstakes a stake account whose validator stopped voting. Anyone may do this.",
+      "stakeInfo": "Reads a stake program setting. Changes nothing.",
+      "unreadable": "A stake instruction Stakeward cannot read. Do not sign.",
+      "unknownProgram": "A program Stakeward does not know. Stakeward cannot say what it does.",
+      "other": "Not a stake instruction. Stakeward does not check it.",
+      "hidden": "Uses accounts hidden in a lookup table."
+    },
+    "wallet": {
+      "replaced": "Your wallet loses control here.",
+      "authority": "Your wallet signs this."
+    },
+    "field": {
+      "stake": "Stake account",
+      "newAuthority": "New address",
+      "authority": "Signed by",
+      "custodian": "Second key co-signing",
+      "newCustodian": "New second key",
+      "recipient": "Sent to",
+      "destination": "Into",
+      "source": "From",
+      "vote": "Validator vote account",
+      "newStake": "New stake account",
+      "staker": "Manages the stake",
+      "withdrawer": "Can withdraw",
+      "lockCustodian": "Second key of the lock",
+      "program": "Program",
+      "hidden": "Hidden in a lookup table"
+    },
+    "ai": {
+      "task": "Explain in plain words what this Solana transaction would do to my stake, and whether I should sign it.",
+      "instruction": "Instruction {n} ({program}, {risk})",
+      "lookupTable": "Lookup table",
+      "stakeward": "Stakeward format"
+    },
+    "askAiBody": "Opens this question in your own ChatGPT or Claude account, with what this page found. Stakeward sends nothing, stores nothing and holds no AI key. The AI only explains; this page's reading of the bytes stays the truth."
+  },
   "faq": {
     "title": "Questions and answers",
     "gateLink": "Test results in the repository (docs/gate.md)",
@@ -1943,6 +2058,10 @@
       "fake-site": {
         "q": "How do I avoid a fake Stakeward site?",
         "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. Each stake account you protected must say Protected or Expiring soon. One that says Locked by another key is not locked by the key you connected. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
+      },
+      "check-tx": {
+        "q": "Can Stakeward check a transaction from another site?",
+        "a": "Yes. Paste it on the Check a transaction page before you sign. Stakeward reads its bytes in your browser and says whether it changes who controls a stake account, changes its lock or moves staked SOL. Nothing is sent anywhere.\n\nThis is the check that would have flagged the September 2025 SwissBorg loss: a routine unstaking transaction carried a hidden change of the withdrawal key."
       },
       "check-explorer": {
         "q": "How can I check my lock without Stakeward?",
@@ -2069,7 +2188,8 @@
       "withdrawNote": "When you withdraw, the Ledger does not show your second key. The Stakeward screen shows it in full.",
       "phantom": "Phantom may add its own safety checks to a transaction. If it does that for a Ledger account, the Ledger cannot read them and asks for blind signing. Whether it does is not known.",
       "termsLink": "What custodian, withdrawer and staker mean"
-    }
+    },
+    "checkLink": "Check a transaction"
   },
   "demo": {
     "title": "See a theft, then see it fail",
