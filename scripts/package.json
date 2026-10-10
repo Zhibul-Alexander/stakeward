@@ -12,7 +12,8 @@
     "gate:litesvm": "node gate.ts litesvm",
     "gate:devnet": "node gate.ts devnet",
     "gate:mainnet": "node gate.ts mainnet",
-    "recovery-cli": "node recovery-cli.ts"
+    "recovery-cli": "node recovery-cli.ts",
+    "ledger-sim": "node ledger-sim.ts"
   },
   "dependencies": {
     "@solana-program/compute-budget": "0.19.0",

@@ -26,7 +26,8 @@
     "gate:litesvm": "pnpm --filter @stakeward/scripts gate:litesvm",
     "gate:devnet": "pnpm --filter @stakeward/scripts gate:devnet",
     "gate:mainnet": "pnpm --filter @stakeward/scripts gate:mainnet",
-    "recovery-cli": "pnpm --filter @stakeward/scripts recovery-cli"
+    "recovery-cli": "pnpm --filter @stakeward/scripts recovery-cli",
+    "ledger-sim": "pnpm --filter @stakeward/scripts ledger-sim"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
