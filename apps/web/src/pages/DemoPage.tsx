@@ -332,7 +332,11 @@ export function DemoPage({ stepMs = 900, now = () => new Date() }: { stepMs?: nu
             <ol className="flex flex-col gap-2">
             {log.map((line, index) => (
               <li key={`${line.key}-${String(index)}`} className="flex gap-3 motion-safe:animate-fade-in">
-                <span className="w-20 shrink-0 text-muted">{t(`demo.actors.${line.actor}`)}</span>
+                <span className="w-20 shrink-0 text-muted">
+                  {t(`demo.actors.${line.actor}`)}
+                  {/* Copied text and screen readers get "Main key: Signs ..." rather than "Main keySigns ...". */}
+                  <span className="sr-only">{': '}</span>
+                </span>
                 <span className={LINE_TONE[line.tone]}>{t(line.key, { date: lockDate })}</span>
               </li>
             ))}
