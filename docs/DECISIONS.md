@@ -1003,6 +1003,13 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - AskAi (D122) под результатом: задача «Explain in plain words what this Solana transaction would do to my stake, and whether I should sign it.», факты — описание и риск каждой инструкции с названными адресами, вердикт страницы. Байтов транзакции в вопросе нет. У AskAi появился необязательный `body`: стандартная строка говорит «checked against the network», а /check в сеть не ходит.
 - Новый компонент `TransactionCheck` (обычное, загрузка, пусто, ошибка; danger, caution, ok) и примитив shadcn `Textarea` — на /dev/ui; нужна повторная `/design-sync`. Ссылка на /check — вопрос FAQ «Can Stakeward check a transaction from another site?» (подвал не трогали: на 360 px там тесно).
 
+## D127. Публичный кошелёк «Try to steal it» на devnet (10.10.2026, по слову Паши)
+
+- `pnpm challenge-wallet [--sol 1]`: делегированный стейк-аккаунт на devnet, staker = withdrawer = A, и продуктовая транзакция защиты (SetLockupChecked из core, подписи A и K) до 31.12.2099 00:00 UTC. Обе транзакции платит `.keys/devnet-funder.json`: опубликованный ключ комиссию не платит. В конце — `POST /api/watch` на dev, чтобы попытки ловил мониторинг.
+- Ключ A (`.keys/challenge-main.json`) публикуется: скрипт печатает его в base58, как его импортируют кошельки. Ключ K (`.keys/challenge-second.json`) не публикуется никогда. В репозиторий ключи не попадают (.keys/ в .gitignore), в сборку сайта тоже.
+- Только devnet (выбор Паши на карточке): на mainnet нужен отдельный явный ок. Возврат с mainnet был бы только через спасение (A + K + новый кошелёк одной транзакцией): снятие замка вторым ключом открыло бы вывод любому, у кого A.
+- Тест: `scripts/challenge-wallet/challenge.test.ts` на LiteSVM — замок до 2099 с хранителем K; A один не выводит (LockupInForce) и не снимает замок (MissingRequiredSignature), но снимает с делегирования.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
