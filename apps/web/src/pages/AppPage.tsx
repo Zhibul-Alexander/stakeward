@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import { useSlot } from '@/ports';
 import { AccountsResults } from './app/AccountsResults.tsx';
 import { AddressForm, isCheckableAddress } from './app/AddressForm.tsx';
+import { ForgetKeys } from './app/ForgetKeys.tsx';
 import { KeySlot } from './app/KeySlot.tsx';
 
 const loadHealthFromWorker = () => fetchHealth();
@@ -48,6 +49,7 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
         />
         {address === null ? null : <AccountsResults key={address} address={address} loadHealth={loadHealth} />}
       </div>
+      <ForgetKeys />
     </Page>
   );
 }
