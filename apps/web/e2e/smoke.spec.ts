@@ -335,6 +335,12 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'cosign-broken',
   },
   {
+    // "Try to steal it" (D123): the account read with no wallet; the simulation runs only on the button.
+    path: `/try-steal/${SMOKE_STAKE}`,
+    heading: text('common.pages.steal'),
+    ready: text('steal.heading'),
+  },
+  {
     // The card of the smoke stake's pair of keys, read from the network with no wallet.
     path: `/recovery/${SMOKE_STAKE}`,
     heading: text('recovery.title'),
@@ -350,6 +356,17 @@ const ROUTES: readonly SmokeRoute[] = [
     },
     after: recoveryPrint,
     screen: 'recovery',
+  },
+  {
+    // The public proof of the smoke main key's stake (D124): read from the network with no wallet, never "Protected".
+    path: `/proof/${MAIN}`,
+    heading: text('proof.title'),
+    shows: async (page) => {
+      await expect(page.getByText(text('proof.headline', { locked: '1,250.5', total: '1,250.5' }), { exact: true })).toBeVisible();
+      await expect(page.locator('article[data-slot="account-row"]')).toHaveAttribute('data-status', 'locked-by-other');
+      await expect(page.getByText(text('proof.limits'), { exact: true })).toBeVisible();
+    },
+    screen: 'proof',
   },
   {
     path: '/stats',
