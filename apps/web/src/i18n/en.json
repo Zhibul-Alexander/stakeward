@@ -1147,13 +1147,23 @@
       "6-months": "6 months",
       "12-months": "12 months",
       "10-minutes": "10 minutes (devnet test)",
-      "1-hour": "1 hour (devnet test)"
+      "1-hour": "1 hour (devnet test)",
+      "custom": "Custom date"
     },
+    "customPick": "Pick a date",
+    "customLabel": "Lock until",
+    "customHint": "The lock ends at 00:00 UTC on this date. From {min} to {max}.",
+    "customProblem": {
+      "invalid": "Enter a whole date.",
+      "too-soon": "Pick a date from {min} on: a new end must be later than the current one.",
+      "too-late": "Pick a date no later than {max}. The longer the lock, the longer you wait if you lose the second key."
+    },
+    "needDate": "Pick the date the lock ends.",
     "until": "until {date}",
     "recommended": "Recommended",
     "option": "{period}: until {date}",
     "remove": "Remove the lock now",
-    "noLater": "No period ends later than the current lock. You can still remove it.",
+    "noLater": "No fixed period ends later than the current lock. Pick a later date, or remove the lock.",
     "review": "Review new end date",
     "reviewRemove": "Review lock removal",
     "phone": "Your second key signs. In a phone wallet it needs a little SOL for the fee.",

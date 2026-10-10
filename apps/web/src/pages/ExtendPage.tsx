@@ -45,6 +45,7 @@ export function ExtendPage({ signing }: ExtendPageProps) {
   const loaded = loadedAccount(load);
   const rent0 = useLoad('rent0', () => chain.getMinimumBalanceForRentExemption(0));
   const [selected, setSelected] = useState<string | null>(null);
+  const [customDate, setCustomDate] = useState('');
   const [page, setPage] = useState<PageState>({ kind: 'choose' });
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
@@ -128,6 +129,8 @@ export function ExtendPage({ signing }: ExtendPageProps) {
               removeParam={removeParam}
               selected={selected}
               onSelect={setSelected}
+              customDate={customDate}
+              onCustomDate={setCustomDate}
               onReread={reread}
               onContinue={(choice) => {
                 start({
