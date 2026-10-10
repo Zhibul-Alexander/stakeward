@@ -173,7 +173,7 @@ describe('review: the signing step refuses what a wallet may not change', () => 
     expect(await verdict(nonce.built.bytes, sysvarWritable)).toBe('tail-adds-signer');
   });
 
-  it('refuses a valid-looking tail combined with reordered static accounts', async () => {
+  it('accepts a valid tail with the static accounts in another order, as Phantom sends it on mainnet (D117)', async () => {
     const { built } = await protect();
     const count = decodeMessage(built.bytes).staticAccounts.length;
     const tailed = appendLighthouseTail(built.bytes, [X]);
@@ -183,14 +183,14 @@ describe('review: the signing step refuses what a wallet may not change', () => 
       [accounts[count - 1], accounts[count - 2]] = [accounts[count - 2] ?? X, accounts[count - 1] ?? X];
       return relist(m, accounts);
     });
-    expect(await verdict(built.bytes, swapped)).toBe('message-changed');
-    // The tail's Lighthouse program moved in front of the last original account.
+    expect(await verdict(built.bytes, swapped)).toBe('ok:1');
+    // The tail's Lighthouse program moved in front of the last original account (both read-only).
     const lighthouseFirst = editMessage(tailed, (m) => {
       const accounts = [...m.staticAccounts];
       [accounts[count - 1], accounts[count]] = [accounts[count] ?? X, accounts[count - 1] ?? X];
       return relist(m, accounts);
     });
-    expect(await verdict(built.bytes, lighthouseFirst)).toBe('message-changed');
+    expect(await verdict(built.bytes, lighthouseFirst)).toBe('ok:1');
   });
 
   it('refuses a changed blockhash, nonce value or nonce account, with or without a tail', async () => {

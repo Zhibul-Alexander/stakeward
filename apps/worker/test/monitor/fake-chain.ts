@@ -1,6 +1,7 @@
 // A scripted Solana RPC for the monitor tests: accounts in a map, a slot and a cluster clock, answering
-// getMultipleAccounts (Clock sysvar included), getProgramAccounts (filters applied for real) and getGenesisHash the
-// way an RPC node writes them (lamports as bare JSON numbers, exact above 2^53).
+// getMultipleAccounts (Clock sysvar included), getProgramAccounts (filters applied for real), getGenesisHash and
+// sendTransaction (scripted by `sendReply`) the way an RPC node writes them (lamports as bare JSON numbers, exact above
+// 2^53).
 import { getBase58Encoder, type Address } from '@solana/kit';
 import { GENESIS_HASH, STAKE_PROGRAM_ADDRESS, SYSVAR_CLOCK_ADDRESS, SYSVAR_PROGRAM_ADDRESS } from '@stakeward/core';
 import { encodeBase64 } from '../../src/base64.ts';
@@ -41,6 +42,9 @@ export class FakeChain {
   private lag = 0;
   private genesisHash: string = GENESIS_HASH.devnet;
   private readonly hooks: ((call: ChainCall) => void | Promise<void>)[] = [];
+  /** What sendTransaction answers: a signature (`result`) by default, or a JSON-RPC error. */
+  sendReply: (params: unknown[]) => { result: string } | { error: { code: number; message: string; data?: unknown } } =
+    () => ({ result: '1111111111111111111111111111111111111111111111111111111111111111' });
 
   /** Puts a stake account built from `spec` (test/transactions.ts) at `address`. */
   putStake(address: Address, spec: StakeAccountSpec, lamports = 10_000_000_000n): void {
@@ -147,6 +151,8 @@ export class FakeChain {
         return this.programAccounts(id, slot, params);
       case 'getGenesisHash':
         return JSON.stringify({ jsonrpc: '2.0', id, result: this.genesisHash });
+      case 'sendTransaction':
+        return JSON.stringify({ jsonrpc: '2.0', id, ...this.sendReply(params) });
       default:
         return JSON.stringify({ jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } });
     }

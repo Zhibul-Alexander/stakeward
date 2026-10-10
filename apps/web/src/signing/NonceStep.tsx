@@ -130,6 +130,8 @@ type NonceStepProps = {
   /** The account is set up (or closed): the chain shows it. */
   onDone: () => void;
   signing?: SigningTestOptions | undefined;
+  /** Another nonce account of the same key (NonceGate `seed`). */
+  seed?: string | undefined;
 };
 
 type Step = { kind: 'card'; outcome: JobView | null } | { kind: 'signing'; key: number };
@@ -140,7 +142,7 @@ type Step = { kind: 'card'; outcome: JobView | null } | { kind: 'signing'; key: 
  * that lands calls `onDone`; any other outcome goes back to the card with the reason and Try again. Back returns to
  * the card.
  */
-export function NonceStep({ authority, nonceAccount, role, mode, variant = 'close', amount, onDone, signing }: NonceStepProps) {
+export function NonceStep({ authority, nonceAccount, role, mode, variant = 'close', amount, onDone, signing, seed }: NonceStepProps) {
   const [step, setStep] = useState<Step>({ kind: 'card', outcome: null });
   const runs = useRef(0);
 
@@ -188,6 +190,7 @@ export function NonceStep({ authority, nonceAccount, role, mode, variant = 'clos
         mode={mode}
         runKey={step.key}
         signing={signing}
+        seed={seed}
         onFinished={finished}
         onBack={() => {
           setStep({ kind: 'card', outcome: null });
@@ -204,15 +207,16 @@ type NonceSigningProps = {
   mode: NonceMode;
   runKey: number;
   signing?: SigningTestOptions | undefined;
+  seed?: string | undefined;
   onFinished: (state: SigningState) => void;
   onBack: () => void;
 };
 
 /** The run itself: mounted only after the user's click, so no session reads the chain before it. */
-function NonceSigning({ authority, nonceAccount, role, mode, runKey, signing, onFinished, onBack }: NonceSigningProps) {
+function NonceSigning({ authority, nonceAccount, role, mode, runKey, signing, seed, onFinished, onBack }: NonceSigningProps) {
   const ports = usePorts();
   const ids = [nonceAccount];
-  const create = () => createPageSession(ports, { plan: noncePlan({ authority, nonceAccount, mode }), ids, signing, onFinished });
+  const create = () => createPageSession(ports, { plan: noncePlan({ authority, nonceAccount, mode, seed }), ids, signing, onFinished });
   const { session, snapshot } = useSigningSession(create, `nonce#${mode}#${String(runKey)}`);
   return (
     <PageSigningPanel

@@ -25,6 +25,8 @@ export function blockerText(blocker: Blocker): string {
       return t('protect.second.needSeedCheck');
     case 'need-clock':
       return t('protect.period.needClock');
+    case 'need-date':
+      return t('protect.period.needDate');
   }
 }
 

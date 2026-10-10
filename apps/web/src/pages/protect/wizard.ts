@@ -103,7 +103,9 @@ export type Blocker =
   | 'need-second'
   | 'second-key-problem'
   | 'need-seed-check'
-  | 'need-clock';
+  | 'need-clock'
+  /** Step 3 with Custom date chosen: no valid date typed yet (D118). */
+  | 'need-date';
 
 export type BlockerInput = {
   mainReady: boolean;
@@ -114,6 +116,8 @@ export type BlockerInput = {
   problems: number;
   seedConfirmed: boolean;
   clockReady: boolean;
+  /** Step 3: the chosen period gives a lock end (always true for the fixed periods). */
+  dateReady: boolean;
 };
 
 /** What keeps Continue from going on at a step, in the order the screen lists them; empty = go on. */
@@ -134,9 +138,13 @@ export function blockers(step: 'accounts' | 'second-key' | 'period', input: Bloc
     case 'period':
       if (input.selection === 0) return ['none-left'];
       if (!input.clockReady) found.push('need-clock');
+      else if (!input.dateReady) found.push('need-date');
       return found;
   }
 }
+
+/** A lock period card of step 3: a fixed period, or a date the owner picks (D118). */
+export type PeriodChoice = LockPeriod | 'custom';
 
 export type WizardState = {
   step: WizardStep;
@@ -145,7 +153,9 @@ export type WizardState = {
   secondMode: SignMode;
   /** The second key's address as typed or pasted for signing by link (kept while the user goes back and forth). */
   linkKey: string;
-  period: LockPeriod;
+  period: PeriodChoice;
+  /** The date typed for Custom date (`YYYY-MM-DD`), kept while the user goes back and forth (D118). */
+  customDate: string;
   /** T, fixed when the period step's Continue is pressed; reused by every retry of the run. */
   lockUntil: bigint | null;
   /** The signing run; a new key is a new signing session. */
@@ -162,7 +172,8 @@ export type WizardAction =
   | { type: 'confirm-seed'; value: boolean }
   | { type: 'second-mode'; value: SignMode }
   | { type: 'link-key'; text: string }
-  | { type: 'period'; value: LockPeriod }
+  | { type: 'period'; value: PeriodChoice }
+  | { type: 'custom-date'; text: string }
   | { type: 'sign'; lockUntil: bigint; ids: readonly Address[] }
   | { type: 'finished'; jobs: readonly JobView[]; clock: ChainClock | null }
   | { type: 'retry'; ids: readonly Address[] }
@@ -175,6 +186,7 @@ export function initialWizardState(): WizardState {
     secondMode: 'here',
     linkKey: '',
     period: DEFAULT_LOCK_PERIOD,
+    customDate: '',
     lockUntil: null,
     run: null,
     outcomes: {},
@@ -195,6 +207,8 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, linkKey: action.text };
     case 'period':
       return { ...state, period: action.value };
+    case 'custom-date':
+      return { ...state, customDate: action.text };
     case 'sign':
       return { ...state, step: 'sign', lockUntil: action.lockUntil, run: nextRun(state, action.ids) };
     case 'finished': {

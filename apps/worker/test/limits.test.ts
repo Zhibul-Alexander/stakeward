@@ -76,6 +76,32 @@ describe('rate limits per client IP', { timeout: 90_000 }, () => {
     expect((await testApp(upstream).watch({})).status).toBe(400);
   });
 
+  it(`rescue kits: writes share the watch limit (${String(WATCH_LIMIT)} per 60 s), the status the lookup limit`, async () => {
+    const upstream = fakeUpstream(() => {
+      throw new Error('refused requests never reach upstream');
+    });
+    const ip = freshIp();
+    const app = testApp(upstream, { ip });
+    const postKit = () =>
+      app.request('/api/rescue-kits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    await atFreshWindow(60, 20_000);
+    for (let i = 0; i < WATCH_LIMIT / 2; i++) {
+      expect((await postKit()).status).toBe(400);
+      expect((await app.watch({})).status).toBe(400);
+    }
+    for (const limited of [await postKit(), await app.watch({})]) {
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('Retry-After')).toBe('60');
+      expect(await limited.json()).toEqual({ error: 'rate-limited', message: 'Too many requests, try again in a minute' });
+      expect(securityHeadersOf(limited)).toEqual(SECURITY_HEADERS);
+    }
+
+    // The status shares the lookup counter, untouched by the writes.
+    for (let i = 0; i < LOOKUP_LIMIT; i++) expect((await app.request(`/api/rescue-kits?account=${key(9)}`)).status).toBe(200);
+    expect((await app.request('/api/stats')).status).toBe(429);
+    expect(upstream.calls).toHaveLength(0);
+  });
+
   it('the two limits are separate counters', async () => {
     const upstream = fakeUpstream((c) => rpcResponse(c.json.id, { epoch: 1 }));
     const ip = freshIp();
@@ -208,6 +234,23 @@ describe('security headers on every /api response', () => {
       await testApp(ok, { env: { TELEGRAM_WEBHOOK_SECRET: '' } }).request('/api/telegram/webhook', { method: 'POST', body: update }),
     ];
     expect(responses.map((r) => r.status)).toEqual([503, 200, 400, 200, 302, 400, 503, 200, 200, 401, 401, 503]);
+    for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
+  });
+
+  it('the rescue kit routes: status, refused kits, oversized bodies', async () => {
+    const ok = fakeUpstream(() => {
+      throw new Error('these requests never call the RPC');
+    });
+    const post = (path: string, body: string, contentType = 'application/json') =>
+      testApp(ok).request(path, { method: 'POST', headers: { 'Content-Type': contentType }, body });
+    const responses = [
+      await testApp(ok).request(`/api/rescue-kits?account=${key(9)}`),
+      await testApp(ok).request('/api/rescue-kits?account=bad'),
+      await post('/api/rescue-kits', '{}'),
+      await post('/api/rescue-kits', '{}', 'text/plain'),
+      await post('/api/rescue-kits', JSON.stringify({ transaction: 'A'.repeat(4096) })),
+    ];
+    expect(responses.map((r) => r.status)).toEqual([200, 400, 400, 415, 413]);
     for (const res of responses) expect(securityHeadersOf(res)).toEqual(SECURITY_HEADERS);
   });
 });

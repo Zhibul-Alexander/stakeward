@@ -1,7 +1,9 @@
 import { getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
-import { ZERO_ADDRESS } from './constants.ts';
+import { MAX_LOCKUP_END, ZERO_ADDRESS } from './constants.ts';
 import {
+  customLockBounds,
+  customLockEnd,
   DEFAULT_LOCK_PERIOD,
   isLockupInForce,
   lockPeriodsFor,
@@ -120,5 +122,36 @@ describe('validateSecondKey', () => {
 
   it('reports every rule a key breaks', () => {
     expect(validateSecondKey({ second: mainKey, mainKey, staker: mainKey, stakeAccount })).toEqual(['main-key', 'staker']);
+  });
+});
+
+describe('customLockEnd (D118)', () => {
+  // Saturday 10 October 2026, 21:30 UTC.
+  const now = BigInt(Date.UTC(2026, 9, 10, 21, 30) / 1000);
+
+  it('offers tomorrow to the same day five years on, in UTC', () => {
+    expect(customLockBounds(now)).toStrictEqual({ min: '2026-10-11', max: '2031-10-10' });
+    // 29 February has no fifth-year twin.
+    expect(customLockBounds(BigInt(Date.UTC(2028, 1, 29, 12) / 1000))).toStrictEqual({ min: '2028-03-01', max: '2033-02-28' });
+  });
+
+  it('locks until 00:00 UTC of the chosen date', () => {
+    expect(customLockEnd('2026-11-25', now)).toStrictEqual({ ok: true, lockUntil: BigInt(Date.UTC(2026, 10, 25) / 1000) });
+    expect(customLockEnd(' 2026-10-11 ', now)).toStrictEqual({ ok: true, lockUntil: BigInt(Date.UTC(2026, 9, 11) / 1000) });
+    expect(customLockEnd('2031-10-10', now)).toStrictEqual({ ok: true, lockUntil: BigInt(Date.UTC(2031, 9, 10) / 1000) });
+  });
+
+  it('refuses today, the past, more than five years and dates that do not exist', () => {
+    expect(customLockEnd('2026-10-10', now)).toStrictEqual({ ok: false, problem: 'too-soon' });
+    expect(customLockEnd('1999-01-01', now)).toStrictEqual({ ok: false, problem: 'too-soon' });
+    expect(customLockEnd('2031-10-11', now)).toStrictEqual({ ok: false, problem: 'too-late' });
+    for (const bad of ['', '2026-02-30', '2026-13-01', '11/25/2026', '2026-1-5', '+02026-11-25']) {
+      expect(customLockEnd(bad, now)).toStrictEqual({ ok: false, problem: 'invalid' });
+    }
+  });
+
+  it('always ends within MAX_LOCKUP_END, so the builder accepts it', () => {
+    const latest = customLockEnd(customLockBounds(now).max, now);
+    expect(latest.ok && latest.lockUntil <= MAX_LOCKUP_END).toBe(true);
   });
 });

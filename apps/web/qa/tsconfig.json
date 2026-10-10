@@ -1,0 +1,9 @@
+{
+  // QA suite (Playwright specs and the local stack): Node for the runner, DOM for the code that runs in the page.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["."]
+}

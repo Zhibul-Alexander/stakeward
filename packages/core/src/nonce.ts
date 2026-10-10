@@ -1,5 +1,5 @@
 import { getAddressDecoder, getBase58Decoder, type Address, type Nonce } from '@solana/kit';
-import { NONCE_ACCOUNT_SIZE, SYSTEM_PROGRAM_ADDRESS } from './constants.ts';
+import { NONCE_ACCOUNT_SIZE, RESCUE_KIT_NONCE_SEED_PREFIX, SYSTEM_PROGRAM_ADDRESS } from './constants.ts';
 import type { RawAccount } from './decode.ts';
 
 /**
@@ -33,4 +33,17 @@ export function readNonceAccount(raw: RawAccount | null, expectedAuthority: Addr
   if (authority !== expectedAuthority) return { kind: 'unusable', reason: 'authority', lamports };
   const value = getBase58Decoder().decode(data.subarray(VALUE_OFFSET, VALUE_OFFSET + 32)) as Nonce;
   return { kind: 'ready', authority, value, lamports };
+}
+
+const RESCUE_KIT_SEED_STAKE_CHARS = 18;
+const RESCUE_KIT_SEED = new RegExp(`^${RESCUE_KIT_NONCE_SEED_PREFIX}[1-9A-HJ-NP-Za-km-z]{${String(RESCUE_KIT_SEED_STAKE_CHARS)}}$`);
+
+/** Seed of the nonce account behind the one-tap rescue kit of `stakeAccount` (32 bytes, the System program's limit). */
+export function rescueKitNonceSeed(stakeAccount: Address): string {
+  return RESCUE_KIT_NONCE_SEED_PREFIX + stakeAccount.slice(0, RESCUE_KIT_SEED_STAKE_CHARS);
+}
+
+/** Whether `seed` has the shape `rescueKitNonceSeed` produces. */
+export function isRescueKitNonceSeed(seed: string): boolean {
+  return RESCUE_KIT_SEED.test(seed);
 }

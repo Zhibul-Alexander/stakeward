@@ -46,6 +46,7 @@ import {
   ZERO_ADDRESS,
 } from './constants.ts';
 import { LEGACY_SYSVAR_SLOTS, toLegacyLayout, type StakeIx } from './legacy-layout.ts';
+import { isRescueKitNonceSeed } from './nonce.ts';
 
 export type BuildOptions = {
   /** Fee payer; see `expectedFeePayer` for who it should be. Always a required signer. */
@@ -81,9 +82,10 @@ export type BuiltTransaction = {
  * Keys are addresses only: the builder never sees a private key, wallets sign the returned bytes.
  * Throws on inputs the program would reject anyway (zero or negative amounts, a second key equal to the main key, ...)
  * and on inputs Stakeward never sends: a lockup end after `MAX_LOCKUP_END`, a nonce seed other than
- * `NONCE_ACCOUNT_SEED`, and a rescue that the new wallet does not pay for or that runs on someone else's nonce
- * (CLAUDE.md section 5: the compromised main key never pays and never owns the nonce account). The inspector rebuilds
- * every transaction it accepts with this function, so these rules hold for /cosign links and the RPC proxy too.
+ * `NONCE_ACCOUNT_SEED` or a rescue kit seed (`rescueKitNonceSeed`), and a rescue that the new wallet does not pay for
+ * or that runs on someone else's nonce (CLAUDE.md section 5: the compromised main key never pays and never owns the
+ * nonce account). The inspector rebuilds every transaction it accepts with this function, so these rules hold for
+ * /cosign links and the RPC proxy too.
  */
 export function buildTransaction(action: TransactionAction, options: BuildOptions): BuiltTransaction {
   const transaction = compileTransaction(transactionMessage(action, options));
@@ -240,7 +242,10 @@ function actionInstructions(action: TransactionAction): Instruction[] {
       ];
     case 'nonce-setup':
       requireLamports(action.lamports);
-      check(action.seed === NONCE_ACCOUNT_SEED, `The nonce seed is always "${NONCE_ACCOUNT_SEED}"`);
+      check(
+        action.seed === NONCE_ACCOUNT_SEED || isRescueKitNonceSeed(action.seed),
+        `The nonce seed is "${NONCE_ACCOUNT_SEED}" or a rescue kit seed`,
+      );
       return [
         getCreateAccountWithSeedInstruction({
           payer: signer(action.nonceAuthority),

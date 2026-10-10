@@ -222,7 +222,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           loaded={loaded}
           cands={cands}
           knownSecondKeys={knownSecondKeys}
-          blockers={blockers('accounts', { ...blockerInput, clockReady: false })}
+          blockers={blockers('accounts', { ...blockerInput, clockReady: false, dateReady: false })}
           onSelect={(account, checked) => {
             setSelected(checked ? [...selected.filter((id) => id !== account), account] : selected.filter((id) => id !== account));
           }}
@@ -244,7 +244,7 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
           seedConfirmed={state.seedConfirmed}
           mode={state.secondMode}
           linkKey={state.linkKey}
-          blockers={blockers('second-key', { ...blockerInput, clockReady: false })}
+          blockers={blockers('second-key', { ...blockerInput, clockReady: false, dateReady: false })}
           onSeed={(value) => {
             dispatch({ type: 'confirm-seed', value });
           }}
@@ -268,9 +268,13 @@ export function ProtectWizard({ mainKey, signing }: ProtectWizardProps) {
         <PeriodStep
           headingRef={headingRef}
           period={state.period}
+          customDate={state.customDate}
           blockerInput={blockerInput}
           onPeriod={(value) => {
             dispatch({ type: 'period', value });
+          }}
+          onCustomDate={(text) => {
+            dispatch({ type: 'custom-date', text });
           }}
           onBack={() => {
             goTo('second-key');

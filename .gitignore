@@ -29,3 +29,6 @@ apps/web/.ds-pkg/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# QA suite (apps/web/qa): the local stack's generated wrangler config
+apps/worker/.wrangler.qa-local.json

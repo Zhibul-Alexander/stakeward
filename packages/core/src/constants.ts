@@ -63,6 +63,12 @@ export const NONCE_ACCOUNT_SIZE = getNonceSize();
  */
 export const NONCE_ACCOUNT_SEED = 'stakeward-nonce';
 
+/**
+ * Seed prefix of a one-tap rescue kit's nonce account (D118): `stakeward-kit-` plus the first 18 characters of the
+ * stake account, one nonce per stake account, so the pre-signed rescue of one account never advances another's.
+ */
+export const RESCUE_KIT_NONCE_SEED_PREFIX = 'stakeward-kit-';
+
 /** u64::MAX: `deactivation_epoch` of a delegation that is not being deactivated. */
 export const U64_MAX = 0xffff_ffff_ffff_ffffn;
 /** i64::MAX: the largest lockup unix timestamp the program can store. */

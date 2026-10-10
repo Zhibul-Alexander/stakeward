@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { isLockupInForce } from '@stakeward/core';
+import { isLockupInForce, type ChainClock } from '@stakeward/core';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -11,10 +11,12 @@ import { useMainKeyAccounts } from '@/pages/protect/load';
 import { useKnownSecondKeys, usePorts, useSlot, useWallets, useWalletSlots } from '@/ports';
 import { checkLanded, type LandedItem } from '@/signing/check';
 import type { SigningTestOptions } from '@/signing/create';
-import type { SigningState } from '@/signing/machine';
+import type { JobView, SigningState } from '@/signing/machine';
 import type { SignMode } from '@/signing/SignWhere';
 import { DoneStep } from './DoneStep.tsx';
 import { KeysStep } from './KeysStep.tsx';
+import { KitDoneStep } from './KitDoneStep.tsx';
+import { KitStep } from './KitStep.tsx';
 import { MoveStep } from './MoveStep.tsx';
 import { NewWalletStep } from './NewWalletStep.tsx';
 import { StakeStep } from './StakeStep.tsx';
@@ -48,6 +50,8 @@ const STEP_LABEL: Record<RescueStep, MessageKey> = {
   done: 'rescue.steps.done',
 };
 
+const KIT_STEP_LABEL: Record<RescueStep, MessageKey> = { ...STEP_LABEL, move: 'rescueKit.steps.sign' };
+
 const EMPTY_GROUPS = { movable: [], otherKey: [], unsupported: [] };
 const NOTHING_OFFERED: OfferedAccounts = new Map();
 
@@ -62,7 +66,10 @@ function stakeBlockerText(blocker: RescueBlocker): string {
  * wallet. One second key per run, at most MAX_RESCUE_ACCOUNTS accounts, most urgent first, always on the new wallet's
  * nonce. Nothing is written on this device before the chain shows a move.
  */
-export function RescueWizard({ signing }: { signing?: SigningTestOptions | undefined }) {
+export function RescueWizard({ signing, mode = 'rescue' }: { signing?: SigningTestOptions | undefined; mode?: 'rescue' | 'kit' }) {
+  // `kit`: one-tap rescue kits (D118), the same steps, but every key signs here and the worker keeps the signed rescue
+  // of each locked account instead of the chain getting it now.
+  const kit = mode === 'kit';
   const ports = usePorts();
   const { chain } = ports;
   const search = useSearch();
@@ -76,6 +83,8 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const [state, dispatchState] = useReducer(rescueReducer, paramA, initialRescueState);
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
+  // One-tap rescue kits: each stored kit's one-time Telegram link (D118), shown once on the Done step.
+  const [kitTelegram, setKitTelegram] = useState<ReadonlyMap<Address, string | null>>(new Map());
   // Every account each wallet app has offered since the page opened (SECURITY-CHECK П5): an app switched from the main
   // key to an "Add account" new wallet still holds the main key. Kept like derived state: set while rendering, only
   // when a wallet offers something new.
@@ -112,7 +121,10 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
         ? state.secondChoice
         : (choices[0] ?? null);
   const groups = A === null || clock === null ? EMPTY_GROUPS : rescueGroups(accounts, A, K, clock);
-  const runIds = groups.movable.slice(0, MAX_RESCUE_ACCOUNTS).map((account) => account.address);
+  const runIds = groups.movable
+    .filter((account) => !kit || (clock !== null && isLockupInForce(account.lockup, clock)))
+    .slice(0, MAX_RESCUE_ACCOUNTS)
+    .map((account) => account.address);
   const D = newSlot?.ready === true || keysOnward ? (slots.new?.address ?? null) : null;
   // The new wallet sits in the same wallet app as a key: probably the same seed phrase (SECURITY-CHECK П5). Checked on
   // every step that connects a key: the main key and the second key are often connected only at the keys or move step.
@@ -133,9 +145,11 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   const sameWallet: SameWallet | null =
     newWalletName === null || sharedWith.length === 0 ? null : { wallet: newWalletName, roles: sharedWith };
   // Where each key signs: the user's choice, else here when its slot holds it and its wallet offers it.
-  const mainMode: SignMode = state.mainMode ?? (A !== null && slots.main?.address === A && mainSlot?.ready === true ? 'here' : 'link');
+  const mainMode: SignMode = kit
+    ? 'here'
+    : (state.mainMode ?? (A !== null && slots.main?.address === A && mainSlot?.ready === true ? 'here' : 'link'));
   const secondMode: SignMode =
-    choices.length === 0
+    kit || choices.length === 0
       ? 'here'
       : (state.secondMode ?? (K !== null && slots.second?.address === K && secondSlot?.ready === true ? 'here' : 'link'));
 
@@ -168,6 +182,11 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
       return after !== null && next.clock !== null && isLockupInForce(after.lockup, next.clock);
     });
     if (lockedNow.length > 0) ports.protectedAccounts.remember(lockedNow);
+  }
+
+  function onKitFinished(jobs: readonly JobView[], clock: ChainClock | null, telegram: ReadonlyMap<Address, string | null>) {
+    setKitTelegram((previous) => new Map([...previous, ...telegram]));
+    dispatch({ type: 'finished', jobs, clock });
   }
 
   function onFinished(signingState: SigningState) {
@@ -210,7 +229,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
       ? [t('rescue.stake.loading')]
       : rescueBlockers('stake', {
           mainKey: liveA,
-          movable: groups.movable.length,
+          movable: kit ? runIds.length : groups.movable.length,
           choices: choices.length,
           newWallet: null,
           newProblems: 0,
@@ -223,15 +242,20 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
   return (
     <>
       <PageHeader
-        title={t('common.pages.rescue')}
-        lead={state.step === 'stake' ? t('rescue.intro') : undefined}
+        title={kit ? t('common.pages.rescueKit') : t('common.pages.rescue')}
+        lead={state.step === 'stake' ? (kit ? t('rescueKit.intro') : t('rescue.intro')) : undefined}
         meta={
           <>
-            <p>{t('rescue.desktop')}</p>
+            <p>{kit ? t('rescueKit.desktop') : t('rescue.desktop')}</p>
             <p>{t('common.neverSeedPhrase')}</p>
           </>
         }
-        progress={<StepProgress steps={RESCUE_STEPS.map((step) => t(STEP_LABEL[step]))} current={RESCUE_STEPS.indexOf(state.step)} />}
+        progress={
+          <StepProgress
+            steps={RESCUE_STEPS.map((step) => t((kit ? KIT_STEP_LABEL : STEP_LABEL)[step]))}
+            current={RESCUE_STEPS.indexOf(state.step)}
+          />
+        }
       />
       {state.step === 'stake' ? (
         <StakeStep
@@ -265,6 +289,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           sameWallet={sameWallet}
           problems={D === null ? [] : newWalletProblems(D, A, secondSlotKey === null ? choices : [...choices, secondSlotKey], accounts)}
           count={runIds.length}
+          kit={kit}
           seedConfirmed={state.seedConfirmed}
           onSeed={(value) => {
             dispatch({ type: 'confirm-seed', value });
@@ -286,6 +311,7 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
           sameWallet={sameWallet}
           mainMode={mainMode}
           secondMode={secondMode}
+          linkDisabled={kit ? t('rescueKit.keys.noLink') : undefined}
           onChoose={(address) => {
             dispatch({ type: 'second-choice', address });
           }}
@@ -304,6 +330,34 @@ export function RescueWizard({ signing }: { signing?: SigningTestOptions | undef
             dispatch({ type: 'main-mode', value: mainMode });
             dispatch({ type: 'second-mode', value: secondMode });
             dispatch({ type: 'move', ids: runIds, secondKey: K, newWallet: D });
+          }}
+        />
+      ) : kit && state.step === 'move' && state.run !== null && A !== null ? (
+        <KitStep
+          headingRef={headingRef}
+          run={state.run}
+          mainKey={A}
+          sameWallet={sameWallet}
+          signing={signing}
+          onFinished={onKitFinished}
+          onBack={() => {
+            dispatch({ type: 'go', step: 'keys' });
+          }}
+        />
+      ) : kit && state.step === 'done' && state.run !== null ? (
+        <KitDoneStep
+          headingRef={headingRef}
+          outcomes={state.order.flatMap((id) => state.outcomes[id] ?? [])}
+          newWallet={state.run.newWallet}
+          telegram={kitTelegram}
+          onRetry={() => {
+            const { run, outcomes } = stateRef.current;
+            if (run === null) return;
+            const ids = run.ids.filter((id) => {
+              const kind = outcomes[id]?.state.kind;
+              return kind !== 'done' && kind !== 'already-done';
+            });
+            dispatch({ type: 'move', ids, secondKey: run.secondKey, newWallet: run.newWallet });
           }}
         />
       ) : state.step === 'move' && state.run !== null && A !== null ? (

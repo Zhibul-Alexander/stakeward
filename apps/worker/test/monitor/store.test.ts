@@ -448,12 +448,19 @@ describe('daily statements', () => {
 });
 
 describe('delivery statements', () => {
-  it('PENDING: undelivered events in id order with the row keys and lock_until as text', async () => {
+  it('PENDING: undelivered events in id order with the row keys, lock_until as text and the chat of a ready kit', async () => {
     await seed(watchRow(10, { lockUntil: I64_MAX.toString() }), watchRow(11, { withdrawer: OTHER }));
     await insertEvent(key(10), 'DEACTIVATED', 1);
     await insertEvent(key(11), 'STAKER_CHANGED', 2, NOW_MS);
     await insertEvent(key(11), 'BALANCE_DECREASED', 3);
     await insertEvent(key(10), 'REMINDER_7', 4);
+    await db
+      .prepare(
+        `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at, status, chat_id)
+         VALUES (?1, 'AA==', ?2, ?2, ?2, ?2, 1, 'ready', '42')`,
+      )
+      .bind(key(11), key(12))
+      .run();
     const { results } = await db.prepare(SQL.PENDING).bind(2).all();
     expect(results).toEqual([
       {
@@ -465,6 +472,7 @@ describe('delivery statements', () => {
         withdrawer: MAIN,
         custodian: SECOND,
         lock_until: '9223372036854775807',
+        kit_chat_id: null,
       },
       {
         id: 3,
@@ -475,6 +483,7 @@ describe('delivery statements', () => {
         withdrawer: OTHER,
         custodian: SECOND,
         lock_until: LOCK_UNTIL.toString(),
+        kit_chat_id: '42',
       },
     ]);
   });

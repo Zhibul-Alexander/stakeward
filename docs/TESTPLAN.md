@@ -81,9 +81,14 @@ Claude правит найденное и пишет «готово к prod».
    ```
    и `y` (или «No migrations to apply!» — тоже успех). Написать «задеплоил prod» и дождаться «мониторинг prod работает».
 2. SOL: на Acc 1 (на нём сейчас 0,02 SOL и нет стейк-аккаунтов; другой кошелёк не брать: спасение забирает все стейк-аккаунты основного ключа) перевести около 1,05 SOL с биржи, сеть Solana. С Acc 1 отправить 0,02 SOL на Acc 3 и 0,005 SOL на Acc 2.
-3. Время: эпоха mainnet сменяется примерно раз в 32 часа, по оценке на 08.10 — около 18:36 9.10, 02:44 11.10 и 10:52 12.10 по Тбилиси. Пункты 3–4 начинать не позже чем за 3 часа до смены: если стейк делегирован в одной эпохе, а снят в следующей, вывод ждёт ещё целую эпоху.
+3. Время (уточнено 10.10.2026: слот около 220 мс, эпоха около 26,5 часа; смена около 20:50 10.10 и около 23:25 11.10 по Тбилиси, точнее — explorer.solana.com, Epoch). Эпоха mainnet раньше оценивалась в 32 часа, по оценке на 08.10 — около 18:36 9.10, 02:44 11.10 и 10:52 12.10 по Тбилиси. Пункты 3–4 начинать не позже чем за 3 часа до смены: если стейк делегирован в одной эпохе, а снят в следующей, вывод ждёт ещё целую эпоху.
    Стейк: в расширении Phantom на компьютере, на Acc 1 — Stake SOL → **Native Staking** (не Liquid Staking: там токен, а не стейк-аккаунт) → любой валидатор → 1,01 SOL (меньше 1 SOL сеть не делегирует).
 4. В тот же день, пока стейк в статусе Activating: prod `/app` → подключить Acc 1 → «Get alerts in Telegram» → Start в `@stakeward_bot` → Protect (срок 1 month) → Extend (более поздний срок, подписывает Second key) → Withdraw → «First, stop staking» (страница напишет «Stop it now and you can withdraw right away») → тревога в боте → спасение на Acc 3, как в этапе 3, п. 7 («Earn rewards again» не нажимать; link-signing account закрыть) → Withdraw: подписывают Acc 3 (теперь он владелец стейка, на сайте — Main key) и Acc 2 → SOL на Acc 3. Фраза Acc 3 — это фраза Acc 1: хранить её, на Acc 3 настоящие SOL. Если страница вывода пишет «Waiting for the epoch to end» — эпоха успела смениться, ждать её конца (на mainnet около 32 часов, столько и покажет отсчёт на странице, D108).
+4а. Телефон (10.10.2026). Во встроенном браузере Phantom на телефоне работают просмотр, действия одной подписью (продлить, снять замок) и /cosign; защита и спасение идут только на компьютере (CLAUDE.md §9, п. 10). Встроить в проход п. 4:
+   - До Protect: в Phantom на телефоне импортировать фразу Acc 2 (если её там нет), включить Mainnet. Phantom → значок браузера → адрес prod `/app?address=KGEtV7dbRrrrQ3QAUs8YzZgAuneu4KNhENRVHRk9XVw` → видно стейк-аккаунт, без подключения кошелька, без горизонтальной прокрутки. Сделано 10.10.2026 19:13 (до стейка): страница открылась в браузере Phantom на iPhone, «No stake accounts found», «Last checked» свежий, без прокрутки вбок, предупреждения Phantom не было.
+   - Extend делать с телефона: prod `/app` в браузере Phantom → подключить Acc 2 → раздел «You are the second key for» → Extend → подписать. Комиссию платит Acc 2 (на нём 0,005 SOL). На компьютере после перезагрузки `/app` видна новая дата, в боте приходит LOCKUP_CHANGED.
+   - Необязательно: последний Withdraw (Acc 3 + Acc 2) по ссылке. На компьютере Acc 3 начинает вывод, выбирает подпись по ссылке, а Acc 2 открывает ссылку или QR-код в браузере Phantom на телефоне, сверяет сводку и подписывает. Если не вышло — вывести обоими кошельками на компьютере и прислать, что было на экране.
+   - Записать: что показал Phantom на телефоне (предупреждения, сумма комиссии), открылись ли страницы, нет ли обрезанного текста.
 5. Первые пользователи: попросить одного-двух человек (валидаторы, Superteam Georgia) защитить свой стейк; спросить разрешения назвать их и привести одну фразу.
 6. Написать «mainnet пройден».
 
@@ -136,7 +141,7 @@ Claude правит найденное и пишет «готово к prod».
 
 Пара (Main key / Second key): Phantom 1 / Phantom 2. У владельца нет Ledger и других кошельков (05.10.2026), поэтому Solflare, Backpack и Ledger не проверяются; в FAQ так и пишем: проверен только Phantom. Если кошельки появятся, пары те же, что были: Phantom + Solflare, Phantom + Backpack, Solflare + Backpack, Ledger через каждый из них как Main key (ему нужен свой аккаунт: `pnpm dev-accounts <адрес Ledger> --only undelegated`).
 
-Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Phantom при подписи предупреждал: «This transaction could steal your funds in the future…» и «This domain is new…» (D110). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109).
+Каждую пару прогнать четыре раза. 08.10.2026, пара Acc 1 / Acc 2 (Phantom, devnet), сборка 2c6207a: во всех четырёх прогонах обе подписи «changed: none», `checkSigningStep: ok`, `verifyAllSignatures: ok`, транзакция подтверждена, замок как ожидалось (DECISIONS D5, D24). Phantom при подписи предупреждал: «This transaction could steal your funds in the future…» и «This domain is new…» (D110). Две попытки до деплоя 2c6207a остановлены на переключении аккаунтов (D109). 10.10.2026 на спасении Phantom уже не предупреждал, а блокировал запрос («Запрос заблокирован», пройти можно только через «Продолжить в любом случае»), D116.
 - [x] blockhash, Main key first: `2E3eJenmimzSkwEuw2ZpABGnd3QsX8K8vDMwoF8QY5A5D6wkv9DoEzJkudmVxJuCetQMv78jiSg2hYYZyeE26EzS`;
 - [x] blockhash, Second key first: `3WCesYLeZBFPpxsByJPxZBQMio7yyfmMMtvyWVDwcvKXJjia6wNaRpYg5JDP3H5M1w49tkRxy7RWjbRpEU4nEcYV`;
 - [x] nonce, Main key first: `5CPSxuKadDZ3QZ8msivNRrJ5caThjQQtrYYJRKRdvXt6oK2TZ98fnTRi9eFHDHQ1w23KvrDx2rXheQFqmwtPo5aG`;
@@ -210,7 +215,7 @@ set -a; . ~/.config/stakeward/dev.vars; set +a
 API="https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN"
 curl -sS "$API/setWebhook" --data-urlencode "url=$SITE_ORIGIN/api/telegram/webhook" \
   --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
-  --data-urlencode 'allowed_updates=["message","my_chat_member"]' -d drop_pending_updates=true
+  --data-urlencode 'allowed_updates=["message","my_chat_member","callback_query"]' -d drop_pending_updates=true
 curl -sS "$API/setMyCommands" -H 'Content-Type: application/json' -d '{"commands":[
   {"command":"start","description":"Get alerts for a wallet: /start <address>"},
   {"command":"status","description":"Wallets this chat follows"},
@@ -240,7 +245,7 @@ curl -sS "$API/getWebhookInfo"
    ( read -rsp 'New bot token: ' TOKEN; echo; read -rsp 'New webhook secret: ' SECRET; echo
      curl -sS "https://api.telegram.org/bot$TOKEN/setWebhook" \
        --data-urlencode "url=https://stakeward-dev.stakeward.workers.dev/api/telegram/webhook" \
-       --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member"]'
+       --data-urlencode "secret_token=$SECRET" --data-urlencode 'allowed_updates=["message","my_chat_member","callback_query"]'
      curl -sS "https://api.telegram.org/bot$TOKEN/getWebhookInfo" )
    ```
 5. Проверить: `getWebhookInfo` — наш URL, нет `last_error_message`; /start в боте отвечает; в Workers Logs у следующей записи `monitor pass` поле `botCheck: "ok"`. На отсутствие тревоги bot-mismatch не полагаться: она приходит не чаще раза в час (D89), а ротацию обычно начинают как раз после неё. Если вор менял описания бота, повторить `setMyDescription` и `setMyShortDescription` из блока выше с новым токеном: `API` задать через `read -rsp`, как в шаге 4, `SITE_ORIGIN` — адрес окружения (в `dev.vars` и `prod.vars` остался отозванный токен). У dev-бота оба описания начинаются с «Devnet test bot.».
@@ -292,6 +297,15 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Защита по ссылке с вставленным адресом второго ключа. Подсказка под полем: «Paste only the address of a wallet you or a person you trust created…».
 - [ ] Строки матрицы кошельков: меняет ли Phantom (Solflare, Backpack) байты, которые уже подписал другой кошелёк; предупреждения на nonce-транзакциях; что показывает Ledger.
 
+### Спасение в одно нажатие (D118, после деплоя в dev)
+
+- [ ] Перед проверкой: миграция 0005 применена к базе dev; вебхук бота перерегистрирован с `allowed_updates` из шага 5 (там теперь есть `callback_query`, без него кнопка «Rescue now» молчит).
+
+- [ ] `/rescue-kit?address=<Main key>` с защищённым аккаунтом: новый кошелёк с ~0,01 SOL на аккаунт, все три ключа подписывают здесь (вариант «по ссылке» выключен). Phantom может заблокировать подпись (D116). «Готово»: «One-tap rescue is ready» и кнопка «Connect Telegram for Rescue now»; открыть её в своём чате, бот отвечает, что спасение привязано. Повторное открытие ссылки: «already used». В эксплорере стейк не сдвинулся, у нового кошелька появился nonce-аккаунт.
+- [ ] `/rescue-kit/<аккаунт>`: статус «ready», новый владелец целиком, кнопки отправки нет.
+- [ ] Вор меняет staker из CLI (`solana stake-authorize-checked … --new-stake-authority <thief.json> --stake-authority stolen-main.json`): через один-два цикла монитора набор уходит сам, в эксплорере staker и withdrawer — новый кошелёк, замок тот же; в Telegram тревога о смене владельца.
+- [ ] Вор снимает делегирование с другого аккаунта с набором: в привязанном чате тревога с кнопкой «Rescue now», нажатие отправляет набор, бот отвечает «Rescue sent». В другом чате, подписанном через `/start <адрес>`, у той же тревоги обычная кнопка «Open Rescue».
+
 ## Шаг 8. Тексты
 
 Читать на https://stakeward-dev.stakeward.workers.dev, на 1280 и на 360 (DevTools → Toggle device toolbar → 360), сверху вниз. Состояния без кошельков — в `docs/screens/*.png` и на `/dev/ui`. Правки писать в чат: экран, текст сейчас, как должно быть; я вношу их одним коммитом и переснимаю экраны.
@@ -339,6 +353,22 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [x] `curl -s https://stakeward-prod.stakeward.workers.dev/api/health` — 200 через 2–15 минут; все маршруты открываются; в подвале нет пометки Devnet; на `/app` есть COOP (09.10.2026; маршруты и пометку проверяет `pnpm e2e:mainnet` в CI).
 - [x] Старый preview-адрес `https://037f86ff-stakeward-prod.stakeward.workers.dev/` больше не открывается (SECURITY-CHECK В5): 404, 09.10.2026.
 - [ ] Форма проверки домена в Phantom для адреса prod, если предупреждение о новом домене держится (ссылка в «Шаг 3 д»).
+
+### в) Через GitHub Actions (D115, с 10.10.2026)
+
+Один раз:
+
+- [ ] Cloudflare → My Profile → API Tokens → Create Token → шаблон «Edit Cloudflare Workers». Добавить право Account → D1 → Edit. Account Resources — только свой аккаунт, срок — до 20.10.2026. Скопировать токен. Account ID — на главной Workers & Pages, справа.
+- [ ] GitHub → репозиторий → Settings → Environments → New environment `prod`: Required reviewers — вы; Deployment branches — Selected branches → `main`. Затем Add environment secret: `CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`.
+- [ ] То же для окружения `dev`, без ревьюера. Можно и из терминала: команда сама спросит значение, и оно не останется в истории оболочки:
+  `gh secret set CLOUDFLARE_API_TOKEN --env prod` и `gh secret set CLOUDFLARE_ACCOUNT_ID --env prod` (и с `--env dev`).
+- [ ] После первого удачного деплоя из Actions — удалить `~/.config/stakeward/secrets.env`, `dev.vars` и `prod.vars` с машины, откуда деплоили (П19). Старый токен Cloudflare отозвать.
+
+Каждый деплой:
+
+- [ ] Actions → deploy → Run workflow → branch `main`, env `dev` или `prod`. Prod ждёт вашего Approve. Нужен зелёный `check` на этом коммите.
+- [ ] Задание само применяет миграции D1: это закрывает 0004 в пунктах а) и б) выше. Запись для `docs/deploys.md` — в Summary запуска; пришлите ссылку на запуск, я закоммичу.
+- [ ] `pnpm verify-deploy --env <env> --commit <sha>` — PASS.
 
 ## Перед подачей: за владельцем
 

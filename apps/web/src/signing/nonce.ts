@@ -17,9 +17,12 @@ import type { JobPlan, SigningPlan } from './types.ts';
  */
 export type NonceInfo = { address: Address; state: NonceAccountState; deposit: bigint };
 
-/** Reads the nonce account of `authority` and the deposit it needs, in one round of calls. */
-export async function readNonceInfo(chain: ChainPort, authority: Address): Promise<NonceInfo> {
-  const address = await deriveNonceAccountAddress(authority);
+/**
+ * Reads the nonce account of `authority` and the deposit it needs, in one round of calls. `seed` picks another account
+ * of the same key: a one-tap rescue kit's (core `rescueKitNonceSeed`, D118).
+ */
+export async function readNonceInfo(chain: ChainPort, authority: Address, seed: string = NONCE_ACCOUNT_SEED): Promise<NonceInfo> {
+  const address = await deriveNonceAccountAddress(authority, seed);
   const [{ accounts }, deposit] = await Promise.all([
     chain.getAccounts([address]),
     chain.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_SIZE),
@@ -28,9 +31,14 @@ export async function readNonceInfo(chain: ChainPort, authority: Address): Promi
 }
 
 /** The nonce account of `authority` as a load (null: nothing to read yet). A new `attempt` reads it again. */
-export function useNonceAccount(chain: ChainPort, authority: Address | null, attempt: number): Load<NonceInfo> {
-  return useLoad(authority === null ? null : `nonce#${authority}#${String(attempt)}`, () =>
-    readNonceInfo(chain, authority as Address),
+export function useNonceAccount(
+  chain: ChainPort,
+  authority: Address | null,
+  attempt: number,
+  seed: string = NONCE_ACCOUNT_SEED,
+): Load<NonceInfo> {
+  return useLoad(authority === null ? null : `nonce#${authority}#${seed}#${String(attempt)}`, () =>
+    readNonceInfo(chain, authority as Address, seed),
   );
 }
 
@@ -44,8 +52,13 @@ export type NonceRefusal = 'nonce-unusable';
  * - close: ready -> build nonce-close returning its whole balance to `authority`; missing -> done; unusable -> refused.
  * The only job is `nonceAccount`. The inspector's summary shows the deposit and that it cannot touch any stake.
  */
-export function noncePlan(input: { authority: Address; nonceAccount: Address; mode: 'setup' | 'close' }): SigningPlan {
-  const { authority, nonceAccount, mode } = input;
+export function noncePlan(input: {
+  authority: Address;
+  nonceAccount: Address;
+  mode: 'setup' | 'close';
+  seed?: string | undefined;
+}): SigningPlan {
+  const { authority, nonceAccount, mode, seed = NONCE_ACCOUNT_SEED } = input;
   return {
     async prepare(chain) {
       const [{ accounts }, rent, clock] = await Promise.all([
@@ -64,7 +77,7 @@ export function noncePlan(input: { authority: Address; nonceAccount: Address; mo
       if (state.kind === 'ready') return { kind: 'done', after: null };
       return {
         kind: 'build',
-        action: { kind: 'nonce-setup', nonceAccount, nonceAuthority: authority, seed: NONCE_ACCOUNT_SEED, lamports: rent },
+        action: { kind: 'nonce-setup', nonceAccount, nonceAuthority: authority, seed, lamports: rent },
         feePayer: authority,
         before: null,
       };

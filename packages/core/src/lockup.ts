@@ -61,6 +61,53 @@ export function lockupEndForPeriod(now: Date | bigint, months: 1 | 3 | 6 | 12): 
   return BigInt(Date.UTC(year, month, day + 1) / 1000);
 }
 
+/** The furthest custom lock end, in years from today (DECISIONS.md D118): a typo in the year cannot freeze a stake for decades. */
+export const CUSTOM_LOCK_MAX_YEARS = 5;
+
+export type CustomLockProblem = 'invalid' | 'too-soon' | 'too-late';
+
+/**
+ * The dates a custom lock end may take, as `YYYY-MM-DD` in UTC: from tomorrow to the same day CUSTOM_LOCK_MAX_YEARS
+ * later (29 February becomes 28 February). `now` is a Date or unix seconds.
+ */
+export function customLockBounds(now: Date | bigint): { min: string; max: string } {
+  const start = new Date(Number(toUnixSeconds(now)) * 1000);
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth();
+  const day = start.getUTCDate();
+  const min = new Date(Date.UTC(year, month, day + 1));
+  const lastDay = new Date(Date.UTC(year + CUSTOM_LOCK_MAX_YEARS, month + 1, 0)).getUTCDate();
+  const max = new Date(Date.UTC(year + CUSTOM_LOCK_MAX_YEARS, month, Math.min(day, lastDay)));
+  return { min: isoDate(min), max: isoDate(max) };
+}
+
+/**
+ * A custom lock end (D118): the lock holds until 00:00 UTC of `date` (`YYYY-MM-DD`), as the cards of the month periods
+ * say "until <date>". The date must be a real calendar date within `customLockBounds(now)`.
+ */
+export function customLockEnd(
+  date: string,
+  now: Date | bigint,
+): { ok: true; lockUntil: bigint } | { ok: false; problem: CustomLockProblem } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim());
+  if (match === null) return { ok: false, problem: 'invalid' };
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const ms = Date.UTC(year, month - 1, day);
+  const parsed = new Date(ms);
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) {
+    return { ok: false, problem: 'invalid' };
+  }
+  const { min, max } = customLockBounds(now);
+  const iso = isoDate(parsed);
+  if (iso < min) return { ok: false, problem: 'too-soon' };
+  if (iso > max) return { ok: false, problem: 'too-late' };
+  return { ok: true, lockUntil: BigInt(ms / 1000) };
+}
+
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 function toUnixSeconds(now: Date | bigint): bigint {
   if (typeof now === 'bigint') return now;
   const ms = now.getTime();

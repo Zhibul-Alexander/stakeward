@@ -45,6 +45,12 @@ export type SigningPlan = {
    * authority. They sign last: after the last signature here the round waits for the link (phase `link`).
    */
   remote?: readonly Address[] | undefined;
+  /**
+   * One-tap rescue kit (D118): each fully signed transaction goes here instead of to the chain, and its job ends `done`
+   * with the account as read before (the chain has not changed). A rejection fails the job. Never with `remote`: the
+   * last signer would send it from /cosign.
+   */
+  deliver?: ((bytes: Uint8Array) => Promise<void>) | undefined;
 };
 
 /** Which connected wallet signs for an address. */

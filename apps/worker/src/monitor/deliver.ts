@@ -9,7 +9,8 @@ import {
   type MonitorEventDetails,
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
-import { siteUrl } from '../telegram/api.ts';
+import { rescueKitCallbackData, RESCUE_KIT_EVENTS } from '../rescue-kits.ts';
+import { siteUrl, type TelegramButton } from '../telegram/api.ts';
 import { moreAlertsText } from '../telegram/texts.ts';
 import type { StoredEventType } from './classify.ts';
 import { MONITOR_LIMITS } from './config.ts';
@@ -42,6 +43,8 @@ export type PendingEvent = {
   withdrawer: Address;
   custodian: Address;
   lockUntil: bigint;
+  /** The chat bound to the account's ready rescue kit (D118), null without one. */
+  kitChatId: string | null;
 };
 
 export type Link = { wallet: Address; chatId: string; lastEventId: number };
@@ -57,6 +60,7 @@ export function pendingEventOf(row: PendingRow): PendingEvent {
     withdrawer: row.withdrawer,
     custodian: row.custodian,
     lockUntil: BigInt(row.lock_until),
+    kitChatId: row.kit_chat_id,
   };
 }
 
@@ -114,7 +118,7 @@ export type PlannedMessage = {
   /** Alerts in this message that count toward meta.alerts_sent (reminders do not). */
   alertCount: number;
   text: string;
-  button: { label: string; url: string };
+  button: TelegramButton;
 };
 
 export type DeliveryPlan = {
@@ -137,8 +141,10 @@ export type DeliveryPlan = {
  * 3. Chats by the first id of their list, then by chat id; the first `maxMessages` get one message each: the prefix
  *    of their list, at most 5 alerts and 3500 characters (the first alert always goes). With `fullWindow` the message
  *    covers the whole list: the rest is one last line (moreAlertsText).
- * 4. Text: "Devnet: " on devnet, then the alerts separated by a blank line. Button: the first covered alert that opens
- *    Rescue, else the first alert; always on `siteOrigin` (siteUrl). Without a site origin no message is planned.
+ * 4. Text: "Devnet: " on devnet, then the alerts separated by a blank line. Button: "Rescue now" when a covered
+ *    alarming alert (RESCUE_KIT_EVENTS) is of an account whose ready rescue kit is bound to this chat (a callback
+ *    button, D118); else the first covered alert that opens Rescue, else the first alert, always on `siteOrigin`
+ *    (siteUrl). Without a site origin no message is planned.
  */
 export function planDeliveries(
   pending: readonly PendingEvent[],
@@ -202,6 +208,7 @@ export function planDeliveries(
     if (first === undefined) continue;
     const covered = opts.fullWindow ? list : items;
     if (covered.length > items.length) text = `${text}\n\n${moreAlertsText(covered.length - items.length)}`;
+    const kit = covered.find((item) => item.event.kitChatId === chatId && RESCUE_KIT_EVENTS.has(item.event.type));
     const buttonAlert = covered.find((item) => isRescuePath(item.alert.path))?.alert ?? first.alert;
     const eventIds = covered.map((item) => item.event.id);
     plan.messages.push({
@@ -210,7 +217,10 @@ export function planDeliveries(
       lastEventId: Math.max(...eventIds),
       alertCount: covered.filter((item) => !item.event.type.startsWith('REMINDER_')).length,
       text,
-      button: { label: buttonAlert.buttonLabel, url: siteUrl(origin, buttonAlert.path) },
+      button:
+        kit === undefined
+          ? { label: buttonAlert.buttonLabel, url: siteUrl(origin, buttonAlert.path) }
+          : { label: 'Rescue now', callbackData: rescueKitCallbackData(kit.event.stakeAccount) },
     });
   }
   return plan;

@@ -78,8 +78,8 @@ type TransactionSummaryProps = {
 type Heading = 'h2' | 'h3' | 'h4';
 
 const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
-  protect: ['common.cannotMoveSol', 'components.tx.cannot.changeOwner'],
-  extend: ['common.cannotMoveSol', 'components.tx.cannot.onlyDate'],
+  protect: ['common.cannotMoveSol'],
+  extend: ['common.cannotMoveSol'],
   unlock: ['common.cannotMoveSol'],
   withdraw: ['components.tx.cannot.onlyRecipient', 'components.tx.cannot.noKeyChange'],
   deactivate: ['components.tx.cannot.stakeStays', 'components.tx.cannot.noKeyChange'],
@@ -157,7 +157,7 @@ export function TransactionSummary({
   current: single,
   knownRoles = {},
   batch,
-  intro = true,
+  intro = false,
   headingLevel = 2,
   className,
 }: TransactionSummaryProps) {
@@ -468,8 +468,6 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
           label: roleLabel('second'),
           before: custodian === undefined ? undefined : custodian === null ? t('components.tx.none') : <Full address={custodian} />,
           after: <Full address={action.secondKey} />,
-          // What a Ledger names the new second key (its sources, not a device: DECISIONS.md D80).
-          note: t('components.tx.ledgerNewAuthority'),
         },
       ];
     }

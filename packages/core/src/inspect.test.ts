@@ -645,7 +645,7 @@ describe('Lighthouse tail', () => {
     expect(await verdict(widened)).toBe('bad-layout');
   });
 
-  it('rejects a tail whose accounts are not appended at the end', async () => {
+  it('accepts a tail whose accounts are sorted in among the existing ones, as Phantom sends it on mainnet (D117)', async () => {
     // kit (like any recompiling wallet) sorts the new read-only accounts in among the existing ones.
     const built = build(ACTIONS.protect, BLOCKHASH);
     const recompiled = craft(
@@ -655,7 +655,9 @@ describe('Lighthouse tail', () => {
     );
     const original = decodeMessage(built.bytes).staticAccounts;
     expect(decodeMessage(recompiled).staticAccounts.slice(0, original.length)).not.toStrictEqual(original);
-    expect(await verdict(recompiled)).toBe('bad-lighthouse-tail');
+    const inspected = await inspectTransaction(recompiled);
+    expect(inspected.ok && inspected.summary).toMatchObject({ action: ACTIONS.protect, lighthouseTail: { instructionCount: 1 } });
+    // A read-only account of the tail swapped with an original read-only account: same accounts, same roles.
     const tailed = appendLighthouseTail(build(ACTIONS.protect, BLOCKHASH).bytes, [X]);
     const reordered = editMessage(tailed, (message) => {
       const accounts = [...message.staticAccounts];
@@ -663,7 +665,22 @@ describe('Lighthouse tail', () => {
       [accounts[last], accounts[last - 3]] = [accounts[last - 3] ?? A, accounts[last] ?? A];
       return relist(message, accounts);
     });
-    expect(await verdict(reordered)).toBe('bad-lighthouse-tail');
+    const roles = decodeMessage(reordered);
+    expect(roles.staticAccounts.indexOf(X)).toBeLessThan(original.length);
+    expect((await inspectTransaction(reordered)).ok).toBe(true);
+  });
+
+  it('rejects a re-sorted tail that moves an original account into another role (D117)', async () => {
+    const tailed = appendLighthouseTail(build(ACTIONS.protect, BLOCKHASH).bytes, [X]);
+    // The last writable non-signer swapped with the tail's read-only account: one loses, one gains write access.
+    const swapped = editMessage(tailed, (message) => {
+      const accounts = [...message.staticAccounts];
+      const writable = message.staticAccounts.length - message.header.numReadonlyNonSignerAccounts - 1;
+      const at = accounts.indexOf(X);
+      [accounts[writable], accounts[at]] = [X, accounts[writable] ?? A];
+      return relist(message, accounts);
+    });
+    expect(await verdict(swapped)).not.toBe('ok');
   });
 
   it('rejects an account the tail adds but never uses', async () => {

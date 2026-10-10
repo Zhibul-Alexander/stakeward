@@ -37,13 +37,14 @@ import { MAX_TRANSACTION_BYTES } from './link.ts';
  * `verifyAllSignatures` checks every required signature against the final message (it also catches a wallet that
  * returned without signing).
  *
- * The accepted Lighthouse tail, exactly (`compareMessages`): in a legacy message, appending instructions whose new
- * accounts are read-only non-signers appends those accounts at the END of the static accounts and raises only
- * `header.numReadonlyNonSignerAccounts`; every original account keeps its index and role, every original instruction
- * stays byte-identical, the lifetime stays the same. Every appended instruction calls Lighthouse, the Lighthouse program
- * is one of the appended accounts (or the program of a tail the original already ends with, never an account the
- * original uses otherwise), and every appended account is referenced by the tail. A wallet that recompiles the
- * message and reorders accounts is rejected.
+ * The accepted Lighthouse tail, exactly (`compareMessages`): the original instructions come first and resolve to the
+ * same programs, accounts and data; only Lighthouse instructions follow. The lifetime and the fee payer (first account)
+ * stay the same; every original account keeps exactly its role; the accounts the tail adds are read-only non-signers,
+ * so the header only raises `numReadonlyNonSignerAccounts`. The Lighthouse program is one of the added accounts (or
+ * the program of a tail the original already ends with, never an account the original uses otherwise), and every
+ * added account is referenced by the tail. The ORDER of the accounts may change: Phantom on mainnet recompiles the
+ * message and sorts them its own way (D117); order alone changes nothing the network executes. A reorder without a
+ * tail is still a change.
  *
  * Signatures are verified with Ed25519 in Web Crypto. Where it is missing, the result says so
  * (`verification-unavailable`) instead of calling the signatures invalid.
@@ -460,12 +461,16 @@ export function compareMessages(original: LegacyMessage, candidate: LegacyMessag
     }
   }
 
-  // Exact layout: original accounts keep their positions, new read-only accounts come last.
-  const originalCount = original.staticAccounts.length;
-  if (original.staticAccounts.some((address, index) => candidate.staticAccounts[index] !== address)) {
-    return changed('The account list was reordered', true);
+  // Layout. A wallet that appends a tail recompiles the message and may sort the accounts its own way (Phantom on
+  // mainnet, D117): the order means nothing once every instruction resolves to the same addresses. What must hold:
+  // every original account keeps exactly its role, the fee payer stays first (checked above), and the only new
+  // accounts are read-only non-signers (the header check below).
+  const roles = accountRoles(candidate);
+  for (const [address, role] of was) {
+    if (roles.get(address) !== role) return changed(`Account ${address} lost its place or changed its role`, true);
   }
-  const added = candidate.staticAccounts.slice(originalCount);
+  const originalAccounts = new Set(original.staticAccounts);
+  const added = candidate.staticAccounts.filter((address) => !originalAccounts.has(address));
   const { header } = candidate;
   if (
     header.numSignerAccounts !== original.header.numSignerAccounts ||

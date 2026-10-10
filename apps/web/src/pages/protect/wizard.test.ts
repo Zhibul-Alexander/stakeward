@@ -133,7 +133,7 @@ describe('previouslyHeldBy', () => {
 });
 
 describe('blockers', () => {
-  const ok: BlockerInput = { mainReady: true, selection: 2, secondReady: true, problems: 0, seedConfirmed: true, clockReady: true };
+  const ok: BlockerInput = { mainReady: true, selection: 2, secondReady: true, problems: 0, seedConfirmed: true, clockReady: true, dateReady: true };
 
   it('accounts: a ready main key and 1 to MAX_ACCOUNTS_PER_RUN accounts', () => {
     expect(blockers('accounts', ok)).toEqual([]);
@@ -155,6 +155,11 @@ describe('blockers', () => {
     expect(blockers('period', { ...ok, clockReady: false })).toEqual(['need-clock']);
   });
 
+  it('period: Custom date needs a valid date once the clock is read (D118)', () => {
+    expect(blockers('period', { ...ok, dateReady: false })).toEqual(['need-date']);
+    expect(blockers('period', { ...ok, clockReady: false, dateReady: false })).toEqual(['need-clock']);
+  });
+
   it('second key and period: an empty selection (every account left out) blocks, and only that is said', () => {
     expect(blockers('second-key', { ...ok, selection: 0 })).toEqual(['none-left']);
     expect(blockers('second-key', { ...ok, selection: 0, secondReady: false, seedConfirmed: false })).toEqual(['none-left']);
@@ -173,6 +178,7 @@ describe('wizardReducer', () => {
       secondMode: 'here',
       linkKey: '',
       period: DEFAULT_LOCK_PERIOD,
+      customDate: '',
       lockUntil: null,
       run: null,
       outcomes: {},
@@ -189,6 +195,8 @@ describe('wizardReducer', () => {
       { type: 'second-mode', value: 'link' },
       { type: 'link-key', text: ` ${K} ` },
       { type: 'go', step: 'period' },
+      { type: 'period', value: 'custom' },
+      { type: 'custom-date', text: '2027-03-01' },
       { type: 'period', value: '12-months' },
       { type: 'go', step: 'second-key' },
       { type: 'go', step: 'accounts' },
@@ -196,6 +204,7 @@ describe('wizardReducer', () => {
     expect(state.step).toBe('accounts');
     expect(state.seedConfirmed).toBe(true);
     expect(state.period).toBe('12-months');
+    expect(state.customDate).toBe('2027-03-01');
     expect(state.secondMode).toBe('link');
     expect(state.linkKey).toBe(` ${K} `);
   });

@@ -1,5 +1,5 @@
 import type { Cluster } from '@stakeward/core';
-import { CheckIcon, GlobeIcon } from 'lucide-react';
+import { CheckIcon, GlobeIcon, PlayIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,12 @@ export function Hero({ cluster }: { cluster: Cluster }) {
           </Button>
         </div>
         <p className="text-sm text-muted">{t('landing.checkStakeHint')}</p>
+        <Button asChild variant="link" className="w-fit">
+          <Link href="/demo">
+            <PlayIcon aria-hidden="true" />
+            {t('landing.demoLink')}
+          </Link>
+        </Button>
       </div>
       <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {TRUST.map((key) => (

@@ -125,8 +125,13 @@ describe('ProtectDoneView: when the lock ends', () => {
     expect(filled.map((button) => button.textContent)).toEqual(['Open Telegram bot']);
     expect(screen.getByRole('link', { name: 'Back to your accounts' })).toHaveAttribute('data-variant', 'ghost');
     const steps = within(screen.getByRole('region', { name: 'Next steps' })).getAllByRole('listitem');
-    expect(steps.map((step) => within(step).getByRole('heading').textContent)).toEqual(['Get alerts in Telegram', 'Keep a recovery card']);
+    expect(steps.map((step) => within(step).getByRole('heading').textContent)).toEqual([
+      'Get alerts in Telegram',
+      'Keep a recovery card',
+      'Optional: prepare a one-tap rescue',
+    ]);
     expect(screen.getByRole('link', { name: 'Open recovery card' })).toHaveAttribute('href', `/recovery/${S1}`);
+    expect(screen.getByRole('link', { name: 'Prepare one-tap rescue' })).toHaveAttribute('href', expect.stringMatching(/^\/rescue-kit\?address=/));
     // The second key's risk was said before signing; Done does not repeat it.
     expect(document.querySelector('[data-risk="lose-second-key"]')).toBeNull();
   });

@@ -286,6 +286,22 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'rescue-start',
   },
   {
+    // One-tap rescue kits (D118): the rescue wizard in kit mode, step 1 with the main key filled in.
+    path: `/rescue-kit?address=${MAIN}`,
+    heading: text('common.pages.rescueKit'),
+    shows: async (page) => {
+      await expect(page.getByRole('heading', { level: 2, name: text('rescue.stake.heading') })).toBeVisible();
+    },
+  },
+  {
+    // Where a one-tap rescue kit stands: its new owner in full; sending happens in the linked Telegram chat.
+    path: `/rescue-kit/${SMOKE_STAKE}`,
+    heading: text('common.pages.rescueNow'),
+    shows: async (page) => {
+      await expect(page.getByText(text('rescueKit.now.ready'))).toBeVisible();
+    },
+  },
+  {
     // A broken link: said before anything is read or asked (step 7 spec 8.3).
     path: '/cosign#tx=@@',
     heading: text('common.pages.cosign'),
@@ -320,6 +336,7 @@ const ROUTES: readonly SmokeRoute[] = [
     },
     screen: 'stats',
   },
+  { path: '/demo', heading: text('demo.title'), noApi: true, screen: 'demo' },
   { path: '/no-such-page', ...NOT_FOUND, noApi: true, screen: 'not-found' },
   // The devnet-only pages are not in a mainnet build (on devnet, dev-ui.spec.ts and dev-cosign.spec.ts cover them).
   ...(DEVNET ? [] : [{ path: '/dev/ui', ...NOT_FOUND }, { path: '/dev/cosign', ...NOT_FOUND }]),

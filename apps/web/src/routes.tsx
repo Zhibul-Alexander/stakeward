@@ -3,11 +3,13 @@ import { Route, Switch } from 'wouter';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
 import { CosignPage } from '@/pages/CosignPage';
+import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
+import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
 import { StatsPage } from '@/pages/StatsPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
@@ -55,11 +57,20 @@ export function AppRoutes() {
       <Route path="/rescue">
         <RescuePage />
       </Route>
+      <Route path="/rescue-kit">
+        <RescueKitPage />
+      </Route>
+      <Route path="/rescue-kit/:account">
+        <RescueNowPage />
+      </Route>
       <Route path="/cosign">
         <CosignPage />
       </Route>
       <Route path="/recovery/:account">
         <RecoveryPage />
+      </Route>
+      <Route path="/demo">
+        <DemoPage />
       </Route>
       <Route path="/stats">
         <StatsPage />

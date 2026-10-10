@@ -193,15 +193,14 @@ describe('SigningView', () => {
     expect(signers.map((item) => item.getAttribute('data-status'))).toEqual(['current', 'waiting']);
     expect(within(order).queryByText(MAIN)).not.toBeInTheDocument();
     expect(within(summary).getByText(MAIN)).toBeInTheDocument();
-    // After the summary: the hint, then the action bar with the risk right above Sign (the one filled button) and Back.
+    // After the summary: the action bar with the risk right above Sign (the one filled button) and Back.
     const bar = document.querySelector('[data-slot="action-bar"]') as HTMLElement;
     expect(precedes(summary, bar)).toBe(true);
     const sign = screen.getByRole('button', { name: 'Sign 2 transactions in Main Wallet as Main key' });
     const risk = within(bar).getByTestId('risk');
     expect(precedes(risk, sign)).toBe(true);
-    const hint = screen.getByText('Check the summary above, then approve the request in Main Wallet.');
-    expect(precedes(summary, hint)).toBe(true);
-    expect(precedes(hint, risk)).toBe(true);
+    // The screen trimmed to what matters (owner, 10.10.2026): no "check the summary above" hint.
+    expect(screen.queryByText(/^Check the summary above/)).toBeNull();
     // Nothing stands between the risk and the Sign button.
     expect(risk.nextElementSibling).toContainElement(sign);
     expect(filledButtons()).toEqual([sign]);
@@ -319,8 +318,10 @@ describe('SigningView', () => {
     // Two signers left: each sees whose turn it is.
     rerender(<SigningView state={ready} {...props} summaryIntro={false} hideSingleSigner />);
     expect(screen.getByRole('list', { name: 'Signatures' })).toBeInTheDocument();
-    // By default the intro line is there.
+    // By default the intro line is left out too (owner, 10.10.2026); a page can still ask for it.
     rerender(<SigningView state={ready} {...props} />);
+    expect(screen.queryByText('Read from the exact bytes you sign.')).not.toBeInTheDocument();
+    rerender(<SigningView state={ready} {...props} summaryIntro />);
     expect(screen.getByText('Read from the exact bytes you sign.')).toBeInTheDocument();
   });
 

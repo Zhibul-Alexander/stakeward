@@ -30,6 +30,7 @@ export {
   useKnownSecondKeys,
   usePorts,
   useProtectedAccounts,
+  useRescueKits,
   useSlot,
   useWallets,
   useWalletSlots,

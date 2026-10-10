@@ -11,7 +11,8 @@ owner to fill in.
 - [ ] Prod runs the current build and has passed the mainnet checks of step 9. Then replace `<PROD_URL>` below
       (D84: the prod address is not published before that).
 - [ ] The numbers from `/stats` and the first users' quotes are filled in (section 8).
-- [ ] The business section is written (section 9).
+- [ ] The business section is written (section 9). TODO: the business model is not decided yet; the idea is in
+      [BUSINESS-MODEL.md](BUSINESS-MODEL.md).
 - [ ] Every incident below has a source link (section 11): links found and opened on 6 October 2026; the owner opens
       and checks each one before recording.
 - [ ] The wallet table on the landing page shows the wallet matrix results, and section 4 says the same.
@@ -79,7 +80,7 @@ that, only the custodian can change it. We checked this and every rule Stakeward
 program v5.1.0 on LiteSVM, devnet and mainnet (docs/gate.md).
 
 **What Stakeward does.** It makes a second wallet of yours, from a different seed phrase, the custodian of the
-lockup on your existing stake accounts, for 1, 3, 6 or 12 months. Your stake keeps earning with its validator.
+lockup on your existing stake accounts, for 1, 3, 6 or 12 months or until a date you pick. Your stake keeps earning with its validator.
 
 - **Protect.** Check any wallet's stake by its address, without connecting anything. Then your main key and your
   second key sign one `SetLockupChecked` per stake account. The joint signature on the network is the proof that
@@ -195,6 +196,10 @@ site with devnet SOL. In the voice-over, call it devnet once at the start.
 6. Rehearse once end to end. Expected CLI output is below; if a line differs, film the failed transaction in
    Solana Explorer instead (docs/gate.md has the same failures on devnet).
 7. Browser at 1280 px, light theme, zoom 110%. Close other tabs and wallet pop-ups.
+8. Phantom may block the rescue signatures: on 10 Oct it showed "Request blocked" ("You are allowing this website
+   to transfer away your staked SOL") on dev, where on 8 Oct it only warned (D116). In the take, press "Proceed
+   anyway (unsafe)" and keep it on screen; voice-over below. If the wallet offers no way through, film the rescue
+   with the recovery card's CLI commands instead (docs/recovery-cli.md).
 
 ### Script
 
@@ -212,7 +217,7 @@ site with devnet SOL. In the voice-over, call it devnet once at the start.
 | 1:45-2:00 | Cut ("2 minutes later"). Phone: the bot's message "Stake <short address> was deactivated. If this was not you, your main key may be stolen. Your SOL cannot be withdrawn without the second key." with the button "Open Rescue". | Two minutes later my phone tells me. |
 | 2:00-2:10 | Telegram Desktop: press "Open Rescue". `/rescue` opens with the Main key filled in; "Find its stake" shows "Your stake is locked until ...". | One tap opens the rescue with my main key filled in. |
 | 2:10-2:20 | Step "New wallet": connect the New wallet, tick "My new wallet comes from a new seed phrase that no one else has seen", balance check passes. Step "Keys": the Second key co-signs here. | I connect a new wallet from a new seed phrase. It pays the fees, so the stolen key never has to. |
-| 2:20-2:35 | Step "Move": "New owner of your stake" with the full address, and the warning (already shown on the New wallet and Keys steps) that the new wallet shares Phantom with the main key and the second key. "Create the link-signing account", then each stake account signed by the New wallet, the Main key and the Second key (montage at 4x, Phantom account switches visible). | Three keys sign: my old main key, which I still have, my second key and the new wallet. Each transaction runs on a durable nonce, so nothing expires while I switch wallets. |
+| 2:20-2:35 | Step "Move": "New owner of your stake" with the full address, and the warning (already shown on the New wallet and Keys steps) that the new wallet shares Phantom with the main key and the second key. "Create the link-signing account", then each stake account signed by the New wallet, the Main key and the Second key (montage at 4x, Phantom account switches visible). | Three keys sign: my old main key, which I still have, my second key and the new wallet. Each transaction runs on a durable nonce, so nothing expires while I switch wallets. (If Phantom blocks it, add: "Phantom blocks this, because a thief's transaction looks the same. Here all three keys are mine, and I checked every address on screen.") |
 | 2:35-2:45 | Done: "2 stake accounts are safe", "Now controlled by your new wallet", "Earn rewards again". | My stake now belongs to the new wallet, still locked. The thief's key controls nothing. |
 | 2:45-2:55 | Solana Explorer on one stake account: stake and withdraw authority = New wallet, lockup custodian = Second key. End card: logo, repository URL, "Free. Non-custodial. No program, no token." | Verified on chain. Stakeward: free, open source, and it never touches your SOL. |
 
@@ -274,7 +279,8 @@ locks set with other tools count too, the page says so):
 
 ## 9. How the free product becomes a business
 
-[TODO owner: write this section yourself.]
+[TODO owner: write this section yourself. The business model is not decided yet; the idea and open questions are in
+[BUSINESS-MODEL.md](BUSINESS-MODEL.md).]
 
 Notes only, from CLAUDE.md section 16. Nothing here is built, and the free base stays free.
 
@@ -354,7 +360,7 @@ before submitting.
 
 | Fact | Value | Where it comes from |
 | --- | --- | --- |
-| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
+| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Or a custom date from tomorrow to 5 years ahead, ending at 00:00 UTC on it (D118). Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
 | Network fee | 0.000005 SOL per signature plus 600 lamports priority (limit 60,000 CU at 10,000 micro-lamports) | `packages/core/src/constants.ts`, `fees.ts`, D16 |
 | Protect one stake account | 2 signatures, 0.0000106 SOL, paid by the Main key | `networkFeeFor`, D23 |
 | Rescue one stake account | 3 signatures, 0.0000156 SOL, paid by the New wallet | same |

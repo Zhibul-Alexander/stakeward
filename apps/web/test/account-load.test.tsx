@@ -36,7 +36,8 @@ describe('parseAccountParam', () => {
     expect(parseAccountParam(undefined)).toBeNull();
     expect(parseAccountParam('')).toBeNull();
     expect(parseAccountParam('not-an-address')).toBeNull();
-    expect(parseAccountParam(`${address}x`)).toBeNull();
+    // Padded past 44 characters: a 43-character address plus one character can still be a valid 32-byte address.
+    expect(parseAccountParam(address.padEnd(45, 'x'))).toBeNull();
     expect(parseAccountParam(ZERO_ADDRESS)).toBeNull();
   });
 });
