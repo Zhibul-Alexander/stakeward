@@ -17,6 +17,7 @@ export * from './legacy-layout.ts';
 export * from './link.ts';
 export * from './lockup.ts';
 export * from './nonce.ts';
+export * from './proof.ts';
 export * from './ports.ts';
 export * from './recovery.ts';
 export * from './rescue-kit.ts';
