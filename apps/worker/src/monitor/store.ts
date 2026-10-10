@@ -313,6 +313,28 @@ WHERE rescue_kits.stake_account = s.value ->> '$.a' AND rescue_kits.tx = s.value
   ACCOUNTS_FOR_WALLET: `SELECT stake_account, withdrawer, custodian, CAST(lock_until AS TEXT) AS lock_until, lamports, state, checked_at
 FROM accounts WHERE withdrawer = ?1 OR custodian = ?1 ORDER BY stake_account LIMIT 200`,
 
+  // Validator health (migration 0007, D128). ?1 = the last validator of the previous page ('' = from the start),
+  // ?2 = page size. The validators delegated, not deactivating, watched accounts point at, with the risks stored.
+  VALIDATOR_PAGE: `SELECT v.voter, val.risks FROM (SELECT DISTINCT voter FROM accounts
+                                         WHERE state = 'delegated' AND deactivation_epoch = '18446744073709551615'
+                                           AND voter > ?1) AS v
+LEFT JOIN validators val ON val.voter = v.voter
+ORDER BY v.voter LIMIT ?2`,
+
+  // ?1 = [{v: voter, d: details JSON}], ?2 = slot of the read, ?3 = detected_at ms: a VALIDATOR_AT_RISK event for
+  // every delegated, not deactivating, watched account of each validator.
+  VALIDATOR_EVENTS: `INSERT INTO events (stake_account, type, details_json, slot, detected_at)
+SELECT a.stake_account, 'VALIDATOR_AT_RISK', q.value ->> '$.d', ?2, ?3
+FROM json_each(?1) AS q JOIN accounts a ON a.voter = q.value ->> '$.v'
+WHERE a.state = 'delegated' AND a.deactivation_epoch = '18446744073709551615'
+ON CONFLICT (stake_account, type, slot) DO NOTHING`,
+
+  // ?1 = [{v: voter, r: risks JSON array}], ?2 = now ms.
+  VALIDATORS_PUT: `INSERT INTO validators (voter, risks, checked_at)
+SELECT q.value ->> '$.v', q.value ->> '$.r', ?2 FROM json_each(?1) AS q
+WHERE true
+ON CONFLICT (voter) DO UPDATE SET risks = excluded.risks, checked_at = excluded.checked_at`,
+
   // ?1 wallet
   EVENTS_FOR_WALLET: `SELECT stake_account, type, details_json, slot, detected_at FROM events
 WHERE type NOT LIKE 'REMINDER%'
