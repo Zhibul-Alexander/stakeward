@@ -5,6 +5,12 @@ import { describe, expect, it } from 'vitest';
 import {
   chatLinkBudgetText,
   helpText,
+  kitAutoLabel,
+  kitCardText,
+  kitDeletedText,
+  kitLinkedText,
+  kitLinkInvalidText,
+  kitsNoneText,
   linkedText,
   linkBudgetText,
   linkLimitText,
@@ -31,6 +37,12 @@ function everyText(): string[] {
     { wallet: key(3), watched: 5 },
   ];
   texts.push(statusText(wallets, null, NOW), statusText(wallets, NOW - 125_000, NOW));
+  // One-tap rescue kits (D118, D120).
+  texts.push(kitLinkedText(key(9)), kitLinkInvalidText(), kitsNoneText());
+  for (const origin of ['https://stakeward.test', null]) texts.push(kitDeletedText(key(9), origin));
+  for (const auto of ['off', 'key-change', 'any-change'] as const) {
+    texts.push(kitAutoLabel(auto), kitCardText({ stakeAccount: key(9), newWallet: key(4), status: 'ready', auto }));
+  }
   return texts;
 }
 

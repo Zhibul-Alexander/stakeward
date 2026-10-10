@@ -1,10 +1,12 @@
 import { attemptPost } from '../upstream.ts';
 
 /**
- * Telegram Bot API sendMessage on plain fetch (CLAUDE.md section 8): plain text without markup, link previews off, at
- * most one button: a link, or the one callback button D118 allows ("Rescue now" of a rescue kit, `rk:<stake account>`,
- * only in the chat bound to the kit; the webhook checks the chat again before it sends anything). The URL carries the bot token, so neither it nor the chat id is
- * ever logged; the answer body (and Telegram's error description) is not read at all, only the status.
+ * Telegram Bot API sendMessage on plain fetch (CLAUDE.md section 8): plain text without markup, link previews off.
+ * Alerts carry one button: a link, or the callback button D118 allows ("Rescue now" of a rescue kit,
+ * `rk:<stake account>`, only in the chat bound to the kit). The kit cards of /kits (D120) carry a small keyboard of
+ * such callbacks; the webhook checks the chat again before it acts on any. The URL carries the bot token, so neither
+ * it nor the chat id is ever logged; the answer body (and Telegram's error description) is not read at all, only the
+ * status.
  */
 
 export type TelegramOutcome = 'sent' | 'blocked' | 'rejected' | 'rate-limited' | 'retry' | 'config';
@@ -12,10 +14,34 @@ export type TelegramOutcome = 'sent' | 'blocked' | 'rejected' | 'rate-limited' |
 /** One inline keyboard button: a link to the site, or a rescue kit's callback (D118). */
 export type TelegramButton = { label: string; url: string } | { label: string; callbackData: string };
 
-/** The Bot API inline keyboard of one button. */
-export function inlineKeyboard(button: TelegramButton): { inline_keyboard: Record<string, string>[][] } {
-  const key = 'url' in button ? { text: button.label, url: button.url } : { text: button.label, callback_data: button.callbackData };
-  return { inline_keyboard: [[key]] };
+/** The Bot API inline keyboard of one button, or of rows of buttons. */
+export function inlineKeyboard(buttons: TelegramButton | readonly (readonly TelegramButton[])[]): {
+  inline_keyboard: Record<string, string>[][];
+} {
+  const rows: readonly (readonly TelegramButton[])[] = 'label' in buttons ? [[buttons]] : buttons;
+  const key = (button: TelegramButton) =>
+    'url' in button ? { text: button.label, url: button.url } : { text: button.label, callback_data: button.callbackData };
+  return { inline_keyboard: rows.map((row) => row.map(key)) };
+}
+
+/**
+ * editMessageText as a Bot API method for a webhook response (the kit cards of /kits, D120): plain text, link previews
+ * off, the keyboard replaced (none: removed).
+ */
+export function editMessageText(opts: {
+  chatId: string;
+  messageId: number;
+  text: string;
+  keyboard: readonly (readonly TelegramButton[])[];
+}): Record<string, unknown> {
+  return {
+    method: 'editMessageText',
+    chat_id: opts.chatId,
+    message_id: opts.messageId,
+    text: opts.text,
+    link_preview_options: { is_disabled: true },
+    reply_markup: inlineKeyboard(opts.keyboard),
+  };
 }
 
 /**
@@ -32,6 +58,8 @@ export async function sendTelegramMessage(opts: {
   chatId: string;
   text: string;
   button?: TelegramButton;
+  /** Rows of buttons instead of `button`. */
+  keyboard?: readonly (readonly TelegramButton[])[];
   fetch: typeof fetch;
   timeoutMs: number;
 }): Promise<TelegramOutcome> {
@@ -40,7 +68,11 @@ export async function sendTelegramMessage(opts: {
     chat_id: opts.chatId,
     text: opts.text,
     link_preview_options: { is_disabled: true },
-    ...(opts.button === undefined ? {} : { reply_markup: inlineKeyboard(opts.button) }),
+    ...(opts.keyboard !== undefined
+      ? { reply_markup: inlineKeyboard(opts.keyboard) }
+      : opts.button === undefined
+        ? {}
+        : { reply_markup: inlineKeyboard(opts.button) }),
   };
   const result = await attemptPost(`https://api.telegram.org/bot${opts.token}/sendMessage`, JSON.stringify(body), {
     timeoutMs: opts.timeoutMs,

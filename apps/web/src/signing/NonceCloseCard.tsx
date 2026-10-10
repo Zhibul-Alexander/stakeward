@@ -19,6 +19,8 @@ type NonceCloseCardProps = {
   /** The close landed (the engine checked it on the chain). */
   onClosed?: (() => void) | undefined;
   signing?: SigningTestOptions | undefined;
+  /** Another nonce account of the same key: a one-tap rescue kit's (core `rescueKitNonceSeed`, D120). */
+  seed?: string | undefined;
 };
 
 /**
@@ -28,11 +30,11 @@ type NonceCloseCardProps = {
  * closing is never required there. Inside an open link (`cancel-link`) the user asked to cancel, so every state says
  * what it is (UX rule 7): reading, could not read (with Try again), or already closed.
  */
-export function NonceCloseCard({ authority, role, variant = 'close', onClosed, signing }: NonceCloseCardProps) {
+export function NonceCloseCard({ authority, role, variant = 'close', onClosed, signing, seed }: NonceCloseCardProps) {
   const chain = useChain();
   const [attempt, setAttempt] = useState(0);
   const [closedHere, setClosedHere] = useState(false);
-  const nonce = useNonceAccount(chain, authority, attempt);
+  const nonce = useNonceAccount(chain, authority, attempt, seed);
   const cancelLink = variant === 'cancel-link';
   if (nonce.status === 'idle' || nonce.status === 'loading') {
     if (!cancelLink) return null;
@@ -79,6 +81,7 @@ export function NonceCloseCard({ authority, role, variant = 'close', onClosed, s
           onClosed?.();
         }}
         signing={signing}
+        seed={seed}
       />
     );
   }

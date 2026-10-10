@@ -205,7 +205,7 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   // A ready one-tap rescue kit (D118) for every account, linked to a Telegram chat: the page shows the new owner.
   await page.route('**/api/rescue-kits?*', async (route) => {
     const account = new URL(route.request().url()).searchParams.get('account');
-    await json(route, { stakeAccount: account, status: 'ready', newWallet: RESCUE_KIT_NEW_WALLET, signature: null, sentAt: null, telegramLinked: true });
+    await json(route, { stakeAccount: account, status: 'ready', newWallet: RESCUE_KIT_NEW_WALLET, signature: null, sentAt: null, telegramLinked: true, autoMode: 'staker' });
   });
 }
 

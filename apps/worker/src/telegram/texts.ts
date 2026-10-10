@@ -114,11 +114,62 @@ export function stopText(): string {
 export function kitLinkedText(stakeAccount: string): string {
   return (
     `One-tap rescue is linked for stake ${shortAddress(stakeAccount)}. If Stakeward sees a change you did not make, ` +
-    'press Rescue now under the alert.'
+    'press Rescue now under the alert. Send /kits to choose when Stakeward sends the rescue by itself, or to delete it.'
   );
 }
 
 /** /start kit-<token> with a token no kit holds: used already, replaced by a newer kit, or never issued. */
 export function kitLinkInvalidText(): string {
   return 'This link was already used or is not valid.';
+}
+
+/**
+ * When the monitor sends a kit by itself (D120), in the bot's words: `key-change` is a new key that can deactivate and
+ * delegate (the default), `any-change` any alarming change. rescue-kits.ts maps the stored modes to these.
+ */
+export type KitAutoWords = 'off' | 'key-change' | 'any-change';
+
+/** /kits: the bound chat has no kit. */
+export function kitsNoneText(): string {
+  return 'No one-tap rescue is linked to this chat.';
+}
+
+/** The auto-rescue sentence of a kit card and of the toast after a change of mode. */
+export function kitAutoText(auto: KitAutoWords): string {
+  switch (auto) {
+    case 'off':
+      return 'Auto-rescue: off.';
+    case 'key-change':
+      return 'Auto-rescue: when the key that can deactivate and delegate changes.';
+    case 'any-change':
+      return 'Auto-rescue: on any alarming change.';
+  }
+}
+
+/** The mode button of a kit card; a tap moves to the next mode. */
+export function kitAutoLabel(auto: KitAutoWords): string {
+  switch (auto) {
+    case 'off':
+      return 'Auto: off';
+    case 'key-change':
+      return 'Auto: key change';
+    case 'any-change':
+      return 'Auto: any change';
+  }
+}
+
+/** One kit of /kits (D120). */
+export function kitCardText(card: { stakeAccount: string; newWallet: string; status: string; auto: KitAutoWords }): string {
+  return (
+    `Stake ${shortAddress(card.stakeAccount)} → new wallet ${shortAddress(card.newWallet)}. ` +
+    `Status: ${card.status}. ${kitAutoText(card.auto)}`
+  );
+}
+
+/** A kit card after Delete. The signed bytes stay valid while the kit's nonce account exists. */
+export function kitDeletedText(stakeAccount: string, origin: string | null): string {
+  return (
+    'Deleted. The signed rescue still works until your new wallet closes its kit signing account; you can do that on ' +
+    `${sitePlace(origin, `/rescue-kit/${stakeAccount}`)}.`
+  );
 }

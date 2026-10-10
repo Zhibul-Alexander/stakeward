@@ -188,7 +188,7 @@
         "new-site-warning": "The wallet may warn that this site is new. The warning goes away after a few days.",
         "ledger-blind": "The Ledger asks for blind signing here. Use another pair with a Ledger.",
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer.",
-        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
+        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Since 10 October it blocks the rescue outright; Proceed anyway (unsafe) still signs it. Check the keys on the Stakeward signing screen, then confirm."
       },
       "ledgerLink": "What will my Ledger show?",
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
@@ -288,7 +288,8 @@
         "main": "Switch to your main account in the wallet, then press Continue.",
         "second": "Switch to your second account in the wallet, then press Continue.",
         "new": "Switch to your new wallet's account in the wallet, then press Continue."
-      }
+      },
+      "move": "Use it as {role} instead"
     },
     "tx": {
       "kind": {
@@ -1836,6 +1837,7 @@
     "title": "Questions and answers",
     "gateLink": "Test results in the repository (docs/gate.md)",
     "rescueLink": "Rescue your stake",
+    "rescueKitLink": "Prepare one-tap rescue",
     "groups": {
       "basics": "The basics",
       "keys": "Keys and what can go wrong",
@@ -1889,6 +1891,10 @@
         "q": "My main key was stolen. What now?",
         "a": "Stay calm: while the lock holds, the thief cannot take the stake. They may still stop your staking or move it to another validator. They may also split it into many small stake accounts. Each part keeps the lock.\n\nRescue before the lock ends: after that time the thief can withdraw. One rescue run moves at most {rescueMax} stake accounts, and Stakeward cannot move them all at once. If you need more time, or there are many, first extend the lock on each with your second key alone, then rescue them run by run.\n\nOn a device you trust, make a new wallet with a new seed phrase and put about {rescueAmount} on it. Then open Rescue: your main key, your second key and the new wallet sign together, and the stake moves to the new wallet. Afterwards, stake it again from the new wallet.\n\nDo not send SOL to the stolen wallet: thieves' bots empty it within seconds."
       },
+      "one-tap-rescue": {
+        "q": "Can the rescue start without me?",
+        "a": "Yes, if you prepare it in advance. On Prepare one-tap rescue, your main key, your second key and a new wallet sign the rescue of each locked stake account while all three are safe. Stakeward keeps the signed transaction: all it can do is move the stake to that new wallet, and the lock stays.\n\nThe Telegram chat you link to it gets a Rescue now button under each alert. With /kits in that chat you choose whether Stakeward also sends it by itself: never, when someone changes who manages staking (the default), or on any change the alerts report. Deleting it there removes Stakeward's copy; to cancel it for good, your new wallet closes the signing account behind it.\n\nKeep the new wallet's seed phrase as safe as the other two, with a little SOL on it for the fee."
+      },
       "main-lost": {
         "q": "I lost my main key. Can Stakeward help?",
         "a": "No. Withdrawing or moving a stake always needs its main key, with or without the lock. Keep a safe backup of your main key's seed phrase.\n\nIf someone else may have your lost main key, extend the lock with your second key before each end date. The stake stays stuck, but nobody can take it."
@@ -1927,7 +1933,7 @@
       },
       "wallet-warning": {
         "q": "Why does my wallet show a warning?",
-        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, withdrawing and rescuing always need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours."
+        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, withdrawing and rescuing always need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours. Phantom goes further for a rescue and blocks the request: the rescue looks exactly like a thief's move, because it hands the stake to another wallet. If every address on the Stakeward screen is yours, Proceed anyway (unsafe) signs it."
       },
       "co-sign": {
         "q": "Someone sent me a link to co-sign. Is it safe?",
@@ -2193,7 +2199,17 @@
       "ready": "The rescue is ready. If Stakeward sees a change you did not make, press Rescue now under the alert in the linked Telegram chat.",
       "readyNoTelegram": "The rescue is ready, but no Telegram chat is linked to it yet. It is still sent by itself if someone changes who manages staking. To link a chat, prepare the rescue again.",
       "sent": "The rescue was sent. The stake now belongs to your new wallet.",
-      "viewTransaction": "View the transaction on Solana Explorer"
+      "viewTransaction": "View the transaction on Solana Explorer",
+      "auto": {
+        "off": "Sent by itself: never.",
+        "staker": "Sent by itself: when someone changes who manages staking.",
+        "any": "Sent by itself: on any change the alerts report (stopping staking, another validator, less SOL, a new staking manager).",
+        "change": "Change it with /kits in the linked Telegram chat."
+      }
+    },
+    "revoke": {
+      "heading": "Cancel this rescue for good",
+      "body": "Deleting the rescue in Telegram only removes Stakeward's copy. To make the signed rescue useless everywhere, your new wallet closes the signing account behind it and gets its deposit back."
     }
   }
 }
