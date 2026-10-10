@@ -40,7 +40,7 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
-      "rescueNow": "One-tap rescue"
+      "rescueNow": "Rescue status"
     }
   },
   "nav": {
@@ -56,7 +56,8 @@
     "sourceCode": "Source code",
     "cannotDo": "What Stakeward cannot do",
     "stats": "Stats",
-    "license": "No warranty. MIT license."
+    "license": "No warranty. MIT license.",
+    "learn": "Details and FAQ"
   },
   "landing": {
     "title": "Protect your staked SOL",
@@ -188,7 +189,7 @@
         "new-site-warning": "The wallet may warn that this site is new. The warning goes away after a few days.",
         "ledger-blind": "The Ledger asks for blind signing here. Use another pair with a Ledger.",
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer.",
-        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Since 10 October it blocks the rescue outright; Proceed anyway (unsafe) still signs it. Check the keys on the Stakeward signing screen, then confirm."
+        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
       },
       "ledgerLink": "What will my Ledger show?",
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
@@ -221,7 +222,15 @@
       "title": "Start by looking",
       "body": "Paste a wallet address and see which stake accounts are protected. Nothing to sign."
     },
-    "demoLink": "Watch a theft play out in the demo"
+    "demoLink": "Watch a theft play out in the demo",
+    "learnMore": {
+      "title": "More details",
+      "faq": "Every question, from keys to costs.",
+      "alerts": "What Telegram tells you, and when.",
+      "costs": "Network fees and the deposit that comes back.",
+      "wallets": "Which wallets were tested, and how.",
+      "safety": "Why Stakeward cannot take your SOL."
+    }
   },
   "status": {
     "protected": "Protected",
@@ -1933,7 +1942,7 @@
       },
       "wallet-warning": {
         "q": "Why does my wallet show a warning?",
-        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, withdrawing and rescuing always need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours. Phantom goes further for a rescue and blocks the request: the rescue looks exactly like a thief's move, because it hands the stake to another wallet. If every address on the Stakeward screen is yours, Proceed anyway (unsafe) signs it."
+        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, withdrawing and rescuing always need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours."
       },
       "co-sign": {
         "q": "Someone sent me a link to co-sign. Is it safe?",
@@ -2210,6 +2219,18 @@
     "revoke": {
       "heading": "Cancel this rescue for good",
       "body": "Deleting the rescue in Telegram only removes Stakeward's copy. To make the signed rescue useless everywhere, your new wallet closes the signing account behind it and gets its deposit back."
+    }
+  },
+  "learn": {
+    "title": "Details",
+    "lead": "Alerts, costs, wallets, safety and every question, one tab at a time.",
+    "tabs": {
+      "label": "Details",
+      "faq": "FAQ",
+      "alerts": "Alerts",
+      "costs": "Costs",
+      "wallets": "Wallets",
+      "safety": "Safety"
     }
   }
 }

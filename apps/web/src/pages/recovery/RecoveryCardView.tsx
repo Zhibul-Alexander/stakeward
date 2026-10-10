@@ -237,7 +237,7 @@ export function RecoveryCardView({ card, cluster = CLUSTER }: RecoveryCardViewPr
         <AlertDescription className="text-foreground">
           <p>{t('recovery.verify.body')}</p>
           <p>
-            <PrintedLink href="/#faq-locked-by-other" label={t('recovery.links.lockedByOther')} />
+            <PrintedLink href="/learn/faq#faq-locked-by-other" label={t('recovery.links.lockedByOther')} />
           </p>
         </AlertDescription>
       </Alert>
