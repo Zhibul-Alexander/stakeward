@@ -1,4 +1,4 @@
-// The daily validator check (DECISIONS.md D127): one read of the validators watched stake is delegated to, a
+// The daily validator check (DECISIONS.md D128): one read of the validators watched stake is delegated to, a
 // VALIDATOR_AT_RISK event per delegated account for each risk a validator did not have at the last check.
 import { getAddressDecoder, type Address } from '@solana/kit';
 import { GENESIS_HASH } from '@stakeward/core';
@@ -70,7 +70,9 @@ describe('the validator check', () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]?.text).toContain(`Validator ${SICK.slice(0, 4)}...${SICK.slice(-4)}, which stake`);
     expect(sent[0]?.text).toContain('has not voted for over an epoch. This stake earns no rewards while it stays there.');
-    expect(sent[0]?.button?.url).toBe(`https://stakeward.test/app?address=${MAIN}`);
+    expect(sent[0]?.button?.url).toBe(
+      `https://stakeward.test/app?address=${MAIN}&event=VALIDATOR_AT_RISK&stake=${key(10)}`,
+    );
 
     // The next day the same risk is no news.
     h.at('2026-10-06T06:00:00Z');

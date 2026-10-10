@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
 import type { ChainPort, WalletPort, WalletRole, WalletSlots } from '@stakeward/core';
 import { createContext, use, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { fetchWatchedAccounts, type WatchedAccounts } from '@/api/accounts';
 import { createRescueKitPort, type RescueKitPort } from '@/api/rescue-kits';
 import type { ApiPort } from '@/api/watch';
 import { systemDeviceClock, type DeviceClock } from './device-clock.ts';
@@ -24,6 +25,8 @@ export type Ports = {
   api: ApiPort;
   /** One-tap rescue kits on the worker (D118); default: the worker on this origin. Tests pass a fake. */
   rescueKits?: RescueKitPort | undefined;
+  /** GET /api/accounts (D125, "Explain this alert"); default: the worker on this origin. Tests pass a fake. */
+  watchedAccounts?: ((wallet: Address) => Promise<WatchedAccounts>) | undefined;
   /**
    * This device's clock. The cluster clock reaches the site through the worker, so protect and extend check it against
    * this one before they compute a lock end (SECURITY-CHECK П12). Default: the system clock (useDeviceClock); tests
@@ -56,6 +59,12 @@ const defaultRescueKits = createRescueKitPort();
 
 export function useRescueKits(): RescueKitPort {
   return usePorts().rescueKits ?? defaultRescueKits;
+}
+
+const defaultWatchedAccounts = (wallet: Address) => fetchWatchedAccounts(wallet);
+
+export function useWatchedAccounts(): (wallet: Address) => Promise<WatchedAccounts> {
+  return usePorts().watchedAccounts ?? defaultWatchedAccounts;
 }
 
 /** This device's clock (Ports `deviceClock`, else the system clock). */

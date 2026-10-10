@@ -5,6 +5,7 @@ import { Page } from '@/components/layout/Page';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { t } from '@/i18n';
 import { useSlot } from '@/ports';
+import { AlertFromLink } from './alert/AlertFromLink.tsx';
 import { AccountsResults } from './app/AccountsResults.tsx';
 import { AddressForm, isCheckableAddress } from './app/AddressForm.tsx';
 import { ForgetKeys } from './app/ForgetKeys.tsx';
@@ -37,6 +38,8 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
   return (
     <Page width="app">
       <PageHeader title={t('app.title')} lead={t('app.intro')} />
+      {/* Opened from a Telegram alert (D125): what it was, before the accounts. */}
+      <AlertFromLink wallet={address} />
       {/* The form and what it shows are one block: the answer starts right under the field. */}
       <div className="flex flex-col gap-6 sm:gap-8">
         <AddressForm
