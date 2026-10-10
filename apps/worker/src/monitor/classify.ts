@@ -32,7 +32,11 @@ export type RowUpdate = Omit<RowColumns, 'state'> & {
   prevCheckedAt: number;
 };
 
-export type StoredEventType = MonitorEventType | `REMINDER_${(typeof REMINDER_DAYS)[number]}`;
+export type StoredEventType =
+  | MonitorEventType
+  | `REMINDER_${(typeof REMINDER_DAYS)[number]}`
+  /** From the daily validator check (pass.ts checkValidators, D128), not from a snapshot diff. */
+  | 'VALIDATOR_AT_RISK';
 
 /** An `events` row to insert, gated on the row version (prevSlot, prevCheckedAt) it was computed from. */
 export type StoredEvent = {

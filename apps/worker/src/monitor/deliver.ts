@@ -3,7 +3,9 @@ import {
   alertLinkPath,
   formatAlert,
   formatReminder,
+  formatValidatorAlert,
   MONITOR_EVENT_TYPES,
+  VALIDATOR_RISKS,
   ZERO_ADDRESS,
   type Alert,
   type Cluster,
@@ -98,6 +100,7 @@ export function alertOf(e: PendingEvent, nowSec: bigint): Alert | null {
     if (lockUntil !== e.lockUntil.toString() || e.lockUntil <= nowSec) return null;
     return formatReminder({ stakeAccount: e.stakeAccount, lockUntil: e.lockUntil, now: nowSec });
   }
+  if (e.type === 'VALIDATOR_AT_RISK') return validatorAlertOf(e);
   if (!(MONITOR_EVENT_TYPES as readonly string[]).includes(e.type) || !isRecord(e.details)) return null;
   // The details were written by this worker from diffSnapshots; a row that does not fit is closed, not retried forever.
   const event = { type: e.type, details: e.details, stakeAccount: e.stakeAccount } as MonitorEventDetails & {
@@ -108,6 +111,20 @@ export function alertOf(e: PendingEvent, nowSec: bigint): Alert | null {
   } catch {
     return null;
   }
+}
+
+/** A VALIDATOR_AT_RISK alert; null for details this worker would not have written. */
+function validatorAlertOf(e: PendingEvent): Alert | null {
+  if (!isRecord(e.details)) return null;
+  const { voter, risks } = e.details;
+  if (typeof voter !== 'string' || !isAddressText(voter) || !Array.isArray(risks)) return null;
+  const known = VALIDATOR_RISKS.filter((risk) => risks.includes(risk));
+  if (known.length === 0) return null;
+  return formatValidatorAlert({
+    stakeAccount: e.stakeAccount,
+    withdrawer: e.withdrawer,
+    details: { voter, risks: known },
+  });
 }
 
 export type PlannedMessage = {

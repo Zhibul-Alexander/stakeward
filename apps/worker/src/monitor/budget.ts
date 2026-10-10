@@ -26,6 +26,11 @@ export const COST = {
    * meta.
    */
   daily: 4,
+  /**
+   * The daily validator check: VALIDATOR_PAGE, getMultipleAccounts (3 attempts), getGenesisHash (3 attempts), then
+   * the events, the validators and meta.
+   */
+  validators: 10,
   /** The bot check of every pass: getWebhookInfo, one attempt. */
   webhookCheck: 1,
   /** The daily part of the bot check: getMe, one attempt. */

@@ -49,8 +49,9 @@ describe('the bot check', () => {
     h.at('2026-10-05T06:00:00Z');
     const report = await h.pass();
     expect(report).toMatchObject({ outcome: 'ok', botCheck: 'ok' });
-    // One getMultipleAccounts, the two Bot API calls and the day's search of (MAIN, SECOND).
-    expect(report).toMatchObject({ chunks: 1, rescans: 1, fetches: 4 });
+    // One getMultipleAccounts, the day's validator check (one more), the two Bot API calls and the day's search of
+    // (MAIN, SECOND).
+    expect(report).toMatchObject({ chunks: 1, rescans: 1, validators: 1, fetches: 5 });
     expect(methods(h)).toEqual(['getWebhookInfo', 'getWebhookInfo', 'getMe']);
     expect(h.telegram.identityCalls.every((call) => call.token === env.TELEGRAM_BOT_TOKEN)).toBe(true);
     expect((await h.readMeta()).bot_check_day).toBe('2026-10-05');

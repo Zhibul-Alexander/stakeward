@@ -27,6 +27,7 @@ export * from './setup-check.ts';
 export * from './signing-order.ts';
 export * from './status.ts';
 export * from './theft-test.ts';
+export * from './validator.ts';
 export * from './verify.ts';
 export * from './wallet-queue.ts';
 export * from './watch.ts';

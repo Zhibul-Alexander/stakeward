@@ -7,7 +7,7 @@ const STAKE = address('AYA9kYsn7XVDTPARBfAuASypyyDGFJw1Xds2vHgW9DfW');
 
 describe('AlertExplanation', () => {
   it('names every event type the monitor sends, reminders by their kind, and anything else as a change', () => {
-    for (const type of ['DEACTIVATED', 'DELEGATION_CHANGED', 'STAKER_CHANGED', 'WITHDRAWER_CHANGED', 'LOCKUP_CHANGED', 'BALANCE_DECREASED', 'ACCOUNT_CLOSED', 'EXPIRED']) {
+    for (const type of ['DEACTIVATED', 'DELEGATION_CHANGED', 'STAKER_CHANGED', 'WITHDRAWER_CHANGED', 'LOCKUP_CHANGED', 'BALANCE_DECREASED', 'ACCOUNT_CLOSED', 'EXPIRED', 'VALIDATOR_AT_RISK']) {
       expect(alertEventText(type), type).not.toBe(alertEventText('SOMETHING_NEW'));
     }
     expect(alertEventText('REMINDER_7')).toBe('Reminder: the lock on this stake ends soon.');

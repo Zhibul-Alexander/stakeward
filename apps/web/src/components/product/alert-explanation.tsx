@@ -33,6 +33,7 @@ const EVENT_WORDS: Record<string, MessageKey> = {
   BALANCE_DECREASED: 'alertExplain.events.BALANCE_DECREASED',
   ACCOUNT_CLOSED: 'alertExplain.events.ACCOUNT_CLOSED',
   EXPIRED: 'alertExplain.events.EXPIRED',
+  VALIDATOR_AT_RISK: 'alertExplain.events.VALIDATOR_AT_RISK',
 };
 
 /** An event type in plain words; a type this site does not know yet reads as "a change". */

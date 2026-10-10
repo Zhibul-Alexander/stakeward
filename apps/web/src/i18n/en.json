@@ -2629,6 +2629,7 @@
       "BALANCE_DECREASED": "SOL left this stake account.",
       "ACCOUNT_CLOSED": "The stake account was closed.",
       "EXPIRED": "The lock on this stake ended.",
+      "VALIDATOR_AT_RISK": "The validator this stake is delegated to may stop earning rewards for it.",
       "REMINDER": "Reminder: the lock on this stake ends soon.",
       "other": "The monitor saw a change on this stake account."
     },
