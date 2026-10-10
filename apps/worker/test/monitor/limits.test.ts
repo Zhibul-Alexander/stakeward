@@ -163,7 +163,13 @@ async function limitedPass(h: Harness, plan: 'free' | 'paid'): Promise<PassRepor
   const fetches = h.net.calls.length - fetchesBefore;
   const statements = h.db.stats.statements - statementsBefore;
   const chainCalls = h.chain.calls.slice(chainCallsBefore);
-  const reads = chainCalls.filter((c) => c.method === 'getMultipleAccounts');
+  const allReads = chainCalls.filter((c) => c.method === 'getMultipleAccounts');
+  // The day's validator check reads vote accounts (at most one call a pass); the chunk limits are for stake rows.
+  const isValidatorRead = (c: (typeof allReads)[number]) => c.keys.slice(1).every((k) => h.chain.votes.has(k));
+  const reads = allReads.filter((c) => !isValidatorRead(c));
+  const validatorReads = allReads.filter(isValidatorRead);
+  expect(validatorReads.filter((c) => c.outcome === 'answer').length).toBeLessThanOrEqual(1);
+  for (const read of validatorReads) expect(read.keys.length).toBeLessThanOrEqual(100);
   expect(report.outcome).toBe('ok');
   expect(fetches + statements).toBeLessThanOrEqual(preset.subrequestCap);
   expect(statements).toBeLessThanOrEqual(48);

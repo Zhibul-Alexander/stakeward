@@ -3,11 +3,16 @@ import {
   decodeStakeAccount,
   GENESIS_HASH,
   isLockupInForce,
+  newValidatorRisks,
   reminderDue,
   STAKE_PROGRAM_ADDRESS,
   SYSVAR_CLOCK_ADDRESS,
+  validatorRisks,
+  VALIDATOR_RISKS,
+  VOTE_PROGRAM_ADDRESS,
   type ChainClock,
   type Cluster,
+  type ValidatorRisk,
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
@@ -78,6 +83,9 @@ import {
  *              most MONITOR_LIMITS.maxKitSends a pass.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
+ * 4a. validators - once a day from 06:00 UTC (D122): the vote accounts of the validators watched accounts are
+ *              delegated to, 99 a pass (meta.validator_sweep), one getMultipleAccounts with the Clock; a risk a validator
+ *              did not have at the last check (core validatorRisks) is a VALIDATOR_AT_RISK event for each of its accounts.
  * 4b. bot    - every pass getWebhookInfo, once a day from 06:00 UTC getMe too (meta.bot_check_day): a webhook that is
  *              not SITE_ORIGIN's, recent updates it refused with 401, or a token of another bot than
  *              TELEGRAM_BOT_USERNAME is an admin alert.
@@ -127,6 +135,7 @@ export type Stage =
   | 'chunks'
   | 'kits'
   | 'daily'
+  | 'validators'
   | 'bot'
   | 'sends'
   | 'rescans'
@@ -156,6 +165,9 @@ export type PassReport = {
   kitsStale: number;
   reminders: number;
   daily: boolean;
+  /** Validators the daily validator check read in this pass, and the VALIDATOR_AT_RISK events it wrote. */
+  validators: number;
+  validatorEvents: number;
   /** The bot check of this pass (null: not run, past the soft deadline or the budget). */
   botCheck: 'ok' | 'mismatch' | 'config' | 'retry' | null;
   /** Pairs of the daily round this pass added to the rescan queue. */
@@ -229,7 +241,12 @@ type LoadedMeta = {
   /** meta.kit_queue: stake accounts with an alarming event whose rescue kit, if ready and in a mode that takes it, is
    * still to be sent. */
   kitQueue: KitQueued[];
+  /** meta.validator_sweep: the daily validator check of `day`, done or up to `after`. */
+  validatorSweep: ValidatorSweep | null;
 };
+
+/** The validator check of a day: the last validator read ('' = none yet), and whether the day's check is over. */
+type ValidatorSweep = { day: string; after: string; done: boolean };
 
 /**
  * A meta.kit_queue entry: the account and its trigger, 'staker' for a STAKER_CHANGED, 'any' for another alarming
@@ -308,6 +325,9 @@ type LoadedPass = PassContext & {
   adminDue: Set<AdminKind>;
   adminCounts: AdminCounts;
   dailyDone: boolean;
+  /** The validator check to work on, when due (not done for today, from 06:00 UTC): from `after` on. */
+  validatorsDue: boolean;
+  validatorsAfter: string;
   /** An empty page after the cursor: the cycle is over, the finish moves the cursor back to the start. */
   resetCursor: boolean;
 };
@@ -342,6 +362,7 @@ export async function runMonitorPass(deps: MonitorDeps): Promise<PassReport> {
     await readChunks(pass);
     await autoSendKits(pass);
     await daily(pass);
+    await checkValidators(pass);
     await checkBot(pass);
     await deliver(pass);
     await rescans(pass);
@@ -410,6 +431,8 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     adminDue: new Set<AdminKind>(report.previousDied ? ['pass-died'] : []),
     adminCounts: {},
     dailyDone: false,
+    validatorsDue: afterDailyHour && !(meta.validatorSweep?.day === today && meta.validatorSweep.done),
+    validatorsAfter: meta.validatorSweep?.day === today ? meta.validatorSweep.after : '',
     resetCursor: false,
   });
 }
@@ -638,6 +661,62 @@ async function daily(pass: LoadedPass): Promise<void> {
   if (stored !== null) Object.assign(pass, stored);
   pass.dailyDone = last === undefined;
   report.daily = true;
+}
+
+/**
+ * Stage 4a, once a day from 06:00 UTC (DECISIONS.md D122): will the watched stake keep earning? One page of the
+ * validators that delegated, not deactivating, watched accounts point at (VALIDATOR_PAGE, with the risks found last
+ * time), their vote accounts in one getMultipleAccounts with the Clock, and one batch: a VALIDATOR_AT_RISK event per
+ * account of each validator with a risk it did not have last time (risks that went away are just forgotten, so a
+ * relapse alerts again), every validator's risks now, and meta.validator_sweep. A full page leaves the day open from
+ * its last validator; the next pass goes on. A vote account that reads as gone counts as closed only once the node
+ * proved its cluster, as in the chunks. A failed read leaves the check for a later pass; it is not a failed pass
+ * (the stake accounts were read).
+ */
+async function checkValidators(pass: LoadedPass): Promise<void> {
+  const { budget, report, deps, config } = pass;
+  const keep =
+    COST.sendLoad + COST.sendCommit + 1 + COST.webhookCheck + (pass.botCheckDue ? COST.usernameCheck : 0);
+  if (!pass.validatorsDue || pass.pastDeadline() || budget.left() < COST.validators + keep) return;
+  report.stage = 'validators';
+  const db = deps.db;
+  const pageSize = MONITOR_LIMITS.accountsPerChunk;
+  const [page] = await budget.batch(db, [db.prepare(SQL.VALIDATOR_PAGE).bind(pass.validatorsAfter, pageSize)]);
+  const rows = rowsOf<{ voter: Address; risks: string | null }>(page);
+  const day = utcDay(pass.t0);
+  const statements: D1PreparedStatement[] = [];
+  if (rows.length > 0) {
+    const result = await readChunk([SYSVAR_CLOCK_ADDRESS, ...rows.map((row) => row.voter)], {
+      endpoints: config.rpc,
+      options: pass.upstream,
+    });
+    if (!result.ok) return;
+    const { read, endpoint } = result;
+    const gone = read.items.some((item) => item === null || item.owner !== VOTE_PROGRAM_ADDRESS);
+    if (gone && (await checkGenesis(pass, endpoint)) !== 'ok') return;
+    const events: { v: Address; d: string }[] = [];
+    const stored: { v: Address; r: string }[] = [];
+    rows.forEach((row, i) => {
+      const item = read.items[i] ?? null;
+      const data = item === null ? null : decodeBase64(item.dataBase64);
+      // Bytes the node sent that are not base64: no verdict on this validator today.
+      if (item !== null && data === null) return;
+      const account = item === null || data === null ? null : { owner: item.owner, data, lamports: item.lamports };
+      const risks = validatorRisks({ account, epoch: read.clock.epoch });
+      if (newValidatorRisks(parseRisks(row.risks), risks).length > 0) {
+        events.push({ v: row.voter, d: JSON.stringify({ voter: row.voter, risks }) });
+      }
+      stored.push({ v: row.voter, r: JSON.stringify(risks) });
+    });
+    report.validators = rows.length;
+    if (events.length > 0) statements.push(db.prepare(SQL.VALIDATOR_EVENTS).bind(JSON.stringify(events), read.slot, deps.now()));
+    statements.push(db.prepare(SQL.VALIDATORS_PUT).bind(JSON.stringify(stored), deps.now()));
+  }
+  const full = rows.length >= pageSize;
+  const sweep: ValidatorSweep = { day, after: full ? (rows.at(-1)?.voter ?? '') : '', done: !full };
+  statements.push(putMetaStatement(db, { validator_sweep: JSON.stringify(sweep) }, pass.passId));
+  const results = await budget.batch(db, statements);
+  if (statements.length === 3) report.validatorEvents = results[0]?.meta.changes ?? 0;
 }
 
 /**
@@ -1132,6 +1211,8 @@ function emptyReport(): PassReport {
     kitsStale: 0,
     reminders: 0,
     daily: false,
+    validators: 0,
+    validatorEvents: 0,
     botCheck: null,
     pairsQueued: 0,
     rescans: 0,
@@ -1166,7 +1247,25 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     adminAlerts: parseAdminAlerts(values.get('admin_alerts')),
     alertsSent: parseCount(values.get('alerts_sent')),
     kitQueue: parseKitQueue(values.get('kit_queue')),
+    validatorSweep: parseValidatorSweep(values.get('validator_sweep')),
   };
+}
+
+/** meta.validator_sweep: {"day": "YYYY-MM-DD", "after": "" or an address, "done": boolean}; anything else is null. */
+function parseValidatorSweep(text: string | undefined): ValidatorSweep | null {
+  const json = parseJson(text);
+  if (typeof json !== 'object' || json === null) return null;
+  const { day, after, done } = json as Record<string, unknown>;
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day) || typeof done !== 'boolean') return null;
+  if (typeof after !== 'string' || (after !== '' && !isAddressText(after))) return null;
+  return { day, after, done };
+}
+
+/** validators.risks as stored: the known risks of a JSON array; anything else counts as none. */
+function parseRisks(text: string | null): ValidatorRisk[] {
+  const json = parseJson(text ?? undefined);
+  if (!Array.isArray(json)) return [];
+  return VALIDATOR_RISKS.filter((risk) => (json as unknown[]).includes(risk));
 }
 
 /**
