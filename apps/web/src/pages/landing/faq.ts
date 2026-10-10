@@ -26,6 +26,7 @@ export const FAQ_GROUPS: readonly { id: FaqGroupId; items: readonly FaqId[] }[] 
       'change-second-key',
       'locked-by-other',
       'fake-site',
+      'check-tx',
       'check-explorer',
     ],
   },
@@ -36,13 +37,15 @@ export const FAQ_GROUPS: readonly { id: FaqGroupId; items: readonly FaqId[] }[] 
 
 /**
  * Answers with more than text: the Ledger's fields (`ledger`), a link to the gate results (`gate-link`), a link to
- * Rescue (`rescue-link`), a link to Prepare one-tap rescue (`rescue-kit-link`).
+ * Rescue (`rescue-link`), a link to Prepare one-tap rescue (`rescue-kit-link`), a link to Check a transaction
+ * (`check-link`).
  */
-export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-link' | 'rescue-kit-link'>> = {
+export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-link' | 'rescue-kit-link' | 'check-link'>> = {
   ledger: 'ledger',
   'existing-accounts': 'gate-link',
   'main-stolen': 'rescue-link',
   'one-tap-rescue': 'rescue-kit-link',
+  'check-tx': 'check-link',
 };
 
 /** The reminder days as a sentence fragment: "30, 14, 7, 3, and 1" (core REMINDER_DAYS, the worker's thresholds). */

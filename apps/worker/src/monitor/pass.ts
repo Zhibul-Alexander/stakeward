@@ -83,7 +83,7 @@ import {
  *              most MONITOR_LIMITS.maxKitSends a pass.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
- * 4a. validators - once a day from 06:00 UTC (D122): the vote accounts of the validators watched accounts are
+ * 4a. validators - once a day from 06:00 UTC (D127): the vote accounts of the validators watched accounts are
  *              delegated to, 99 a pass (meta.validator_sweep), one getMultipleAccounts with the Clock; a risk a validator
  *              did not have at the last check (core validatorRisks) is a VALIDATOR_AT_RISK event for each of its accounts.
  * 4b. bot    - every pass getWebhookInfo, once a day from 06:00 UTC getMe too (meta.bot_check_day): a webhook that is
@@ -664,7 +664,7 @@ async function daily(pass: LoadedPass): Promise<void> {
 }
 
 /**
- * Stage 4a, once a day from 06:00 UTC (DECISIONS.md D122): will the watched stake keep earning? One page of the
+ * Stage 4a, once a day from 06:00 UTC (DECISIONS.md D127): will the watched stake keep earning? One page of the
  * validators that delegated, not deactivating, watched accounts point at (VALIDATOR_PAGE, with the risks found last
  * time), their vote accounts in one getMultipleAccounts with the Clock, and one batch: a VALIDATOR_AT_RISK event per
  * account of each validator with a risk it did not have last time (risks that went away are just forgotten, so a

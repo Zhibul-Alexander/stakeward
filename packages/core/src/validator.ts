@@ -2,7 +2,7 @@ import type { Address, ReadonlyUint8Array } from '@solana/kit';
 import { formatSol, shortAddress } from './format.ts';
 
 /**
- * Validator health for the monitor's daily check (DECISIONS.md D122): will a native stake account delegated to this
+ * Validator health for the monitor's daily check (DECISIONS.md D127): will a native stake account delegated to this
  * vote account earn rewards? Read from the vote account alone, so the worker needs one getMultipleAccounts per 99
  * validators and no getVoteAccounts (its answer covers the whole cluster and would not fit the pass CPU budget).
  *

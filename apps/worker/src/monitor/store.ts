@@ -313,7 +313,7 @@ WHERE rescue_kits.stake_account = s.value ->> '$.a' AND rescue_kits.tx = s.value
   ACCOUNTS_FOR_WALLET: `SELECT stake_account, withdrawer, custodian, CAST(lock_until AS TEXT) AS lock_until, lamports, state, checked_at
 FROM accounts WHERE withdrawer = ?1 OR custodian = ?1 ORDER BY stake_account LIMIT 200`,
 
-  // Validator health (migration 0007, D122). ?1 = the last validator of the previous page ('' = from the start),
+  // Validator health (migration 0007, D127). ?1 = the last validator of the previous page ('' = from the start),
   // ?2 = page size. The validators delegated, not deactivating, watched accounts point at, with the risks stored.
   VALIDATOR_PAGE: `SELECT v.voter, val.risks FROM (SELECT DISTINCT voter FROM accounts
                                          WHERE state = 'delegated' AND deactivation_epoch = '18446744073709551615'
