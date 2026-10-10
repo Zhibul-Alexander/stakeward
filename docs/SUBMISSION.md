@@ -90,8 +90,9 @@ lockup on your existing stake accounts, for 1, 3, 6 or 12 months or until a date
   and 1 days before the lock ends.
 - **Rescue.** A stolen key is a copy: the owner still has it. So the main key, the second key and a new wallet
   sign together, and both authorities of each stake account move to the new wallet. This works even if the thief
-  already changed who manages staking. The rescue always runs on a durable nonce owned by the new wallet, so three
-  signatures do not race a one-minute blockhash, and the stolen key never pays a fee.
+  already changed who manages staking. The new wallet pays, so the stolen key never pays a fee. With every key in one
+  browser each wallet approves all accounts in one request; with a key on another device the rescue runs on a durable
+  nonce owned by the new wallet, so the signatures do not race a one-minute blockhash.
 - **Withdraw, extend, remove.** Both keys withdraw together. The second key alone extends the lock or removes it
   early.
 - **Sign by link.** The second key can sign on another device: the partly signed transaction travels in the

@@ -560,17 +560,17 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       }, WAIT);
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'Connect your second key' });
-      // UX rule 10 under the slot: a phone wallet's browser holds one wallet, so the second key signs elsewhere.
-      const oneBrowser = "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.";
-      expect(screen.getByText(oneBrowser)).toBeVisible();
-      // Where the second key signs is one click away, behind the question for a key on another device.
-      expect(screen.queryByRole('radiogroup', { name: 'Where does your Second key sign?' })).toBeNull();
-      await user.click(screen.getByRole('button', { name: 'Second key on another device? Sign by link' }));
-      // Open, the choice's "In this browser" card says the phone-wallet line, so it is not said twice.
-      expect(screen.queryByText(oneBrowser)).toBeNull();
-      expect(
-        within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', { name: 'In this browser' }),
-      ).toHaveAccessibleDescription(/A phone wallet's browser holds only that wallet\./);
+      // Where the second key signs opens the step, always shown: signing by link is never behind a toggle.
+      const choice = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
+      expect(choice).toBeVisible();
+      expect(screen.queryByRole('button', { name: /Sign by link/ })).toBeNull();
+      // "In this browser" is the default, and its card says UX rule 10: a phone wallet's browser holds one wallet.
+      const here = within(choice).getByRole('radio', { name: 'In this browser' });
+      expect(here).toBeChecked();
+      expect(here).toHaveAccessibleDescription(/A phone wallet's browser holds only that wallet\./);
+      // The slot to connect comes under the choice.
+      const slot = screen.getByRole('group', { name: 'Second key' });
+      expect(choice.compareDocumentPosition(slot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       await user.click(
         within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', {
           name: 'On another device, by link',
@@ -578,9 +578,8 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       );
       // By link the step asks for an address, not a connection.
       expect(screen.getByRole('heading', { name: 'Add your second key' })).toBeInTheDocument();
-      // By link there is no slot to connect: the address is pasted, and the one-browser notes do not apply.
+      // By link there is no slot to connect: the address is pasted.
       expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
-      expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
       const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
       // The choice comes before the field it asks for, so the next Tab from the chosen radio reaches the field.
       const where = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });

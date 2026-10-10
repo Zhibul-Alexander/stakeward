@@ -955,10 +955,8 @@
       "headingLink": "Add your second key",
       "body": "Use a wallet from a different seed phrase.",
       "slotDescription": "Connecting signs nothing.",
-      "byLink": "Second key on another device? Sign by link",
       "linkAddress": "Second key address",
       "linkHint": "Paste only a wallet you or someone you trust created. Stakeward never suggests a second key address.",
-      "oneBrowser": "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.",
       "sameWallet": "Both keys are in {wallet}. Accounts of one wallet app or one Ledger usually share a seed phrase. Go on only if this account comes from another one.",
       "sameWalletSwitch": "While signing, switch accounts in {wallet} within a minute, or the transactions expire.",
       "onlyStakeward": "Use it only to co-sign on Stakeward, never on other sites.",
@@ -1422,7 +1420,7 @@
     },
     "setupRescue": {
       "title": "Set up the link-signing account",
-      "body": "Rescue always signs through a small signing account, so three wallets have time to sign. Your {role} pays a {amount} deposit, returned when you close it.",
+      "body": "A key that signs by link needs a small signing account, so the link stays valid until every wallet has signed. Your {role} pays a {amount} deposit, returned when you close it.",
       "action": "Create the link-signing account"
     },
     "close": {

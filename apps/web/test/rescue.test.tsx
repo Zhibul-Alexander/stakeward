@@ -138,6 +138,11 @@ async function setUpNonce(user: UserEvent) {
 
 type Signer = { role: RoleName; wallet: string };
 
+/** The Sign button of a signer: one transaction ("Sign in …") or a batch of them ("Sign 3 transactions in …", D120). */
+function signName(signer: Signer): RegExp {
+  return new RegExp(`^Sign (?:in|\\d+ transactions in) ${signer.wallet} as ${signer.role}$`);
+}
+
 const NEW: Signer = { role: 'New wallet', wallet: 'New Wallet' };
 const MAIN: Signer = { role: 'Main key', wallet: 'Main Wallet' };
 const SECOND: Signer = { role: 'Second key', wallet: 'Second Wallet' };
@@ -149,7 +154,7 @@ const SECOND: Signer = { role: 'Second key', wallet: 'Second Wallet' };
 function nextSigner(signers: readonly Signer[], scope: Scope = screen): Promise<{ signer: Signer; connect: boolean }> {
   return waitFor(() => {
     for (const signer of signers) {
-      if (scope.queryByRole('button', { name: `Sign in ${signer.wallet} as ${signer.role}` }) !== null) return { signer, connect: false };
+      if (scope.queryByRole('button', { name: signName(signer) }) !== null) return { signer, connect: false };
       if (scope.queryByText(`Connect your ${signer.role} to sign.`) !== null) {
         return { signer, connect: true };
       }
@@ -170,29 +175,24 @@ async function signAll(
     const { signer, connect } = await nextSigner(remaining, scope);
     if (connect) await connectAndContinue(user, signer.role, signer.wallet, scope);
     options.before?.(signer);
-    await click(user, `Sign in ${signer.wallet} as ${signer.role}`, scope);
+    await user.click(await scope.findByRole('button', { name: signName(signer) }, WAIT));
     await options.after?.(signer);
     remaining.splice(remaining.indexOf(signer), 1);
   }
-}
-
-/** One round with all three keys in this browser. */
-async function signRound(user: UserEvent, round: number, total: number) {
-  await screen.findByText(`Round ${String(round)} of ${String(total)}`, undefined, WAIT);
-  await signAll(user, [NEW, MAIN, SECOND]);
 }
 
 function sameLockup(after: StakeAccount | null, before: StakeAccount | null) {
   expect(after?.lockup).toEqual(before?.lockup);
 }
 
-async function expectNonceRescue(wallet: TestWalletPort, D: Address, from = 0) {
+/** Every request of `wallet` from `from` on is a rescue paid by D on `lifetime` (blockhash with every key here, D120). */
+async function expectRescueOn(lifetime: 'blockhash' | 'nonce', wallet: TestWalletPort, D: Address, from = 0) {
   for (const request of wallet.requests.slice(from)) {
     const inspected = await inspectTransaction(request.transactions[0] ?? new Uint8Array());
     if (!inspected.ok) throw new Error(inspected.error.message);
     expect(inspected.summary.action.kind).toBe('rescue');
     expect(inspected.summary.feePayer).toBe(D);
-    expect(inspected.summary.lifetime.kind).toBe('nonce');
+    expect(inspected.summary.lifetime.kind).toBe(lifetime);
   }
 }
 
@@ -363,10 +363,8 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
       }
       await click(user, en.rescue.next.move);
       await heading(en.rescue.move.heading);
-      await click(user, 'Create the link-signing account');
-      await click(user, 'Sign in Shared Wallet as New wallet');
-      await screen.findByText('Round 1 of 2', undefined, WAIT);
-      await click(user, 'Sign in Shared Wallet as New wallet');
+      // Every key here: no link-signing account, one round on a recent blockhash (D120).
+      await user.click(await screen.findByRole('button', { name: signName({ role: 'New wallet', wallet: 'Shared Wallet' }) }, WAIT));
 
       const MAIN_HERE: Signer = { role: 'Main key', wallet: 'Shared Wallet' };
       const pending = [MAIN_HERE, SECOND];
@@ -374,7 +372,7 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
         const { signer, connect: mustConnect } = await nextSigner(pending);
         if (signer !== MAIN_HERE) {
           if (mustConnect) await connectAndContinue(user, signer.role, signer.wallet);
-          await click(user, `Sign in ${signer.wallet} as ${signer.role}`);
+          await user.click(await screen.findByRole('button', { name: signName(signer) }, WAIT));
           pending.splice(pending.indexOf(signer), 1);
           continue;
         }
@@ -386,7 +384,7 @@ describe('/rescue: a new wallet in the same wallet app as a key', () => {
         break;
       }
       expect(slots.getSnapshot().main).toEqual({ walletId: shared.id, address: w.A.address });
-      await screen.findByRole('button', { name: 'Sign in Shared Wallet as Main key' }, WAIT);
+      await screen.findByRole('button', { name: signName({ role: 'Main key', wallet: 'Shared Wallet' }) }, WAIT);
       const line = await screen.findByText('Your new wallet and your main key are both in Shared Wallet.', undefined, WAIT);
       const alert = line.closest('[data-slot="alert"]') as HTMLElement;
       expect(alert).toHaveAttribute('data-tone', 'warning');
@@ -493,18 +491,12 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await throughKeys(user, { secondMode: 'here', chooseSecond: w.K.address, choices: [w.K.address, K2.address] });
       expect(ports.secondKeys.getSnapshot()).toEqual([]);
       expect(screen.getAllByText(w.D.address).length).toBeGreaterThan(0);
-      // Every key signs here, yet the move runs on the new wallet's link-signing account (F4.3): the step says why,
-      // not that the account is for signing on another device.
-      const setup = (await heading('Set up the link-signing account')).closest('section') as HTMLElement;
-      expect(setup).toHaveTextContent(
-        'Rescue always signs through a small signing account, so three wallets have time to sign.',
-      );
-      expect(screen.queryByText(/^A link needs a small signing account/)).not.toBeInTheDocument();
-      await setUpNonce(user);
+      // Every key signs here: no link-signing account, the move runs on a recent blockhash (D120). Phantom on mainnet
+      // moves the compute budget in front of AdvanceNonceAccount, so a nonce move signed by Phantom first never lands.
+      // On a blockhash the three accounts go in one round: each wallet approves them in one request.
+      await signAll(user, [NEW, MAIN, SECOND]);
+      expect(screen.queryByRole('heading', { name: 'Set up the link-signing account' })).toBeNull();
       const nonceD = await deriveNonceAccountAddress(w.D.address);
-      await signRound(user, 1, 3);
-      await signRound(user, 2, 3);
-      await signRound(user, 3, 3);
 
       await heading('3 stake accounts are safe');
       // The new owner in full once, under the heading; the rows do not repeat it.
@@ -530,21 +522,14 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       }
       expect(w.testChain.stakeAccount(S4)).toEqual(before.get(S4));
       expect(w.testChain.balance(w.A.address)).toBe(0n);
-      expect(w.newWallet.requests).toHaveLength(4);
-      expect(w.main.requests).toHaveLength(3);
-      expect(w.second.requests).toHaveLength(3);
-      await expectNonceRescue(w.main, w.D.address);
-      await expectNonceRescue(w.second, w.D.address);
-      await expectNonceRescue(w.newWallet, w.D.address, 1);
-      const values = new Set<string>();
-      for (const request of w.main.requests) {
-        const inspected = await inspectTransaction(request.transactions[0] ?? new Uint8Array());
-        if (inspected.ok && inspected.summary.lifetime.kind === 'nonce') {
-          expect(inspected.summary.lifetime.nonceAccount).toBe(nonceD);
-          values.add(inspected.summary.lifetime.nonceValue);
-        }
+      for (const wallet of [w.newWallet, w.main, w.second]) {
+        expect(wallet.requests).toHaveLength(1);
+        expect(wallet.requests[0]?.transactions).toHaveLength(3);
       }
-      expect(values.size).toBe(3);
+      await expectRescueOn('blockhash', w.main, w.D.address);
+      await expectRescueOn('blockhash', w.second, w.D.address);
+      await expectRescueOn('blockhash', w.newWallet, w.D.address);
+      expect(w.testChain.account(nonceD)).toBeNull();
       // Written on this device only once the chain showed the moves: the second key, and the accounts it still locks.
       expect(ports.secondKeys.getSnapshot()).toEqual([w.K.address]);
       expect([...ports.protectedAccounts.getSnapshot()].sort()).toEqual([S1, S2].sort());
@@ -580,17 +565,9 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
         expect(delegation?.voter).toBe(w.vote);
         expect(delegation?.deactivationEpoch).toBe(U64_MAX);
       }, WAIT);
-      expect(w.newWallet.requests).toHaveLength(5);
-
-      // Close the link-signing account: the deposit goes back to the new wallet.
-      w.chain.expireBlockhash();
-      const deposit = w.testChain.balance(nonceD);
-      const balanceBefore = w.testChain.balance(w.D.address);
-      await click(user, 'Close it');
-      await click(user, 'Sign in New Wallet as New wallet');
-      await screen.findByText('Closed. The deposit went back to your New wallet.', undefined, WAIT);
-      expect(w.testChain.account(nonceD)).toBeNull();
-      expect(w.testChain.balance(w.D.address)).toBe(balanceBefore + deposit - 5_600n);
+      expect(w.newWallet.requests).toHaveLength(2);
+      // No link-signing account was made, so there is nothing to close.
+      expect(screen.queryByRole('button', { name: 'Close it' })).toBeNull();
 
       // The Done screen's ways on: the new wallet's accounts and its alerts.
       expect(screen.getByRole('link', { name: en.rescue.done.view })).toHaveAttribute('href', `/app?address=${w.D.address}`);
@@ -662,8 +639,9 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       }
       sameLockup(w.testChain.stakeAccount(S1), before);
       expect(w.main.requests).toHaveLength(2);
-      // The page never held the second key.
+      // The page never held the second key; a key signing by link keeps the move on the new wallet's nonce (D120).
       expect(w.second.requests).toHaveLength(0);
+      await expectRescueOn('nonce', w.main, w.D.address);
     },
     SCENARIO_TIMEOUT * 2,
   );
@@ -676,7 +654,6 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       const { user } = renderStakePage(w.chain, `/rescue?address=${w.A.address}`, [w.newWallet, w.main, w.second]);
 
       await throughKeys(user, { secondMode: 'here' });
-      await setUpNonce(user);
       // The second key's wallet holds its answer while the thief splits S1.
       let release: () => void = () => undefined;
       const gate = new Promise<void>((resolve) => {
@@ -699,6 +676,11 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       const split = made.split;
       if (split === null) throw new Error('no split');
       expect(w.testChain.stakeAccount(split)?.lockup.custodian).toBe(w.K.address);
+      // On a recent blockhash (every key here, D120) the thief's transaction moved the blockhash on: the page says the
+      // move expired, nothing changed, and every wallet signs once more.
+      await screen.findByText('The transaction expired before every wallet signed', undefined, WAIT);
+      await click(user, 'Sign again');
+      await signAll(user, [NEW, MAIN, SECOND]);
 
       await heading(en.rescue.done.titleOne);
       // Only a locked account moved: nothing to say about accounts without a lock.
@@ -727,7 +709,8 @@ describe('/rescue: move the stake to a new wallet (F4)', () => {
       await heading('2 stake accounts are safe');
       expect(w.testChain.stakeAccount(split)?.withdrawer).toBe(w.D.address);
       expect(w.testChain.stakeAccount(split)?.staker).toBe(w.D.address);
-      expect(w.second.requests).toHaveLength(2);
+      // The first run, its Sign again after the thief's split moved the blockhash on, and the second run.
+      expect(w.second.requests).toHaveLength(3);
     },
     SCENARIO_TIMEOUT * 2,
   );
@@ -789,8 +772,6 @@ describe('/rescue: all three keys in one Phantom (D109)', () => {
       await user.click(within(secondWhere).getByRole('radio', { name: en.rescue.keys.here }));
       await click(user, en.rescue.next.move);
       await heading(en.rescue.move.heading);
-      await click(user, 'Create the link-signing account');
-      await click(user, 'Sign in Phantom as New wallet');
 
       // Before each key the user selects its account in Phantom, as the page asks, and presses the button once.
       const remaining: Signer[] = [

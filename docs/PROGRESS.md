@@ -460,3 +460,4 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - `scripts/live-demo/sw.sh` и `role.sh`: механизм на сцене обычным Solana CLI, ключи ролей (main, second, new, thief) — одноразовые devnet-файлы в `.keys/live-demo/`. Сценарий и команды — `docs/live-demo.md`.
 - Проверено: весь сценарий на `solana-test-validator` 4.3.0; `scripts/live-demo/live-demo.test.ts` (разбор bash, help, разбор команд, ключи в .gitignore).
 - Дальше: владелец прогоняет сценарий на devnet в zsh на маке перед демо 13.10.
+- Mainnet, спасение (11.10.2026): Phantom, подписывая первым, ставит Compute Budget перед AdvanceNonceAccount, и nonce-транзакция становится недействительной (LiteSVM: `BlockhashNotFound`). Сайт остановил её правильно. Спасение со всеми ключами в браузере теперь на свежем блокхэше, одним раундом; по ссылке — на nonce, с Phantom первым на mainnet не работает (D120). Nonce-аккаунт Acc 3 `4pxrQV…` создан при первой попытке — закрыть после прохода.
