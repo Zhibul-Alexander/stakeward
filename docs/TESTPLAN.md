@@ -136,6 +136,8 @@ Claude правит найденное и пишет «готово к prod».
 
 ### в) Матрица кошельков на /dev/cosign
 
+Ledger без устройства: `scripts/ledger-sim/speculos.sh`, затем `pnpm ledger-sim` (D127, отчёт `docs/ledger-sim.md`). Настоящий Ledger через Phantom на mainnet нужен только для вопроса, дописывает ли Phantom Lighthouse для Ledger-аккаунта.
+
 Подготовка:
 - [ ] В Phantom включить devnet: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet. Режим действует на оба аккаунта.
 
