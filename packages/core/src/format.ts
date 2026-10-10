@@ -76,11 +76,12 @@ export function rfc3339Utc(unixSeconds: bigint): string | null {
 }
 
 /**
- * Shortened address for alerts (CLAUDE.md section 8 example, UX rule 9): first and last three characters,
- * `7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ` -> `7xK...9fQ`. The full address is on the page the alert links to.
+ * Shortened address for the site and alerts (UX rule 9): first and last four characters, as Phantom shows them
+ * (owner, 11.10.2026): `7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ` -> `7xKT...A9fQ`. The full
+ * address is on the signing screen and on the page an alert links to.
  */
 export function shortAddress(address: string): string {
-  return address.length <= 9 ? address : `${address.slice(0, 3)}...${address.slice(-3)}`;
+  return address.length <= 11 ? address : `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 const LAMPORTS_PER_SOL = 1_000_000_000n;

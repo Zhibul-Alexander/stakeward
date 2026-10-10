@@ -494,7 +494,7 @@ describe('landing words and numbers', () => {
     const figure = section('alerts').querySelector('figure') as HTMLElement;
     expect(figure.querySelector('figcaption')).toHaveTextContent('Example');
     expect([...figure.querySelectorAll('p')].map((p) => p.textContent)).toEqual([alert.text]);
-    expect(alert.text).toMatch(/^Stake \w{3}\.\.\.\w{3} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
+    expect(alert.text).toMatch(/^Stake \w{4}\.\.\.\w{4} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
     expect(within(figure).getByText('Open Rescue')).toBeInTheDocument();
     // An example, not a control.
     expect(within(figure).queryByRole('button')).toBeNull();

@@ -281,7 +281,7 @@ export type AlertContext = {
 
 /**
  * The alert for one event. Key roles use the UI names only (UX rule 4: main key, second key; never "custodian" or
- * "withdrawer"). Example (CLAUDE.md section 8): "Stake 7xK...9fQ was deactivated. If this was not you, your main key
+ * "withdrawer"). Example (CLAUDE.md section 8): "Stake 7xKT...A9fQ was deactivated. If this was not you, your main key
  * may be stolen. Your SOL cannot be withdrawn without the second key." with the button "Open Rescue".
  */
 export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address }, context: AlertContext): Alert {

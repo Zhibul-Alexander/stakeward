@@ -89,7 +89,7 @@ function movableOrder(): string[] {
   return [...(list?.querySelectorAll('[data-slot="account-row"]') ?? [])].map((row) => row.getAttribute('aria-label') ?? '');
 }
 
-const rowLabel = (address: Address) => `Stake account ${address.slice(0, 3)}...${address.slice(-3)}`;
+const rowLabel = (address: Address) => `Stake account ${address.slice(0, 4)}...${address.slice(-4)}`;
 
 /** The first step's answer for `locked`: how many, their SOL, and the earliest date a lock ends. */
 function safeLine(locked: readonly Address[], w: World, until: bigint): string {
