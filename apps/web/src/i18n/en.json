@@ -909,6 +909,7 @@
       "protectGroupOther": "Protect {count} accounts",
       "extend": "Extend",
       "withdraw": "Withdraw",
+      "unstake": "Unstake",
       "rescue": "Rescue",
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
