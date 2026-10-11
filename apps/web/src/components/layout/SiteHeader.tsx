@@ -1,9 +1,9 @@
-import { FlaskConicalIcon, LifeBuoyIcon, PlayIcon, SwordsIcon, type LucideIcon } from 'lucide-react';
+import { FlaskConicalIcon, GlobeIcon, LifeBuoyIcon, PlayIcon, SwordsIcon, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { IS_DEVNET, TESTNET_SITE_URL } from '@/config';
+import { IS_DEVNET, MAINNET_SITE_URL, TESTNET_SITE_URL } from '@/config';
 import { t } from '@/i18n';
 
 /** A ghost link of the header's nav; the page it opens is marked as the current one (`aria-current`). */
@@ -44,6 +44,13 @@ export function SiteHeader() {
                 {t('common.devnet')}
               </Badge>
               <span className="hidden text-xs text-muted md:inline">{t('common.devnetNote')}</span>
+              {/* The way back to the real site; icon only below 640 px, the name stays for screen readers. */}
+              <Button asChild variant="outline" size="sm">
+                <a href={MAINNET_SITE_URL}>
+                  <GlobeIcon aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only">{t('nav.tryMainnet')}</span>
+                </a>
+              </Button>
             </>
           ) : null}
         </div>
