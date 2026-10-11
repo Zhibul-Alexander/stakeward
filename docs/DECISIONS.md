@@ -1109,6 +1109,11 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - В сборке mainnet в шапке и на лендинге ссылка «Try on testnet» на dev.stakeward.com (`TESTNET_SITE_URL`). Паша написал «testnet», но dev работает на Solana devnet: там челлендж-кошелёк и все демо. Подпись — как он попросил, сеть не меняем.
 - На своём домене работает кэш `/api/stake-accounts` (D39). Phantom проверяет домен заново: форму отправить на https://stakeward.com.
 
+## D137. «Check this on your wallet» на экране подписи (11.10.2026, по слову Паши)
+
+- Взломанный сервер отдаёт и подменённый сайт, а в нём подменён и инспектор (SECURITY-CHECK У6). Единственная проверка, которая тогда держится, — экран кошелька или Ledger. Поэтому сводка транзакции (`TransactionSummary`) над «What changes» показывает один адрес, который подменил бы взломщик: новый второй ключ (protect), получателя (withdraw), новый кошелёк (rescue), новый второй ключ (change-second-key). Адрес крупно, первые и последние четыре знака выделены, с фразой «find this address on your wallet or Ledger screen… If it shows another address, reject». Для extend, unlock, deactivate, delegate и nonce блока нет. Названия полей Ledger не пишем: Паша убрал заметки про Ledger из сводки 10.10.
+- Паша попросил влить в main сразу, без PR.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.

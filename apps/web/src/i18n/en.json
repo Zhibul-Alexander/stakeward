@@ -374,6 +374,14 @@
       "nonceLifetime": "Valid until it is sent or cancelled.",
       "technical": "Technical details",
       "lighthouse": "Checks your wallet added at the end (Lighthouse): {count}. They only read accounts and cannot move funds.",
+      "check": {
+        "title": "Check this on your wallet",
+        "body": "Before you approve, find this address on your wallet or Ledger screen. It must match, and it must be yours. If it shows another address, reject: this page may not be the real Stakeward.",
+        "secondKey": "Your second key",
+        "recipient": "Where the SOL goes",
+        "newWallet": "Your new wallet",
+        "newSecondKey": "Your new second key"
+      },
       "walletWarning": "Phantom may flag this as unsafe or block it: it does so for any transaction that gives a key a role in a stake account. Go on only if every address on this screen is yours.",
       "warn": {
         "replacesSecondKey": "This replaces the current second key:",
