@@ -5,7 +5,7 @@
 
 ## Порядок действий владельца (06.10.2026, уточнено после проверки)
 
-Всё по порядку. Адрес dev: https://stakeward-dev.stakeward.workers.dev, prod: https://stakeward-prod.stakeward.workers.dev (старые адреса `*.zhibul-alexander.workers.dev` больше не работают, D106). Этапы 0–8 заменяют полный проход этого файла на prod (D107). Подписи кнопок ниже — дословно как на экране. Если что-то не совпадает или непонятно — пишите в чат.
+Всё по порядку. Адрес dev: https://dev.stakeward.com, prod: https://stakeward.com (D136; workers.dev-адреса пока тоже открываются; старые адреса `*.zhibul-alexander.workers.dev` больше не работают, D106). Этапы 0–8 заменяют полный проход этого файла на prod (D107). Подписи кнопок ниже — дословно как на экране. Если что-то не совпадает или непонятно — пишите в чат.
 
 **Три тестовых аккаунта.** Переименуйте их так же в Phantom (Settings → Manage Accounts → аккаунт → имя), чтобы при переключении не ошибиться:
 
@@ -25,6 +25,7 @@
 - [x] 08.10.2026: деплой dev 98a8bcf (version 0500d635), сделал владелец; `verify-deploy` PASS, 27 файлов, 5 заголовков на 26 ответах.
 - [x] 08.10.2026: деплой dev 2c6207a (version e95b8b86) с исправлением переключения аккаунтов Phantom (D109), сделал владелец из рабочей копии `stakeward-fix`; `verify-deploy` PASS.
 - [x] Переезд на `stakeward.workers.dev`: поддомен сменил владелец, `SITE_ORIGIN`, вебхуки и описания обоих ботов обновил Claude по просьбе владельца; вебхуки без ошибок, проход монитора dev после переезда — `botCheck: ok`. Одна тревога bot-mismatch пришла в минуту переключения — ожидаемо.
+- [ ] Переезд на stakeward.com (D136): деплой dev и prod с `routes`; `SITE_ORIGIN` обоих воркеров, вебхуки и описания обоих ботов — на https://dev.stakeward.com и https://stakeward.com; Redirect Rule www → stakeward.com; форма Phantom на https://stakeward.com; на prod в шапке и на лендинге есть «Try on testnet» и ведёт на dev.stakeward.com.
 - [x] Devnet SOL: на спонсоре 8,7 SOL, на Second key 0,05 SOL — пополнять ничего не нужно.
 - [x] 08.10.2026: Acc 2 заменён новым кошельком из своей фразы, `GuY1kkv9Ket7kGX4FjTasycpBmNN1i1op7FgnEgxdo2G`; со спонсора на него 0,05 devnet SOL (транзакция `5uvhdDQm…`). Прежний второй ключ `2Fz9TU…` в тестах больше не участвует.
 

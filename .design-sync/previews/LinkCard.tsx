@@ -4,7 +4,7 @@ import { SAMPLE, SAMPLE_TX, sampleLinkUrl } from '../../apps/web/src/pages/dev-u
 
 // The signing link of a rescue on its durable nonce, built by core on the production origin: the longest link
 // Stakeward makes, so the densest QR code a phone has to read.
-const ORIGIN = 'https://stakeward-prod.stakeward.workers.dev';
+const ORIGIN = 'https://stakeward.com';
 const linkUrl = sampleLinkUrl(ORIGIN);
 const noop = () => undefined;
 

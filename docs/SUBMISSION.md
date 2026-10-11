@@ -30,8 +30,8 @@ Stakeward
 | What | Link |
 | --- | --- |
 | Repository (MIT) | https://github.com/Zhibul-Alexander/stakeward |
-| Product, Solana mainnet | https://stakeward-prod.stakeward.workers.dev |
-| Test version, Solana devnet | https://stakeward-dev.stakeward.workers.dev |
+| Product, Solana mainnet | https://stakeward.com |
+| Test version, Solana devnet | https://dev.stakeward.com |
 | Telegram alerts bot | `@stakeward_bot` (mainnet), `@stakeward_dev_bot` (devnet) |
 | Proof of the mechanism on mainnet | [docs/gate.md](gate.md), section Mainnet: 8 of 8 checks |
 | Recovery without Stakeward | [README, "Recover without Stakeward"](../README.md#recover-without-stakeward) |
@@ -153,7 +153,7 @@ into readable fields, checked on its emulator (`pnpm ledger-sim`, docs/ledger-si
 scripts 142 on 11 October 2026), including every transaction kind executed against the mainnet stake program in
 LiteSVM, plus Playwright with axe on every route at 1280 and 360 px.
 
-**Status.** Live on Solana mainnet at https://stakeward-prod.stakeward.workers.dev; the owner's mainnet checks passed
+**Status.** Live on Solana mainnet at https://stakeward.com; the owner's mainnet checks passed
 on 10-11 October 2026. [TODO owner: N stake accounts and X SOL under lock from `/stats`; first users.]
 
 ## 4. Logo

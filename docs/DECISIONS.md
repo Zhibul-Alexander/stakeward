@@ -1092,6 +1092,14 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
   - Тревога-триггер (DEACTIVATED и т. п.) добавляет «Stakeward already sent your one-tap rescue: this stake moves to your new wallet …», кнопка ведёт на аккаунты D, а не в мастер спасения.
   - Смена ключа на любой другой адрес остаётся тревогой: вор не может перевести стейк на D.
 
+## D136. Свой домен stakeward.com (11.10.2026, по слову Паши; поправка к D84, D106 и «Развёртыванию»)
+
+- Паша купил stakeward.com 11.10.2026 через Cloudflare Registrar, зона в том же аккаунте (NS `dell` и `edward.ns.cloudflare.com`). Prod — https://stakeward.com, dev (devnet) — https://dev.stakeward.com: `routes` с `custom_domain: true` в `wrangler.jsonc`, DNS-запись и сертификат создаёт wrangler при деплое.
+- workers.dev пока остаётся включённым (`workers_dev: true`): по старым адресам открываются старые ссылки, а вебхуки ботов указывают туда, пока `SITE_ORIGIN` и `setWebhook` не переведены на новый домен. После этого переключения workers.dev выключаем отдельным коммитом.
+- www.stakeward.com не отдаёт вторую копию сайта: статику Workers отдаёт раньше воркера, поэтому воркер не может сделать редирект. Редирект www → stakeward.com — правило зоны (Rules → Redirect Rules), его ставит Паша.
+- В сборке mainnet в шапке и на лендинге ссылка «Try on testnet» на dev.stakeward.com (`TESTNET_SITE_URL` в `apps/web/src/config.ts`). Паша написал «testnet», но dev работает на Solana devnet: там челлендж-кошелёк и все демо. Подпись кнопки — как он попросил, сеть не меняем.
+- На своём домене начинает работать кэш `/api/stake-accounts` (D39). Phantom проверяет домен заново: форму отправить на https://stakeward.com.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.

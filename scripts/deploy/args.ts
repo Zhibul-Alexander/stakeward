@@ -9,10 +9,10 @@ export type Cluster = 'devnet' | 'mainnet';
 /** The site build each wrangler environment serves (DECISIONS D30). */
 export const CLUSTER_OF: Record<DeployEnv, Cluster> = { dev: 'devnet', prod: 'mainnet' };
 
-/** Where each environment is served (DECISIONS «Развёртывание»; workers.dev until a domain is bought, D84). */
+/** Where each environment is served: the Worker custom domains (DECISIONS D136). */
 export const ORIGIN_OF: Record<DeployEnv, string> = {
-  dev: 'https://stakeward-dev.stakeward.workers.dev',
-  prod: 'https://stakeward-prod.stakeward.workers.dev',
+  dev: 'https://dev.stakeward.com',
+  prod: 'https://stakeward.com',
 };
 
 export const DEPLOY_USAGE = [

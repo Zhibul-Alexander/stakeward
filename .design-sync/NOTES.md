@@ -53,7 +53,7 @@
   export (e.g. pages/app/MonitoringStatus for SummaryBar's `monitoring` slot: its own component imports are redirected
   to window.Stakeward by story-imports rule 2).
 - Keep captures deterministic: Countdown and MonitoringStatus take a clock/now prop; pass fixed values
-  (1_791_504_000_000 ms). Link-signing previews use the prod origin https://stakeward-prod.stakeward.workers.dev, not
+  (1_791_504_000_000 ms). Link-signing previews use the prod origin https://stakeward.com, not
   window.location.origin.
 - Period end dates under the fixed clock (core lockupEndForPeriod): 1 month = 10 November 2026, 3 = 10 January 2027,
   6 = 10 April 2027, 12 = 10 October 2027; sampleExpiringEnd = 28 October 2026. formatSol drops trailing zeros
