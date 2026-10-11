@@ -62,7 +62,7 @@ export function lockupEndForPeriod(now: Date | bigint, months: 1 | 3 | 6 | 12): 
 }
 
 /** The furthest custom lock end, in years from today (DECISIONS.md D119): a typo in the year cannot freeze a stake for decades. */
-export const CUSTOM_LOCK_MAX_YEARS = 5;
+export const CUSTOM_LOCK_MAX_YEARS = 10;
 
 export type CustomLockProblem = 'invalid' | 'too-soon' | 'too-late';
 

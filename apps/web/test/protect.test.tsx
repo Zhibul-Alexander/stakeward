@@ -435,7 +435,7 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
 
 describe('/protect: a custom lock end (D119)', () => {
   it(
-    'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than five years, and Back keeps the date',
+    'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than ten years, and Back keeps the date',
     async () => {
       const w = await world();
       const { S1 } = await twoAccounts(w);
@@ -454,18 +454,18 @@ describe('/protect: a custom lock end (D119)', () => {
 
       await user.click(screen.getByRole('radio', { name: 'Custom date' }));
       const field = screen.getByLabelText('Lock until');
-      // START_UNIX_TIMESTAMP is 1 October 2026: tomorrow to five years on.
+      // START_UNIX_TIMESTAMP is 1 October 2026: tomorrow to ten years on.
       expect(field).toHaveAttribute('min', '2026-10-02');
-      expect(field).toHaveAttribute('max', '2031-10-01');
-      expect(screen.getByText('The lock ends at 00:00 UTC on this date. From 2 October 2026 to 1 October 2031.')).toBeInTheDocument();
+      expect(field).toHaveAttribute('max', '2036-10-01');
+      expect(screen.getByText('The lock ends at 00:00 UTC on this date. From 2 October 2026 to 1 October 2036.')).toBeInTheDocument();
       // Nothing typed: the step button says what is missing.
       await user.click(continueButton());
       expect(screen.getByText('Pick the date the lock ends.')).toBeInTheDocument();
       fireEvent.change(field, { target: { value: '2026-10-01' } });
       expect(screen.getByRole('alert')).toHaveTextContent('Pick a date from 2 October 2026 on.');
       expect(field).toHaveAttribute('aria-invalid', 'true');
-      fireEvent.change(field, { target: { value: '2031-10-02' } });
-      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2031\./);
+      fireEvent.change(field, { target: { value: '2036-10-02' } });
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2036\./);
       fireEvent.change(field, { target: { value: '2027-03-15' } });
       expect(screen.queryByRole('alert')).toBeNull();
       const until = BigInt(Date.UTC(2027, 2, 15) / 1000);

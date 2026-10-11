@@ -128,6 +128,21 @@ describe('actionApplied', () => {
     });
   });
 
+  describe('change-second-key', () => {
+    const action: TransactionAction = { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D };
+    const after = (lockup: StakeAccount['lockup']) => rawStakeAccount(locked({ lockup }));
+    it.each([
+      ['the new key holds the lock, same end', after({ unixTimestamp: T, epoch: 0n, custodian: D }), locked(), true],
+      ['the new key holds the lock, nothing known before', after({ unixTimestamp: T, epoch: 0n, custodian: D }), null, true],
+      ['the old key still holds it', rawStakeAccount(locked()), locked(), false],
+      ['the end moved', after({ unixTimestamp: T + 1n, epoch: 0n, custodian: D }), locked(), false],
+      ['the epoch moved', after({ unixTimestamp: T, epoch: 3n, custodian: D }), locked(), false],
+      ['the account is gone', null, locked(), false],
+    ] as const)('%s -> %s', (_name, read, previous, expected) => {
+      expect(actionApplied(action, read, previous)).toBe(expected);
+    });
+  });
+
   describe('rescue', () => {
     const action: TransactionAction = { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D };
     const before = locked({ staker: key(6) }); // the thief moved the staker

@@ -310,7 +310,7 @@ describe('/extend/:account: move or remove the lock with the second key (F5)', (
 
 describe('/extend/:account: a custom end date (D119)', () => {
   it(
-    'the second key moves the lock to 00:00 UTC of a date it picks; never to or before the current end, never past five years',
+    'the second key moves the lock to 00:00 UTC of a date it picks; never to or before the current end, never past ten years',
     async () => {
       const w = await world(LAMPORTS_PER_SOL / 100n);
       const S = await stake(w);
@@ -319,15 +319,15 @@ describe('/extend/:account: a custom end date (D119)', () => {
       await periodRadio('6 months', SIX_MONTHS);
       await user.click(screen.getByRole('radio', { name: 'Custom date' }));
       const field = screen.getByLabelText('Lock until');
-      // The lock ends on 9 January 2027 (START + 100 days): the day after it is the earliest; five years from 1 October 2026 the latest.
+      // The lock ends on 9 January 2027 (START + 100 days): the day after it is the earliest; ten years from 1 October 2026 the latest.
       expect(field).toHaveAttribute('min', '2027-01-10');
-      expect(field).toHaveAttribute('max', '2031-10-01');
+      expect(field).toHaveAttribute('max', '2036-10-01');
       expect(screen.getByRole('button', { name: 'Review new end date' })).toBeDisabled();
       expect(screen.getByText('Pick the date the lock ends.')).toBeInTheDocument();
       fireEvent.change(field, { target: { value: '2027-01-09' } });
       expect(screen.getByRole('alert')).toHaveTextContent('Pick a date from 10 January 2027 on: a new end must be later than the current one.');
-      fireEvent.change(field, { target: { value: '2031-10-02' } });
-      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2031\./);
+      fireEvent.change(field, { target: { value: '2036-10-02' } });
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2036\./);
       fireEvent.change(field, { target: { value: '2027-05-20' } });
       expect(screen.queryByRole('alert')).toBeNull();
       const until = BigInt(Date.UTC(2027, 4, 20) / 1000);

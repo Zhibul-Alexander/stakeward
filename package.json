@@ -27,6 +27,7 @@
     "gate:devnet": "pnpm --filter @stakeward/scripts gate:devnet",
     "gate:mainnet": "pnpm --filter @stakeward/scripts gate:mainnet",
     "recovery-cli": "pnpm --filter @stakeward/scripts recovery-cli",
+    "challenge-wallet": "pnpm --filter @stakeward/scripts challenge-wallet",
     "ledger-sim": "pnpm --filter @stakeward/scripts ledger-sim"
   },
   "devDependencies": {

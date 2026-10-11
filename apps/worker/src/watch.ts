@@ -23,7 +23,7 @@ import type { AppEnv } from './app.ts';
  * POST /api/watch { accounts } (CLAUDE.md section 8): takes stake accounts under monitoring. No login and no
  * signature: the worker reads every account itself, in ONE getMultipleAccounts with the Clock sysvar first, and core
  * `watchVerdict` judges each one by the cluster clock of that read (a lock is a date; the second key is neither the
- * main key nor the zero key; the lock ends at most 400 days ahead).
+ * main key nor the zero key; the lock ends at most 10 years ahead).
  *
  * Accepted accounts are written through `insertWatchedStatements`, one row per statement in one D1 batch (the step 5
  * contract): a new row is inserted, a closed row revives only from a fresher read, a live row is never changed.

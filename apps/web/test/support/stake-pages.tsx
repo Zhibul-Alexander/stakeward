@@ -12,6 +12,7 @@ import { expect } from 'vitest';
 import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { CosignPage } from '@/pages/CosignPage';
+import { ChangeKeyPage } from '@/pages/ChangeKeyPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
@@ -90,6 +91,9 @@ export function renderStakePage(
             </Route>
             <Route path="/extend/:account">
               <ExtendPage signing={signing} />
+            </Route>
+            <Route path="/change-key/:account">
+              <ChangeKeyPage signing={signing} />
             </Route>
             <Route path="/rescue">
               <RescuePage signing={signing} />

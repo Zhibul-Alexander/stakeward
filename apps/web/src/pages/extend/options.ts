@@ -72,7 +72,7 @@ const DAY = 86_400n;
 
 /**
  * The dates Custom date may take on /extend (D119): from the later of tomorrow and the day after the lock's current
- * end (never a shorter lock), to five years from now. `YYYY-MM-DD`, UTC.
+ * end (never a shorter lock), to CUSTOM_LOCK_MAX_YEARS from now. `YYYY-MM-DD`, UTC.
  */
 export function customExtendBounds(currentEnd: bigint, clock: ClockView): { min: string; max: string } {
   const bounds = customLockBounds(clock.unixTimestamp);
