@@ -94,8 +94,9 @@
       "preview_urls": false,
       // The site's address (D136). The zone stakeward.com is in this Cloudflare account; wrangler creates the DNS
       // record and the certificate. workers.dev stays on during the move: old links, the Telegram webhook until
-      // SITE_ORIGIN and setWebhook name the new address.
-      "routes": [{ "pattern": "dev.stakeward.com", "custom_domain": true }],
+      // SITE_ORIGIN and setWebhook name the new address. zone_name is explicit: the deploy token cannot infer the zone
+      // (Cloudflare API error 10082 on the first deploy).
+      "routes": [{ "pattern": "dev.stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
       "workers_dev": true,
       "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
       "secrets": {
@@ -131,7 +132,7 @@
       // The site's address (D136); workers.dev stays on during the move, as in dev. www.stakeward.com is not a second
       // copy of the site: a zone Redirect Rule sends it to stakeward.com (static assets are served before the Worker,
       // so the Worker cannot redirect it).
-      "routes": [{ "pattern": "stakeward.com", "custom_domain": true }],
+      "routes": [{ "pattern": "stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
       "workers_dev": true,
       "vars": { "CLUSTER": "mainnet", "MONITOR_PLAN": "free" },
       "secrets": {
