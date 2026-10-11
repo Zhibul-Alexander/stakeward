@@ -1,5 +1,6 @@
 import { formatSol, LAMPORTS_PER_SIGNATURE, networkFeeFor } from '@stakeward/core';
 import type { ReactNode } from 'react';
+import { formatUsd } from '@/api/sol-price';
 import { SolAmount, SolAmountSkeleton } from '@/components/product/sol-amount';
 import type { Load } from '@/hooks/use-load';
 import { t } from '@/i18n';
@@ -19,11 +20,27 @@ function FeeRow({ label, amount, payer }: { label: string; amount: ReactNode; pa
   );
 }
 
+/**
+ * An amount in SOL and, under it, roughly in dollars once the rate is read (D132). SOL stays the number that counts:
+ * the dollar line is muted, and absent while the rate loads or when it cannot be read.
+ */
+function Amount({ lamports, solUsd }: { lamports: bigint; solUsd: Load<number> }) {
+  if (solUsd.status !== 'ready') return <SolAmount lamports={lamports} />;
+  return (
+    <span className="flex flex-col items-end">
+      <SolAmount lamports={lamports} />
+      <span data-slot="usd-amount" className="text-xs font-normal whitespace-nowrap text-muted">
+        {t('landing.fees.usd', { amount: formatUsd(lamports, solUsd.value) })}
+      </span>
+    </span>
+  );
+}
+
 /** The deposit as read from the network; neutral words if that read failed (spec L9: no error box, no retry). */
-function Deposit({ deposit }: { deposit: Load<bigint> }) {
+function Deposit({ deposit, solUsd }: { deposit: Load<bigint>; solUsd: Load<number> }) {
   switch (deposit.status) {
     case 'ready':
-      return <SolAmount lamports={deposit.value} />;
+      return <Amount lamports={deposit.value} solUsd={solUsd} />;
     case 'error':
       return t('landing.fees.depositUnknown');
     default:
@@ -42,27 +59,32 @@ function Deposit({ deposit }: { deposit: Load<bigint> }) {
  * on; CLAUDE.md section 5: a stolen main key never pays, the new wallet pays for a rescue). The amounts come from the
  * same formula the signing screens use (core networkFeeFor: 5000 lamports per signature plus the fixed priority fee),
  * the link-signing deposit is read from the network (D22). Every signing screen shows its fee again before it signs.
+ * With the SOL/USD rate read (`solUsd`, D132), each amount also reads roughly in dollars, and a line under the table
+ * says at which rate.
  */
-export function Fees({ deposit }: { deposit: Load<bigint> }) {
+export function Fees({ deposit, solUsd = { status: 'idle' } }: { deposit: Load<bigint>; solUsd?: Load<number> }) {
   // The fee per signature never breaks between its number and "SOL".
   const perSignature = formatSol(LAMPORTS_PER_SIGNATURE).replaceAll(' ', '\u00a0');
   return (
     <Section id="fees" title={t('landing.fees.title')} intro={t('landing.fees.intro', { amount: perSignature })}>
       <dl className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
-        <FeeRow label={t('landing.fees.protect')} amount={<SolAmount lamports={networkFeeFor(2)} />} payer={t('landing.fees.protectPayer')} />
+        <FeeRow label={t('landing.fees.protect')} amount={<Amount lamports={networkFeeFor(2)} solUsd={solUsd} />} payer={t('landing.fees.protectPayer')} />
         <FeeRow
           label={t('landing.fees.extend')}
-          amount={<SolAmount lamports={networkFeeFor(1)} />}
+          amount={<Amount lamports={networkFeeFor(1)} solUsd={solUsd} />}
           payer={t('landing.fees.extendPayer', { amount: formatSol(networkFeeFor(2)) })}
         />
         <FeeRow
           label={t('landing.fees.withdraw')}
-          amount={<SolAmount lamports={networkFeeFor(2)} />}
+          amount={<Amount lamports={networkFeeFor(2)} solUsd={solUsd} />}
           payer={t('landing.fees.withdrawPayer', { amount: formatSol(networkFeeFor(1)) })}
         />
-        <FeeRow label={t('landing.fees.rescue')} amount={<SolAmount lamports={networkFeeFor(3)} />} payer={t('landing.fees.rescuePayer')} />
-        <FeeRow label={t('landing.fees.deposit')} amount={<Deposit deposit={deposit} />} payer={t('landing.fees.depositPayer')} />
+        <FeeRow label={t('landing.fees.rescue')} amount={<Amount lamports={networkFeeFor(3)} solUsd={solUsd} />} payer={t('landing.fees.rescuePayer')} />
+        <FeeRow label={t('landing.fees.deposit')} amount={<Deposit deposit={deposit} solUsd={solUsd} />} payer={t('landing.fees.depositPayer')} />
       </dl>
+      {solUsd.status === 'ready' ? (
+        <p className="mt-3 text-sm text-muted">{t('landing.fees.usdRate', { rate: formatUsd(1_000_000_000n, solUsd.value) })}</p>
+      ) : null}
     </Section>
   );
 }
