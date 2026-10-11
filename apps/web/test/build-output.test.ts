@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEV_COSIGN_MARKER } from '@/pages/dev/DevCosignPage';
 import { DEV_UI_MARKER } from '@/pages/dev/DevUiPage';
+import { CHALLENGE_MARKER } from '@/pages/challenge/ChallengePage';
+import { CHALLENGE } from '@/pages/challenge/wallet';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
 import { prebuiltDist } from './support/prebuilt.ts';
@@ -26,12 +28,12 @@ import { prebuiltDist } from './support/prebuilt.ts';
  */
 const DEV_ONLY_PREFIX = 'stakeward-dev-only:';
 const TEST_ONLY_PREFIX = 'stakeward-test-only:';
-const DEV_MARKERS = [DEV_UI_MARKER, DEV_COSIGN_MARKER];
+const DEV_MARKERS = [DEV_UI_MARKER, DEV_COSIGN_MARKER, CHALLENGE_MARKER];
 /**
  * Literals that only devnet-only modules use (not markers): they show that the code behind a page is gone too, not
  * just the page component. /dev/cosign's storage keys live in src/pages/dev-cosign.
  */
-const DEV_ONLY_CODE = [DEV_SLOTS_STORAGE_KEY, REPORTS_STORAGE_KEY];
+const DEV_ONLY_CODE = [DEV_SLOTS_STORAGE_KEY, REPORTS_STORAGE_KEY, CHALLENGE.stakeAccount];
 
 const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);

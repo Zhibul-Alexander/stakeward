@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { challengeHandler } from './challenge.ts';
 import { accountsHandler, healthHandler, noStore, statsHandler } from './public-api.ts';
 import { securityHeaders } from './security-headers.ts';
 import { rateLimit } from './rate-limit.ts';
@@ -95,6 +96,9 @@ export function createApp(options: AppOptions = {}) {
   );
 
   app.get('/telegram/link', noStore(), telegramLinkHandler());
+
+  // Devnet only (challenge.ts): no D1 and no RPC, so no rate limit.
+  app.get('/challenge', noStore(), challengeHandler());
 
   app.notFound((c) => c.json({ error: 'Not found' }, 404));
 

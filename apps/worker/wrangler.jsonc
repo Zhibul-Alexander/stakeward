@@ -41,6 +41,8 @@
   //   ADMIN_CHAT_ID            required. Telegram chat id for monitor and worker error reports.
   //   TELEGRAM_BOT_USERNAME    required. The bot's username without `@`.
   //   SITE_ORIGIN              required. This environment's site origin, `https://...` without a trailing slash.
+  //   CHALLENGE_MAIN_KEY       optional, dev only. The published main key of the devnet challenge wallet, base58 of its
+  //                            64-byte keypair (src/challenge.ts, DECISIONS D132). Never the second key.
   // TELEGRAM_BOT_USERNAME and SITE_ORIGIN are not secret, but they live with the secrets (in .dev.vars.<env> too):
   // `wrangler types` gives `vars` literal types and CI checks that the types are fresh, while secrets are typed `string`
   // and can change without a commit. With secrets.required the FIRST deploy of a new Worker must pass them all:
