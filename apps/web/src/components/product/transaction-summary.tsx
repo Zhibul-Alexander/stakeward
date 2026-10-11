@@ -88,6 +88,7 @@ const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
   'change-second-key': ['common.cannotMoveSol', 'components.tx.cannot.keepsEnd'],
   'nonce-setup': ['components.tx.cannot.noStake'],
   'nonce-close': ['components.tx.cannot.noStake'],
+  'create-stake': ['components.tx.cannot.createOnlyYours'],
 };
 
 /** Roles named by the action itself: these win over the page's `knownRoles`. */
@@ -558,6 +559,16 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
       return [{ label: t('components.tx.staking'), before: t('components.tx.delegated'), after: t('components.tx.deactivating') }];
     case 'delegate':
       return [{ label: t('components.tx.validator'), after: <Full address={action.voteAccount} /> }];
+    case 'create-stake':
+      return [
+        {
+          label: t('components.tx.amount'),
+          after: t('components.tx.movesToStake', { amount: formatSol(action.lamports) }),
+        },
+        { label: t('components.tx.controlledBy'), after: <Full address={action.mainKey} role="main" /> },
+        { label: t('components.tx.validator'), after: <Full address={action.voteAccount} /> },
+        { label: lockLabel, after: t('components.tx.noLock') },
+      ];
     case 'nonce-setup':
       return [
         {

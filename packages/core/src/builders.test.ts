@@ -37,7 +37,7 @@ import {
   type TransactionAction,
   type TransactionKind,
 } from './actions.ts';
-import { buildTransaction, deriveNonceAccountAddress } from './builders.ts';
+import { buildTransaction, deriveNonceAccountAddress, deriveStakeAccountAddress } from './builders.ts';
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   COMPUTE_UNIT_LIMIT,
@@ -62,6 +62,7 @@ const S = key(4);
 const VOTE = key(5);
 const NONCE = key(6);
 const T = 1_825_545_600n;
+const NEW_STAKE = await deriveStakeAccountAddress(A, 'stakeward-stake-mf0abc12');
 
 const blockhashLifetime: BlockhashLifetime = { kind: 'blockhash', blockhash: blockhash(key(20)), lastValidBlockHeight: 100n };
 const nonceLifetime: NonceLifetime = { kind: 'nonce', nonceAccount: NONCE, nonceAuthority: D, nonceValue: key(21) as string as Nonce };
@@ -77,6 +78,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_447_680n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: NONCE, nonceAuthority: D, recipient: D, lamports: 1_447_680n },
+  'create-stake': { kind: 'create-stake', stakeAccount: NEW_STAKE, mainKey: A, seed: 'stakeward-stake-mf0abc12', lamports: 1_002_282_880n, voteAccount: VOTE },
 };
 
 function decode(bytes: Uint8Array) {
@@ -258,6 +260,7 @@ describe('fee payer', () => {
       'change-second-key': D,
       'nonce-setup': D,
       'nonce-close': D,
+      'create-stake': A,
     });
   });
 

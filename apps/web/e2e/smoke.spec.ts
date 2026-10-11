@@ -313,6 +313,16 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'delegate',
   },
   {
+    // Stake SOL in a new stake account (D138): without a wallet it asks for the main key first.
+    path: '/stake',
+    heading: text('common.pages.stake'),
+    shows: async (page) => {
+      await expect(page.getByText(text('stake.connect'))).toBeVisible();
+    },
+    noApi: true,
+    screen: 'stake-start',
+  },
+  {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
     heading: text('common.pages.rescue'),

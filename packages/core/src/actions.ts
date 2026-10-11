@@ -16,7 +16,8 @@ export type TransactionKind =
   | 'rescue'
   | 'change-second-key'
   | 'nonce-setup'
-  | 'nonce-close';
+  | 'nonce-close'
+  | 'create-stake';
 
 /**
  * F1. SetLockupChecked signed by the main key A (withdrawer) with the second key K as new custodian; K co-signs.
@@ -125,6 +126,23 @@ export type NonceCloseAction = {
   lamports: bigint;
 };
 
+/**
+ * Creates a new stake account and delegates it in one transaction (D138): System CreateAccountWithSeed (base = the
+ * main key, which pays and signs; owner = the stake program, 200 bytes), stake Initialize with staker = withdrawer =
+ * the main key and no lockup, then DelegateStake to `voteAccount`. `stakeAccount` must equal
+ * `deriveStakeAccountAddress(mainKey, seed)`. The SOL stays the main key's: only it can deactivate and withdraw.
+ */
+export type CreateStakeAction = {
+  kind: 'create-stake';
+  stakeAccount: Address;
+  mainKey: Address;
+  /** Address-derivation seed (a plain label, not a key): `STAKE_ACCOUNT_SEED_PREFIX` plus base-36 characters. */
+  seed: string;
+  /** Everything moved into the account: the rent-exempt reserve plus the amount that is staked. */
+  lamports: bigint;
+  voteAccount: Address;
+};
+
 export type TransactionAction =
   | ProtectAction
   | ExtendAction
@@ -135,7 +153,8 @@ export type TransactionAction =
   | RescueAction
   | ChangeSecondKeyAction
   | NonceSetupAction
-  | NonceCloseAction;
+  | NonceCloseAction
+  | CreateStakeAction;
 
 /** Live signing: a recent blockhash. `lastValidBlockHeight` is not part of the bytes; it tells when to give up. */
 export type BlockhashLifetime = { kind: 'blockhash'; blockhash: Blockhash; lastValidBlockHeight: bigint };
@@ -151,7 +170,7 @@ export type Lifetime = BlockhashLifetime | NonceLifetime;
 /**
  * Who pays the network fee (CLAUDE.md section 5). A possibly compromised key never pays and never owns the nonce
  * account: a sweeper bot drains it and a thief could advance the nonce.
- * - protect, withdraw: the main key.
+ * - protect, withdraw, create-stake: the main key.
  * - extend, unlock: the second key. Fallback allowed by F5: when K has no SOL the main key pays and co-signs; the
  *   caller then passes the main key as fee payer explicitly.
  * - deactivate, delegate: the staker who signs it.
@@ -164,6 +183,7 @@ export function expectedFeePayer(action: TransactionAction): Address {
   switch (action.kind) {
     case 'protect':
     case 'withdraw':
+    case 'create-stake':
       return action.mainKey;
     case 'extend':
     case 'unlock':

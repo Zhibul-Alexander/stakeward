@@ -42,6 +42,7 @@
       "rescueKit": "Prepare one-tap rescue",
       "changeKey": "Change the second key",
       "delegate": "Delegate your stake",
+      "stake": "Stake SOL",
       "rescueNow": "Rescue status",
       "steal": "Try to steal it"
     }
@@ -327,7 +328,8 @@
         "rescue": "Move this stake to your new wallet",
         "change-second-key": "Hand the lock to a new second key",
         "nonce-setup": "Set up signing by link",
-        "nonce-close": "Close the link-signing account"
+        "nonce-close": "Close the link-signing account",
+        "create-stake": "Stake SOL in a new stake account"
       },
       "intro": "Read from the exact bytes you sign.",
       "stakeAccount": "Stake account",
@@ -344,6 +346,7 @@
       "none": "None",
       "amount": "Amount",
       "leavesStake": "{amount} leaves the stake account",
+      "movesToStake": "{amount} moves from your wallet into a new stake account",
       "sentTo": "Sent to",
       "controlledBy": "Controlled by",
       "staking": "Staking",
@@ -370,7 +373,8 @@
         "keepsEnd": "It does not change when the lock ends.",
         "rescueNoMove": "It cannot move your SOL out of the stake account: only its keys change.",
         "stakeStays": "This transaction cannot move your SOL: it stays in the stake account.",
-        "noStake": "It cannot touch your stake accounts."
+        "noStake": "It cannot touch your stake accounts.",
+        "createOnlyYours": "It cannot give your SOL to anyone: only your main key can unstake and withdraw it."
       },
       "blockhash": "Valid for about a minute. If it expires, sign again.",
       "nonceLifetime": "Valid until it is sent or cancelled.",
@@ -1319,6 +1323,35 @@
       "not-inactive": "This stake is no longer inactive. Reload the page to see where it stands.",
       "not-staker": "Another key manages the staking of this stake."
     }
+  },
+  "stake": {
+    "intro": "Move SOL from your main key's wallet into a new stake account and delegate it to a validator, in one transaction. Then protect it with your second key.",
+    "connect": "Connect the wallet whose SOL you want to stake. It becomes the main key of the new stake account.",
+    "heading": "Amount and validator",
+    "body": "Your main key signs and pays the fee of about 0.000005 SOL. Only your main key can unstake and withdraw this SOL later.",
+    "amountLabel": "Amount to stake, in SOL",
+    "max": "Max",
+    "balance": "In your wallet:",
+    "balanceLoading": "Reading your balance…",
+    "balanceError": "Could not read your balance",
+    "reserve": "A new stake account also holds {amount} SOL of rent reserve, which comes back when you withdraw.",
+    "amountInvalid": "Enter an amount in SOL, such as 1.5.",
+    "amountTooSmall": "Stake at least {amount} SOL.",
+    "amountTooLarge": "This is more than your wallet holds after the rent reserve and fees.",
+    "note": "Rewards start at the next epoch, in about 2 days. The new stake has no lock until you protect it.",
+    "review": "Review",
+    "signHeading": "Stake with your main key",
+    "result": "Staking",
+    "done": {
+      "title": "Your SOL is staked",
+      "account": "New stake account",
+      "body": "It starts earning at the next epoch, in about 2 days. It has no lock yet: protect it now, so a stolen main key cannot withdraw it.",
+      "protect": "Protect it now"
+    },
+    "refused": {
+      "exists": "A stake account already exists at this address. Go back and stake again: a new address is used."
+    },
+    "entry": "Stake SOL"
   },
   "devCosign": {
     "title": "Wallet co-signing test",

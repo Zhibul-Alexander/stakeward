@@ -21,12 +21,15 @@ import {
 import {
   getAuthorizeCheckedInstruction,
   getAuthorizeInstruction,
+  getDelegateStakeInstruction,
+  getInitializeInstruction,
   getMergeInstruction,
   getSetLockupCheckedInstruction,
   getSetLockupInstruction,
   getSplitInstruction,
   getWithdrawInstruction,
   StakeAuthorize,
+  StakeInstruction,
 } from '@solana-program/stake';
 import {
   getAdvanceNonceAccountInstruction,
@@ -54,18 +57,20 @@ import {
 } from '../test/craft.ts';
 import { newTestWallet } from '../test/wallet.ts';
 import type { BlockhashLifetime, Lifetime, NonceLifetime, TransactionAction, TransactionKind } from './actions.ts';
-import { deriveNonceAccountAddress } from './builders.ts';
+import { deriveNonceAccountAddress, deriveStakeAccountAddress } from './builders.ts';
 import {
   COMPUTE_UNIT_LIMIT,
   COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
   LIGHTHOUSE_PROGRAM_ADDRESS,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
+  STAKE_PROGRAM_ADDRESS,
   SYSTEM_PROGRAM_ADDRESS,
   SYSVAR_CLOCK_ADDRESS,
+  ZERO_ADDRESS,
 } from './constants.ts';
 import { inspectTransaction, type InspectedLifetime, type InspectErrorCode } from './inspect.ts';
-import { toLegacyLayout, type StakeIx } from './legacy-layout.ts';
+import { LEGACY_SYSVAR_SLOTS, toLegacyLayout, type StakeIx } from './legacy-layout.ts';
 
 const A = key(1); // main key
 const K = key(2); // second key
@@ -77,6 +82,7 @@ const S2 = key(7);
 const X = key(8); // a stranger
 const T = 1_825_545_600n;
 const SETUP_NONCE = await deriveNonceAccountAddress(D);
+const NEW_STAKE = await deriveStakeAccountAddress(A, 'stakeward-stake-mf0abc12');
 const RENT_SYSVAR = address('SysvarRent111111111111111111111111111111111');
 
 const BLOCKHASH: BlockhashLifetime = { kind: 'blockhash', blockhash: blockhash(key(20)), lastValidBlockHeight: 100n };
@@ -94,6 +100,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
+  'create-stake': { kind: 'create-stake', stakeAccount: NEW_STAKE, mainKey: A, seed: 'stakeward-stake-mf0abc12', lamports: 1_002_282_880n, voteAccount: VOTE },
 };
 
 const signer = createNoopSigner;
@@ -619,6 +626,59 @@ describe('rejects parameters Stakeward never builds', () => {
     expect(await setup(create({}))).toBe('bad-layout');
   });
 
+  it('a stake account creation that is not ours', async () => {
+    const SEED = 'stakeward-stake-mf0abc12';
+    const create = (input: { newAccount?: Address; seed?: string; space?: number; owner?: Address; base?: Address }) =>
+      getCreateAccountWithSeedInstruction({
+        payer: signer(A),
+        newAccount: input.newAccount ?? NEW_STAKE,
+        base: input.base ?? A,
+        seed: input.seed ?? SEED,
+        amount: 1_002_282_880n,
+        space: input.space ?? 200,
+        programAddress: input.owner ?? STAKE_PROGRAM_ADDRESS,
+      });
+    const legacy = (ix: Instruction, slot: (typeof LEGACY_SYSVAR_SLOTS)[keyof typeof LEGACY_SYSVAR_SLOTS]) =>
+      toLegacyLayout(ix as StakeIx, slot ?? { at: 0, sysvars: [] });
+    const init = (input: { stake?: Address; staker?: Address; withdrawer?: Address; custodian?: Address; until?: bigint }) =>
+      legacy(
+        getInitializeInstruction({
+          stake: input.stake ?? NEW_STAKE,
+          arg0: { staker: input.staker ?? A, withdrawer: input.withdrawer ?? A },
+          arg1: { unixTimestamp: input.until ?? 0n, epoch: 0n, custodian: input.custodian ?? ZERO_ADDRESS },
+        }),
+        LEGACY_SYSVAR_SLOTS[StakeInstruction.Initialize],
+      );
+    const delegate = (input: { stake?: Address; staker?: Address }) =>
+      legacy(
+        getDelegateStakeInstruction({ stake: input.stake ?? NEW_STAKE, vote: VOTE, stakeAuthority: signer(input.staker ?? A) }),
+        LEGACY_SYSVAR_SLOTS[StakeInstruction.DelegateStake],
+      );
+    const tx = (...body: Instruction[]) => verdict(craftBody(body, BLOCKHASH, A));
+    expect(await tx(create({}), init({}), delegate({}))).toBe('ok');
+    // The SOL must stay with the funder: both keys are the funder, no lockup, no other delegator.
+    expect(await tx(create({}), init({ withdrawer: X }), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({ staker: X }), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({ custodian: X, until: T }), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({}), delegate({ staker: X }))).toBe('unknown-instruction');
+    // Only our account: derived from the funder and the seed, 200 bytes, owned by the stake program.
+    expect(await tx(create({ newAccount: X }), init({ stake: X }), delegate({ stake: X }))).toBe('unknown-instruction');
+    expect(await tx(create({ base: X }), init({}), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({ space: 80 }), init({}), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({ owner: SYSTEM_PROGRAM_ADDRESS }), init({}), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({ stake: S }), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({}), delegate({ stake: S }))).toBe('unknown-instruction');
+    const other = await deriveStakeAccountAddress(A, 'other');
+    expect(await tx(create({ seed: 'other', newAccount: other }), init({ stake: other }), delegate({ stake: other }))).toBe(
+      'unknown-instruction',
+    );
+    // Exactly the triple, in this order.
+    expect(await tx(create({}), init({}))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({}), delegate({}), delegate({}))).toBe('unknown-instruction');
+    expect(await tx(init({}), delegate({}))).toBe('multiple-stake-accounts');
+    expect(await tx(create({}), delegate({}), init({}))).toBe('bad-layout');
+  });
+
   it('a nonce instruction Stakeward never sends', async () => {
     const advance = getAdvanceNonceAccountInstruction({ nonceAccount: NONCE, nonceAuthority: signer(D) });
     expect(await verdict(craftBody([advance], BLOCKHASH, D))).toBe('bad-layout');
@@ -636,7 +696,10 @@ describe('Lighthouse tail', () => {
           requiredSigners: built.meta.signers,
           lighthouseTail: {
             instructionCount: 2,
-            addedAccounts: action.kind === 'nonce-setup' || action.kind === 'nonce-close' ? [LIGHTHOUSE_PROGRAM_ADDRESS, S, X] : [LIGHTHOUSE_PROGRAM_ADDRESS, X],
+            addedAccounts:
+              action.kind === 'nonce-setup' || action.kind === 'nonce-close' || action.kind === 'create-stake'
+                ? [LIGHTHOUSE_PROGRAM_ADDRESS, S, X]
+                : [LIGHTHOUSE_PROGRAM_ADDRESS, X],
           },
         });
       }

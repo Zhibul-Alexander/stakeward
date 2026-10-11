@@ -65,6 +65,14 @@ export function actionApplied(action: TransactionAction, after: RawAccount | nul
         (before === null ||
           (account.lockup.unixTimestamp === before.lockup.unixTimestamp && account.lockup.epoch === before.lockup.epoch))
       );
+    case 'create-stake':
+      return (
+        account !== null &&
+        account.staker === action.mainKey &&
+        account.withdrawer === action.mainKey &&
+        delegation?.voter === action.voteAccount &&
+        delegation.deactivationEpoch === U64_MAX
+      );
     case 'nonce-setup':
       return readNonceAccount(after, action.nonceAuthority).kind === 'ready';
     case 'nonce-close':

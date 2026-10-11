@@ -629,6 +629,8 @@ describe('/app on LiteSvmChain', () => {
     expect(slot).toHaveTextContent(shortAddress(main.address));
     expect(within(slot).getByRole('button', { name: /^Disconnect/ })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Wallet address' })).toHaveValue(main.address);
+    // Its own view offers to stake more (D138).
+    expect(screen.getByRole('link', { name: 'Stake SOL' })).toHaveAttribute('href', '/stake');
   });
 
   it('puts the connected main key into the field when the URL names no address', async () => {

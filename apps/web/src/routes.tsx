@@ -16,6 +16,7 @@ import { ProtectPage } from '@/pages/ProtectPage';
 import { RecoveryPage } from '@/pages/RecoveryPage';
 import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { StakePage } from '@/pages/StakePage';
 import { StatsPage } from '@/pages/StatsPage';
 import { StealPage } from '@/pages/StealPage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
@@ -70,6 +71,9 @@ export function AppRoutes() {
       </Route>
       <Route path="/delegate/:account">
         <DelegatePage />
+      </Route>
+      <Route path="/stake">
+        <StakePage />
       </Route>
       <Route path="/rescue">
         <RescuePage />

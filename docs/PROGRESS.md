@@ -528,3 +528,9 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - Сделано: макет подключения основного ключа на /app в Claude Design (7 состояний, 1280 и 360), сверен с WalletSlot и en.json; ссылка в новом `docs/DESIGN.md`. В коде: строка про Ledger под списком кошельков (D133).
 - Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true vitest run` в apps/web — 1001 тест, 1 пропуск (новый тест в `wallet-slot.test.tsx`).
 - Дальше: владелец утверждает макет; снимки `docs/screens` с подсказкой — при следующем прогоне e2e.
+
+## Стейк с сайта (11.10.2026)
+
+- По слову Паши (Phantom не стейкает на devnet): кнопка Stake SOL на `/app` у своего основного ключа, страница `/stake` — сумма, валидатор (выбран сразу из списка по открытым правилам), одна транзакция create-stake (CreateAccountWithSeed + Initialize + DelegateStake), подписывает и платит основной ключ; после «Готово» — Protect it now (D138).
+- Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true pnpm test`: core 921 из 922 (тот же `verify.review` под Node 22), web 1033 и 1 пропуск (новый `test/stake.test.tsx`), worker 675, scripts 147; e2e smoke с новым маршрутом `/stake` на 1280 и 360. Ручная проверка — TESTPLAN шаг 6, новый пункт.
+- Не проверено: Ledger и Phantom на этой транзакции.
