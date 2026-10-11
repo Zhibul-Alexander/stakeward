@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/archivo-black';
+@import './styles/tokens.css';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  /* Poster type: every page title and section title is set in Archivo Black. */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- v6 Swiss poster additions ---------- */
+
+/* Square corners everywhere, pills included; radio buttons stay round so they never read as checkboxes. */
+.rounded-full:not([data-slot='radio-group-item']):not([data-slot='radio-group-indicator'] *) {
+  border-radius: 0;
+}
+
+/* Uppercase micro-label: small, bold, tracked. Used for kickers and table heads only. */
+@utility micro {
+  font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The poster's visible grid: hairline columns behind the hero (12 at desktop, 4 on a phone). */
+@utility poster-grid {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-grid) 0,
+    var(--color-grid) 1px,
+    transparent 1px,
+    transparent calc(100% / 4)
+  );
+  @media (width >= 48rem) {
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--color-grid) 0,
+      var(--color-grid) 1px,
+      transparent 1px,
+      transparent calc(100% / 12)
+    );
+  }
+}
+
+/* Thick rules. */
+@utility rule-t {
+  border-top: 6px solid var(--color-foreground);
+}
+@utility rule-b {
+  border-bottom: 6px solid var(--color-foreground);
+}
+
+/* Inverted ink blocks (footer, co-sign callout): links take the block's paper colour, focus turns signal orange. */
+.ink-block {
+  background-color: var(--color-foreground);
+  color: var(--color-background);
+}
+.ink-block a {
+  color: inherit;
+}
+.ink-block :focus-visible {
+  outline-color: var(--color-signal);
+}

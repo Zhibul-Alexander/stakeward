@@ -1,0 +1,197 @@
+/*
+ * Stakeward v6 "Swiss / Bold Poster" tokens. Same token NAMES as src/styles/tokens.css; new values.
+ *
+ * Paper and ink: white and pure black, nothing between but one grey for secondary text. One signal colour, safety
+ * orange (--color-signal), used for exactly two things: the screen's one action and the "locked / protected" state.
+ * Orange is never text on white (3.3:1): it is a fill with black text on it (6.4:1). Links and outlines are ink.
+ * Zero radius everywhere; no shadows. Dark theme = the same poster inverted (black paper, white ink, same orange).
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #ececec;
+  --color-subtle-hover: #dedede;
+  --color-foreground: #000000;
+  --color-muted: #4a4a4a;
+  --color-border: #000000;
+  --color-border-strong: #000000;
+  --color-ring: #000000;
+  /* primary = ink: links, checked boxes, selection. The filled action button uses the signal colour instead. */
+  --color-primary: #000000;
+  --color-primary-hover: #3a3a3a;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #ffe2d4;
+  --color-inverse: #000000;
+  --color-on-inverse: #ffffff;
+
+  /* The one signal colour. */
+  --color-signal: #ff4f00;
+  --color-signal-hover: #ff7333;
+  --color-on-signal: #000000;
+  /* Hairline grid lines of the poster. */
+  --color-grid: #e6e6e6;
+
+  /* Protected = signal. As text (icons, words on white) a deep orange that passes AA. */
+  --color-success: #a83200;
+  --color-success-soft: #ffe2d4;
+  --color-success-border: #ff4f00;
+  --color-warning: #6e4400;
+  --color-warning-soft: #ffefb3;
+  --color-warning-border: #000000;
+  --color-neutral: #000000;
+  --color-neutral-soft: #ffffff;
+  --color-neutral-border: #000000;
+  --color-info: #000000;
+  --color-info-soft: #ececec;
+  --color-info-border: #000000;
+  --color-danger: #c40018;
+  --color-danger-soft: #ffe3e6;
+  --color-danger-border: #c40018;
+  --color-danger-solid: #c40018;
+  --color-danger-solid-hover: #9c0013;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #000000;
+  --color-qr-light: #ffffff;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Archivo Black', 'Inter Variable', ui-sans-serif, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Type scale: same names; the top two sizes grow into poster type (set in Archivo Black by index.css). */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.3125rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: 1.95rem;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-2xl--font-weight: 400;
+  --text-3xl: 3.25rem;
+  --text-3xl--line-height: 3rem;
+  --text-3xl--letter-spacing: -0.03em;
+  --text-3xl--font-weight: 400;
+  /* Poster sizes, for the landing hero and the big numbers only. */
+  --text-4xl: 4.5rem;
+  --text-4xl--line-height: 0.92;
+  --text-4xl--letter-spacing: -0.035em;
+  --text-poster: 8.5rem;
+  --text-poster--line-height: 0.86;
+  --text-poster--letter-spacing: -0.045em;
+  --text-poster-sm: 3.35rem;
+  --text-poster-sm--line-height: 0.9;
+  --text-poster-sm--letter-spacing: -0.04em;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Zero radius: the poster has square corners. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+
+  /* No soft shadows. The floating layer (tooltip) gets a hard offset instead. */
+  --shadow-sm: none;
+  --shadow-md: 4px 4px 0 0 var(--color-foreground);
+  --shadow-lg: 6px 6px 0 0 var(--color-foreground);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 120ms;
+  --motion-duration-normal: 200ms;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+}
+
+/* Dark: the inverted poster. */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #000000;
+    --color-surface: #000000;
+    --color-surface-raised: #161616;
+    --color-subtle: #1f1f1f;
+    --color-subtle-hover: #2e2e2e;
+    --color-foreground: #ffffff;
+    --color-muted: #b8b8b8;
+    --color-border: #ffffff;
+    --color-border-strong: #ffffff;
+    --color-ring: #ffffff;
+    --color-primary: #ffffff;
+    --color-primary-hover: #d6d6d6;
+    --color-on-primary: #000000;
+    --color-primary-soft: #3a1a08;
+    --color-inverse: #ffffff;
+    --color-on-inverse: #000000;
+
+    --color-signal: #ff5a14;
+    --color-signal-hover: #ff7a40;
+    --color-on-signal: #000000;
+    --color-grid: #1c1c1c;
+
+    --color-success: #ff8a52;
+    --color-success-soft: #3a1a08;
+    --color-success-border: #ff5a14;
+    --color-warning: #ffd34d;
+    --color-warning-soft: #2e2400;
+    --color-warning-border: #ffffff;
+    --color-neutral: #ffffff;
+    --color-neutral-soft: #000000;
+    --color-neutral-border: #ffffff;
+    --color-info: #ffffff;
+    --color-info-soft: #1f1f1f;
+    --color-info-border: #ffffff;
+    --color-danger: #ff7a85;
+    --color-danger-soft: #3a0a10;
+    --color-danger-border: #ff4d5e;
+    --color-danger-solid: #d0001b;
+    --color-danger-solid-hover: #ee1a35;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #000000;
+    --color-qr-light: #ffffff;
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
