@@ -33,7 +33,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 1 — кто мы, с лёгким началом про Катан (≈30 с)**
 
-> Hi, I'm Alexander. Last weekend, my friend Pavel and I played in an online Catan championship. We reached the final and finished in the top four. Then we went back to our Solana idea, and here we are. We are developers from Tbilisi, Georgia, with many years of experience in building software. We are ambitious, and we like hard problems.
+> Hi, I'm Alexander. Last weekend, my friend Pavel and I played in an online Catan championship. We reached the final and finished in the top four. Then we went back to our Solana idea, and here we are. We are developers with many years of experience, and we have lived in Tbilisi, Georgia, for the last four years. We are ambitious, and we like hard problems.
 
 **Блок 2 — проблема (≈15 с)**
 
@@ -53,7 +53,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
 «Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
-01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience», чемпионат по Катану (финал, топ-4, выходные перед подачей) — со слов владельца.
+01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience», «lived in Tbilisi … for the last four years» (живём в Грузии 4 года, родом не из Грузии — поэтому не «from Tbilisi»), чемпионат по Катану (финал, топ-4, выходные перед подачей) — со слов владельца.
 
 ---
 
