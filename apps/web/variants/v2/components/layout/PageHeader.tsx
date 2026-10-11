@@ -52,7 +52,7 @@ export function PageHeader({ title, lead, meta, back, progress, action, headingR
         </div>
         {action === undefined ? null : <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
-      {progress}
+      {progress === undefined ? null : <div className="pt-2">{progress}</div>}
     </div>
   );
 }

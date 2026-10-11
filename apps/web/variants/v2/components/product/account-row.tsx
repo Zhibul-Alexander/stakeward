@@ -226,7 +226,7 @@ export function AccountRow({
           )}
         </div>
       ) : null}
-      <div data-slot="row-meta" className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-l border-border-strong pl-3 text-xs text-muted sm:col-span-full">
+      <div data-slot="row-meta" className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-l border-border-strong pl-3 text-sm text-muted sm:col-span-full">
         {date === null ? null : (
           <span data-slot="lock-end" className={cn('inline-flex items-center gap-1', endsSoon && 'text-warning')}>
             {endsSoon ? <ClockIcon aria-hidden="true" className="size-3.5 shrink-0" /> : null}
@@ -267,7 +267,7 @@ export function AccountRow({
         </RowWarning>
       ) : null}
       {!hint || hintText === null ? null : (
-        <p className="w-full text-xs text-muted sm:col-span-full">
+        <p className="w-full text-sm text-muted sm:col-span-full">
           <span aria-hidden="true" className="text-primary">// </span>
           {hintText}
         </p>

@@ -37,7 +37,7 @@ export function Section({ title, headingLevel = 2, id, count, description, actio
         </div>
         {action === undefined ? null : <div className="flex flex-wrap items-center gap-2">{action}</div>}
       </div>
-      {description === undefined ? null : <p className="mt-1 max-w-prose text-base text-pretty text-muted">{description}</p>}
+      {description === undefined ? null : <p className="mt-1 max-w-prose text-sm text-pretty text-muted">{description}</p>}
       <div className="mt-3 flex flex-col gap-4">{children}</div>
     </section>
   );

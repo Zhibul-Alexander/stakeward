@@ -59,8 +59,8 @@
   --color-scan: rgb(15 29 21 / 0);
   --color-glow: rgb(11 107 58 / 0);
 
-  --font-sans: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'JetBrains Mono Variable', 'JetBrains Mono Fallback Menlo', 'JetBrains Mono Fallback Consolas', 'JetBrains Mono Fallback Courier', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono Fallback Menlo', 'JetBrains Mono Fallback Consolas', 'JetBrains Mono Fallback Courier', ui-monospace, monospace;
 
   /* A tighter scale: monospace runs wide, so each step is a notch smaller than the base design. */
   --text-xs: 0.75rem;

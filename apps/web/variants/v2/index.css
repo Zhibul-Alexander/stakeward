@@ -1,26 +1,40 @@
 @import 'tailwindcss';
 @import './styles/tokens.css';
 
-/* JetBrains Mono, latin and latin-ext only: the package's small subsets would be inlined as data: URLs, which the
-   production CSP (font-src falls back to 'self') refuses. */
+/* JetBrains Mono, every subset fontsource ships (latin, latin-ext, cyrillic, greek, vietnamese): the browser fetches
+   only the ranges a page uses, so Cyrillic and Greek never fall back to another face. The build keeps every font a
+   file (assetsInlineLimit 0), so the production CSP (font-src 'self') accepts them. */
+@import '@fontsource-variable/jetbrains-mono';
+
+/* Metric-matched fallbacks for the moment before the web font arrives (font-display: swap): each local monospace is
+   scaled to JetBrains Mono's 0.6em advance and given its ascent (1.02em) and descent (0.30em), so lines keep their
+   length and height and nothing jumps when the font swaps in. Overrides are divided by size-adjust, which scales them. */
 @font-face {
-  font-family: 'JetBrains Mono Variable';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 800;
-  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+  font-family: 'JetBrains Mono Fallback Menlo';
+  src: local('Menlo'), local('Menlo-Regular'), local('DejaVu Sans Mono'), local('DejaVuSansMono');
+  size-adjust: 99.67%;
+  ascent-override: 102.34%;
+  descent-override: 30.1%;
+  line-gap-override: 0%;
 }
 
 @font-face {
-  font-family: 'JetBrains Mono Variable';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 800;
-  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2') format('woff2-variations');
-  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+  font-family: 'JetBrains Mono Fallback Consolas';
+  src: local('Consolas');
+  size-adjust: 109.13%;
+  ascent-override: 93.47%;
+  descent-override: 27.49%;
+  line-gap-override: 0%;
 }
 
+@font-face {
+  font-family: 'JetBrains Mono Fallback Courier';
+  src: local('Courier New'), local('CourierNewPSMT'), local('Liberation Mono'), local('LiberationMono');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
 
 /*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
@@ -119,6 +133,17 @@
   }
 }
 
+/* One mark for one role: every section-level h2 starts with the same "#" the Section component draws, also the
+   wizard step headings (they take focus, hence [tabindex]) and the recovery card's sections. The "/ ''" alt text keeps
+   the mark out of the heading's accessible name. */
+main h2.text-lg[tabindex]::before,
+[data-slot='recovery-card'] h2::before {
+  content: '#' / '';
+  margin-right: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 400;
+}
+
 /* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
 @page {
   margin: 14mm;
@@ -140,6 +165,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Text without a size class (summaries, wallet names, links in prose) is body text, not the browser's 16px. */
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
     font-feature-settings: 'zero' 1, 'calt' 0;
     font-variant-ligatures: none;
     /* Texture (CSS only): a faint 24px plotting grid on paper; on the dark console also scanlines. */
