@@ -434,7 +434,7 @@ describe('landing words and numbers', () => {
     // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Rescue or withdraw": withdrawing
     // takes both keys (F3), and a rescue needs a new wallet as well (F4: main key, second key and new wallet sign).
     expect(steps[0]).toHaveTextContent('Both keys sign.');
-    expect(steps[2]).toHaveTextContent('You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake.');
+    expect(steps[2]).toHaveTextContent('Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet.');
     // UX rule 6: the lock stops a thief only until it ends.
     expect(within(section('protects')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
     // CLAUDE.md 2.3: Phantom may append Lighthouse, so the claim is what Stakeward uses, and it names the programs.

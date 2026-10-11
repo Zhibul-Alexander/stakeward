@@ -17,7 +17,7 @@ import { columnsOfRow, rowColumnsOf, snapshotOfRow, type AccountRow, type RowCol
 /**
  * One chunk of the monitor pass, pure (test/monitor/classify.test.ts; CPU in test/monitor-cpu.test.ts): the stored rows
  * against one getMultipleAccounts read, into row writes, events and rescan pairs. Most accounts take the fast path
- * (DECISIONS.md D49): the fingerprint of the bytes diffSnapshots reads is unchanged and the balance did not drop, so
+ * (DECISIONS.md D56): the fingerprint of the bytes diffSnapshots reads is unchanged and the balance did not drop, so
  * there is nothing to decode and, unless rewards came in, nothing to write.
  */
 
