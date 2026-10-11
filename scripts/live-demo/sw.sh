@@ -251,6 +251,7 @@ cmd_setup() {
     cat > "$SW_DIR/demo.env" <<EOF
 # Stakeward live demo. Throwaway devnet keys; never put a real wallet here.
 # Each line keeps a value already set in the environment.
+# devnet, or a faster RPC: https://devnet.helius-rpc.com/?api-key=<key> (the public devnet answers 429 when busy).
 export SW_URL="\${SW_URL:-devnet}"
 export SW_MAIN_KEY="\${SW_MAIN_KEY:-$SW_DIR/main.json}"
 export SW_SECOND_KEY="\${SW_SECOND_KEY:-$SW_DIR/second.json}"
@@ -553,11 +554,42 @@ Env: SW_URL (devnet), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_F
 EOF
 }
 
+# The JSON-RPC address behind SW_URL (a moniker or a URL).
+rpc_url() {
+  case "$SW_URL" in
+    devnet | d) echo 'https://api.devnet.solana.com' ;;
+    testnet | t) echo 'https://api.testnet.solana.com' ;;
+    mainnet-beta | m) echo 'https://api.mainnet-beta.solana.com' ;;
+    localhost | l) echo 'http://127.0.0.1:8899' ;;
+    *) echo "$SW_URL" ;;
+  esac
+}
+
+# The Solana CLI waits forever on an RPC that does not answer; on stage that reads as a frozen terminal.
+check_rpc() {
+  command -v curl >/dev/null 2>&1 || return 0
+  local url body problem=''
+  url="$(rpc_url)"
+  body="$(curl -s -m "${SW_RPC_TIMEOUT:-8}" -H 'content-type: application/json' \
+    -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' "$url")"
+  case "$body" in
+    '') problem="did not answer in ${SW_RPC_TIMEOUT:-8} s" ;;
+    *429* | *'rate limit'*) problem='refuses: rate limit (HTTP 429)' ;;
+  esac
+  [ -z "$problem" ] && return 0
+  die "The RPC ${url%%\?*} ${problem}. Use another one, e.g.:
+  export SW_URL=\"https://devnet.helius-rpc.com/?api-key=<your key>\""
+}
+
 main() {
   command -v solana >/dev/null 2>&1 || [ "${1:-help}" = help ] \
     || die "Solana CLI not found. Install it (https://docs.anza.xyz/cli/install) or set SOLANA_BIN."
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
+  case "$cmd" in
+    setup | keys | help | -h | --help) ;;
+    *) check_rpc ;;
+  esac
   case "$cmd" in
     setup) cmd_setup ;;
     keys) cmd_keys ;;
