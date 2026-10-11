@@ -49,7 +49,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 5 — как мы работаем, финал (≈20 с)**
 
-> We are open to advice, and we change fast. Basic protection is free for everyone. Our paid plan will add automatic rescue: if something strange happens with your stake, Stakeward moves it to your new wallet for you. Stakeward never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
+> We are open to advice, and we change fast. Basic protection is free for everyone. Our paid plan will add automatic rescue: if something strange happens with your stake, Stakeward moves it to your new wallet for you. Stakeward never holds your SOL or your keys. We want to make staking on Solana safe for everyone. Thank you!
 
 Проверка фактов: «big companies lost hundreds of thousands of staked SOL» — SwissBorg (около 192 600 SOL, сентябрь 2025, подписанная транзакция со скрытой сменой права вывода) и Step Finance (261 854 SOL, январь 2026, взломанные устройства), SUBMISSION §11. «Thousands of people lost SOL from their wallets» — Slope (9 231 кошелёк, 2022) и дрейнеры (около 3 947 жертв, 2023–2024), там же; это SOL на балансе, не стейк, поэтому в фразе «SOL from their wallets», а не «staked SOL».
 «Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
