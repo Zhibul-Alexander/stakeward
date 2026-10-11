@@ -1,0 +1,253 @@
+/*
+ * Stakeward design tokens: the only place with raw colours, font stacks, sizes, radii, shadows and durations
+ * (CLAUDE.md section 9). Components and pages use the Tailwind utilities generated from these variables
+ * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
+ * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
+ *
+ * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
+ * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
+ * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
+ * exist at all.
+ *
+ * Colour roles
+ *   background        page
+ *   surface           cards and panels
+ *   surface-raised    popovers and other elevated layers (lighter than surface in the dark theme)
+ *   subtle            muted fills: secondary buttons, skeletons, progress tracks, hover
+ *   subtle-hover      hover on a subtle fill
+ *   foreground        body text
+ *   muted             secondary text (AA on background, surface, surface-raised and subtle)
+ *   border            decorative lines
+ *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
+ *   ring              focus indicator (3:1 against background and surface)
+ *   primary           main actions and links; on-primary is text on it
+ *   primary-soft      selection and the current step (always with a second cue: checkbox, number or ring)
+ *   inverse           tooltip background; on-inverse is text on it
+ * Colour means state. primary is the only non-state colour: the one action of a screen.
+ * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
+ * background, <tone>-border its outline.
+ *   success   Protected
+ *   warning   Expiring soon
+ *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
+ *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
+ * modules on a light ground, so the code must not invert with the theme.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Colours, light theme: "Security Console". Cool greys, one electric cyan accent. */
+  --color-background: #f1f3f6;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e9edf2;
+  --color-subtle-hover: #dde3ea;
+  --color-foreground: #0d1320;
+  --color-muted: #4a5466;
+  --color-border: #dbe0e7;
+  --color-border-strong: #6f7a8c;
+  --color-ring: #0891b2;
+  --color-primary: #0e7490;
+  --color-primary-hover: #155e75;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #e0f5fa;
+  --color-inverse: #141a23;
+  --color-on-inverse: #eef2f6;
+
+  --color-success: #12663a;
+  --color-success-soft: #dcf5e6;
+  --color-success-border: #8fdcae;
+  --color-warning: #8a4b06;
+  --color-warning-soft: #fdf0d2;
+  --color-warning-border: #f2c86a;
+  --color-neutral: #3d4757;
+  --color-neutral-soft: #e5e9ef;
+  --color-neutral-border: #c3cad5;
+  --color-info: #3f3fb4;
+  --color-info-soft: #e8e9fc;
+  --color-info-border: #b4b6f2;
+  --color-danger: #b4232a;
+  --color-danger-soft: #fde4e4;
+  --color-danger-border: #f4a6a6;
+  --color-danger-solid: #b4232a;
+  --color-danger-solid-hover: #921c22;
+  --color-on-danger: #ffffff;
+
+  /* The console rail (sidebar, hero mock): dark in both themes, so the shell reads the same in light and dark. */
+  --color-rail: #0e131a;
+  --color-rail-raised: #18202a;
+  --color-rail-border: #232c38;
+  --color-rail-fg: #e7ecf2;
+  --color-rail-muted: #93a0b2;
+  --color-rail-accent: #22d3ee;
+  --color-rail-ok: #4ade80;
+  --color-rail-alert: #fca5a5;
+  --color-rail-warn: #fbcf68;
+  --color-rail-info: #aeb2ff;
+
+  /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
+  --color-qr-dark: #10131a;
+  --color-qr-light: #ffffff;
+
+  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+   * Type scale: six sizes, no others (test/design-tokens.test.ts rejects a size class that is not declared here;
+   * Tailwind would drop it silently). T-shirt names on purpose: the class merger (cn) recognises them as font sizes,
+   * not colours. Weights 400, 500 and 600 only; tabular-nums on every amount, count, fee and countdown; mono only for
+   * addresses, signatures and commands.
+   *   text-xs    12/16  meta, badges, captions, footer fine print
+   *   text-sm    14/20  UI text: rows, buttons, tables, receipt, labels
+   *   text-base  16/24  prose: landing, explanations, leads, inputs; h3 (font-semibold)
+   *   text-lg    18/28  h2 in the app (Section), receipt title, row amount from 640 px
+   *   text-2xl   24/32  h1 below 640 px (landing hero included), landing h2, the answer (SummaryBar headline, Done
+   *                     headline, /stats numbers)
+   *   text-3xl   36/40  h1 from 640 px (PageHeader and the landing hero)
+   */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.02em;
+  --text-3xl--font-weight: 600;
+  /* v5: the landing hero's display size only. */
+  --text-5xl: 3.25rem;
+  --text-5xl--line-height: 1.05;
+  --text-5xl--letter-spacing: -0.03em;
+  --text-5xl--font-weight: 600;
+
+  /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
+  --spacing: 0.25rem;
+
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   * account-row-actions keeps the action and More columns in every list, used or not, so that the SOL of separate
+   * lists on one page (/app) stands in one column too: the action column fits the widest row action, Protect again
+   * (8.75rem, and its 0.75rem margin), and grows for a wider one; More is its 2rem button, its 0.5rem margin and the
+   * 1rem padding of the list item, which a subgrid adds to its edge columns.
+   */
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Radii */
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Shadows (elevation in the light theme; the dark theme also lightens surfaces) */
+  --shadow-sm: 0 1px 2px 0 rgb(16 19 26 / 0.06), 0 1px 3px 0 rgb(16 19 26 / 0.08);
+  --shadow-md: 0 4px 8px -2px rgb(16 19 26 / 0.08), 0 2px 4px -2px rgb(16 19 26 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(16 19 26 / 0.12), 0 4px 8px -4px rgb(16 19 26 / 0.08);
+
+  /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0b0f15;
+    --color-surface: #121820;
+    --color-surface-raised: #19212b;
+    --color-subtle: #1d2530;
+    --color-subtle-hover: #27313e;
+    --color-foreground: #e7ecf2;
+    --color-muted: #9aa6b6;
+    --color-border: #232c38;
+    --color-border-strong: #6f7c8f;
+    --color-ring: #22d3ee;
+    --color-primary: #22d3ee;
+    --color-primary-hover: #67e8f9;
+    --color-on-primary: #04212a;
+    --color-primary-soft: #0b2a33;
+    --color-inverse: #e7ecf2;
+    --color-on-inverse: #121820;
+
+    --color-success: #6ee7a0;
+    --color-success-soft: #0d2a1b;
+    --color-success-border: #1d6b40;
+    --color-warning: #fbcf68;
+    --color-warning-soft: #33250a;
+    --color-warning-border: #8a5a12;
+    --color-neutral: #c3cad5;
+    --color-neutral-soft: #222a35;
+    --color-neutral-border: #46505f;
+    --color-info: #aeb2ff;
+    --color-info-soft: #1b1d42;
+    --color-info-border: #3d41a0;
+    --color-danger: #fca5a5;
+    --color-danger-soft: #3a1214;
+    --color-danger-border: #8f1e22;
+    --color-danger-solid: #b4232a;
+    --color-danger-solid-hover: #d1343b;
+    --color-on-danger: #ffffff;
+
+    --color-rail: #080b10;
+    --color-rail-raised: #121820;
+    --color-rail-border: #1c242f;
+
+    /* QR code: the light theme's values on purpose (see the colour roles above). */
+    --color-qr-dark: #10131a;
+    --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
