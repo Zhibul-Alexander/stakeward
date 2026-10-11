@@ -41,7 +41,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 3 — что мы делаем (≈20 с)**
 
-> We are building Stakeward. Every stake on Solana has a built-in lock. When the lock is on, a second key must also sign before anyone can take the SOL out. Stakeward turns on this lock for your stake, and the second key is your other wallet. So a thief with only your main key cannot take your SOL.
+> We are building Stakeward. Every stake on Solana has a built-in lock. When the lock is on, a second key must also sign before anyone can take the SOL out. Stakeward turns on this lock for your stake, and the second key is your other wallet. If a thief steals your main key, your SOL is still safe.
 
 **Блок 4 — почему именно мы (≈25 с)**
 
