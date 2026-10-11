@@ -1,0 +1,197 @@
+/*
+ * Stakeward v10, "The mechanism, drawn": blueprint tokens. Same token names as src/styles/tokens.css (every component
+ * uses them); new ones for the drawings: accent (the warm highlight, always the Second key), line and grid (drafting
+ * lines), the display face and one display size.
+ *
+ * Light: cool blueprint paper with deep-blue ink. Dark: the blueprint itself, deep blue ground with pale lines.
+ * Paper (print) is always the light set.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --color-background: #edf1f7;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e2e8f2;
+  --color-subtle-hover: #d4dcea;
+  --color-foreground: #0a1a3a;
+  --color-muted: #42527a;
+  --color-border: #c6d1e4;
+  --color-border-strong: #687a9e;
+  --color-ring: #b45f06;
+  --color-primary: #133d8f;
+  --color-primary-hover: #0c2c6b;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #dce6f7;
+  --color-inverse: #0f2350;
+  --color-on-inverse: #eef3fb;
+
+  /* The warm highlight: the Second key, wherever it is drawn. accent-ink is its text-safe shade (AA on paper). */
+  --color-accent: #e8982b;
+  --color-accent-ink: #8f4c00;
+  --color-accent-soft: #fcecd2;
+  --color-on-accent: #2a1600;
+  /* Drafting: the lines of the drawings and the grid of the paper. */
+  --color-line: #8aa3cf;
+  --color-grid: #dfe6f1;
+
+  --color-success: #166534;
+  --color-success-soft: #dcf5e4;
+  --color-success-border: #86d9a3;
+  --color-warning: #8f4c00;
+  --color-warning-soft: #fcecd2;
+  --color-warning-border: #f0b860;
+  --color-neutral: #3d4a66;
+  --color-neutral-soft: #e2e7f0;
+  --color-neutral-border: #c0c9da;
+  --color-info: #0d4f8a;
+  --color-info-soft: #deedfa;
+  --color-info-border: #9cc6ec;
+  --color-danger: #b42318;
+  --color-danger-soft: #fde4e1;
+  --color-danger-border: #f4a49b;
+  --color-danger-solid: #b42318;
+  --color-danger-solid-hover: #931c13;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #0a1a3a;
+  --color-qr-light: #ffffff;
+
+  /* Space Grotesk draws the headings and the labels of the drawings; IBM Plex Sans the text; Plex Mono addresses. */
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.6rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.9rem;
+  --text-2xl--letter-spacing: -0.015em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.025em;
+  --text-3xl--font-weight: 600;
+  /* The landing headline only. */
+  --text-display: 3.5rem;
+  --text-display--line-height: 3.6rem;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 600;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Precise, small radii: drafted parts, not pills. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.625rem;
+
+  /* Flat drawings: a hard offset instead of a soft blur. */
+  --shadow-sm: 0 1px 0 0 rgb(10 26 58 / 0.08);
+  --shadow-md: 3px 3px 0 0 rgb(19 61 143 / 0.12);
+  --shadow-lg: 6px 6px 0 0 rgb(19 61 143 / 0.14);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 260ms;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0a1c40;
+    --color-surface: #0f2652;
+    --color-surface-raised: #15305f;
+    --color-subtle: #17336a;
+    --color-subtle-hover: #1f3f7c;
+    --color-foreground: #eaf0fb;
+    --color-muted: #a8badc;
+    --color-border: #2a4a86;
+    --color-border-strong: #8098c8;
+    --color-ring: #f2b552;
+    --color-primary: #9cbcff;
+    --color-primary-hover: #bcd2ff;
+    --color-on-primary: #0a1c40;
+    --color-primary-soft: #1c3d7c;
+    --color-inverse: #eaf0fb;
+    --color-on-inverse: #0f2652;
+
+    --color-accent: #f2b552;
+    --color-accent-ink: #f6c46f;
+    --color-accent-soft: #3b2f17;
+    --color-on-accent: #2a1600;
+    --color-line: #5f88cf;
+    --color-grid: #102654;
+
+    --color-success: #8ee6ad;
+    --color-success-soft: #0f3a2f;
+    --color-success-border: #2c7a52;
+    --color-warning: #f6c46f;
+    --color-warning-soft: #3b2f17;
+    --color-warning-border: #9a6a1c;
+    --color-neutral: #c3cfe6;
+    --color-neutral-soft: #1d3567;
+    --color-neutral-border: #4a6396;
+    --color-info: #8fd0ff;
+    --color-info-soft: #0f3260;
+    --color-info-border: #2e6aa8;
+    --color-danger: #ffaaa2;
+    --color-danger-soft: #3d1830;
+    --color-danger-border: #9a2c2c;
+    --color-danger-solid: #b42318;
+    --color-danger-solid-hover: #d0342a;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #0a1a3a;
+    --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 0 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 3px 3px 0 0 rgb(0 0 0 / 0.3);
+    --shadow-lg: 6px 6px 0 0 rgb(0 0 0 / 0.35);
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
