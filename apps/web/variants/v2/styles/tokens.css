@@ -1,0 +1,181 @@
+/*
+ * Variant v2 "Operator / Terminal": the same token names as src/styles/tokens.css, new values.
+ * Dark: a phosphor console (near-black, green phosphor primary, amber/cyan/red states).
+ * Light: a "paper terminal" (green-bar fanfold printout: pale green-grey paper, deep green ink).
+ * One family everywhere: JetBrains Mono. Square corners, 1px rules, no shadows on content.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Paper terminal (light). */
+  --color-background: #eef2ea;
+  --color-surface: #f8faf5;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e2e9dd;
+  --color-subtle-hover: #d5dfcf;
+  --color-foreground: #0f1d15;
+  --color-muted: #46574c;
+  --color-border: #c3cfbf;
+  --color-border-strong: #6a7d70;
+  --color-ring: #0b6b3a;
+  --color-primary: #0b6b3a;
+  --color-primary-hover: #08542d;
+  --color-on-primary: #f2fff6;
+  --color-primary-soft: #d6ecdc;
+  --color-inverse: #0f1d15;
+  --color-on-inverse: #e6f5ea;
+
+  --color-success: #0b6b3a;
+  --color-success-soft: #d6ecdc;
+  --color-success-border: #7fbf93;
+  --color-warning: #874a00;
+  --color-warning-soft: #f7e8c8;
+  --color-warning-border: #d6a24c;
+  --color-neutral: #3f4c44;
+  --color-neutral-soft: #e0e6dc;
+  --color-neutral-border: #a9b6a9;
+  --color-info: #0a5373;
+  --color-info-soft: #d9eaf1;
+  --color-info-border: #86b8cf;
+  --color-danger: #a81d19;
+  --color-danger-soft: #f6dcd8;
+  --color-danger-border: #d88f88;
+  --color-danger-solid: #b01f1a;
+  --color-danger-solid-hover: #8f1813;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #0f1d15;
+  --color-qr-light: #ffffff;
+
+  /* Texture lines (grid and scanlines), drawn by index.css. */
+  --color-grid: rgb(15 29 21 / 0.045);
+  --color-scan: rgb(15 29 21 / 0);
+  --color-glow: rgb(11 107 58 / 0);
+
+  --font-sans: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* A tighter scale: monospace runs wide, so each step is a notch smaller than the base design. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.625rem;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.875rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.03em;
+  --text-3xl--font-weight: 700;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Square: a terminal draws boxes, not pills. */
+  --radius-sm: 0;
+  --radius-md: 1px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+
+  --shadow-sm: none;
+  --shadow-md: 0 0 0 1px var(--color-border-strong);
+  --shadow-lg: 0 0 0 1px var(--color-border-strong), 4px 4px 0 0 var(--color-border);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: steps(2, end);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 90ms;
+  --motion-duration-normal: 160ms;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #060907;
+    --color-surface: #0b110d;
+    --color-surface-raised: #111a14;
+    --color-subtle: #152019;
+    --color-subtle-hover: #1c2a21;
+    --color-foreground: #d3f2dc;
+    --color-muted: #8ba795;
+    --color-border: #1d2c22;
+    --color-border-strong: #4f6e5a;
+    --color-ring: #6dffa6;
+    --color-primary: #45f08c;
+    --color-primary-hover: #7dffb3;
+    --color-on-primary: #03140a;
+    --color-primary-soft: #0e2a19;
+    --color-inverse: #d3f2dc;
+    --color-on-inverse: #0b110d;
+
+    --color-success: #5cf59a;
+    --color-success-soft: #0c2617;
+    --color-success-border: #1f6b3e;
+    --color-warning: #ffbf4a;
+    --color-warning-soft: #2a1d04;
+    --color-warning-border: #7a5410;
+    --color-neutral: #b3c4b8;
+    --color-neutral-soft: #142019;
+    --color-neutral-border: #3a4d40;
+    --color-info: #6fd6ff;
+    --color-info-soft: #05202b;
+    --color-info-border: #1b5670;
+    --color-danger: #ff7a72;
+    --color-danger-soft: #2c0c0b;
+    --color-danger-border: #8a2622;
+    --color-danger-solid: #c8231c;
+    --color-danger-solid-hover: #e0362e;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #0f1d15;
+    --color-qr-light: #ffffff;
+
+    --color-grid: rgb(69 240 140 / 0.035);
+    --color-scan: rgb(0 0 0 / 0.22);
+    --color-glow: rgb(69 240 140 / 0.35);
+
+    --shadow-md: 0 0 0 1px var(--color-border-strong);
+    --shadow-lg: 0 0 0 1px var(--color-border-strong), 4px 4px 0 0 rgb(0 0 0 / 0.6);
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}

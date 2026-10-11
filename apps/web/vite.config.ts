@@ -29,7 +29,8 @@ function clusterFor(command: 'build' | 'serve'): Cluster {
 export default defineConfig(({ command }) => ({
   plugins: [variantOverlay(UI_VARIANT), react(), tailwindcss()],
   // A UI variant builds to its own folder, so several can be built and previewed side by side.
-  build: UI_VARIANT === undefined ? {} : { outDir: `variants-dist/${UI_VARIANT}` },
+  // No inlined data: assets (font subsets): the CSP has no data: in font-src.
+  build: UI_VARIANT === undefined ? {} : { outDir: `variants-dist/${UI_VARIANT}`, assetsInlineLimit: 0 },
   // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
   resolve: { tsconfigPaths: true },
   define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(clusterFor(command)) },
