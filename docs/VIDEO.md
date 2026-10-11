@@ -33,7 +33,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 1 — кто мы, с лёгким началом про Катан (≈30 с)**
 
-> Hi, I'm `<name>`. Last weekend, my friend `<friend's name>` and I played in an online Catan championship. We reached the final and finished in the top four. Then we went back to our Solana idea, and here we are. We are developers from Tbilisi, Georgia, with many years of experience in building software. We are ambitious, and we like hard problems.
+> Hi, I'm `<name>`. Last weekend, my friend Pavel and I played in an online Catan championship. We reached the final and finished in the top four. Then we went back to our Solana idea, and here we are. We are developers from Tbilisi, Georgia, with many years of experience in building software. We are ambitious, and we like hard problems.
 
 **Блок 2 — проблема (≈15 с)**
 
