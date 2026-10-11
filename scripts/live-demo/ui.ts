@@ -43,12 +43,18 @@ export const STEPS: readonly Step[] = [
   { id: 'sweep', group: 'After the demo', role: 'setup', label: 'Return SOL to the funder', args: ['sweep'], expect: 'leftovers back to the funder' },
 ];
 
-// Which network the page says it is on, from SW_URL (sw ui passes it on from demo.env).
-export function networkName(url = ''): string {
-  if (/localhost|127\.0\.0\.1|^l$/.test(url)) return 'a local Solana network';
-  if (/mainnet|^m$/.test(url)) return 'Solana mainnet';
-  if (/testnet|^t$/.test(url)) return 'Solana testnet';
-  return 'Solana devnet';
+export const NETWORKS = ['devnet', 'rpc', 'local'] as const;
+
+export interface Network {
+  name: string;
+  label: string;
+  rpcLabel: string;
+}
+
+// `sw net` -> the network the demo is on now.
+export function parseNetwork(text: string): Network {
+  const field = (key: string) => new RegExp(`^${key}=(.*)$`, 'm').exec(text)?.[1]?.trim() ?? '';
+  return { name: field('network'), label: field('label'), rpcLabel: field('rpc_label') };
 }
 
 // The sw.sh arguments of a button press; null when the step or the duration is not on the list.
@@ -149,7 +155,7 @@ function serve(port: string) {
         'content-type': 'text/html; charset=utf-8',
         'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
       });
-      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)).replace('Solana devnet', networkName(process.env.SW_URL)));
+      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)));
       return;
     }
     const font = /^\/fonts\/([a-z-]+\.woff2)$/.exec(url)?.[1];
@@ -164,10 +170,23 @@ function serve(port: string) {
       return;
     }
     if (req.method === 'GET' && url === '/state') {
-      void Promise.all([capture(['balances']), capture(['status'])]).then(([balances, status]) => {
-        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-        res.end(JSON.stringify({ wallets: parseBalances(balances), stake: parseStatus(status) }));
-      });
+      // `sw net` first: on the local network it starts the validator before the other two ask it anything.
+      void capture(['net'])
+        .then((net) => Promise.all([Promise.resolve(net), capture(['balances']), capture(['status'])]))
+        .then(([net, balances, status]) => {
+          res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+          res.end(JSON.stringify({ network: parseNetwork(net), wallets: parseBalances(balances), stake: parseStatus(status) }));
+        });
+      return;
+    }
+    const net = /^\/net\/([a-z]+)$/.exec(url)?.[1];
+    if (req.method === 'POST' && net && req.headers.origin === origin) {
+      if (!(NETWORKS as readonly string[]).includes(net)) {
+        res.writeHead(400).end('unknown network');
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-store' });
+      runStep(['net', net], res);
       return;
     }
     const run = /^\/run\/([a-z-]+)(?:\?duration=([0-9a-z]+))?$/.exec(url);

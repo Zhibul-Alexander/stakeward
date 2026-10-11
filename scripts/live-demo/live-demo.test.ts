@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { commandFor, parseBalances, parseStatus, STEPS } from './ui.ts';
+import { commandFor, NETWORKS, parseBalances, parseNetwork, parseStatus, STEPS } from './ui.ts';
 
 const SW = new URL('sw.sh', import.meta.url).pathname;
 const ROLE = new URL('role.sh', import.meta.url).pathname;
@@ -82,5 +82,14 @@ describe('live demo scripts', () => {
     );
     expect(status).toEqual({ plain: '🔒 PROTECTED until 09 Apr 2027 13:49 UTC, second key: SECOND KEY', owner: 'NEW WALLET', address: '4qZZvnpc' });
     expect(parseStatus('No stake account yet. Run: sw stake 0.1')).toBeNull();
+  });
+
+  it('switches only between the networks sw net knows', () => {
+    expect(parseNetwork('network=local\nlabel=local network\nrpc_label=devnet.helius-rpc.com\n')).toEqual({
+      name: 'local',
+      label: 'local network',
+      rpcLabel: 'devnet.helius-rpc.com',
+    });
+    expect(source).toContain(`    ${NETWORKS.join(' | ')}) printf`);
   });
 });

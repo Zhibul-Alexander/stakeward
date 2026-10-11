@@ -8,12 +8,35 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SW_DIR="${SW_DIR:-$REPO_DIR/.keys/live-demo}"
+# SW_URL set by the user, not by demo.env: an sw started by another sw (the menu, the page) inherits the answer.
+if [ -n "${SW_URL_EXPLICIT+set}" ]; then
+  SW_URL_ENV="$SW_URL_EXPLICIT"
+  # The parent's resolved SW_URL must not pass for demo.env's own.
+  [ -n "$SW_URL_ENV" ] || unset SW_URL
+else
+  SW_URL_ENV="${SW_URL:-}"
+fi
+export SW_URL_EXPLICIT="$SW_URL_ENV"
 # demo.env sets SW_* only where the caller's environment has not set them already.
 if [ -f "$SW_DIR/demo.env" ]; then
   # shellcheck disable=SC1091
   . "$SW_DIR/demo.env"
 fi
-SW_URL="${SW_URL:-devnet}"
+# The network: SW_URL from the environment wins; otherwise the choice saved by "sw net": devnet (public),
+# local (a validator on this machine) or rpc (the SW_URL of demo.env, e.g. Helius devnet).
+SW_RPC_URL="${SW_URL:-devnet}"
+SW_NET="$(cat "$SW_DIR/network" 2>/dev/null || echo rpc)"
+if [ -n "$SW_URL_ENV" ]; then
+  SW_NET=custom
+  SW_URL="$SW_URL_ENV"
+else
+  case "$SW_NET" in
+    devnet) SW_URL=devnet ;;
+    local) SW_URL=localhost ;;
+    *) SW_NET=rpc; SW_URL="$SW_RPC_URL" ;;
+  esac
+fi
+SW_LEDGER="${SW_LEDGER:-$SW_DIR/ledger}"
 SW_MAIN_KEY="${SW_MAIN_KEY:-$SW_DIR/main.json}"
 SW_SECOND_KEY="${SW_SECOND_KEY:-$SW_DIR/second.json}"
 SW_NEW_KEY="${SW_NEW_KEY:-$SW_DIR/new.json}"
@@ -109,10 +132,15 @@ need_key() {
 
 # ---- The current stake account ----
 
+# The current stake account is kept per chain: a local validator does not know the devnet one.
+stake_file() {
+  if is_local; then echo "$SW_DIR/current-stake.local"; else echo "$SW_DIR/current-stake"; fi
+}
+
 stake_address() {
   if [ -n "${SW_STAKE:-}" ]; then printf '%s' "$SW_STAKE"; return; fi
-  [ -f "$SW_DIR/current-stake" ] || die "No stake account yet. Run: sw stake 0.1"
-  cat "$SW_DIR/current-stake"
+  [ -f "$(stake_file)" ] || die "No stake account yet. Run: sw stake 0.1"
+  cat "$(stake_file)"
 }
 
 # One field of `solana stake-account --output json-compact`; empty when absent.
@@ -328,7 +356,7 @@ cmd_keys() {
     fi
   done
   if [ -n "$SW_FUNDER_KEY" ] && [ -f "$SW_FUNDER_KEY" ]; then printf '  %-11s %s\n' 'FUNDER' "$(addr "$SW_FUNDER_KEY")"; fi
-  if [ -f "$SW_DIR/current-stake" ]; then printf '  %-11s %s\n' 'STAKE' "$(cat "$SW_DIR/current-stake")"; fi
+  if [ -f "$(stake_file)" ]; then printf '  %-11s %s\n' 'STAKE' "$(cat "$(stake_file)")"; fi
 }
 
 cmd_balances() {
@@ -340,7 +368,7 @@ cmd_balances() {
     a="$(addr "$file")"
     printf '  %-11s %-20s %s\n' "$(role_name "$role")" "$(short "$a")" "$(solana balance "$a" --url "$SW_URL" 2>&1)"
   done
-  if [ -f "$SW_DIR/current-stake" ] || [ -n "${SW_STAKE:-}" ]; then
+  if [ -f "$(stake_file)" ] || [ -n "${SW_STAKE:-}" ]; then
     a="$(stake_address)"
     printf '  %-11s %-20s %s\n' 'STAKE' "$(short "$a")" "$(solana balance "$a" --url "$SW_URL" 2>&1)"
   fi
@@ -383,7 +411,7 @@ cmd_stake() {
   say 'MAIN KEY' "puts ${amount} SOL into a new stake account $(short "$a")"
   if run ok '' -- create-stake-account "$file" "$amount" \
     --stake-authority "$main" --withdraw-authority "$main" --from "$main" --fee-payer "$main"; then
-    printf '%s' "$a" > "$SW_DIR/current-stake"
+    printf '%s' "$a" > "$(stake_file)"
     info "  current stake: $a"
   fi
 }
@@ -608,11 +636,72 @@ menu_list() {
   done
 }
 
-# localnet: a fresh Solana network on this machine (solana-test-validator); stop it with Ctrl+C.
-cmd_localnet() {
+local_up() {
+  curl -s -m 2 -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
+    http://127.0.0.1:8899 2>/dev/null | grep -q '"ok"'
+}
+
+# Starts a fresh local validator in the background when none answers, then tops the demo wallets up.
+ensure_local() {
+  local_up && return 0
   command -v solana-test-validator >/dev/null 2>&1 || die "solana-test-validator not found; it comes with the Solana CLI."
-  info "Local Solana network on http://127.0.0.1:8899, starting from scratch. In the other terminals: export SW_URL=localhost"
-  exec solana-test-validator --reset --quiet --ledger "${SW_LEDGER:-$SW_DIR/ledger}"
+  command -v curl >/dev/null 2>&1 || die "curl not found; it is needed to see when the local network is up."
+  local i
+  # Another sw (the page asks for balances and status at once) is starting it already: wait for that one.
+  if ! mkdir "$SW_DIR/.local-starting" 2>/dev/null; then
+    for i in $(seq 1 90); do local_up && return 0; sleep 1; done
+    rmdir "$SW_DIR/.local-starting" 2>/dev/null
+    die "The local network did not start. See $SW_DIR/validator.log"
+  fi
+  trap 'rmdir "$SW_DIR/.local-starting" 2>/dev/null' EXIT
+  say 'LOCAL NETWORK' "starting a fresh Solana network on this machine (solana-test-validator)"
+  mkdir -p "$SW_LEDGER"
+  nohup solana-test-validator --reset --quiet --ledger "$SW_LEDGER" > "$SW_DIR/validator.log" 2>&1 &
+  for i in $(seq 1 60); do
+    local_up && break
+    sleep 1
+  done
+  local_up || die "The local network did not start in 60 s. See $SW_DIR/validator.log"
+  rm -f "$SW_DIR/current-stake.local"
+  info "  up on http://127.0.0.1:8899 after ${i} s; topping up the demo wallets"
+  cmd_fund 2 > /dev/null 2>&1 || die "Airdrops on the local network failed. See $SW_DIR/validator.log"
+  info "  2 SOL on each demo wallet"
+  rmdir "$SW_DIR/.local-starting" 2>/dev/null
+  trap - EXIT
+}
+
+# localnet [stop]: the local network in the foreground (Ctrl+C stops it), or stop the background one.
+cmd_localnet() {
+  if [ "${1:-}" = stop ]; then
+    pkill -f "solana-test-validator.*$SW_LEDGER" && info "Local network stopped." || info "No local network was running."
+    return 0
+  fi
+  command -v solana-test-validator >/dev/null 2>&1 || die "solana-test-validator not found; it comes with the Solana CLI."
+  info "Local Solana network on http://127.0.0.1:8899, starting from scratch. Elsewhere: sw net local"
+  exec solana-test-validator --reset --quiet --ledger "$SW_LEDGER"
+}
+
+net_label() {
+  case "$SW_NET" in
+    devnet) echo 'public devnet' ;;
+    local) echo 'local network' ;;
+    rpc) case "$SW_RPC_URL" in devnet | d) echo 'public devnet' ;; *) printf '%s' "$SW_RPC_URL" | sed -E 's#^[a-z]+://##; s#[/?].*##' ;; esac ;;
+    *) shown_url ;;
+  esac
+}
+
+# net [devnet|rpc|local]: which network the demo uses from now on (saved for every terminal and the page).
+cmd_net() {
+  case "${1:-}" in
+    '') ;;
+    devnet | rpc | local) printf '%s' "$1" > "$SW_DIR/network" ;;
+    helius) printf 'rpc' > "$SW_DIR/network" ;;
+    *) die "Usage: sw net [devnet | rpc | local]   (rpc = the SW_URL of demo.env)" ;;
+  esac
+  if [ -n "${1:-}" ]; then exec bash "$SCRIPT_DIR/sw.sh" net; fi
+  [ "$SW_NET" = local ] && ensure_local
+  printf 'network=%s\nlabel=%s\nrpc_label=%s\n' "$SW_NET" "$(net_label)" "$(SW_NET=rpc net_label)"
+  if [ "$SW_NET" = custom ]; then info "SW_URL is set in this shell, so it wins over sw net."; fi
 }
 
 # ui [port]: the scenario as a page in the browser, http://127.0.0.1:4848 (ui.ts and ui.html next to this script).
@@ -620,7 +709,9 @@ cmd_ui() {
   command -v node >/dev/null 2>&1 || die "Node.js not found; the page needs Node 24 or newer."
   local port="${1:-4848}"
   (sleep 1; open "http://127.0.0.1:$port" 2>/dev/null || xdg-open "http://127.0.0.1:$port" 2>/dev/null) >/dev/null 2>&1 &
-  SW_URL="$SW_URL" exec node "$SCRIPT_DIR/ui.ts" "$port"
+  # The page's commands pick the network from "sw net" unless this shell set SW_URL itself.
+  if [ -z "$SW_URL_ENV" ]; then unset SW_URL; fi
+  exec node "$SCRIPT_DIR/ui.ts" "$port"
 }
 
 # log: the network output of "sw menu", scrolling on its own in this terminal.
@@ -698,7 +789,8 @@ ${B}Menu${N}
   sw menu [10m|1h|6mo]      the whole scenario as numbered steps: press Enter for the next one
   sw log                    in another terminal: the full network output of the menu, scrolling on its own
   sw ui [port]              the same scenario as a page in the browser (http://127.0.0.1:4848)
-  sw localnet               a local Solana network instead of devnet; then SW_URL=localhost elsewhere
+  sw net [devnet|rpc|local] switch the network for every terminal and the page; local starts a validator
+  sw localnet [stop]        the local network in the foreground, or stop the background one
 
 Env: SW_URL (devnet), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
      SW_STAKE (another stake account), SW_VOTE, SW_ONCHAIN_FAILS=0 (thief's failures only simulated, no explorer link).
@@ -738,8 +830,8 @@ main() {
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
   case "$cmd" in
-    setup | keys | log | ui | localnet | help | -h | --help) ;;
-    *) check_rpc ;;
+    setup | keys | log | ui | localnet | net | help | -h | --help) ;;
+    *) if is_local; then ensure_local; fi; check_rpc ;;
   esac
   case "$cmd" in
     setup) cmd_setup ;;
@@ -762,7 +854,8 @@ main() {
     menu) cmd_menu "$@" ;;
     log) cmd_log ;;
     ui) cmd_ui "$@" ;;
-    localnet) cmd_localnet ;;
+    localnet) cmd_localnet "$@" ;;
+    net) cmd_net "$@" ;;
     help | -h | --help) cmd_help ;;
     *) die "Unknown command: $cmd. Run: sw help" ;;
   esac
