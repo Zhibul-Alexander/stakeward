@@ -37,7 +37,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 2 — проблема (≈15 с)**
 
-> Here is the problem. If someone steals your wallet key, they can take your staked SOL. This really happens. In 2025, SwissBorg lost almost two hundred thousand staked SOL.
+> Here is the problem. If someone steals your wallet key, or tricks you into signing a bad transaction, they can take your staked SOL. This really happens. In the last few years, big companies lost hundreds of thousands of staked SOL like this, and thousands of people lost SOL from their wallets. Oh my God, that's a lot of money!
 
 **Блок 3 — что мы делаем (≈20 с)**
 
@@ -51,7 +51,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 > We are open to advice, and we change fast. Stakeward is free for people, and it never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
 
-Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
+Проверка фактов: «big companies lost hundreds of thousands of staked SOL» — SwissBorg (около 192 600 SOL, сентябрь 2025, подписанная транзакция со скрытой сменой права вывода) и Step Finance (261 854 SOL, январь 2026, взломанные устройства), SUBMISSION §11. «Thousands of people lost SOL from their wallets» — Slope (9 231 кошелёк, 2022) и дрейнеры (около 3 947 жертв, 2023–2024), там же; это SOL на балансе, не стейк, поэтому в фразе «SOL from their wallets», а не «staked SOL».
 «Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
 01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience», «lived in Tbilisi … for the last four years» (живём в Грузии 4 года, родом не из Грузии — поэтому не «from Tbilisi»), чемпионат по Катану (финал, топ-4, выходные перед подачей) — со слов владельца.
 
