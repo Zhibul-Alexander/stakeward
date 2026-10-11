@@ -28,6 +28,27 @@
 }
 
 /*
+ * Metric-matched fallbacks: until the web fonts arrive (font-display: swap) text is set in a local Arial scaled to the
+ * web font's width and line metrics, so the swap does not reflow headings or move buttons.
+ */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Helvetica');
+  size-adjust: 107.06%;
+  ascent-override: 90.49%;
+  descent-override: 22.56%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Space Grotesk Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Helvetica');
+  size-adjust: 104.1%;
+  ascent-override: 88.17%;
+  descent-override: 26.13%;
+  line-gap-override: 0%;
+}
+
+/*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
  * `data-[state=checked]:`, so component classes stay free of brackets.
  */
@@ -103,9 +124,13 @@
     background-color: var(--color-background);
   }
 
+  /*
+   * One rule for the display face: page titles and headings of 18 px and up (section, panel and landing titles) are
+   * Space Grotesk; card, row and list titles (16 px and down) stay Inter, like the rows and FAQ entries they sit
+   * beside. The size class decides, not the tag, so an h2 card title and an h3 row title look the same.
+   */
   h1,
-  h2,
-  h3 {
+  :is(h2, h3, h4):is([class*='text-lg'], [class*='text-2xl'], [class*='text-3xl']) {
     font-family: var(--font-display);
     letter-spacing: -0.015em;
   }
@@ -126,9 +151,12 @@
     outline-offset: var(--focus-ring-offset);
   }
 
+  /* Placeholders are hints, not data: the UI face even in a mono (address) field. */
   ::placeholder {
     color: var(--color-muted);
     opacity: 1;
+    font-family: var(--font-sans);
+    letter-spacing: normal;
   }
 
   ::selection {
@@ -180,4 +208,36 @@
 }
 @utility animate-live {
   animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+/*
+ * The phone nav row scrolls sideways: its right edge fades out so the cut-off item reads as "more this way". Where
+ * scroll-driven animations exist the fade clears once the row is scrolled to its end. Not motion, so it keeps working
+ * under prefers-reduced-motion (the safety net above would otherwise zero its duration).
+ */
+@property --nav-fade {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 3rem;
+}
+@keyframes nav-fade-clear {
+  0%,
+  85% {
+    --nav-fade: 3rem;
+  }
+  100% {
+    --nav-fade: 0rem;
+  }
+}
+@utility nav-fade {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--nav-fade)), transparent);
+  @supports (animation-timeline: scroll()) {
+    animation: nav-fade-clear linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-fade {
+    animation-duration: auto !important;
+  }
 }

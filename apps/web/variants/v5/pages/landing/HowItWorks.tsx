@@ -18,7 +18,7 @@ export function HowItWorks({ cluster }: { cluster: Cluster }) {
     <Section id="how-it-works" title={t('landing.how.title')} intro={t('landing.how.intro')}>
       <ol className="grid overflow-hidden rounded-lg border border-border bg-surface md:grid-cols-3">
         {STEPS.map(({ step, icon: Icon }, index) => (
-          <li key={step} className="flex gap-4 border-t-2 border-t-transparent p-4 not-first:border-t-border md:flex-wrap md:items-center md:gap-x-3 md:gap-y-2 md:border-t-primary md:p-6 md:not-first:border-t-primary md:not-first:border-l md:not-first:border-l-border">
+          <li key={step} className="flex gap-4 border-t-2 border-t-transparent p-4 not-first:border-t-border md:flex-wrap md:content-start md:items-center md:gap-x-3 md:gap-y-2 md:border-t-primary md:p-6 md:not-first:border-t-primary md:not-first:border-l md:not-first:border-l-border">
             {/* The list numbers the steps for assistive technology; the tile repeats it for the eye. */}
             <span aria-hidden="true" className="relative flex size-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
               <Icon className="size-5" />

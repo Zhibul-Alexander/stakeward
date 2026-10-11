@@ -20,7 +20,8 @@ function RailLink({ href, children, external = false }: { href: string; children
 
 /**
  * The landing page's header in the v5 console look: the same dark rail as the app's sidebar, the mark, the network,
- * Rescue and the demo, and "Your accounts" as the way into the console. Below 640 px the links take a second row and
+ * Rescue and the demo, and "Your accounts" as the way into the console (outlined: the hero's
+ * "Check my stake" is the page's one filled action). Below 640 px the links take a second row and
  * the less used ones keep only their icon (named for screen readers).
  */
 export function SiteHeader() {
@@ -69,9 +70,9 @@ export function SiteHeader() {
           ) : null}
           <Link
             href="/app"
-            className="ml-auto inline-flex h-8 items-center whitespace-nowrap gap-1.5 rounded-md bg-rail-accent px-3 text-sm font-semibold text-rail sm:ml-2 focus-visible:outline-rail-fg"
+            className="ml-auto inline-flex h-8 items-center whitespace-nowrap gap-1.5 rounded-md border border-rail-border bg-rail-raised px-3 text-sm font-medium text-rail-fg hover:border-rail-muted sm:ml-2 focus-visible:outline-rail-accent"
           >
-            <LayoutDashboardIcon aria-hidden="true" className="size-4" />
+            <LayoutDashboardIcon aria-hidden="true" className="size-4 text-rail-accent" />
             {t('nav.app')}
           </Link>
         </nav>

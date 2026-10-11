@@ -290,7 +290,7 @@ function Kpi({
     <div data-slot="kpi" className={`flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface p-3 sm:p-4 ${className ?? ""}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-muted">{label}</p>
-        <span aria-hidden="true" className={`grid size-7 place-items-center rounded-md [&>svg]:size-4 ${iconTone}`}>
+        <span aria-hidden="true" className={`hidden size-7 shrink-0 place-items-center rounded-md sm:grid [&>svg]:size-4 ${iconTone}`}>
           {icon}
         </span>
       </div>
@@ -397,6 +397,7 @@ function Summary({
               tone={percent >= 99.95 ? "success" : "default"}
               value={solNumber(view.totals.protectedLamports)}
               note={`of ${formatSol(view.totals.lamports)}`}
+              className="col-span-2 sm:col-span-1"
             />
             <Kpi
               label="Stake accounts"

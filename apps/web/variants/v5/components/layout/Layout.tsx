@@ -23,11 +23,30 @@ import { SiteHeader } from './SiteHeader.tsx';
 const loadHealth = () => fetchHealth();
 const MINUTE_MS = 60_000;
 
+/** Pages about one stake account: under Accounts in the nav, named as a third crumb in the top bar. */
+const ACCOUNT_PAGES: readonly (readonly [string, string])[] = [
+  ['/withdraw/', 'Withdraw'],
+  ['/extend/', 'Extend the lock'],
+  ['/recovery/', 'Recovery card'],
+  ['/change-key/', 'Change second key'],
+  ['/delegate/', 'Stake again'],
+  ['/try-steal/', 'Try to steal it'],
+  ['/proof/', 'Proof page'],
+  ['/stake', 'Stake'],
+];
+
+/** Pages outside the nav (a co-signer's link, the transaction checker): their own crumb, never "Stakeward". */
+const OTHER_PAGES: readonly (readonly [string, string])[] = [
+  ['/cosign', 'Co-sign'],
+  ['/check', 'Check a transaction'],
+  ['/dev/', 'Developer'],
+];
+
 type NavItem = { href: string; label: string; icon: LucideIcon; match: (location: string) => boolean };
 
 /** The console's sections. Short names; the page's own h1 says the rest. */
 const NAV: readonly NavItem[] = [
-  { href: '/app', label: 'Accounts', icon: LayoutDashboardIcon, match: (l) => l === '/app' || l.startsWith('/withdraw') || l.startsWith('/extend') || l.startsWith('/recovery') },
+  { href: '/app', label: 'Accounts', icon: LayoutDashboardIcon, match: (l) => l === '/app' || ACCOUNT_PAGES.some(([prefix]) => l.startsWith(prefix)) },
   { href: '/protect', label: 'Protect', icon: ShieldCheckIcon, match: (l) => l.startsWith('/protect') },
   { href: '/rescue', label: t('nav.rescue'), icon: LifeBuoyIcon, match: (l) => l.startsWith('/rescue') },
   { href: '/demo', label: t('nav.demo'), icon: PlayIcon, match: (l) => l.startsWith('/demo') },
@@ -135,12 +154,19 @@ function Brand() {
 /** The slim bar over the console's content (from 1024 px): where you are, the network and the way to the other one. */
 function TopBar({ location }: { location: string }) {
   const section = NAV.find((item) => item.match(location));
+  const page = ACCOUNT_PAGES.find(([prefix]) => location.startsWith(prefix))?.[1];
+  const other = OTHER_PAGES.find(([prefix]) => location.startsWith(prefix))?.[1];
+  const crumbs = section === undefined ? [other ?? 'Page'] : page === undefined ? [section.label] : [section.label, page];
   return (
     <div className="hidden h-12 items-center justify-between gap-4 border-b border-border bg-surface px-6 lg:flex print:hidden">
       <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
         <span>Console</span>
-        <span aria-hidden="true" className="text-border-strong">/</span>
-        <span className="truncate font-medium text-foreground">{section?.label ?? t('common.appName')}</span>
+        {crumbs.map((crumb, index) => (
+          <span key={crumb} className={cn('flex min-w-0 items-center gap-2', index === crumbs.length - 1 && 'font-medium text-foreground')}>
+            <span aria-hidden="true" className="font-normal text-border-strong">/</span>
+            <span className="truncate">{crumb}</span>
+          </span>
+        ))}
       </p>
       <div className="flex items-center gap-3 text-xs text-muted">
         <span>{t('common.neverSeedPhrase')}</span>
@@ -173,15 +199,15 @@ function Console({ location, children }: { location: string; children: ReactNode
             <NetworkPill />
           </span>
         </div>
-        <nav aria-label={t('nav.label')} className="scrollbar-none overflow-x-auto px-2 pt-2 pb-3 lg:mt-6 lg:overflow-visible lg:px-3 lg:pb-0">
+        <nav aria-label={t('nav.label')} className="nav-fade scrollbar-none overflow-x-auto px-2 pt-2 pb-3 lg:mt-6 lg:animate-none lg:overflow-visible lg:px-3 lg:pb-0 lg:[mask-image:none]">
           <p className="hidden px-3 pb-2 text-xs font-medium text-rail-muted lg:block">Workspace</p>
           <NavLinks location={location} />
         </nav>
         <div className="mt-auto hidden flex-col gap-3 p-4 lg:flex">
           <RailMonitor />
-          <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex flex-col items-start gap-1.5 px-1">
             <NetworkPill />
-            <span className="text-xs text-rail-muted">{IS_DEVNET ? t('common.devnetNote').replace(/\.$/, '') : 'Real SOL'}</span>
+            <span className="text-xs text-pretty text-rail-muted">{IS_DEVNET ? t('common.devnetNote').replace(/\.$/, '') : 'Real SOL'}</span>
           </div>
         </div>
       </header>
