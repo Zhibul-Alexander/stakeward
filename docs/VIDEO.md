@@ -17,18 +17,33 @@
 
 ## 1. Pitch video — 2:00, вы в кадре
 
-Камера на уровне глаз, свет спереди, фон спокойный. Можно говорить своими словами по пунктам ниже: читать с листа не нужно, Colosseum смотрит, как вы думаете и говорите. Около 260 слов — это 2:00 в спокойном темпе. Слайды не нужны; если хочется, в 0:20–0:40 можно на 5 секунд показать экран с цифрами.
+Камера на уровне глаз, свет спереди, фон спокойный. Английский уровня B1: короткие предложения, простые слова, у каждой фразы один смысл. Говорите спокойно, не быстро: около 260 слов — это 2:00 (без двух TODO; ваши фразы держите короткими). Текст можно учить кусками по блокам; читать с листа не нужно. Слайды не нужны.
 
-| Время | О чём | Текст (английский, можно своими словами) |
-|---|---|---|
-| 0:00–0:12 | Кто вы | Hi, I'm `<имя>`, a developer in Tbilisi, Georgia. `[TODO владелец: одна фраза о себе — опыт, почему Solana.]` I built Stakeward. |
-| 0:12–0:40 | Проблема | If you stake SOL natively, one key controls your stake: your wallet key. Whoever gets that key, through a phished seed phrase, malware, or one hidden instruction in a transaction you approve, can withdraw your stake or make it theirs. That's not theory. In September 2025 SwissBorg lost about 192,600 staked SOL to a hidden change of the withdraw key, and in January 2026 Step Finance lost 261,854 staked SOL. |
-| 0:40–1:05 | Озарение и решение | Every stake account already has a lock built into Solana's stake program: the lockup. While it holds, withdrawing or changing who can withdraw also needs the lock's own key. The docs say you can only set it when the account is created. The program's code says otherwise, and I proved it on mainnet. Stakeward puts that lock on the stake you already have, with a second wallet of yours as its key. |
-| 1:05–1:25 | Что работает уже сейчас | It's live on mainnet. I protected my own stake, played the thief with my main key: I could unstake, but the network refused to let me withdraw. I got a Telegram alert, and I rescued the stake to a new wallet. No program of our own, no token, no custody, open source. |
-| 1:25–1:45 | Для кого и бизнес | It's for anyone with a large native stake: people on a Ledger, validators, teams with treasury stake. Protection is free for individuals. Teams and validators are the business: alerts in their own channels, many accounts, reports. |
-| 1:45–2:00 | Почему вы | `[TODO владелец: почему именно вы — одна-две фразы.]` I built this end to end in two weeks, with every transaction checked byte by byte before you sign. Stakeward: a lock on your staked SOL, enforced by Solana itself. |
+**0:00–0:12. Кто вы**
 
-Проверка перед записью: 192 600 и 261 854 SOL и даты — из SUBMISSION §11; «two weeks» — первый коммит 01.10.2026. Строку про бизнес держать как в BUSINESS-MODEL.md, без обещанных цен.
+> Hi, my name is `<name>`. I am a developer from Tbilisi, Georgia. `[TODO: one simple sentence about you.]` I built Stakeward.
+
+**0:12–0:40. Проблема**
+
+> One key controls your staked SOL: the key of your wallet. If someone steals this key, they can take all of your staked SOL. Keys get stolen through fake websites, viruses, or a bad transaction that you sign by mistake. This really happens. In 2025, SwissBorg lost about 192,600 staked SOL. In 2026, Step Finance lost 261,854 staked SOL.
+
+**0:40–1:05. Решение**
+
+> Solana already has a lock for staked SOL. When the lock is on, a second key must also sign before anyone can take the SOL out. The documentation says you can turn it on only when you create a stake. I tested it on mainnet: you can turn it on later too. Stakeward turns on this lock for your stake. The second key is another wallet that you own.
+
+**1:05–1:25. Что уже работает**
+
+> Stakeward works on mainnet today. I protected my own stake. Then I acted as a thief with my main key. I could stop the staking, but Solana did not let me take the SOL out. I got a message in Telegram, and I moved my stake to a new wallet. Stakeward never holds your SOL or your keys.
+
+**1:25–1:45. Для кого и деньги**
+
+> Stakeward is for people with a lot of staked SOL, for validators and for teams. For one person, it is free. Teams and validators will pay for extra features, like alerts in their own chats and reports.
+
+**1:45–2:00. Почему вы**
+
+> `[TODO: why you, one or two simple sentences.]` The code is open, and before you sign, Stakeward shows exactly what the transaction does. Stakeward: a lock for your staked SOL, and Solana itself checks it.
+
+Проверка перед записью: 192 600 и 261 854 SOL и годы — из SUBMISSION §11. «I tested it on mainnet» — docs/gate.md. «I could stop the staking … did not let me take the SOL out … message in Telegram … moved my stake» — проход владельца на mainnet 10–11.10.2026 (PROGRESS). Строку про деньги держать как в BUSINESS-MODEL.md, без цен.
 
 ---
 
