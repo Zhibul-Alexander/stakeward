@@ -14,8 +14,9 @@ const LINK_CLASS = 'rounded-sm underline underline-offset-4 hover:text-foregroun
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-8 print:hidden">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 rounded-t-xl bg-surface px-5 py-7 text-sm text-muted shadow-sm sm:px-8">
+    <footer className="mx-auto mt-8 w-full max-w-5xl px-4 sm:px-6 print:hidden">
+      {/* v4: the card's edges line up with the header and the page column above it. */}
+      <div className="flex w-full flex-col gap-3 rounded-t-xl bg-surface px-5 py-7 text-sm text-muted shadow-sm sm:px-8">
         <p>{t('footer.trust')}</p>
         <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between sm:gap-6">
           <nav aria-label={t('footer.label')}>

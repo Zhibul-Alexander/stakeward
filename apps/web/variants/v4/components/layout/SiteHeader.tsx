@@ -11,7 +11,7 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIc
   const [location] = useLocation();
   const current = location === href;
   return (
-    <Button asChild variant="ghost" size="sm" className="px-3 hover:bg-primary-soft aria-[current=page]:bg-primary aria-[current=page]:text-on-primary aria-[current=page]:hover:bg-primary-hover">
+    <Button asChild variant="ghost" size="sm" className="px-3 hover:bg-primary-soft aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary aria-[current=page]:hover:bg-primary-soft">
       <Link href={href} aria-current={current ? 'page' : undefined}>
         {Icon === undefined ? null : <Icon aria-hidden="true" />}
         {children}

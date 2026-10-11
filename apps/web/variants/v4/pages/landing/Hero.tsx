@@ -61,10 +61,10 @@ export function Hero({ cluster }: { cluster: Cluster }) {
           <h1 id="landing-title" className="text-3xl text-balance sm:text-4xl">
             {t('landing.title')}
           </h1>
-          <p className="text-lg text-pretty text-muted">{t('landing.lead')}</p>
+          <p className="max-w-prose text-base text-pretty text-muted sm:text-lg">{t('landing.lead')}</p>
         </div>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div data-slot="hero-actions" className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/app">{t('landing.checkStake')}</Link>
             </Button>
@@ -75,7 +75,7 @@ export function Hero({ cluster }: { cluster: Cluster }) {
           <Helper icon={SmileIcon} tone="mint">
             {t('landing.checkStakeHint')}
           </Helper>
-          <div className="flex flex-col gap-2 pl-1">
+          <div className="flex flex-col gap-1 pl-1">
             <Button asChild variant="link" className="w-fit px-0">
               <Link href="/demo">
                 <PlayIcon aria-hidden="true" />

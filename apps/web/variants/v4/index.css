@@ -86,6 +86,27 @@
   background-position: center;
 }
 
+/*
+ * Metric-matched fallbacks (measured in Chromium against Arial / Courier New): while the web fonts load, the local
+ * face takes the same line width and the same ascent and descent, so nothing reflows when Manrope arrives.
+ */
+@font-face {
+  font-family: 'Manrope Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Liberation Sans'), local('Roboto');
+  size-adjust: 102%;
+  ascent-override: 104.5%;
+  descent-override: 29.4%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Courier New'), local('Liberation Mono'), local('Menlo'), local('Consolas');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
 /* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
 @page {
   margin: 14mm;
@@ -134,6 +155,36 @@
     background-color: var(--color-primary);
     color: var(--color-on-primary);
   }
+}
+
+/*
+ * v4 type roles, outside any layer so they win over the per-page utilities of screens this variant does not redraw
+ * (wizard steps, signing, recovery, check): every page then shares one scale.
+ *   h2 that titles a block or a wizard step (text-lg in the base design) -> text-2xl, the same as /app and the landing
+ *   a heading never at a lighter weight than the rest of its rank (font-semibold / font-medium on headings -> 750)
+ *   proportional figures in running text: Manrope's tabular "1" is padded wide ("1 4 questions"); only the live
+ *   countdown keeps tabular figures so its digits do not shift every second
+ */
+#main h2.text-lg:not([data-tone] *, [data-slot='alert-title'] *) {
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+  letter-spacing: var(--text-2xl--letter-spacing);
+  font-weight: 800;
+}
+:is(h2, h3, h4):is(.font-semibold, .font-medium) {
+  font-weight: 750;
+}
+.tabular-nums {
+  font-variant-numeric: proportional-nums;
+}
+[data-slot='countdown'] .tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+/* An address placeholder ("Paste an address") reads as words, not as an address: the sans face, not the mono one. */
+input::placeholder,
+textarea::placeholder {
+  font-family: var(--font-sans);
+  letter-spacing: normal;
 }
 
 /* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */

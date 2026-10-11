@@ -94,8 +94,9 @@
   --color-qr-dark: #161a33;
   --color-qr-light: #ffffff;
 
-  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Each web font is followed by a metric-matched local fallback (index.css), so text does not reflow when it loads. */
+  --font-sans: 'Manrope Variable', 'Manrope Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono Fallback', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --text-xs: 0.78rem;
   --text-xs--line-height: 1.1rem;
@@ -106,8 +107,10 @@
   --text-lg: 1.1875rem;
   --text-lg--line-height: 1.75rem;
   --text-lg--letter-spacing: -0.01em;
+  /* One size per role (v4 type scale): 4xl/3xl the page's h1, 2xl every h2 (landing, /app, wizard steps), lg every
+     card h3 and the page lead, base body, sm secondary text, xs meta. 2xl grows a step from 640 px (below). */
   --text-2xl: 1.625rem;
-  --text-2xl--line-height: 2.05rem;
+  --text-2xl--line-height: 2.125rem;
   --text-2xl--letter-spacing: -0.025em;
   --text-2xl--font-weight: 800;
   --text-3xl: 2.375rem;
@@ -119,10 +122,14 @@
   --text-4xl--letter-spacing: -0.04em;
   --text-4xl--font-weight: 800;
 
+  /* Manrope runs light: semibold labels (card titles, buttons, key roles) sit at 650 so they read as titles next to
+     750-800 headings rather than as body text. */
+  --font-weight-semibold: 650;
+
   --spacing: 0.25rem;
 
   --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
-  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) 4rem;
 
   /* Radii: big and soft. */
   --radius-sm: 0.5rem;
@@ -179,6 +186,13 @@
   --motion-duration-slow: 520ms;
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --text-2xl: 2rem;
+    --text-2xl--line-height: 2.5rem;
+  }
 }
 
 @media screen and (prefers-color-scheme: dark) {

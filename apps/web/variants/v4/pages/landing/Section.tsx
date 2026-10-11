@@ -25,10 +25,10 @@ export function Section({ id, title, intro, children, className }: SectionProps)
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-4 sm:gap-6', className)}>
       <div className="flex max-w-prose flex-col gap-1 sm:gap-2">
-        <h2 id={`${id}-title`} className="text-2xl text-balance sm:text-3xl">
+        <h2 id={`${id}-title`} className="text-2xl text-balance">
           {title}
         </h2>
-        {intro === undefined ? null : <p className="text-base text-pretty text-muted sm:text-lg">{intro}</p>}
+        {intro === undefined ? null : <p className="text-base text-pretty text-muted">{intro}</p>}
       </div>
       {children}
     </section>

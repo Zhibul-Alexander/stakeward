@@ -64,10 +64,10 @@ export function Protects() {
       </Helper>
       <SubSection id="second-key" title={t('landing.secondKey.title')} className="mt-4 rounded-xl bg-peach/60 p-5 sm:p-7">
         <div className="grid items-start gap-4 md:grid-cols-2 md:gap-8">
-          <RiskNote risk="second-key-can-freeze" variant="inline">
+          <RiskNote risk="second-key-can-freeze" variant="inline" className="sm:text-base">
             <p>{t('landing.secondKey.freeze')}</p>
           </RiskNote>
-          <div className="flex flex-col gap-3 text-sm">
+          <div className="flex flex-col gap-3 text-sm sm:text-base">
             <ul className="flex flex-col gap-2">
               <li className="flex items-start gap-3 rounded-lg bg-surface p-3 text-pretty shadow-sm">
                 <KeyRoundIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-peach-ink" />

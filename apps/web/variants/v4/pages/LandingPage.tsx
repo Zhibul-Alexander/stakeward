@@ -1,6 +1,6 @@
 import type { Cluster } from '@stakeward/core';
 import { cn } from 'cn';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
@@ -38,16 +38,25 @@ export function LandingPage({ cluster = CLUSTER }: { cluster?: Cluster | undefin
       window.removeEventListener('hashchange', follow);
     };
   }, []);
-  // v4: the phone dock with "Check my stake" appears once the hero's own buttons have scrolled away.
-  const heroEnd = useRef<HTMLDivElement>(null);
+  // v4: the phone dock with "Check my stake" appears once the hero's own buttons have scrolled away, and steps aside
+  // while the closing call (the same link) is on screen, so a phone never shows two "Check my stake" at once and the
+  // dock is the only filled button in view.
   const [dock, setDock] = useState(false);
   useEffect(() => {
-    const target = heroEnd.current;
-    if (target === null || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry !== undefined) setDock(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    const heroActions = document.querySelector('[data-slot="hero-actions"]');
+    const finalCta = document.querySelector('[data-slot="final-cta"] [data-slot="button"]');
+    if (heroActions === null || finalCta === null || typeof IntersectionObserver === 'undefined') return;
+    let heroGone = false;
+    let finalShown = false;
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === heroActions) heroGone = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+        else finalShown = entry.isIntersecting;
+      }
+      setDock(heroGone && !finalShown);
     });
-    observer.observe(target);
+    observer.observe(heroActions);
+    observer.observe(finalCta);
     return () => {
       observer.disconnect();
     };
@@ -55,7 +64,6 @@ export function LandingPage({ cluster = CLUSTER }: { cluster?: Cluster | undefin
   return (
     <Page className="gap-14 pb-20 sm:gap-20 sm:pb-0">
       <Hero cluster={cluster} />
-      <div ref={heroEnd} aria-hidden="true" className="-mt-14 h-px sm:-mt-20" />
       <HowItWorks cluster={cluster} />
       <Protects />
       <CannotDo />

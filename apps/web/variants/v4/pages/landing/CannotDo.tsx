@@ -25,7 +25,7 @@ const ITEMS: readonly CannotDoItem[] = [
 export function CannotDo() {
   return (
     <Section id="cannot-do" title={t('landing.cannotDo.title')} intro={t('landing.cannotDo.intro')}>
-      <ul className="grid gap-x-8 gap-y-3 rounded-xl border border-border bg-surface p-5 text-sm shadow-sm sm:gap-y-4 sm:p-7 md:grid-cols-2">
+      <ul className="grid gap-x-8 gap-y-3 rounded-xl border border-border bg-surface p-5 text-sm shadow-sm sm:text-base sm:gap-y-4 sm:p-7 md:grid-cols-2">
         {ITEMS.map((item) => (
           <li key={item} className="flex items-start gap-3">
             <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-soft text-neutral">

@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 export function FinalCta() {
   return (
     <section
+      data-slot="final-cta"
       aria-labelledby="cta-title"
       className="flex flex-col items-center gap-4 rounded-2xl bg-primary-soft p-6 text-center sm:p-10"
     >

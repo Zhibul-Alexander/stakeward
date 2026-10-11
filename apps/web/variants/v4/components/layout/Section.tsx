@@ -27,16 +27,18 @@ export function Section({ title, headingLevel = 2, id, count, description, actio
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
     <section id={id} aria-labelledby={headingId} data-slot="section" className={cn('flex flex-col', className)}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+      {/* v4: one wrapping row. Below 640 px the action follows the description (read, then act); from 640 px it stands
+          right of the title and the description takes the next line. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Heading id={headingId} className={headingLevel === 2 ? 'text-lg font-extrabold sm:text-2xl' : 'text-base font-bold'}>
+          <Heading id={headingId} className={headingLevel === 2 ? 'text-2xl' : 'text-lg font-extrabold'}>
             {title}
           </Heading>
           {count === undefined ? null : <span className="rounded-full bg-surface px-2.5 py-0.5 text-sm font-semibold text-muted tabular-nums shadow-sm">{count}</span>}
         </div>
-        {action === undefined ? null : <div className="flex flex-wrap items-center gap-2">{action}</div>}
+        {action === undefined ? null : <div className="order-last flex flex-wrap items-center gap-2 sm:order-none">{action}</div>}
+        {description === undefined ? null : <p className="order-2 max-w-prose basis-full text-base text-pretty text-muted sm:order-last">{description}</p>}
       </div>
-      {description === undefined ? null : <p className="mt-1 max-w-prose text-base text-pretty text-muted">{description}</p>}
       <div className="mt-4 flex flex-col gap-4">{children}</div>
     </section>
   );
