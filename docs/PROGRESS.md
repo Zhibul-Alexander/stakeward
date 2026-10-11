@@ -504,3 +504,9 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - Не сделано: Phantom, Solflare и Backpack в эмуляции — в облачном контейнере закрыты Chrome Web Store и devnet. Дальше: решение владельца — открыть эти адреса в сетевых настройках окружения или прогнать на своём маке.
 - 11.10.2026: сценарии видео — `docs/VIDEO.md` (питч до 2:00 с владельцем в кадре, демо до 3:00 на devnet). SUBMISSION §6–7 ссылаются туда. Superteam Georgia: подача и на Colosseum, и на Earn (поля в чате 11.10), обязателен офлайн Demo Day, итоги 14.10.
 - 11.10.2026: Stakeward делали вдвоём (владелец и друг) — в питче «we». Добавить друга в команду на Colosseum (Team) и поправить ответ «Did anyone not listed … do meaningful work?»; ответ про «solo developer» в Earn «Anything Else?» не использовать.
+
+## Макет «Connect main key» и подсказка про Ledger (11.10.2026)
+
+- Сделано: макет подключения основного ключа на /app в Claude Design (7 состояний, 1280 и 360), сверен с WalletSlot и en.json; ссылка в новом `docs/DESIGN.md`. В коде: строка про Ledger под списком кошельков (D133).
+- Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true vitest run` в apps/web — 1001 тест, 1 пропуск (новый тест в `wallet-slot.test.tsx`).
+- Дальше: владелец утверждает макет; снимки `docs/screens` с подсказкой — при следующем прогоне e2e.
