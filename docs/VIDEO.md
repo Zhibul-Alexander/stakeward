@@ -37,7 +37,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 2 — проблема (≈15 с)**
 
-> Here is the problem. If someone steals your wallet key, or tricks you into signing a bad transaction, they can take your staked SOL. This really happens. In the last few years, big companies lost hundreds of thousands of staked SOL like this, and thousands of people lost SOL from their wallets. Oh my God, that's a lot of money!
+> Here is the problem. If someone steals your wallet key, or tricks you into signing a bad transaction, they can take your staked SOL. This really happens. In the last few years, big companies lost hundreds of thousands of staked SOL, and thousands of people lost SOL from their wallets. Oh my God, that's a lot of money!
 
 **Блок 3 — что мы делаем (≈20 с)**
 
