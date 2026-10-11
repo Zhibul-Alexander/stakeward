@@ -502,3 +502,5 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - `pnpm ledger-sim` + `scripts/ledger-sim/speculos.sh`: приложение Solana для Ledger из исходников в Speculos, все наши транзакции, экраны в `docs/ledger-sim.md` (D127). 25 из 25 — понятным текстом; с хвостом Lighthouse и в порядке аккаунтов без sysvar — слепая подпись.
 - Чем проверено: прогоны на Nano S Plus и Nano X, `vitest run ledger-sim` (4 теста), `tsc` scripts.
 - Не сделано: Phantom, Solflare и Backpack в эмуляции — в облачном контейнере закрыты Chrome Web Store и devnet. Дальше: решение владельца — открыть эти адреса в сетевых настройках окружения или прогнать на своём маке.
+- 11.10.2026: сценарии видео — `docs/VIDEO.md` (питч до 2:00 с владельцем в кадре, демо до 3:00 на devnet). SUBMISSION §6–7 ссылаются туда. Superteam Georgia: подача и на Colosseum, и на Earn (поля в чате 11.10), обязателен офлайн Demo Day, итоги 14.10.
+- 11.10.2026: Stakeward делали вдвоём (владелец и друг) — в питче «we». Добавить друга в команду на Colosseum (Team) и поправить ответ «Did anyone not listed … do meaningful work?»; ответ про «solo developer» в Earn «Anything Else?» не использовать.
