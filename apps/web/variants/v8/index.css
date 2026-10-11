@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import './styles/tokens.css';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Local fallbacks sized to IBM Plex, so the swap from the system face to Plex does not move the layout. */
+@font-face {
+  font-family: 'Plex Sans Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 101%;
+  ascent-override: 101%;
+  descent-override: 27%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Plex Mono Fallback';
+  src: local('Courier New'), local('Liberation Mono');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 27%;
+  line-gap-override: 0%;
+}
+
+/* The dotted leader of a checklist line: item ........ response. */
+@utility leader {
+  flex: 1 1 0%;
+  min-width: 1.5rem;
+  align-self: flex-end;
+  margin-bottom: 0.35em;
+  border-bottom: 2px dotted var(--color-border-strong);
+  opacity: 0.6;
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
