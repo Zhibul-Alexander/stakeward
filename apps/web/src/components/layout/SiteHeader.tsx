@@ -1,4 +1,4 @@
-import { FlaskConicalIcon, LifeBuoyIcon, PlayIcon, type LucideIcon } from 'lucide-react';
+import { FlaskConicalIcon, LifeBuoyIcon, PlayIcon, SwordsIcon, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,8 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIc
 
 /**
  * The site header (DECISIONS.md D112): the mark and name, the network on devnet (a badge and, from 768 px, what it
- * means), and two links: Rescue, for someone whose main key was just stolen, and the accounts page. Below 640 px the
+ * means), and links: Rescue, for someone whose main key was just stolen, the demo and the accounts page; on devnet also
+ * the public "Try to steal it" challenge (D133). Below 640 px the
  * links take a second row rather than hiding their words. Their boxes (the current page's pill, the focus ring) stay
  * inside the content column, clear of the 16 px gutter.
  */
@@ -45,13 +46,18 @@ export function SiteHeader() {
             </>
           ) : null}
         </div>
-        <nav aria-label={t('nav.label')} className="flex w-full items-center gap-2 sm:w-auto">
+        <nav aria-label={t('nav.label')} className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <NavLink href="/rescue" icon={LifeBuoyIcon}>
             {t('nav.rescue')}
           </NavLink>
           <NavLink href="/demo" icon={PlayIcon}>
             {t('nav.demo')}
           </NavLink>
+          {IS_DEVNET ? (
+            <NavLink href="/challenge" icon={SwordsIcon}>
+              {t('nav.challenge')}
+            </NavLink>
+          ) : null}
           <NavLink href="/app">{t('nav.app')}</NavLink>
         </nav>
       </div>
