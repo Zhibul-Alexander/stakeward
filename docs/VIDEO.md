@@ -45,14 +45,14 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 4 — почему именно мы (≈25 с)**
 
-> Why us? We do not stop at the documentation. The documentation says you can turn on this lock only for a new stake. We read the code and tested it on mainnet: it also works for the stake you already have. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
+> Why us? We look at things from a new angle. This lock is not new: Solana uses it to lock tokens for a fixed time, for example for investors. We use the same lock in a new way: to protect your stake from theft. We don't need a new program or a new token. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
 
 **Блок 5 — как мы работаем, финал (≈20 с)**
 
 > We are open to advice, and we change fast. We listen to users and learn every day. Stakeward never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
 
 Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
-«Read the code and tested it on mainnet» — `Meta::set_lockup`, docs/gate.md. «Less than two weeks» — первый коммит
+«Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
 01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience» — со слов владельца.
 
 ---
