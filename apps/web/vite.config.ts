@@ -2,6 +2,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 import { readStaticHeaders } from './static-headers.ts';
+import { uiVariant, variantOverlay } from './variant-overlay.ts';
+
+const UI_VARIANT = uiVariant();
 
 const CLUSTERS = ['devnet', 'mainnet'] as const;
 type Cluster = (typeof CLUSTERS)[number];
@@ -24,7 +27,9 @@ function clusterFor(command: 'build' | 'serve'): Cluster {
 }
 
 export default defineConfig(({ command }) => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [variantOverlay(UI_VARIANT), react(), tailwindcss()],
+  // A UI variant builds to its own folder, so several can be built and previewed side by side.
+  build: UI_VARIANT === undefined ? {} : { outDir: `variants-dist/${UI_VARIANT}` },
   // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
   resolve: { tsconfigPaths: true },
   define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(clusterFor(command)) },

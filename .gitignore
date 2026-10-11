@@ -33,3 +33,5 @@ apps/web/.ds-pkg/
 # QA suite (apps/web/qa): the local stack's generated wrangler config
 apps/worker/.wrangler.qa-local.json
 /.idea/
+variants-dist/
+variants-shots/
