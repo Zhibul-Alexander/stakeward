@@ -1,4 +1,4 @@
-// Monitor fast path (DECISIONS.md D49): most passes find a watched account unchanged, or changed only by epoch rewards.
+// Monitor fast path (DECISIONS.md D56): most passes find a watched account unchanged, or changed only by epoch rewards.
 // The worker stores a fingerprint of the bytes diffSnapshots depends on and skips the decode while it stays the same.
 // The fingerprint is compared for equality only; every read of a field still goes through the generated client.
 import { STAKE_PROGRAM_ADDRESS } from './constants.ts';

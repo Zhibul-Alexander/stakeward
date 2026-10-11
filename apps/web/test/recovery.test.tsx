@@ -244,7 +244,7 @@ describe('/recovery/:account on LiteSvmChain', () => {
       const limits = screen.getByRole('heading', { level: 2, name: 'What no one can undo' }).closest('section') as HTMLElement;
       expect(within(limits).getByText(/^Two keys from one seed phrase protect nothing/)).toBeInTheDocument();
       // The command line steps say what was run (keypair files) and what was not (a real Ledger), as the README does.
-      expect(screen.getByText(/^Tested with Solana CLI 4\.3\.0 on a local Solana test validator, with keypair files\.$/)).toBeInTheDocument();
+      expect(screen.getByText(/^Tested with Solana CLI 4\.3\.0 on a local Solana test validator and on devnet, with keypair files\.$/)).toBeInTheDocument();
       expect(screen.getByText(/^To find your Ledger key, open its Solana app and run this\./)).toBeInTheDocument();
       expect(screen.getByText('Not tested with a real Ledger yet.')).toBeInTheDocument();
       // Before a command: every key that signs on this computer, and what replaces each placeholder.

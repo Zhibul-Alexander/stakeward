@@ -90,7 +90,7 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake."
+        "body": "Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 10 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
@@ -1780,7 +1780,7 @@
       "keyPath": "the keypair file path, or \"usb://ledger?key=0\" with the quotes",
       "fees": "The key after --fee-payer pays about {amount} per signature. Never let a key that may be stolen pay.",
       "oneLine": "Bash and zsh accept these as shown. In PowerShell or cmd, type each command on one line without the \\. Copy gives one line.",
-      "tested": "Tested with Solana CLI {version} on a local Solana test validator, with keypair files.",
+      "tested": "Tested with Solana CLI {version} on a local Solana test validator and on devnet, with keypair files.",
       "untestedLedger": "Not tested with a real Ledger yet."
     },
     "links": {
@@ -2121,7 +2121,7 @@
       },
       "wallet-warning": {
         "q": "Why does my wallet show a warning?",
-        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, withdrawing and rescuing always need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours."
+        "a": "Wallets warn about sites they have not reviewed yet, and about transactions that need more than one signature. Protecting, changing the second key, withdrawing from a locked stake and rescuing need two or three signatures. Read the warning, then check the addresses your wallet shows. Never approve if the second key or the new wallet shown is not yours."
       },
       "co-sign": {
         "q": "Someone sent me a link to co-sign. Is it safe?",
@@ -2145,7 +2145,7 @@
       },
       "deposit": {
         "q": "What is the link-signing deposit?",
-        "a": "Signing on another device needs a small helper account that keeps the transaction valid until the other device signs, even hours later. The network asks for {deposit} to keep it open, and your wallet gets it back when you close the account. Every rescue uses one."
+        "a": "Signing on another device needs a small helper account that keeps the transaction valid until the other device signs, even hours later. The network asks for {deposit} to keep it open, and your wallet gets it back when you close the account. A rescue uses one when a key signs by link."
       },
       "privacy": {
         "q": "What does Stakeward know about me?",
@@ -2169,7 +2169,7 @@
       },
       "cli": {
         "q": "Can I do all of this with the Solana CLI?",
-        "a": "Mostly. Each recovery card lists the solana commands for its stake accounts: withdraw-stake and stake-authorize-checked with --custodian, and stake-set-lockup to extend or remove a lock. They need your keys as keypair files or on a Ledger, all on one computer; they do not need Stakeward.\n\nOne gap: Solana CLI {version} refuses to set a new lock after the old one ended, so protect again in Stakeward."
+        "a": "Mostly. Each recovery card lists the solana commands for its stake accounts: withdraw-stake and stake-authorize-checked with --custodian, stake-set-lockup to extend or remove a lock, and stake-set-lockup-checked to hand the lock to a new second key. They need your keys as keypair files or on a Ledger, all on one computer; they do not need Stakeward.\n\nOne gap: Solana CLI {version} refuses to set a new lock after the old one ended, so protect again in Stakeward."
       },
       "programs": {
         "q": "Which programs do the transactions use?",

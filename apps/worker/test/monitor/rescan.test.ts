@@ -1,4 +1,4 @@
-// Rescans by (main key, second key) pair (step 5 spec section 4.5, DECISIONS.md D52): accounts split off a watched one
+// Rescans by (main key, second key) pair (step 5 spec section 4.5, DECISIONS.md D59): accounts split off a watched one
 // are watched from then on, live rows are never touched, closed rows revive, the queue survives every stop.
 import { getAddressDecoder, type Address } from '@solana/kit';
 import { SYSVAR_CLOCK_ADDRESS } from '@stakeward/core';

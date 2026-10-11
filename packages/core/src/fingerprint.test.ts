@@ -1,4 +1,4 @@
-// Property test of the monitor fast path (DECISIONS.md D49). Accounts are encoded with the generated stake client,
+// Property test of the monitor fast path (DECISIONS.md D56). Accounts are encoded with the generated stake client,
 // changed one field at a time and in 10 000 random pairs, and decoded the way the worker's full path does. Whenever
 // canSkipDecode says yes, diffSnapshots on the decoded accounts finds nothing.
 import { getAddressDecoder, getBase64Decoder, getBase64Encoder, type Address } from '@solana/kit';
