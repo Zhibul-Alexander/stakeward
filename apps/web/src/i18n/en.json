@@ -297,6 +297,7 @@
       "connectAs": "Connect a wallet as {role}",
       "labelAs": "{label} as {role}",
       "chooseWallet": "Choose a wallet",
+      "ledgerHint": "Using a Ledger? Pick the wallet app you use it with, such as Phantom.",
       "noWallets": "No Solana wallet found in this browser. Install a wallet such as Phantom, Solflare or Backpack, then reload this page.",
       "approve": "Approve the connection in {wallet}.",
       "disconnect": "Disconnect",

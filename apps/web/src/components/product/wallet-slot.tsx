@@ -406,22 +406,26 @@ function WalletPicker({
         {wallets.length === 0 ? (
           <p className="text-sm text-muted">{t('components.walletSlot.noWallets')}</p>
         ) : (
-          <ul aria-label={t('components.walletSlot.chooseWallet')} className="flex flex-col gap-2">
-            {wallets.map((wallet) => (
-              <li key={wallet.id}>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    onConnect(wallet.id);
-                  }}
-                >
-                  <img src={wallet.icon} alt="" className="size-5 rounded-sm" />
-                  {wallet.name}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-3">
+            <ul aria-label={t('components.walletSlot.chooseWallet')} className="flex flex-col gap-2">
+              {wallets.map((wallet) => (
+                <li key={wallet.id}>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      onConnect(wallet.id);
+                    }}
+                  >
+                    <img src={wallet.icon} alt="" className="size-5 rounded-sm" />
+                    {wallet.name}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            {/* A Ledger never shows up in the list on its own: it signs through the wallet app it is paired with. */}
+            <p className="text-xs text-muted">{t('components.walletSlot.ledgerHint')}</p>
+          </div>
         )}
       </div>
     </div>
