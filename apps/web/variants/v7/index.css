@@ -1,0 +1,251 @@
+@import 'tailwindcss';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource-variable/bricolage-grotesque/wght.css';
+@import './styles/tokens.css';
+
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Local fallbacks with matching metrics, so the swap from the system font to the web font does not shift the layout.
+ */
+@font-face {
+  font-family: 'Plex Sans Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 100.5%;
+  ascent-override: 101%;
+  descent-override: 27%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Plex Mono Fallback';
+  src: local('Courier New'), local('Liberation Mono'), local('Menlo');
+  size-adjust: 100%;
+  ascent-override: 102%;
+  descent-override: 27%;
+}
+@font-face {
+  font-family: 'Bricolage Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 97%;
+  ascent-override: 96%;
+  descent-override: 27%;
+}
+
+/*
+ * The two futures as scopes: inside them the ordinary tokens point at the night or the day palette, so buttons,
+ * badges and links drawn there take that side's colours without new component variants.
+ */
+@layer components {
+.scope-night {
+  --color-background: #16131f;
+  --color-surface: #221e2e;
+  --color-surface-raised: #2c2739;
+  --color-subtle: #2c2739;
+  --color-subtle-hover: #3a3449;
+  --color-foreground: #efeaf6;
+  --color-muted: #b3abc6;
+  --color-border: #3d3650;
+  --color-border-strong: #8d84a6;
+  --color-ring: #f5c25a;
+  --color-primary: #f5c25a;
+  --color-primary-hover: #f9d68a;
+  --color-on-primary: #1d1608;
+  --color-primary-soft: #3a2f17;
+  --color-danger: #ff8f97;
+  --color-danger-soft: #3d1820;
+  --color-neutral: #d9d2e6;
+  --color-neutral-soft: #2c2739;
+  --color-success: #8fe3b4;
+  --color-success-soft: #173326;
+  --color-info: #a9c8f5;
+  --color-info-soft: #1c2440;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  color-scheme: dark;
+}
+
+.scope-day {
+  --color-background: #fbfdfc;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e7eeec;
+  --color-subtle-hover: #dbe5e2;
+  --color-foreground: #0f1c1f;
+  --color-muted: #44575a;
+  --color-border: #cfe0dc;
+  --color-border-strong: #6c7d80;
+  --color-ring: #0a6a60;
+  --color-primary: #0a6a60;
+  --color-primary-hover: #07524a;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #d6f0ea;
+  --color-success: #11653c;
+  --color-success-soft: #d9f5e4;
+  --color-danger: #b0213a;
+  --color-danger-soft: #fde3e7;
+  --color-neutral: #3e4a4e;
+  --color-neutral-soft: #e3e9e8;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  color-scheme: light;
+}
+}
+
+/*
+ * /app: each stake account row carries the colour of its future on its leading edge. A row whose lock is in force
+ * stands in the right future (teal); a row without one in the left future (night). Word and icon come from the row.
+ */
+[data-slot='account-list'] > li {
+  position: relative;
+}
+[data-slot='account-list'] > li:has(> [data-slot='account-row'])::before {
+  content: '';
+  position: absolute;
+  inset-block: 0.75rem;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background-color: var(--color-primary);
+}
+[data-slot='account-list'] > li:has(> [data-status='unprotected'])::before,
+[data-slot='account-list'] > li:has(> [data-status='was-protected'])::before {
+  background-color: #16131f;
+}
+[data-slot='account-list'] > li:has(> [data-status='was-protected'])::before {
+  background-color: var(--color-danger);
+}
+[data-slot='account-list'] > li:has(> [data-status='unknown'])::before {
+  background-color: var(--color-border-strong);
+}
+@media screen and (prefers-color-scheme: dark) {
+  [data-slot='account-list'] > li:has(> [data-status='unprotected'])::before {
+    background-color: #b3abc6;
+  }
+}
+
