@@ -259,8 +259,8 @@ export type KitSendOutcome =
   | { kind: 'sent'; signature: string }
   /** The nonce moved on or is gone: the kit can never land. */
   | { kind: 'stale' }
-  /** The node refused it for another reason (preflight failed); the kit stays ready. */
-  | { kind: 'refused' }
+  /** The node refused it for another reason (preflight failed); the kit stays ready. `error`: the node's reason, for logs. */
+  | { kind: 'refused'; error: string }
   /** No usable answer. */
   | { kind: 'upstream'; reason: 'timeout' | 'unavailable' | 'malformed' };
 
@@ -298,7 +298,47 @@ export async function sendKit(
     return { kind: 'sent', signature: kitSignature(bytes) };
   }
   if (isStaleError(transactionError, message)) return { kind: 'stale' };
-  return { kind: 'refused' };
+  return { kind: 'refused', error: refusalText(transactionError, message) };
+}
+
+/** The node's reason for a refusal, short enough for one log line: the transaction error, else the message. */
+function refusalText(transactionError: unknown, message: string): string {
+  const text = transactionError === undefined ? message : JSON.stringify(transactionError);
+  return text.slice(0, 200);
+}
+
+/**
+ * The fields of a send's log line (monitor auto-send and the "Rescue now" button): the outcome, the signature when a
+ * node took it, the node's reason when it refused, why there was no answer. Public chain data only, no chat id.
+ */
+export function kitSendLogFields(outcome: KitSendOutcome): Record<string, string | null> {
+  switch (outcome.kind) {
+    case 'sent':
+      return { outcome: 'sent', signature: outcome.signature };
+    case 'stale':
+      return { outcome: 'stale', signature: null };
+    case 'refused':
+      return { outcome: 'refused', signature: null, error: outcome.error };
+    case 'upstream':
+      return { outcome: 'upstream', signature: null, reason: outcome.reason };
+  }
+}
+
+/** Why the monitor's auto-send takes a queued account or not, logged once per queued account (D120, D135). */
+export type KitAutoDecision = 'send' | 'no-kit' | 'kit-already-sent' | 'kit-stale' | 'auto-off' | 'needs-staker-change';
+
+/** The auto-send rule (D120): a ready kit, in mode 'any', or in mode 'staker' when the staker changed. */
+export function kitAutoDecision(
+  trigger: 'staker' | 'any',
+  kit: { status: string; auto_mode: string } | undefined,
+): KitAutoDecision {
+  if (kit === undefined) return 'no-kit';
+  if (kit.status === 'sent') return 'kit-already-sent';
+  if (kit.status !== 'ready') return 'kit-stale';
+  const mode = autoModeOf(kit.auto_mode);
+  if (mode === 'off') return 'auto-off';
+  if (mode === 'staker' && trigger !== 'staker') return 'needs-staker-change';
+  return 'send';
 }
 
 function isStaleError(transactionError: unknown, message: string): boolean {
@@ -496,7 +536,7 @@ export async function rescueFromButton(
     endpoints: { primary: env.RPC_URL, fallback: env.RPC_FALLBACK_URL },
     options: deps.upstream,
   });
-  console.log(JSON.stringify({ msg: 'rescue kit send', trigger: 'button', outcome: outcome.kind }));
+  console.log(JSON.stringify({ msg: 'rescue kit send', trigger: 'button', stakeAccount, ...kitSendLogFields(outcome) }));
   if (outcome.kind === 'sent' || outcome.kind === 'stale') {
     const settlement = kitSettlement(stakeAccount, claimed.tx, outcome, deps.now());
     await db.prepare(SQL.KIT_SETTLE).bind(JSON.stringify([settlement])).run();

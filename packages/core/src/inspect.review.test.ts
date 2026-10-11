@@ -52,7 +52,7 @@ import {
   wireFromMessage,
 } from '../test/craft.ts';
 import type { BlockhashLifetime, Lifetime, NonceLifetime, TransactionAction, TransactionKind } from './actions.ts';
-import { buildTransaction, deriveNonceAccountAddress } from './builders.ts';
+import { buildTransaction, deriveNonceAccountAddress, deriveStakeAccountAddress } from './builders.ts';
 import {
   I64_MAX,
   LIGHTHOUSE_PROGRAM_ADDRESS,
@@ -77,6 +77,7 @@ const THIEF = key(8);
 const THIEF2 = key(9);
 const T = 1_825_545_600n;
 const SETUP_NONCE = await deriveNonceAccountAddress(D);
+const NEW_STAKE = await deriveStakeAccountAddress(A, 'stakeward-stake-mf0abc12');
 const RENT_SYSVAR = 'SysvarRent111111111111111111111111111111111' as Address;
 const RECENT_BLOCKHASHES_SYSVAR = 'SysvarRecentB1ockHashes11111111111111111111' as Address;
 
@@ -94,6 +95,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
+  'create-stake': { kind: 'create-stake', stakeAccount: NEW_STAKE, mainKey: A, seed: 'stakeward-stake-mf0abc12', lamports: 1_002_282_880n, voteAccount: VOTE },
 };
 
 const signer = createNoopSigner;

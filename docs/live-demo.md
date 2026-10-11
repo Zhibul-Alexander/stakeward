@@ -22,7 +22,7 @@ PATH, затем в `~/.local/share/solana/install/active_release/bin`.
 
 ```sh
 source scripts/live-demo/role.sh owner
-sw fund                                # пополнить до нужного сценарию: MAIN до 0.22 SOL, остальных до 0.01
+sw fund                                # пополнить до нужного сценарию: MAIN до 1.25 SOL, остальных до 0.01
 sw fund 0.05                           # или каждого до 0.05 SOL (докладывает только недостающее)
 sw stake 0.1                           # стейк-аккаунт: владелец main, замка нет
 sw status
@@ -39,14 +39,15 @@ sw status
 scripts/live-demo/sw.sh setup mainnet  # 4 ключа ролей + funder.json, demo.env на mainnet-beta
 ```
 
-1. Со своего кошелька (Phantom и т. п.) отправить около 0,3 SOL на адрес FUNDER, который напечатал `setup`
+1. Со своего кошелька (Phantom и т. п.) отправить около 1,3 SOL на адрес FUNDER, который напечатал `setup`
    (`sw keys` покажет его снова). Ключ своего кошелька в скрипт не нужен.
 2. В `.keys/live-demo/demo.env` вписать `SW_RETURN_TO` — адрес своего кошелька (только адрес). На него `sw sweep`
    вернёт всё в конце.
 3. Там же `SW_URL`: публичный `mainnet-beta` режет частые запросы, для сцены лучше
    `https://mainnet.helius-rpc.com/?api-key=<ключ>` (тот же ключ Helius, что для devnet).
-4. `sw fund` пополняет четыре кошелька ровно до нужного сценарию: MAIN до 0,22 SOL (два стейка по 0,1 плюс аренда и
-   комиссии), остальных до 0,01 на комиссии. Повторный `sw fund` докладывает только недостающее.
+4. `sw fund` пополняет четыре кошелька ровно до нужного сценарию: MAIN до 1,25 SOL (стейки 0,1 и 1 SOL плюс аренда и
+   комиссии; остаток с MAIN вор забирает на шаге «Empty the main wallet»), остальных до 0,01 на комиссии. Повторный
+   `sw fund` докладывает только недостающее.
 5. После демо — «Return SOL to the funder» (`sw sweep`): незакрытые демо-стейки выводятся на спонсора (владелец и
    второй ключ подписывают, спонсор платит комиссию, замок не мешает), четыре кошелька отдают всё спонсору, спонсор —
    на `SW_RETURN_TO`. Пока `.keys/live-demo` не пуст, не удалять его: там ключи к этим SOL.
@@ -85,10 +86,11 @@ scripts/live-demo/sw.sh setup mainnet  # 4 ключа ролей + funder.json, 
 | Окно | Команда | Что видит зал |
 |---|---|---|
 | owner | `sw status` | 🔓 NOT LOCKED: whoever has the main key can take it |
-| thief | `thief withdraw` | без замка: ⚠ ACCEPTED, вор забрал всё (показывать на отдельном стейке, если нужно «до») |
-| owner | `sw stake 0.1` и `sw lock 6mo` | ✅ ACCEPTED, замок до даты, второй ключ держит замок |
+| thief | `thief withdraw` | без замка: 🚨 ACCEPTED, вор забрал весь стейк (небольшой, 0.1 SOL) |
+| owner | `sw stake 1` и `sw lock 6mo` | ✅ ACCEPTED, замок до даты, второй ключ держит замок |
 | owner | `sw status` | 🔒 PROTECTED until …, second key: SECOND KEY |
-| thief | `thief withdraw` | ⛔ REJECTED by Solana: Locked until …: the second key must co-sign |
+| thief | `thief wallet` | 🚨 ACCEPTED: вор забрал всё свободное с кошелька MAIN, баланс MAIN 0, а 1 SOL в стейке на месте |
+| thief | `thief withdraw` | ⛔ REJECTED by Solana: Locked until …: the second key must co-sign (стейк вор не трогает) |
 | thief | `thief take` | ⛔ REJECTED by Solana: changing the owner needs the second key |
 | thief | `thief unlock` | ⛔ REJECTED: only the second key can change the lock while it is on |
 | thief | `thief staker` или `thief unstake` | ✅ ACCEPTED: это вор может, SOL остаются на месте, приходит тревога |
@@ -96,6 +98,8 @@ scripts/live-demo/sw.sh setup mainnet  # 4 ключа ролей + funder.json, 
 | thief | `thief withdraw` | ⛔ REJECTED by Solana: the main key no longer owns this stake |
 | owner | `sw status` | owner (withdraw): NEW WALLET |
 
+Пополнение для сценария: `sw fund` — MAIN до 1.25 SOL (стейки 0.1 и 1 SOL), остальные до 0.01 на комиссии;
+`sw fund 0.25 1.25` — остальные до 0.25, MAIN до 1.25.
 `thief all` — три отказа подряд. `thief unstake` и `thief staker` работают только на делегированном стейке и до
 спасения. Тревога в Telegram придёт, если основной кошелёк привязан к dev-боту и аккаунт под наблюдением (защита
 через сайт или `POST /api/watch`).
@@ -106,11 +110,26 @@ scripts/live-demo/sw.sh setup mainnet  # 4 ключа ролей + funder.json, 
 
 ## Если сеть не отвечает
 
-Публичные `api.devnet.solana.com` и `api.mainnet-beta.solana.com` режут частые запросы с одного IP (ответ 429
-«Connection rate limits exceeded»). Перед каждой командой скрипт за 8 секунд проверяет RPC (`getHealth`) и, если тот
-молчит или отвечает 429, говорит об этом и не висит. Для сцены лучше сразу взять RPC Helius: в
-`.keys/live-demo/demo.env` в строке `SW_URL` указать `https://devnet.helius-rpc.com/?api-key=<ключ>` или
-`https://mainnet.helius-rpc.com/?api-key=<ключ>`. Сеть для ссылок эксплорера и шапки страницы скрипт берёт из адреса.
+Публичные `api.devnet.solana.com` и `api.mainnet-beta.solana.com` режут частые запросы, лимит считается по IP, так что
+на другой машине или в другой сети 429 может и не быть. Перед каждой командой скрипт за 8 секунд проверяет RPC
+(`getHealth`); если тот молчит или отвечает 429 («Connection rate limits exceeded»), скрипт говорит об этом и не
+висит. На devnet сначала пробовать без Helius: `SW_URL=devnet sw ui` (или `sw menu`). Не вышло, или демо идёт на
+mainnet — Helius: в `.keys/live-demo/demo.env` в строке `SW_URL` указать `https://devnet.helius-rpc.com/?api-key=<ключ>`
+или `https://mainnet.helius-rpc.com/?api-key=<ключ>`. Сеть для ссылок эксплорера скрипт берёт из адреса.
+
+## Выбор сети
+
+Переключатель «Network» в шапке страницы или `sw net devnet | rpc | local` в терминале; выбор сохраняется в
+`.keys/live-demo/network` и действует для всех терминалов и страницы. `devnet` — публичный, `rpc` — `SW_URL` из
+`demo.env` (например, Helius), `local` — сеть на этом маке. `SW_URL`, заданный в самом терминале, важнее переключателя.
+
+`local` сам поднимает `solana-test-validator` (идёт вместе с Solana CLI) в фоне, если тот не отвечает, и кладёт по
+2 SOL на каждый демо-кошелёк: секунд десять, без интернета и без лимитов. Каждый такой запуск — сеть с нуля; у каждой
+сети свой текущий стейк. Остановить: `sw localnet stop`. Ссылки эксплорера на локальной сети открываются только на
+этом маке. Для зала честно так и называть: настоящая стейк-программа Solana, но локальная сеть.
+
+`sw setup mainnet` ставит переключатель на `rpc`, то есть на mainnet из `demo.env`. На странице эта кнопка подписана
+адресом RPC (`mainnet-beta` или `mainnet.helius-rpc.com`).
 
 ## Остальные команды
 
@@ -126,3 +145,9 @@ scripts/live-demo/sw.sh setup mainnet  # 4 ключа ролей + funder.json, 
 11.10.2026, мак, bash 3.2, `solana-test-validator` 4.3.0 с `SW_CU_PRICE=100000`, спонсором и `SW_RETURN_TO`: весь
 сценарий меню, затем `sweep` с незакрытым стейком под замком на 6 месяцев — вернулось 1,99978 из 2 SOL, кошельки и
 стейки пусты. Там же проверено, что CLI с приоритетной комиссией не отправляет падающую транзакцию.
+
+12.10.2026, после слияния с main (`sw net`, стейк 1 SOL, «Empty the main wallet»): весь сценарий меню на локальной
+сети (`sw net local`) с `SW_CU_PRICE=100000`, затем `sweep` со стейком 1 SOL под замком на 6 месяцев и пустым
+спонсором — на `SW_RETURN_TO` вернулось 7,99994 из 8 SOL. Этот прогон нашёл две ошибки `sweep`: кошельки не могли
+перевести SOL пустому спонсору, а вывод стейка шёл раньше, чем у спонсора появлялись SOL на комиссию. Обе исправлены,
+на каждую есть тест.

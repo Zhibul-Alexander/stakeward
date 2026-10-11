@@ -2,12 +2,13 @@ import { blockhash, type Nonce } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { build, key } from '../test/craft.ts';
 import { expectedFeePayer, type BlockhashLifetime, type Lifetime, type TransactionAction, type TransactionKind } from './actions.ts';
-import { deriveNonceAccountAddress } from './builders.ts';
+import { deriveNonceAccountAddress, deriveStakeAccountAddress } from './builders.ts';
 import { NONCE_ACCOUNT_SEED } from './constants.ts';
 import { canPayFee, networkFeeFor, payerOutflow } from './fees.ts';
 import { inspectTransaction } from './inspect.ts';
 
 const SETUP_NONCE = await deriveNonceAccountAddress(key(3));
+const NEW_STAKE = await deriveStakeAccountAddress(key(1), 'stakeward-stake-mf0abc12');
 
 describe('canPayFee: a fee payer ends at exactly 0 or at least rent-exempt (D44)', () => {
   const rent = 890_880n;
@@ -48,6 +49,7 @@ describe('networkFeeFor: the fee a plan expects before anything is built', () =>
     'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
     'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
     'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
+    'create-stake': { kind: 'create-stake', stakeAccount: NEW_STAKE, mainKey: A, seed: 'stakeward-stake-mf0abc12', lamports: 1_002_282_880n, voteAccount: key(5) },
   };
 
   it('is 5000 per signature plus the fixed 600 lamports of priority fee', () => {

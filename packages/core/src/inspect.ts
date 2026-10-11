@@ -20,6 +20,7 @@ import {
   getAuthorizeCheckedInstructionDataEncoder,
   getDeactivateInstructionDataEncoder,
   getDelegateStakeInstructionDataEncoder,
+  getInitializeInstructionDataEncoder,
   getSetLockupCheckedInstructionDataEncoder,
   getSetLockupInstructionDataEncoder,
   getWithdrawInstructionDataEncoder,
@@ -45,10 +46,12 @@ import {
   COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
   LIGHTHOUSE_PROGRAM_ADDRESS,
   NONCE_ACCOUNT_SIZE,
+  STAKE_ACCOUNT_SIZE,
   STAKE_PROGRAM_ADDRESS,
   SYSTEM_PROGRAM_ADDRESS,
   SYSVAR_RECENT_BLOCKHASHES_ADDRESS,
   SYSVAR_RENT_ADDRESS,
+  ZERO_ADDRESS,
 } from './constants.ts';
 import { LEGACY_SYSVAR_SLOTS, type LegacySysvarSlot, type StakeIx } from './legacy-layout.ts';
 import {
@@ -74,8 +77,8 @@ import {
  *   - a legacy message (no v0, no address lookup tables), canonically encoded (re-encoding gives the same bytes);
  *   - [System AdvanceNonceAccount]? [ComputeBudget SetComputeUnitLimit] [ComputeBudget SetComputeUnitPrice]
  *     then one action: one stake instruction over one stake account, the rescue pair (AuthorizeChecked Staker then
- *     Withdrawer on the same account), or the nonce setup pair (CreateAccountWithSeed + InitializeNonceAccount) or
- *     WithdrawNonceAccount;
+ *     Withdrawer on the same account), the nonce setup pair (CreateAccountWithSeed + InitializeNonceAccount),
+ *     WithdrawNonceAccount, or the stake creation triple (CreateAccountWithSeed + Initialize + DelegateStake, D139);
  *   - Withdraw, AuthorizeChecked, Deactivate and DelegateStake only in the legacy account layout
  *     (`LEGACY_SYSVAR_SLOTS`), with the exact account count and roles the builder emits;
  *   - optionally, Lighthouse instructions (`LIGHTHOUSE_PROGRAM_ADDRESS`) at the very end that add no signer.
@@ -374,6 +377,7 @@ const ENCODERS = {
   authorizeChecked: /* @__PURE__ */ getAuthorizeCheckedInstructionDataEncoder(),
   deactivate: /* @__PURE__ */ getDeactivateInstructionDataEncoder(),
   delegate: /* @__PURE__ */ getDelegateStakeInstructionDataEncoder(),
+  initialize: /* @__PURE__ */ getInitializeInstructionDataEncoder(),
   advanceNonce: /* @__PURE__ */ getAdvanceNonceAccountInstructionDataEncoder(),
   createAccountWithSeed: /* @__PURE__ */ getCreateAccountWithSeedInstructionDataEncoder(),
   initializeNonce: /* @__PURE__ */ getInitializeNonceAccountInstructionDataEncoder(),
@@ -420,6 +424,13 @@ type Step =
   | { type: 'deactivate'; stake: Address; staker: Address }
   | { type: 'delegate'; stake: Address; vote: Address; staker: Address }
   | {
+      type: 'initialize';
+      stake: Address;
+      staker: Address;
+      withdrawer: Address;
+      lockup: { unixTimestamp: bigint; epoch: bigint; custodian: Address };
+    }
+  | {
       type: 'create-account-with-seed';
       payer: Address;
       newAccount: Address;
@@ -434,7 +445,9 @@ type Step =
 
 type StakeStep = Extract<
   Step,
-  { type: 'set-lockup' | 'set-lockup-checked' | 'withdraw' | 'authorize-checked' | 'deactivate' | 'delegate' }
+  {
+    type: 'set-lockup' | 'set-lockup-checked' | 'withdraw' | 'authorize-checked' | 'deactivate' | 'delegate' | 'initialize';
+  }
 >;
 
 const STEP_NAMES: Record<Step['type'], string> = {
@@ -447,6 +460,7 @@ const STEP_NAMES: Record<Step['type'], string> = {
   'authorize-checked': 'AuthorizeChecked',
   deactivate: 'Deactivate',
   delegate: 'DelegateStake',
+  initialize: 'Initialize',
   'create-account-with-seed': 'CreateAccountWithSeed',
   'initialize-nonce': 'InitializeNonceAccount',
   'withdraw-nonce': 'WithdrawNonceAccount',
@@ -468,6 +482,7 @@ const STAKE_LAYOUTS: Partial<Record<StakeInstruction, Layout>> = {
   [StakeInstruction.AuthorizeChecked]: { roles: [W, R, RS, RS, RS], optionalLast: true },
   [StakeInstruction.Deactivate]: { roles: [W, R, RS], optionalLast: false },
   [StakeInstruction.DelegateStake]: { roles: [W, R, R, R, R, RS], optionalLast: false },
+  [StakeInstruction.Initialize]: { roles: [W, R], optionalLast: false },
 };
 
 const SYSTEM_LAYOUTS: Partial<Record<SystemInstruction, Layout>> = {
@@ -590,6 +605,15 @@ function readStake(ix: StakeIx, where: string): Read {
           stake: parsed.accounts.stake.address,
           vote: parsed.accounts.vote.address,
           staker: parsed.accounts.stakeAuthority.address,
+        };
+      case StakeInstruction.Initialize:
+        requireCanonical(where, ENCODERS.initialize.encode(parsed.data), ix.data);
+        return {
+          type: 'initialize',
+          stake: parsed.accounts.stake.address,
+          staker: parsed.data.arg0.staker,
+          withdrawer: parsed.data.arg0.withdrawer,
+          lockup: parsed.data.arg1,
         };
       default:
         return reject('unknown-instruction', `${where}: stake instruction Stakeward never builds`);
@@ -715,13 +739,19 @@ function isStakeStep(step: Step): step is StakeStep {
     step.type === 'withdraw' ||
     step.type === 'authorize-checked' ||
     step.type === 'deactivate' ||
-    step.type === 'delegate'
+    step.type === 'delegate' ||
+    step.type === 'initialize'
   );
 }
 
 async function actionFromSteps(steps: readonly Step[]): Promise<TransactionAction> {
   const [first, second, ...rest] = steps;
   if (first === undefined) reject('bad-layout', 'The transaction has no action after the compute budget');
+  if (first.type === 'create-account-with-seed' && second?.type === 'initialize') {
+    const [third, ...more] = rest;
+    if (third?.type !== 'delegate' || more.length > 0) notBuilt('a stake account creation without exactly one delegation');
+    return createStakeAction(first, second, third);
+  }
   const stake = steps.filter(isStakeStep);
   if (stake.length > 0) {
     if (stake.length !== steps.length) reject('bad-layout', 'Stake and system instructions are mixed');
@@ -798,6 +828,8 @@ function stakeAction(step: StakeStep): TransactionAction {
       return { kind: 'delegate', stakeAccount: step.stake, staker: step.staker, voteAccount: step.vote };
     case 'authorize-checked':
       return notBuilt('a single AuthorizeChecked (only the rescue pair)');
+    case 'initialize':
+      return notBuilt('an Initialize outside a stake account creation');
   }
 }
 
@@ -859,6 +891,48 @@ async function nonceSetupAction(
     nonceAuthority: create.payer,
     seed: create.seed,
     lamports: create.lamports,
+  };
+}
+
+/**
+ * Stake account creation (D139): CreateAccountWithSeed funded by and based on the main key, owned by the stake
+ * program, 200 bytes, at the address derived from (base, seed, stake program); Initialize of that account with staker =
+ * withdrawer = the main key and no lockup; DelegateStake of that account signed by the main key.
+ */
+async function createStakeAction(
+  create: Extract<Step, { type: 'create-account-with-seed' }>,
+  initialize: Extract<Step, { type: 'initialize' }>,
+  delegate: Extract<Step, { type: 'delegate' }>,
+): Promise<TransactionAction> {
+  const owner = create.payer;
+  if (create.base !== owner) notBuilt('a stake account whose seed base is not the funder');
+  if (create.owner !== STAKE_PROGRAM_ADDRESS) notBuilt('a stake account owned by another program');
+  if (create.space !== BigInt(STAKE_ACCOUNT_SIZE)) notBuilt(`a stake account of ${String(create.space)} bytes`);
+  if (initialize.stake !== create.newAccount || delegate.stake !== create.newAccount) {
+    notBuilt('a stake account creation that initializes or delegates another account');
+  }
+  if (initialize.staker !== owner || initialize.withdrawer !== owner) {
+    notBuilt('a new stake account whose keys are not the funder');
+  }
+  const { lockup } = initialize;
+  if (lockup.unixTimestamp !== 0n || lockup.epoch !== 0n || lockup.custodian !== ZERO_ADDRESS) {
+    notBuilt('a new stake account with a lockup');
+  }
+  if (delegate.staker !== owner) notBuilt('a new stake account delegated by another key');
+  let derived: Address;
+  try {
+    derived = await createAddressWithSeed({ baseAddress: owner, programAddress: STAKE_PROGRAM_ADDRESS, seed: create.seed });
+  } catch (error) {
+    return notBuilt(`this stake account seed (${describeError(error)})`);
+  }
+  if (derived !== create.newAccount) notBuilt('a stake account that is not at the address derived from its seed');
+  return {
+    kind: 'create-stake',
+    stakeAccount: create.newAccount,
+    mainKey: owner,
+    seed: create.seed,
+    lamports: create.lamports,
+    voteAccount: delegate.vote,
   };
 }
 

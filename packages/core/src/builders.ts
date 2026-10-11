@@ -23,6 +23,7 @@ import {
   getAuthorizeCheckedInstruction,
   getDeactivateInstruction,
   getDelegateStakeInstruction,
+  getInitializeInstruction,
   getSetLockupCheckedInstruction,
   getSetLockupInstruction,
   getWithdrawInstruction,
@@ -41,6 +42,9 @@ import {
   MAX_LOCKUP_END,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
+  STAKE_ACCOUNT_SEED_PREFIX,
+  STAKE_ACCOUNT_SIZE,
+  STAKE_PROGRAM_ADDRESS,
   SYSTEM_PROGRAM_ADDRESS,
   U64_MAX,
   ZERO_ADDRESS,
@@ -76,7 +80,7 @@ export type BuiltTransaction = {
  *   [AdvanceNonceAccount, only with a nonce lifetime] [SetComputeUnitLimit, SetComputeUnitPrice] [action]
  *
  * where [action] is exactly one stake instruction over one stake account, the rescue pair, the nonce setup pair or
- * the nonce close instruction.
+ * the nonce close instruction, or the stake creation triple (CreateAccountWithSeed, Initialize, DelegateStake).
  * The message is a legacy message (no address lookup tables; also the smallest form, and the one every wallet and
  * Ledger understand). Withdraw, AuthorizeChecked, Deactivate and DelegateStake use the legacy account layout (D1).
  * Keys are addresses only: the builder never sees a private key, wallets sign the returned bytes.
@@ -159,6 +163,23 @@ function transactionMessage(action: TransactionAction, options: BuildOptions) {
 /** Address of the nonce account that `nonce-setup` creates for `nonceAuthority` (System CreateAccountWithSeed). */
 export function deriveNonceAccountAddress(nonceAuthority: Address, seed: string = NONCE_ACCOUNT_SEED): Promise<Address> {
   return createAddressWithSeed({ baseAddress: nonceAuthority, programAddress: SYSTEM_PROGRAM_ADDRESS, seed });
+}
+
+/** Address of the stake account that `create-stake` creates for `mainKey` with `seed` (CreateAccountWithSeed). */
+export function deriveStakeAccountAddress(mainKey: Address, seed: string): Promise<Address> {
+  return createAddressWithSeed({ baseAddress: mainKey, programAddress: STAKE_PROGRAM_ADDRESS, seed });
+}
+
+const STAKE_ACCOUNT_SEED = new RegExp(`^${STAKE_ACCOUNT_SEED_PREFIX}[0-9a-z]{1,16}$`);
+
+/** Whether `seed` has the shape `newStakeAccountSeed` produces. */
+export function isStakeAccountSeed(seed: string): boolean {
+  return STAKE_ACCOUNT_SEED.test(seed);
+}
+
+/** A fresh seed for `create-stake`: the prefix plus `nowMs` in base 36 (a new address every millisecond). */
+export function newStakeAccountSeed(nowMs: number): string {
+  return STAKE_ACCOUNT_SEED_PREFIX + Math.max(0, Math.floor(nowMs)).toString(36);
 }
 
 function actionInstructions(action: TransactionAction): Instruction[] {
@@ -279,6 +300,37 @@ function actionInstructions(action: TransactionAction): Instruction[] {
           nonceAccount: action.nonceAccount,
           nonceAuthority: action.nonceAuthority,
         }),
+      ];
+    case 'create-stake':
+      requireLamports(action.lamports);
+      requireDistinct([action.mainKey, action.stakeAccount, action.voteAccount]);
+      check(isStakeAccountSeed(action.seed), `The stake account seed is "${STAKE_ACCOUNT_SEED_PREFIX}" plus base-36 characters`);
+      return [
+        getCreateAccountWithSeedInstruction({
+          payer: signer(action.mainKey),
+          newAccount: action.stakeAccount,
+          base: action.mainKey,
+          seed: action.seed,
+          amount: action.lamports,
+          space: STAKE_ACCOUNT_SIZE,
+          programAddress: STAKE_PROGRAM_ADDRESS,
+        }),
+        legacy(
+          StakeInstruction.Initialize,
+          getInitializeInstruction({
+            stake: action.stakeAccount,
+            arg0: { staker: action.mainKey, withdrawer: action.mainKey },
+            arg1: { unixTimestamp: 0n, epoch: 0n, custodian: ZERO_ADDRESS },
+          }),
+        ),
+        legacy(
+          StakeInstruction.DelegateStake,
+          getDelegateStakeInstruction({
+            stake: action.stakeAccount,
+            vote: action.voteAccount,
+            stakeAuthority: signer(action.mainKey),
+          }),
+        ),
       ];
     case 'nonce-close':
       requireLamports(action.lamports);

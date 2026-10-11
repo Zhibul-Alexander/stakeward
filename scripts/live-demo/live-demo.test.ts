@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { clusterLabel, commandFor, parseBalances, parseStatus, STEPS } from './ui.ts';
+import { commandFor, NETWORKS, parseBalances, parseNetwork, parseStatus, STEPS } from './ui.ts';
 
 const SW = new URL('sw.sh', import.meta.url).pathname;
 const ROLE = new URL('role.sh', import.meta.url).pathname;
@@ -26,15 +26,16 @@ function stubbed(env: Record<string, string>, ...args: string[]) {
   mkdirSync(dir);
   for (const role of ['main', 'second', 'new', 'thief']) writeFileSync(join(dir, `${role}.json`), '');
   writeFileSync(join(dir, 'current-stake'), 'Stake1111111111111111111111111111111111111');
+  if ('STUB_STAKE' in env) writeFileSync(join(dir, 'stake-1.json'), '');
   const log = join(root, 'solana.log');
   const tools: Record<string, string> = {
     // A demo key's address is its file name plus filler: main.json -> main111…
     'solana-keygen': `[ "$1" = pubkey ] && { b=$(basename "$2" .json); printf '%s1111111111111111111111111111111111\n' "$b" | cut -c1-40; }; [ "$1" = new ] && touch "$5"; exit 0`,
     solana: `echo "$*" >> "${log}"
 case "$1" in
-  stake-account) echo '{"unixTimestamp":9999999999,"withdrawer":"main111","staker":"main111","custodian":"second111"}' ;;
+  stake-account) echo "{\\"unixTimestamp\\":9999999999,\\"withdrawer\\":\\"\${STUB_WITHDRAWER:-main111}\\",\\"staker\\":\\"main111\\",\\"custodian\\":\\"second111\\"}" ;;
   withdraw-stake) echo 'Error: lockup has not yet expired'; exit 1 ;;
-  balance) echo '0 lamports' ;;
+  balance) echo "\${STUB_LAMPORTS:-0} lamports" ;;
 esac
 exit 0`,
     curl: `echo '{"jsonrpc":"2.0","result":"ok","id":1}'`,
@@ -154,11 +155,29 @@ describe('live demo scripts', () => {
     ]);
   });
 
-  it('names the cluster on the page', () => {
-    expect(clusterLabel('mainnet')).toBe('mainnet');
-    expect(clusterLabel(undefined)).toBe('devnet');
-    expect(clusterLabel('<script>')).toBe('devnet');
-    expect(readFileSync(new URL('ui.html', import.meta.url), 'utf8')).toContain('Live on Solana devnet');
+  it('sweeps the wallets into a funder that holds nothing yet', () => {
+    // On the local network "sw fund" airdrops, so the funder may still be empty when the wallets send it their SOL.
+    const root = mkdtempSync(join(tmpdir(), 'sw-funder-'));
+    const key = join(root, 'funder.json');
+    writeFileSync(key, '');
+    const result = stubbed({ SW_FUNDER_KEY: key, STUB_LAMPORTS: '5000' }, 'sweep');
+    const toFunder = result.calls.filter((c) => c.startsWith('transfer funder'));
+    expect(toFunder).toHaveLength(4);
+    for (const call of toFunder) expect(call).toContain('--allow-unfunded-recipient');
+  });
+
+  it('empties the wallets into the funder before the funder pays for withdrawing the stake accounts', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sw-funder-'));
+    const key = join(root, 'funder.json');
+    writeFileSync(key, '');
+    const main = `main${'1'.repeat(34)}`;
+    const env = { SW_FUNDER_KEY: key, STUB_LAMPORTS: '5000', STUB_STAKE: '1', STUB_WITHDRAWER: main };
+    const { calls } = stubbed(env, 'sweep');
+    const withdraw = calls.findIndex((c) => c.startsWith('withdraw-stake'));
+    const toFunder = calls.flatMap((c, i) => (c.startsWith('transfer funder') ? [i] : []));
+    expect(withdraw).toBeGreaterThan(-1);
+    expect(toFunder).toHaveLength(4);
+    expect(withdraw).toBeGreaterThan(Math.max(...toFunder));
   });
 
   it('runs only listed steps from the page', () => {
@@ -182,5 +201,14 @@ describe('live demo scripts', () => {
     );
     expect(status).toEqual({ plain: '🔒 PROTECTED until 09 Apr 2027 13:49 UTC, second key: SECOND KEY', owner: 'NEW WALLET', address: '4qZZvnpc' });
     expect(parseStatus('No stake account yet. Run: sw stake 0.1')).toBeNull();
+  });
+
+  it('switches only between the networks sw net knows', () => {
+    expect(parseNetwork('network=local\nlabel=local network\nrpc_label=devnet.helius-rpc.com\n')).toEqual({
+      name: 'local',
+      label: 'local network',
+      rpcLabel: 'devnet.helius-rpc.com',
+    });
+    expect(source).toContain(`    ${NETWORKS.join(' | ')}) printf`);
   });
 });
