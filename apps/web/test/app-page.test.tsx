@@ -185,13 +185,19 @@ describe('/app on LiteSvmChain', () => {
       `/protect?account=${stake.service}`,
     );
 
-    // Protected by the connected second key: lock end date, the group says once what the lock does, Withdraw on the
-    // row, Extend and Change second key behind More.
+    // Protected by the connected second key, never delegated: lock end date, the group says once what the lock does,
+    // the row says it earns nothing and offers Delegate (D134); Withdraw, Extend and Change second key behind More.
     const lockedRow = within(row(stake.locked));
-    expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
+    expect(lockedRow.getByText('· Not earning')).toBeInTheDocument();
+    expect(lockedRow.getByRole('link', { name: `Delegate stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
-      `/withdraw/${stake.locked}`,
+      `/delegate/${stake.locked}`,
     );
+    expect(lockedRow.queryByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toBeNull();
+    // Staking managed by another key: not earning either, but only that key can delegate it.
+    expect(within(row(stake.service)).getByText('· Not earning')).toBeInTheDocument();
+    expect(within(row(stake.service)).queryByRole('link', { name: /^Delegate / })).toBeNull();
+    expect(within(row(stake.open)).queryByText('· Not earning')).toBeNull();
     // An open lock on a stake that still earns: the same page stops staking first, so the row says Unstake.
     expect(within(row(stake.open)).getByRole('link', { name: `Unstake stake account ${shortAddress(stake.open)}` })).toHaveAttribute(
       'href',
@@ -201,6 +207,10 @@ describe('/app on LiteSvmChain', () => {
     expect(lockedRow.getByText(`until ${formatUtcDate(NOW + 100n * DAY) ?? ''}`)).toBeInTheDocument();
     expect(within(section('Protected')).getByText(en.app.groups.protectedNote)).toBeInTheDocument();
     await openMore(stake.locked);
+    expect(lockedRow.getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
+      'href',
+      `/withdraw/${stake.locked}`,
+    );
     expect(lockedRow.getByRole('link', { name: `Extend stake account ${shortAddress(stake.locked)}` })).toHaveAttribute(
       'href',
       `/extend/${stake.locked}`,

@@ -6,6 +6,7 @@ import { createRescueKitPort, type RescueKitPort } from '@/api/rescue-kits';
 import type { ApiPort } from '@/api/watch';
 import { systemDeviceClock, type DeviceClock } from './device-clock.ts';
 import type { ProtectedAccountMemory } from './protected-accounts.ts';
+import { createValidatorDirectory, type ValidatorDirectory } from './validators.ts';
 import { knownSecondKeys, resolveSlot, type ResolvedSlot, type SecondKeyMemory, type SlotStore } from './slots.ts';
 import type { WalletRegistry } from './wallet-registry.ts';
 
@@ -33,6 +34,8 @@ export type Ports = {
    * on a LiteSVM chain, whose clock is set, pass one that follows it.
    */
   deviceClock?: DeviceClock | undefined;
+  /** Validators /delegate offers (D134); default: getVoteAccounts through /api/rpc, checked through `chain`. */
+  validators?: ValidatorDirectory | undefined;
 };
 
 const PortsContext = createContext<Ports | null>(null);
@@ -65,6 +68,12 @@ const defaultWatchedAccounts = (wallet: Address) => fetchWatchedAccounts(wallet)
 
 export function useWatchedAccounts(): (wallet: Address) => Promise<WatchedAccounts> {
   return usePorts().watchedAccounts ?? defaultWatchedAccounts;
+}
+
+/** Validators to offer on /delegate (Ports `validators`, else the site's directory over this chain). */
+export function useValidators(): ValidatorDirectory {
+  const { validators, chain } = usePorts();
+  return useMemo(() => validators ?? createValidatorDirectory(chain), [validators, chain]);
 }
 
 /** This device's clock (Ports `deviceClock`, else the system clock). */

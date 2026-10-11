@@ -43,6 +43,8 @@ describe('POST /api/rpc: allowed methods and params', () => {
     ['getMinimumBalanceForRentExemption', [80, { commitment: 'confirmed' }]],
     ['getSignatureStatuses', [Array.from({ length: 256 }, () => SIGNATURE)]],
     ['getSignatureStatuses', [[SIGNATURE], { searchTransactionHistory: false }]],
+    ['getVoteAccounts', []],
+    ['getVoteAccounts', [{ commitment: 'confirmed', keepUnstakedDelinquents: false }]],
   ])('forwards %s %j unchanged and returns the upstream answer as it is', async (method, params) => {
     const answer = `{"jsonrpc":"2.0","id":"req-1","result":{"context":{"slot":1},"value":18446744073709551615}}`;
     const upstream = fakeUpstream(() => new Response(answer, { headers: { 'Content-Type': 'application/json' } }));
@@ -111,6 +113,8 @@ describe('POST /api/rpc: allowed methods and params', () => {
     ['getSignatureStatuses', 'not a signature', [['abc']]],
     ['getSignatureStatuses', 'searchTransactionHistory true', [[SIGNATURE], { searchTransactionHistory: true }]],
     ['getSignatureStatuses', 'unknown config key', [[SIGNATURE], { commitment: 'confirmed' }]],
+    ['getVoteAccounts', 'one validator only', [{ votePubkey: ADDRESS }]],
+    ['getVoteAccounts', 'unstaked delinquents kept', [{ keepUnstakedDelinquents: true }]],
     ['simulateTransaction', 'missing config', ['AAAA']],
     ['simulateTransaction', 'base58 encoding', ['AAAA', { encoding: 'base58' }]],
     ['simulateTransaction', 'not base64', ['not base64!', { encoding: 'base64' }]],

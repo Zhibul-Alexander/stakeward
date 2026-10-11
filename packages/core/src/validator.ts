@@ -118,6 +118,42 @@ export function validatorRisks(input: {
   return risks;
 }
 
+/**
+ * A validator as getVoteAccounts lists it among the current (not delinquent) ones, for choosing where to delegate
+ * (DECISIONS.md D134). Commission in whole percent, stake in lamports.
+ */
+export type VoteAccountListing = {
+  voteAccount: Address;
+  commission: number;
+  activatedStake: bigint;
+  /** Has stake in the current epoch, so it is in the leader schedule. */
+  epochVoteAccount: boolean;
+};
+
+/** Highest commission a validator may charge to be offered (whole percent). */
+export const MAX_OFFERED_COMMISSION = 10;
+
+/**
+ * The open criteria a listed validator must meet to be offered, before its vote account is read: in this epoch's
+ * schedule, holding stake, and a commission of at most MAX_OFFERED_COMMISSION. Being listed as current already means
+ * it is not delinquent. Its vote account must then show no `validatorRisks`. Stakeward names no validator of its own.
+ */
+export function meetsOpenCriteria(listing: VoteAccountListing): boolean {
+  return listing.epochVoteAccount && listing.activatedStake > 0n && listing.commission <= MAX_OFFERED_COMMISSION;
+}
+
+/** A copy of `items` in random order (Fisher-Yates): every offered validator has the same chance to be shown first. */
+export function shuffled<T>(items: readonly T[], random: () => number = Math.random): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    const swap = out[i] as T;
+    out[i] = out[j] as T;
+    out[j] = swap;
+  }
+  return out;
+}
+
 /** Risks in `now` that `before` did not have: what an alert is about. */
 export function newValidatorRisks(before: readonly string[], now: readonly ValidatorRisk[]): ValidatorRisk[] {
   return now.filter((risk) => !before.includes(risk));

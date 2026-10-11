@@ -41,6 +41,7 @@
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
       "changeKey": "Change the second key",
+      "delegate": "Delegate your stake",
       "rescueNow": "Rescue status",
       "steal": "Try to steal it"
     }
@@ -262,7 +263,8 @@
       "active": "Active",
       "activating": "Activating",
       "deactivating": "Deactivating",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "notEarning": "Not earning"
     },
     "address": {
       "copied": "Address copied",
@@ -912,6 +914,7 @@
       "extend": "Extend",
       "withdraw": "Withdraw",
       "unstake": "Unstake",
+      "delegate": "Delegate",
       "rescue": "Rescue",
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
@@ -1245,6 +1248,58 @@
       "title": "Your new second key holds the lock",
       "body": "The old second key can no longer change this lock. Keep the new one apart from your main key, and print a new recovery card: the old one names the old key.",
       "recovery": "Print the new recovery card"
+    }
+  },
+  "delegate": {
+    "intro": "This stake is not delegated to a validator, so it earns no rewards. Delegate it to start earning. The lock stays as it is, and your SOL does not move.",
+    "heading": "Choose a validator",
+    "body": "Your main key signs and pays the fee of about 0.000005 SOL. Your second key is not needed: delegating cannot move your SOL.",
+    "criteria": "No paid placement: Stakeward recommends no validator. The list shows validators that voted in the last epoch, have a BLS key, hold enough SOL for the Alpenglow admission fee and charge at most 10% commission, in a new random order each time.",
+    "legend": "Validator",
+    "validator": "Validator {address}",
+    "validatorMeta": "Commission {commission}% · {stake} staked",
+    "paste": "Another validator",
+    "pasteHint": "Paste the vote account address of a validator you chose yourself. Stakeward checks it by the same rules.",
+    "pasteLabel": "Vote account address",
+    "pasteInvalid": "This is not a Solana address.",
+    "checking": "Checking this validator…",
+    "checkError": "Could not check this validator",
+    "risky": "Stakeward will not delegate to this validator:",
+    "risks": {
+      "CLOSED": "It is not a vote account, or it was closed.",
+      "NOT_VOTING": "It has not voted for over an epoch.",
+      "NO_BLS_KEY": "It has no BLS key, so the network leaves it out of consensus.",
+      "LOW_FEE_BALANCE": "It holds less than the Alpenglow admission fee.",
+      "FULL_COMMISSION": "It keeps 100% of the rewards."
+    },
+    "loading": "Finding validators…",
+    "loadError": "Could not load validators",
+    "empty": {
+      "title": "No validator to offer right now",
+      "body": "None of the validators read just now met every rule. Show others, or paste a validator you chose yourself."
+    },
+    "shuffle": "Show other validators",
+    "note": "Rewards start at the next epoch, in about 2 days. To stop later, use Unstake.",
+    "review": "Review delegation",
+    "withdrawInstead": "Withdraw instead",
+    "signHeading": "Delegate to the validator",
+    "stage": {
+      "earning": "This stake is already delegated and earning.",
+      "deactivating": "This stake stops staking at the end of this epoch. Delegate it after that.",
+      "service": "Another key manages the staking of this stake, so only that key or its service can delegate it."
+    },
+    "result": "Delegation",
+    "done": {
+      "title": "Your stake is delegated",
+      "validator": "Validator",
+      "body": "It starts earning at the next epoch, in about 2 days. The lock stays as it was."
+    },
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This is not a stake account.",
+      "not-main-key": "The connected wallet is not the main key of this stake.",
+      "not-inactive": "This stake is no longer inactive. Reload the page to see where it stands.",
+      "not-staker": "Another key manages the staking of this stake."
     }
   },
   "devCosign": {

@@ -18,6 +18,7 @@ import {
   Share2Icon,
   ShieldCheckIcon,
   ShieldXIcon,
+  SproutIcon,
   VenetianMaskIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -635,7 +636,7 @@ function attentionActions(
       more: (
         <>
           <ExtendLink account={account} primary={primary} />
-          <LockedRest account={account} activation={row.activation} />
+          <LockedRest row={row} />
         </>
       ),
     };
@@ -667,9 +668,10 @@ function attentionActions(
         ),
       }
     : {
-        action: <WithdrawLink account={account} activation={row.activation} />,
+        action: stakeActions(row).action,
         more: (
           <>
+            {stakeActions(row).more}
             {protect}
             {steal}
           </>
@@ -687,12 +689,14 @@ function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
   if (row.protection === "expiring")
     return {
       action: extend,
-      more: <LockedRest account={account} activation={row.activation} />,
+      more: <LockedRest row={row} />,
     };
+  const stake = stakeActions(row);
   return {
-    action: <WithdrawLink account={account} activation={row.activation} />,
+    action: stake.action,
     more: (
       <>
+        {stake.more}
         {extend}
         <ChangeKeyLink account={account} />
         <RecoveryCardLink account={account} />
@@ -702,17 +706,30 @@ function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
   };
 }
 
+/**
+ * Delegate is offered for an inactive stake whose staking the main key manages (DECISIONS.md D134): such a stake earns
+ * nothing. One never delegated shows Delegate with Withdraw behind More; one that stopped staking keeps Withdraw, the
+ * likelier reason it stopped, with Delegate behind More.
+ */
+function stakeActions(row: AccountView): { action: ReactNode; more: ReactNode } {
+  const account = row.account.address;
+  const withdraw = <WithdrawLink account={account} activation={row.activation} />;
+  if (row.activation !== "inactive" || row.managedByService)
+    return { action: withdraw, more: null };
+  const delegate = <DelegateLink account={account} />;
+  return row.account.delegation === null
+    ? { action: delegate, more: withdraw }
+    : { action: withdraw, more: delegate };
+}
+
 /** Behind More on a lock the viewer holds: withdrawing with both keys, a new second key, the recovery card, and the thief's view. */
-function LockedRest({
-  account,
-  activation,
-}: {
-  account: Address;
-  activation: ActivationStatus;
-}) {
+function LockedRest({ row }: { row: AccountView }) {
+  const account = row.account.address;
+  const stake = stakeActions(row);
   return (
     <>
-      <WithdrawLink account={account} activation={activation} />
+      {stake.action}
+      {stake.more}
       <ChangeKeyLink account={account} />
       <RecoveryCardLink account={account} />
       <StealLink account={account} />
@@ -743,6 +760,19 @@ function WithdrawLink({
           <ArrowDownToLineIcon aria-hidden="true" />
         )
       }
+      variant="outline"
+      account={account}
+    />
+  );
+}
+
+/** Delegate an inactive stake to a validator from an openly filtered list (DECISIONS.md D134). */
+function DelegateLink({ account }: { account: Address }) {
+  return (
+    <ActionLink
+      href={appLinks.delegate(account)}
+      label={t("app.actions.delegate")}
+      icon={<SproutIcon aria-hidden="true" />}
       variant="outline"
       account={account}
     />
