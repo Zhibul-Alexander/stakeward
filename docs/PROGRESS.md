@@ -5,7 +5,7 @@
 | Шаг | Состояние | Что ждёт владельца |
 | --- | --- | --- |
 | 0. Подготовка | готово: dev и prod развёрнуты на workers.dev (домен временный), Helius проверен | — |
-| 1. Проверка механизма | LiteSVM 31 из 31 (11.10, с проверкой 15), devnet 21 из 21 (без 15), mainnet 8 из 8 | прочитать docs/gate.md |
+| 1. Проверка механизма | LiteSVM 31 из 31, devnet 28 из 28 (11.10, с проверкой 15), mainnet 8 из 8 | прочитать docs/gate.md |
 | 2. packages/core | готово | — |
 | 3. Каркас, дизайн-система, кошельки | развёрнуто в dev, тестовые аккаунты у Phantom 1; план Workers — Free | матрица на /dev/cosign (пара Phantom 1 / Phantom 2), /dev/ui, /design-sync, форма Phantom для prod |
 | 3б. Макеты | не начат | по-моему, заменить утверждением экранов по скриншотам `docs/screens` (вопрос владельцу) |
@@ -534,4 +534,5 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 
 - По вопросу владельца, точно ли вор с одним основным ключом не выведет SOL: в `scripts/gate` добавлена проверка 15 на отдельном S5 (staker = withdrawer = A, заперт B). Вор пробует обычный Authorize, Authorize и Withdraw со своим X в роли хранителя, AuthorizeWithSeed, AuthorizeCheckedWithSeed, MoveLamports и MoveStake в незапертый S6 с теми же полномочиями. Ожидаемые ошибки сверены с исходниками program@v5.1.0: `Authorized::authorize` проверяет замок раньше полномочий, MoveStake и MoveLamports сравнивают замки в общих проверках раньше, чем MoveStake требует активный стейк.
 - Проверено: `pnpm gate:litesvm` — 31 из 31 (docs/gate.md); `scripts` 152 из 152, в том числе планы devnet и mainnet на LiteSVM с точным бюджетом (devnet теперь просит 1,02400344 SOL, комиссии 348 400 лампортов); `pnpm typecheck`, `pnpm lint`. В `pnpm test` падает только `verify.review` в core (small-order ключи; локально Node 24.11.1 при engines ≥ 24.15), core не менялся.
-- Не сделано: прогон на devnet — ключа `.keys/devnet-funder.json` на этом маке нет, новый спонсор просит 1,02400344 SOL devnet. Mainnet не гоняли: программа побайтно та же (sha256 в docs/gate.md).
+- Devnet (11.10.2026 20:09 UTC): 28 из 28, подписи всех отказов в docs/gate.md. Спонсор новый — `.keys/devnet-funder.json` `EcmCPNKzpFTv1WB1CKx6mfrjKWvv2ejje43ajaY4Fgdb`, владелец перевёл 2 SOL; после прогона на нём 1,9996516 SOL, ушли ровно комиссии по плану (348 400 лампортов). Старый спонсор `D8LAb6…ySTL` остался там, где шли прошлые прогоны.
+- Mainnet не гоняли: программа побайтно та же (sha256 в docs/gate.md).
