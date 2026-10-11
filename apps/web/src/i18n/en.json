@@ -51,7 +51,8 @@
     "rescue": "Rescue",
     "home": "Stakeward home",
     "app": "Your accounts",
-    "demo": "Demo"
+    "demo": "Demo",
+    "challenge": "Try to steal it"
   },
   "footer": {
     "label": "Footer",
