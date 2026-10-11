@@ -212,6 +212,8 @@ run() {
       verdict="${G}${B}✅ ACCEPTED by Solana${N}"
     elif [ "$expect" = stolen ]; then
       verdict="${R}${B}🚨 ACCEPTED by Solana: no lock, so the stolen main key was enough. The thief took the SOL.${N}"
+    elif [ "$expect" = drained ]; then
+      verdict="${R}${B}🚨 ACCEPTED by Solana: the stolen main key emptied the wallet. The stake is not in the wallet.${N}"
     else
       verdict="${Y}${B}⚠ ACCEPTED by Solana (this was expected to fail)${N}"
     fi
@@ -375,9 +377,12 @@ cmd_balances() {
 }
 
 # fund [SOL]: sends SOL (default 0.05) to every demo wallet from the funder, or by airdrop.
+# fund [SOL] [SOL for MAIN]: MAIN can get more, for the 1 SOL stake.
 cmd_fund() {
-  local amount="${1:-0.05}" role file a
+  local each="${1:-0.05}" amount role file a
   for role in main second new thief; do
+    amount="$each"
+    [ "$role" = main ] && amount="${2:-$each}"
     file="$(need_key "$role")"
     a="$(addr "$file")"
     if [ -n "$SW_FUNDER_KEY" ] && ! is_local; then
@@ -551,6 +556,13 @@ cmd_thief() {
       # shellcheck disable=SC2086
       run "$expect" '' -- withdraw-stake "$stake" "$(addr "$thief")" ALL \
         --withdraw-authority "$main" --fee-payer "$thief" $extra ;;
+    wallet)
+      # The free SOL in the main wallet is not protected: the lock covers the stake account only.
+      say 'THIEF (stolen MAIN KEY)' "empties the main wallet: every free SOL to the thief"
+      RUN_PAYER="$main"
+      run drained '' -- transfer "$(addr "$thief")" ALL --from "$main" --fee-payer "$main" \
+        --allow-unfunded-recipient \
+        && info "  The SOL in the stake account did not move. Next: the thief tries the stake." ;;
     take)
       say 'THIEF (stolen MAIN KEY)' "tries: make the thief the owner of the stake"
       # shellcheck disable=SC2086
@@ -577,7 +589,7 @@ cmd_thief() {
       cmd_thief withdraw
       cmd_thief take
       cmd_thief unlock ;;
-    *) die "Usage: sw thief withdraw | take | unlock | unstake | staker | all" ;;
+    *) die "Usage: sw thief wallet | withdraw | take | unlock | unstake | staker | all" ;;
   esac
 }
 
@@ -595,19 +607,20 @@ cmd_sweep() {
 
 # The scenario for "sw menu": group|role|label|command|what the audience sees. Numbered in this order.
 MENU_STEPS='Prepare|setup|Balances|balances|SOL on every demo wallet
-Prepare|setup|Top up wallets, 0.25 SOL each|fund 0.25|from the funder; MAIN needs 0.2 for two stakes
+Prepare|setup|Top up: MAIN 1.25 SOL, others 0.25|fund 0.25 1.25|from the funder; MAIN stakes 0.1 + 1 SOL
 Without a lock|owner|Stake 0.1 SOL|stake 0.1|new stake account, no lock
 Without a lock|owner|Status|status|NOT LOCKED
 Without a lock|thief|Steal everything|thief withdraw|ACCEPTED: the thief takes it all
-With Stakeward|owner|Stake 0.1 SOL|stake 0.1|new stake account
+With Stakeward|owner|Stake 1 SOL|stake 1|new stake account
 With Stakeward|owner|Lock with the second key|lock LOCK|main + second key lock it
 With Stakeward|owner|Status|status|PROTECTED until ...
-With Stakeward|thief|Steal everything|thief withdraw|REJECTED: locked
+With Stakeward|thief|Empty the main wallet|thief wallet|ACCEPTED: the free SOL is gone
+With Stakeward|thief|Steal the stake|thief withdraw|REJECTED: locked
 With Stakeward|thief|Become the owner|thief take|REJECTED: needs the second key
 With Stakeward|thief|Remove the lock|thief unlock|REJECTED: only the second key
 With Stakeward|thief|Take over staking|thief staker|ACCEPTED: SOL stays put
 With Stakeward|new|Rescue to the new wallet|rescue|stake now belongs to NEW WALLET
-With Stakeward|thief|Steal everything again|thief withdraw|REJECTED: main key no longer owns it
+With Stakeward|thief|Steal the stake again|thief withdraw|REJECTED: main key no longer owns it
 With Stakeward|owner|Status|status|owner: NEW WALLET
 After the demo|second|Second key removes the lock|unlock|lock off, before the SOL leaves
 After the demo|new|New wallet withdraws|withdraw-new|new wallet + second key; closes the account
@@ -759,7 +772,7 @@ ${B}Stakeward live demo${N} ($(shown_url)). Keys: ${SW_DIR}
 ${B}Prepare${N}
   sw setup                  create the demo keys (main, second, new, thief) and demo.env
   sw keys | sw balances     addresses / balances (role names, not addresses)
-  sw fund [SOL]             send SOL to every demo wallet (from SW_FUNDER_KEY, else airdrop)
+  sw fund [SOL] [MAIN SOL]  send SOL to every demo wallet (from SW_FUNDER_KEY, else airdrop)
   sw transfer <from> <to> <SOL|ALL>   e.g. sw transfer main new 0.02
 
 ${B}Owner${N}
@@ -773,7 +786,8 @@ ${B}Owner${N}
   sw unlock                 second key ends the lock now
 
 ${B}Thief${N} (has a stolen copy of the main key)
-  sw thief withdraw         withdraw everything          -> rejected
+  sw thief wallet           empty the main wallet        -> accepted (the stake stays)
+  sw thief withdraw         withdraw the stake           -> rejected
   sw thief take             make himself the owner       -> rejected
   sw thief unlock           remove the lock              -> rejected
   sw thief all              the three above

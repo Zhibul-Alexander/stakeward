@@ -59,10 +59,11 @@ sw status
 | Окно | Команда | Что видит зал |
 |---|---|---|
 | owner | `sw status` | 🔓 NOT LOCKED: whoever has the main key can take it |
-| thief | `thief withdraw` | без замка: ⚠ ACCEPTED, вор забрал всё (показывать на отдельном стейке, если нужно «до») |
-| owner | `sw stake 0.1` и `sw lock 6mo` | ✅ ACCEPTED, замок до даты, второй ключ держит замок |
+| thief | `thief withdraw` | без замка: 🚨 ACCEPTED, вор забрал весь стейк (небольшой, 0.1 SOL) |
+| owner | `sw stake 1` и `sw lock 6mo` | ✅ ACCEPTED, замок до даты, второй ключ держит замок |
 | owner | `sw status` | 🔒 PROTECTED until …, second key: SECOND KEY |
-| thief | `thief withdraw` | ⛔ REJECTED by Solana: Locked until …: the second key must co-sign |
+| thief | `thief wallet` | 🚨 ACCEPTED: вор забрал всё свободное с кошелька MAIN, баланс MAIN 0, а 1 SOL в стейке на месте |
+| thief | `thief withdraw` | ⛔ REJECTED by Solana: Locked until …: the second key must co-sign (стейк вор не трогает) |
 | thief | `thief take` | ⛔ REJECTED by Solana: changing the owner needs the second key |
 | thief | `thief unlock` | ⛔ REJECTED: only the second key can change the lock while it is on |
 | thief | `thief staker` или `thief unstake` | ✅ ACCEPTED: это вор может, SOL остаются на месте, приходит тревога |
@@ -70,6 +71,7 @@ sw status
 | thief | `thief withdraw` | ⛔ REJECTED by Solana: the main key no longer owns this stake |
 | owner | `sw status` | owner (withdraw): NEW WALLET |
 
+Пополнение для сценария: `sw fund 0.25 1.25` — MAIN получает 1.25 SOL (стейки 0.1 и 1 SOL), остальные по 0.25.
 `thief all` — три отказа подряд. `thief unstake` и `thief staker` работают только на делегированном стейке и до
 спасения. Тревога в Telegram придёт, если основной кошелёк привязан к dev-боту и аккаунт под наблюдением (защита
 через сайт или `POST /api/watch`).

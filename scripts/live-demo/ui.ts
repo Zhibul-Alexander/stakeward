@@ -24,19 +24,20 @@ export const LOCK_DURATIONS = ['10m', '1h', '6mo', '12mo'] as const;
 
 export const STEPS: readonly Step[] = [
   { id: 'balances', group: 'Prepare', role: 'setup', label: 'Balances', args: ['balances'], expect: 'SOL on every demo wallet' },
-  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund', '0.25'], expect: '0.25 SOL each from the funder' },
+  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund', '0.25', '1.25'], expect: 'MAIN 1.25 SOL, others 0.25' },
 
   { id: 'before-stake', group: 'Without a lock', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account, no lock' },
   { id: 'before-thief', group: 'Without a lock', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'accepted: the thief takes it all' },
 
-  { id: 'stake', group: 'With Stakeward', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account' },
+  { id: 'stake', group: 'With Stakeward', role: 'owner', label: 'Stake 1 SOL', args: ['stake', '1'], expect: 'new stake account' },
   { id: 'lock', group: 'With Stakeward', role: 'owner', label: 'Lock with the second key', args: ['lock', '{duration}'], expect: 'main + second key sign' },
-  { id: 'thief-withdraw', group: 'With Stakeward', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'rejected: locked' },
+  { id: 'thief-wallet', group: 'With Stakeward', role: 'thief', label: 'Empty the main wallet', args: ['thief', 'wallet'], expect: 'accepted: the free SOL is gone' },
+  { id: 'thief-withdraw', group: 'With Stakeward', role: 'thief', label: 'Steal the stake', args: ['thief', 'withdraw'], expect: 'rejected: locked' },
   { id: 'thief-take', group: 'With Stakeward', role: 'thief', label: 'Become the owner', args: ['thief', 'take'], expect: 'rejected: needs the second key' },
   { id: 'thief-unlock', group: 'With Stakeward', role: 'thief', label: 'Remove the lock', args: ['thief', 'unlock'], expect: 'rejected: only the second key' },
   { id: 'thief-staker', group: 'With Stakeward', role: 'thief', label: 'Take over staking', args: ['thief', 'staker'], expect: 'accepted, but the SOL stays put' },
   { id: 'rescue', group: 'With Stakeward', role: 'new', label: 'Rescue to the new wallet', args: ['rescue'], expect: 'new wallet + main + second key' },
-  { id: 'after-thief', group: 'With Stakeward', role: 'thief', label: 'Steal everything again', args: ['thief', 'withdraw'], expect: 'rejected: main key no longer owns it' },
+  { id: 'after-thief', group: 'With Stakeward', role: 'thief', label: 'Steal the stake again', args: ['thief', 'withdraw'], expect: 'rejected: main key no longer owns it' },
 
   { id: 'unlock', group: 'After the demo', role: 'second', label: 'Remove the lock', args: ['unlock'], expect: 'second key alone, before the SOL leaves' },
   { id: 'withdraw-new', group: 'After the demo', role: 'new', label: 'New wallet withdraws', args: ['withdraw-new'], expect: 'closes the stake account' },
