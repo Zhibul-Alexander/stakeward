@@ -44,11 +44,12 @@ export function SiteHeader() {
                 {t('common.devnet')}
               </Badge>
               <span className="hidden text-xs text-muted md:inline">{t('common.devnetNote')}</span>
-              {/* The way back to the real site; icon only below 640 px, the name stays for screen readers. */}
-              <Button asChild variant="outline" size="sm">
+              {/* The way back to the real site. Icon only below 640 px, where the nav has its own row; hidden from 640 to 768 px,
+                  where one row has no room for it (the landing hero still links there); named from 768 px. */}
+              <Button asChild variant="outline" size="sm" className="sm:max-md:hidden">
                 <a href={MAINNET_SITE_URL}>
                   <GlobeIcon aria-hidden="true" />
-                  <span className="sr-only sm:not-sr-only">{t('nav.tryMainnet')}</span>
+                  <span className="sr-only md:not-sr-only">{t('nav.tryMainnet')}</span>
                 </a>
               </Button>
             </>
