@@ -23,7 +23,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 экран «Protected until …», но это не обязательно.
 
 Говорит один владелец; Stakeward сделали вдвоём с другом — в начале это сказано, дальше «we». Английский уровня B1:
-короткие предложения, обычные слова, у каждой фразы один смысл. Около 190 слов, это примерно 1:30.
+короткие предложения, обычные слова, у каждой фразы один смысл. Около 200 слов, это примерно 1:30–1:40.
 
 Как записывать, чтобы не волноваться:
 - **Блоками.** Каждый блок — отдельный дубль. Ошиблись — переснимаете только этот блок, потом склейка.
@@ -37,19 +37,19 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 2 — проблема (≈15 с)**
 
-> If someone steals your wallet key, they can take your staked SOL. This really happens. In 2025, SwissBorg lost almost two hundred thousand staked SOL.
+> Here is the problem. If someone steals your wallet key, they can take your staked SOL. This really happens. In 2025, SwissBorg lost almost two hundred thousand staked SOL.
 
 **Блок 3 — что мы делаем (≈20 с)**
 
-> We are building Stakeward. Solana has a lock for staked SOL. When the lock is on, a second key must also sign. Stakeward turns on this lock for your stake. The second key is your other wallet. A thief with only your main key cannot take your SOL.
+> We are building Stakeward. Every stake on Solana has a built-in lock. When the lock is on, a second key must also sign before anyone can take the SOL out. Stakeward turns on this lock for your stake, and the second key is your other wallet. So a thief with only your main key cannot take your SOL.
 
 **Блок 4 — почему именно мы (≈25 с)**
 
-> Why us? We look at things from a new angle. This lock is not new: Solana uses it to lock tokens for a fixed time, for example for investors. We use the same lock in a new way: to protect your stake from theft. We don't need a new program or a new token. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
+> Why us? We look at things from a new angle. This lock is not new: Solana uses it to lock tokens for a fixed time, for example for investors. We use the same lock in a new way: to protect your stake from theft. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
 
 **Блок 5 — как мы работаем, финал (≈20 с)**
 
-> We are open to advice, and we change fast. We listen to users and learn every day. Stakeward never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
+> We are open to advice, and we change fast. We listen to users and learn every day. Stakeward is free for people, and it never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
 
 Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
 «Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
