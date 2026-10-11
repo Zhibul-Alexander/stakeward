@@ -192,8 +192,8 @@ describe('/app on LiteSvmChain', () => {
       'href',
       `/withdraw/${stake.locked}`,
     );
-    // An open lock: the main key withdraws alone, so Withdraw stands on its row too.
-    expect(within(row(stake.open)).getByRole('link', { name: `Withdraw stake account ${shortAddress(stake.open)}` })).toHaveAttribute(
+    // An open lock on a stake that still earns: the same page stops staking first, so the row says Unstake.
+    expect(within(row(stake.open)).getByRole('link', { name: `Unstake stake account ${shortAddress(stake.open)}` })).toHaveAttribute(
       'href',
       `/withdraw/${stake.open}`,
     );
