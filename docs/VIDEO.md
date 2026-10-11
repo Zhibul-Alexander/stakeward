@@ -4,7 +4,7 @@
 
 | Видео | Длина | Что Colosseum просит | Куда идёт |
 |---|---|---|---|
-| Pitch video | до 2:00 (наш — около 1:15) | «Introduce yourselves, tell us what you're building, and why you're the people to build it. Nothing fancy required. We're interested in how you think and communicate.» | Colosseum «Pitch video»; Superteam Earn «Link to your pitch deck or Loom/video presentation» |
+| Pitch video | до 2:00 (наш — около 1:30) | «Introduce yourselves, tell us what you're building, and why you're the people to build it. Nothing fancy required. We're interested in how you think and communicate.» | Colosseum «Pitch video»; Superteam Earn «Link to your pitch deck or Loom/video presentation» |
 | Demo video | до 3:00 | «Should show the live product, not a slide deck, not a code walkthrough.» | Colosseum «Please submit a demo video of your product» |
 
 Ссылки: YouTube (доступ «по ссылке», Unlisted), Loom или Vimeo. Перед отправкой открыть ссылку в окне инкогнито: видео должно играть без входа.
@@ -15,37 +15,45 @@
 
 ---
 
-## 1. Pitch video — около 1:15, вы в кадре
+## 1. Pitch video — около 1:30, вы в кадре
 
-Короткая версия (11.10.2026): около 130 слов, только простые слова и короткие фразы. Colosseum разрешает до 2:00, короче — можно. Говорит один владелец, но Stakeward сделали вдвоём с другом: в начале это сказано, дальше «we».
+Colosseum просит: «introduce yourselves, tell us what you're building, and tell us why you're the people to build it.
+Nothing fancy required. We're interested in how you think and communicate.» Поэтому в питче **продукт не показываем**:
+только вы и ваш рассказ. Продукт целиком — в демо-видео. Если очень хочется, в блоке 3 можно на 3–5 секунд показать
+экран «Protected until …», но это не обязательно.
+
+Говорит один владелец; Stakeward сделали вдвоём с другом — в начале это сказано, дальше «we». Английский уровня B1:
+короткие предложения, обычные слова, у каждой фразы один смысл. Около 190 слов, это примерно 1:30.
 
 Как записывать, чтобы не волноваться:
 - **Блоками.** Каждый блок — отдельный дубль. Ошиблись — переснимаете только этот блок, потом склейка.
-- **Текст рядом с камерой.** Крупным шрифтом на экране прямо под камерой (или телесуфлёр на телефоне). Смотреть в камеру хотя бы в начале и в конце фразы.
-- **Медленно.** Пауза после каждой фразы — нормально, её легко вырезать.
-- Блоки 3 и 4 можно не в кадре: голос поверх записи экрана сайта (защита, тревога в Telegram). Тогда лицо нужно только в начале и в конце.
+- **Текст рядом с камерой.** Крупным шрифтом прямо под камерой или телесуфлёр на телефоне. Смотреть в камеру хотя бы
+  в начале и в конце фразы.
+- **Медленно.** Пауза после фразы — нормально, её легко вырезать.
 
-**Блок 1 — кто вы (≈10 с)**
+**Блок 1 — кто мы (≈20 с)**
 
-> Hi, I'm `<name>`, from Tbilisi, Georgia. My friend `<friend's name>` and I built Stakeward.
+> Hi, I'm `<name>`. My friend `<friend's name>` and I are developers from Tbilisi, Georgia. We have many years of experience in building software. We are ambitious, and we like hard problems.
 
 **Блок 2 — проблема (≈15 с)**
 
 > If someone steals your wallet key, they can take your staked SOL. This really happens. In 2025, SwissBorg lost almost two hundred thousand staked SOL.
 
-**Блок 3 — решение (≈20 с)**
+**Блок 3 — что мы делаем (≈20 с)**
 
-> Solana has a lock for staked SOL. When the lock is on, a second key must also sign. Stakeward turns on this lock for your stake. The second key is your other wallet. A thief with only your main key cannot take your SOL.
+> We are building Stakeward. Solana has a lock for staked SOL. When the lock is on, a second key must also sign. Stakeward turns on this lock for your stake. The second key is your other wallet. A thief with only your main key cannot take your SOL.
 
-**Блок 4 — уже работает (≈15 с)**
+**Блок 4 — почему именно мы (≈25 с)**
 
-> It works on mainnet now. We tested it with our own stake. If something changes, you get a message in Telegram. And you can move your stake to a new wallet.
+> Why us? We do not stop at the documentation. The documentation says you can turn on this lock only for a new stake. We read the code and tested it on mainnet: it also works for the stake you already have. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
 
-**Блок 5 — финал (≈15 с)**
+**Блок 5 — как мы работаем, финал (≈20 с)**
 
-> Stakeward is free for people. Teams will pay for extra features. Stakeward never holds your SOL or your keys. Thank you!
+> We are open to advice, and we change fast. We listen to users and learn every day. Stakeward never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
 
-Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11). «Works on mainnet … tested with our own stake … Telegram … move your stake» — проход на mainnet 10–11.10.2026 (PROGRESS) и docs/gate.md. «Teams will pay» — BUSINESS-MODEL.md, без цен.
+Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
+«Read the code and tested it on mainnet» — `Meta::set_lockup`, docs/gate.md. «Less than two weeks» — первый коммит
+01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience» — со слов владельца.
 
 ---
 
