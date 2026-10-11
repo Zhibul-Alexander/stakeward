@@ -23,7 +23,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 экран «Protected until …», но это не обязательно.
 
 Говорит один владелец; Stakeward сделали вдвоём с другом — в начале это сказано, дальше «we». Английский уровня B1:
-короткие предложения, обычные слова, у каждой фразы один смысл. Около 200 слов, это примерно 1:30–1:40.
+короткие предложения, обычные слова, у каждой фразы один смысл. Около 240 слов, это примерно 1:50.
 
 Как записывать, чтобы не волноваться:
 - **Блоками.** Каждый блок — отдельный дубль. Ошиблись — переснимаете только этот блок, потом склейка.
@@ -31,9 +31,9 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
   в начале и в конце фразы.
 - **Медленно.** Пауза после фразы — нормально, её легко вырезать.
 
-**Блок 1 — кто мы (≈20 с)**
+**Блок 1 — кто мы, с лёгким началом про Катан (≈30 с)**
 
-> Hi, I'm `<name>`. My friend `<friend's name>` and I are developers from Tbilisi, Georgia. We have many years of experience in building software. We are ambitious, and we like hard problems.
+> Hi, I'm `<name>`. Last weekend, my friend `<friend's name>` and I played in an online Catan championship. We reached the final and finished in the top four. Then we went back to our Solana idea, and here we are. We are developers from Tbilisi, Georgia, with many years of experience in building software. We are ambitious, and we like hard problems.
 
 **Блок 2 — проблема (≈15 с)**
 
@@ -49,11 +49,11 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 5 — как мы работаем, финал (≈20 с)**
 
-> We are open to advice, and we change fast. We listen to users and learn every day. Stakeward is free for people, and it never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
+> We are open to advice, and we change fast. Stakeward is free for people, and it never holds your SOL or your keys. We want every staker on Solana to have this lock. Thank you!
 
 Проверка фактов: «almost two hundred thousand» — SwissBorg, около 192 600 SOL, сентябрь 2025 (SUBMISSION §11).
 «Solana uses it to lock tokens for a fixed time, for example for investors» — назначение lockup в стейк-программе (замки на выданные стейки с датой окончания, vesting); про документацию в питче не говорим. «Tested it on mainnet» — docs/gate.md. «Less than two weeks» — первый коммит
-01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience» — со слов владельца.
+01.10.2026, проход на mainnet 10–11.10.2026 (PROGRESS). «Many years of experience», чемпионат по Катану (финал, топ-4, выходные перед подачей) — со слов владельца.
 
 ---
 
