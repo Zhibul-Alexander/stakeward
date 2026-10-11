@@ -9,7 +9,7 @@ import { StrictMode } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
-import { GATE_RESULTS_URL, README_RECOVERY_URL, SOURCE_CODE_URL } from '@/config';
+import { GATE_RESULTS_URL, MAINNET_SITE_URL, README_RECOVERY_URL, SOURCE_CODE_URL, TESTNET_SITE_URL } from '@/config';
 import en from '@/i18n/en.json';
 import { CosignPage } from '@/pages/CosignPage';
 import { LandingPage } from '@/pages/LandingPage';
@@ -181,8 +181,14 @@ describe('landing page structure', () => {
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noreferrer');
     }
-    // Every link to another site says it opens a new tab; every other link opens here.
+    // Every link to another site says it opens a new tab; every other link opens here. The other network's copy of
+    // Stakeward (D136) is the same site, so it opens here too.
+    const sibling = new Set<string>([MAINNET_SITE_URL, TESTNET_SITE_URL]);
     for (const link of document.querySelectorAll<HTMLAnchorElement>('a[href^="http"]')) {
+      if (sibling.has(link.getAttribute('href') ?? '')) {
+        expect(link).not.toHaveAttribute('target');
+        continue;
+      }
       expect(link).toHaveAttribute('target', '_blank');
       expect(link.getAttribute('aria-label')).toBe(`${link.textContent} ${en.common.opensInNewTab}`);
     }
@@ -242,6 +248,9 @@ describe('landing network line', () => {
     expect(screen.getByText(en.landing.network.devnetNote)).toBeInTheDocument();
     expect(screen.getByText(en.landing.how.periodDevnet)).toBeInTheDocument();
     expect(screen.queryByText('Solana mainnet')).toBeNull();
+    // The way back to the real site (D136), and no link to itself.
+    expect(screen.getByRole('link', { name: en.landing.tryMainnet })).toHaveAttribute('href', MAINNET_SITE_URL);
+    expect(screen.queryByRole('link', { name: en.landing.tryTestnet })).toBeNull();
     await depositShown();
   });
 
@@ -252,6 +261,8 @@ describe('landing network line', () => {
     expect(screen.queryByText('Solana devnet')).toBeNull();
     expect(screen.queryByText(en.landing.network.devnetNote)).toBeNull();
     expect(screen.queryByText(en.landing.how.periodDevnet)).toBeNull();
+    expect(screen.getByRole('link', { name: en.landing.tryTestnet })).toHaveAttribute('href', TESTNET_SITE_URL);
+    expect(screen.queryByRole('link', { name: en.landing.tryMainnet })).toBeNull();
     await depositShown();
   });
 });

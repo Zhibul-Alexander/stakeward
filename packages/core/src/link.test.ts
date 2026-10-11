@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { build, craft, editMessage, instructionsOf, key } from '../test/craft.ts';
 import { newTestWallet, type TestWallet } from '../test/wallet.ts';
 import type { Lifetime, TransactionAction, TransactionKind } from './actions.ts';
-import { deriveNonceAccountAddress } from './builders.ts';
+import { deriveNonceAccountAddress, deriveStakeAccountAddress } from './builders.ts';
 import { NONCE_ACCOUNT_SEED } from './constants.ts';
 import { inspectTransaction, type TransactionSummary } from './inspect.ts';
 import {
@@ -135,6 +135,14 @@ describe('cosign link rules', () => {
     }),
     'nonce-close': () =>
       Promise.resolve({ kind: 'nonce-close', nonceAccount: key(6), nonceAuthority: A, recipient: A, lamports: 1_056_640n }),
+    'create-stake': async () => ({
+      kind: 'create-stake',
+      stakeAccount: await deriveStakeAccountAddress(A, 'stakeward-stake-mf0abc12'),
+      mainKey: A,
+      seed: 'stakeward-stake-mf0abc12',
+      lamports: 1_002_282_880n,
+      voteAccount: key(5),
+    }),
   };
   it.each(Object.entries(otherKinds))('refuses %s: not-linkable-kind', async (_kind, make) => {
     expect(cosignLinkProblem(await summaryOf(await make(), BLOCKHASH, []))).toBe('not-linkable-kind');

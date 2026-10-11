@@ -26,9 +26,9 @@ export function networkFeeFor(signers: number): bigint {
 
 /**
  * Lamports the fee payer pays on top of the network fee: a nonce setup moves the account's deposit (`lamports`, which
- * comes back on close) out of the payer; every other kind costs the payer only the fee. The signing engine adds this
+ * comes back on close) out of the payer, a stake creation moves the whole new stake; every other kind costs the payer only the fee. The signing engine adds this
  * to its fee check, so a payer who cannot cover the deposit is told before any wallet is asked.
  */
 export function payerOutflow(action: TransactionAction): bigint {
-  return action.kind === 'nonce-setup' ? action.lamports : 0n;
+  return action.kind === 'nonce-setup' || action.kind === 'create-stake' ? action.lamports : 0n;
 }

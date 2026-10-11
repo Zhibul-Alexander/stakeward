@@ -132,6 +132,10 @@ export class TestChain {
     return this.svm.getBalance(address) ?? 0n;
   }
 
+  minimumBalanceForRentExemption(size: bigint): bigint {
+    return this.svm.minimumBalanceForRentExemption(size);
+  }
+
   clock(): ClockView {
     const clock = this.svm.getClock();
     return { unixTimestamp: clock.unixTimestamp, epoch: clock.epoch };

@@ -156,6 +156,35 @@ describe('TransactionSummary', () => {
     expect(screen.getAllByText('After')).toHaveLength(2);
   });
 
+  it('names the one address to check on the wallet screen, its ends set apart, above the details', async () => {
+    const cases: [TransactionAction, Address, string, Address][] = [
+      [protect, SECOND, 'Your second key', MAIN],
+      [
+        { kind: 'withdraw', stakeAccount: STAKE, mainKey: MAIN, secondKey: SECOND, recipient: MAIN, lamports: 1_000_000_000n },
+        MAIN,
+        'Where the SOL goes',
+        MAIN,
+      ],
+      [{ kind: 'rescue', stakeAccount: STAKE, mainKey: MAIN, secondKey: SECOND, newWallet: NEW_WALLET }, NEW_WALLET, 'Your new wallet', NEW_WALLET],
+    ];
+    for (const [action, address, label, payer] of cases) {
+      const { container, unmount } = render(<TransactionSummary summary={await inspected(action, payer)} />);
+      const check = container.querySelector('[data-slot="wallet-check"]');
+      expect(check).toHaveAttribute('data-address', address);
+      expect(check).toHaveTextContent('Check this on your wallet');
+      expect(check).toHaveTextContent(label);
+      expect(check).toHaveTextContent(address);
+      expect(within(check as HTMLElement).getByText(address.slice(0, 4))).toHaveClass('font-bold');
+      expect(within(check as HTMLElement).getByText(address.slice(-4))).toHaveClass('font-bold');
+      expect(before(check as Node, screen.getByRole('heading', { name: 'What changes' }))).toBe(true);
+      unmount();
+    }
+
+    const extend: TransactionAction = { kind: 'extend', stakeAccount: STAKE, secondKey: SECOND, lockUntil: JANUARY_2027 };
+    const { container } = render(<TransactionSummary summary={await inspected(extend, SECOND)} />);
+    expect(container.querySelector('[data-slot="wallet-check"]')).toBeNull();
+  });
+
   it('withdraw: the amount and where it goes; it can move SOL, so no "cannot move your SOL"', async () => {
     const withdraw: TransactionAction = {
       kind: 'withdraw',

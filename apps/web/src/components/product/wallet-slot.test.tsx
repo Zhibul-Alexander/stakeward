@@ -31,6 +31,15 @@ describe('WalletSlot', () => {
   it('empty without wallets explains how to get one', () => {
     render(<WalletSlot role="main" status="empty" wallets={[]} onConnect={vi.fn()} defaultPickerOpen />);
     expect(screen.getByText(/No Solana wallet found in this browser/)).toBeVisible();
+    expect(screen.queryByText(/Using a Ledger\?/)).toBeNull();
+  });
+
+  it('the wallet list says how to reach a Ledger: through its wallet app', async () => {
+    const user = userEvent.setup();
+    render(<WalletSlot role="main" status="empty" wallets={WALLETS} onConnect={vi.fn()} layout="inline" />);
+    expect(screen.queryByText(/Using a Ledger\?/)).not.toBeVisible();
+    await user.click(screen.getByRole('button', { name: /Connect a wallet/ }));
+    expect(screen.getByText('Using a Ledger? Pick the wallet app you use it with, such as Phantom.')).toBeVisible();
   });
 
   it('connecting has a way out', async () => {

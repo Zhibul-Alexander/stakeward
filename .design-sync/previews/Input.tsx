@@ -86,7 +86,7 @@ export const Invalid = () => (
 export const ReadOnlyLink = () => {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
-    void sampleLinkUrl('https://stakeward-prod.stakeward.workers.dev').then(setUrl);
+    void sampleLinkUrl('https://stakeward.com').then(setUrl);
   }, []);
   return (
     <div className="flex max-w-xl flex-col gap-2">

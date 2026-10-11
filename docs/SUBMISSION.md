@@ -30,8 +30,8 @@ Stakeward
 | What | Link |
 | --- | --- |
 | Repository (MIT) | https://github.com/Zhibul-Alexander/stakeward |
-| Product, Solana mainnet | https://stakeward-prod.stakeward.workers.dev |
-| Test version, Solana devnet | https://stakeward-dev.stakeward.workers.dev |
+| Product, Solana mainnet | https://stakeward.com |
+| Test version, Solana devnet | https://dev.stakeward.com |
 | Telegram alerts bot | `@stakeward_bot` (mainnet), `@stakeward_dev_bot` (devnet) |
 | Proof of the mechanism on mainnet | [docs/gate.md](gate.md), section Mainnet: 8 of 8 checks |
 | Recovery without Stakeward | [README, "Recover without Stakeward"](../README.md#recover-without-stakeward) |
@@ -153,7 +153,7 @@ into readable fields, checked on its emulator (`pnpm ledger-sim`, docs/ledger-si
 scripts 142 on 11 October 2026), including every transaction kind executed against the mainnet stake program in
 LiteSVM, plus Playwright with axe on every route at 1280 and 360 px.
 
-**Status.** Live on Solana mainnet at https://stakeward-prod.stakeward.workers.dev; the owner's mainnet checks passed
+**Status.** Live on Solana mainnet at https://stakeward.com; the owner's mainnet checks passed
 on 10-11 October 2026. [TODO owner: N stake accounts and X SOL under lock from `/stats`; first users.]
 
 ## 4. Logo
@@ -306,6 +306,51 @@ before submitting.
   - Zscaler ThreatLabz, 25 September 2026: https://www.zscaler.com/blogs/security-research/threat-actors-use-google-ads-target-ledger-users
     ("In August 2026, Zscaler ThreatLabz analyzed a phishing campaign that used fraudulent Google ads to target
     Ledger hardware wallet users").
+
+### More incidents (research of 11 October 2026)
+
+Found and opened by a research pass on 11 October 2026 (every quote below was on the fetched page). Only the first
+one involves staked SOL. The others are context: liquid SOL, tokens, admin keys or exchange hot wallets, which a
+stake-program lockup does not protect. Say that plainly if you use them.
+
+- **Early Solana whale, 10 July 2026, staked SOL.** "approximately 180,900 SOL (about 14.2 million USD) stolen",
+  reported as suspected by ZachXBT with Specter Investigation; "abnormal unstaking and cross-chain operations to
+  Ethereum"; "the specific method of attack ... still under further investigation". A lockup with a separate second
+  key would plausibly have mattered only if the attacker held one key: unverified, do not claim it.
+  - https://www.chaincatcher.com/en/article/2275905 (re-checked by hand 11 Oct 2026)
+  - https://en.bloomingbit.io/feed/news/116011 ("a large amount of SOL was unstaked from the wallet before the assets were bridged")
+  - https://www.bitget.com/news/detail/12560605500106 ("The method used in the attack ... are still unknown.")
+- **Step Finance, new detail.** CertiK, via TradingView/Cryptonews: the SOL "has been withdrawn after stake
+  authorization had been transferred"; Cointelegraph: the team "did not disclose how the attacker gained access".
+- **One user, early December 2025, about $3M.** A phishing signature changed the wallet account's Owner (`assign`);
+  the stake-account version of this trick is Authorize(Withdrawer), which an active lockup refuses without the
+  second key. Essentially one primary source (SlowMist).
+  - https://panews.io/articles/397198c5-b7fe-4262-b79b-a87c8109ca8e ("over $3 million worth of assets stolen"; "The `assign` command changes the account's Owner")
+  - https://coinpaper.com/12892/solana-user-loses-3-m-as-hidden-wallet-permissions-exploited
+- **Drift Protocol, 1 April 2026, about $285M (USDC, JLP).** Multisig signers were led to pre-sign durable-nonce
+  transactions with hidden admin authorizations. Not staked SOL; relevant to how Stakeward treats pre-signed rescues
+  (D118). https://www.trmlabs.com/resources/blog/north-korean-hackers-attack-drift-protocol-in-285-million-heist ;
+  https://crypto.news/drift-protocols-285m-hack-exposes-social-engineering-threat-to-solana-defi/
+- **Upbit hot wallet, 27 November 2025, 44.5B KRW (about $30M; Decrypt and Halborn: about $36M)** of Solana assets;
+  cause unconfirmed. https://www.koreatimes.co.kr/amp/economy/cryptocurrency/20251127/upbit-loses-near-301-mil-in-massive-hacking-attack ;
+  https://decrypt.co/350196/south-koreas-upbit-36-million-loss-solana-hot-wallet-breach
+- **DEXX, 16 November 2024, $21M at first, later "within $30M", 900+ users:** a platform private key leak.
+  https://cointelegraph.com/news/solana-dexx-hack-november-2024-suspicious-wallets ; https://www.chaincatcher.com/en/article/2152336
+- **@solana/web3.js 1.95.6 and 1.95.7, 2 December 2024:** an npm backdoor sent out private keys; about $160,000 in
+  SOL plus over $31,000 in tokens. https://decrypt.co/294742/solana-web3-js-library-compromised-in-targeted-supply-chain-attack ;
+  https://www.cyfrin.io/blog/critical-security-alert-solana-web3-js-library-compromise
+- **Wallet drainers, December 2023 to January 2024:** "nearly $4.17 million in assets from about 3947 victims"
+  (ScamSniffer; Decrypt says 3,967 wallets), mostly direct transfers.
+  https://drops.scamsniffer.io/over-4-million-stolen-by-multiple-solana-wallet-drainers/ ;
+  https://decrypt.co/212875/hackers-steal-over-4-million-fake-airdrops-other-scams-solana
+- **Raydium, 16 December 2022:** the AMM owner key was compromised; about $4.4M (Raydium) or $5.5M (CertiK).
+  https://www.theblock.co/post/195712/solana-based-exchange-raydium-suffers-2-million-exploit ;
+  https://www.certik.com/blog/raydium-protocol-exploit-incident-analysis
+- **Slope wallet, 2–3 August 2022:** the app sent key material to a monitoring service; "drained 9,231 wallets of
+  approximately $4.1 million" (Solana Foundation; early reports said about 8,000 wallets and $8M).
+  https://solana.com/news/8-2-2022-application-wallet-incident ; https://techcrunch.com/2022/08/03/solana-wallet-hack/
+- Not found: any sourced case of a private person losing staked SOL to a phishing Authorize transaction. Do not say
+  such cases are documented.
 
 ## 12. Fact sheet
 

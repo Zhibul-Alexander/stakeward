@@ -18,6 +18,7 @@ import { ExtendPage } from '@/pages/ExtendPage';
 import { ProtectPage } from '@/pages/ProtectPage';
 import { RescueKitPage, RescueNowPage } from '@/pages/RescueKitPage';
 import { RescuePage } from '@/pages/RescuePage';
+import { StakePage } from '@/pages/StakePage';
 import { WithdrawPage } from '@/pages/WithdrawPage';
 import {
   createProtectedAccountMemory,
@@ -110,6 +111,9 @@ export function renderStakePage(
             </Route>
             <Route path="/protect">
               <ProtectPage signing={signing} />
+            </Route>
+            <Route path="/stake">
+              <StakePage signing={signing} />
             </Route>
           </Switch>
         </PortsProvider>

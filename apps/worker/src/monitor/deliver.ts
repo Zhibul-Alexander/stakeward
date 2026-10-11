@@ -48,6 +48,8 @@ export type PendingEvent = {
   lockUntil: bigint;
   /** The chat bound to the account's ready rescue kit (D118), null without one. */
   kitChatId: string | null;
+  /** The new wallet of the account's rescue kit once it was sent (D135), null otherwise. */
+  kitSentTo: Address | null;
 };
 
 export type Link = { wallet: Address; chatId: string; lastEventId: number };
@@ -64,6 +66,7 @@ export function pendingEventOf(row: PendingRow): PendingEvent {
     custodian: row.custodian,
     lockUntil: BigInt(row.lock_until),
     kitChatId: row.kit_chat_id,
+    kitSentTo: row.kit_sent_to,
   };
 }
 
@@ -107,7 +110,13 @@ export function alertOf(e: PendingEvent, nowSec: bigint): Alert | null {
     stakeAccount: Address;
   };
   try {
-    return formatAlert(event, { withdrawer: e.withdrawer, custodian: e.custodian, lockUntil: e.lockUntil, now: nowSec });
+    return formatAlert(event, {
+      withdrawer: e.withdrawer,
+      custodian: e.custodian,
+      lockUntil: e.lockUntil,
+      now: nowSec,
+      rescueSentTo: e.kitSentTo,
+    });
   } catch {
     return null;
   }

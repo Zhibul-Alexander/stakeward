@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stakeward live demo</title>
+<style>
+  /* The site's dark theme (apps/web/src/styles/tokens.css) plus one colour per demo role. */
+  @font-face { font-family: Geist; src: url(/fonts/geist.woff2) format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Geist Mono'; src: url(/fonts/geist-mono.woff2) format('woff2'); font-weight: 100 900; }
+  :root {
+    --bg: #0d1017; --surface: #151922; --raised: #1d222d; --subtle: #262b38; --line: #2c3240;
+    --text: #eceef3; --muted: #a6adbb; --primary: #818cf8; --primary-soft: #22244a;
+    --ok: #86efac; --ok-soft: #0f2e1c; --bad: #fca5a5; --bad-soft: #3b1212; --warn: #fcd34d; --warn-soft: #3a2a07;
+    --owner: #86efac; --thief: #fca5a5; --second: #d8b4fe; --new: #7dd3fc; --setup: #a6adbb;
+    --sans: Geist, -apple-system, system-ui, sans-serif; --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--sans); overflow: hidden; }
+  button { font: inherit; color: inherit; }
+  .page { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100vh; }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--primary-soft); display: grid; place-items: center; color: var(--primary); }
+  .pill { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+  .pill::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+  .spacer { flex: 1; }
+  #networks button[aria-pressed="true"] { background: var(--ok-soft); border-color: var(--ok); }
+  #networks button[aria-pressed="true"]::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+  .seg { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+  .seg button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--text); }
+  .hint { font-size: 12px; color: var(--muted); }
+  kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+
+  .wallets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr); gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; transition: box-shadow .4s, border-color .4s; }
+  .card .who { font-size: 11px; font-weight: 700; letter-spacing: .07em; color: var(--c); display: flex; align-items: center; gap: 6px; }
+  .card .who::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  .card .sol { font: 600 22px/1.2 var(--mono); margin-top: 4px; white-space: nowrap; }
+  .card .sol small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .card .addr { font: 12px var(--mono); color: var(--muted); }
+  .card.changed { border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
+  .stake .state { font-weight: 700; font-size: 16px; margin-top: 4px; }
+  .stake .state.locked { color: var(--ok); } .stake .state.open { color: var(--warn); } .stake .state.none { color: var(--muted); }
+  .stake .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .cols { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+  .col:last-child { border-right: 0; }
+  .col h2 { margin: 0; padding: 10px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .col h2 button { text-transform: none; letter-spacing: 0; font-size: 12px; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--muted); cursor: pointer; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; scrollbar-width: thin; scrollbar-color: var(--subtle) transparent; }
+
+  .group { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 14px 0 6px; }
+  .group:first-child { margin-top: 0; }
+  .step { display: flex; gap: 10px; width: 100%; text-align: left; margin: 0 0 6px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; transition: background .15s, border-color .15s; }
+  .step:hover:not(:disabled) { background: var(--raised); }
+  .step:focus-visible, .seg button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .step:disabled { cursor: progress; opacity: .55; }
+  .step.next { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); }
+  .n { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c); color: var(--c); display: grid; place-items: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
+  .step.done .n { background: var(--c); color: var(--bg); }
+  .step .who { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--c); }
+  .step .label { font-weight: 600; }
+  .step .expect { font-size: 12.5px; color: var(--muted); }
+
+  .story .entry { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .entry .title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .chip { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--bg); background: var(--c); border-radius: 6px; padding: 2px 7px; }
+  .entry .banner { color: var(--muted); margin-top: 4px; }
+  .entry .banner b { color: var(--text); font-weight: 600; }
+  .entry .cmd { font: 12.5px/1.5 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; margin-top: 8px; white-space: pre-wrap; word-break: break-all; }
+  .entry .detail { font: 12.5px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; margin-top: 4px; }
+  .verdict { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-weight: 700; font-size: 17px; line-height: 1.35; }
+  .verdict.ok { background: var(--ok-soft); color: var(--ok); }
+  .verdict.bad { background: var(--bad-soft); color: var(--bad); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.stolen { background: var(--bad-soft); color: var(--bad); font-size: 19px; border: 1px solid var(--bad); }
+  .entry a { display: inline-block; margin-top: 8px; color: var(--primary); font-size: 13px; text-decoration: none; }
+  .entry a:hover { text-decoration: underline; }
+  .waiting { color: var(--muted); margin-top: 10px; display: flex; align-items: center; gap: 8px; }
+  .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--subtle); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { color: var(--muted); text-align: center; margin-top: 40px; }
+
+  .net { font: 12.5px/1.55 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+  .net .sep { display: block; color: var(--text); font-weight: 600; margin: 14px 0 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .net .sep:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+  .net .role-owner { color: var(--owner); } .net .role-thief { color: var(--thief); } .net .role-second { color: var(--second); } .net .role-new { color: var(--new); }
+  .net .good { color: var(--ok); } .net .err { color: var(--bad); } .net .ins { color: var(--primary); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 1100px) {
+    body { overflow: auto; } .page { height: auto; }
+    .wallets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols { grid-template-columns: 1fr; } .col { border-right: 0; border-bottom: 1px solid var(--line); } .scroll { max-height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="brand"><span class="logo" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </span>Stakeward</div>
+    <div class="seg" id="network" aria-label="Network">Network <span id="networks"></span></div>
+    <span class="spacer"></span>
+    <div class="seg">Lock for <span id="durations"></span></div>
+    <span class="hint"><kbd>Enter</kbd> next step</span>
+  </header>
+
+  <section class="wallets" id="wallets" aria-label="Demo wallets"></section>
+
+  <div class="cols">
+    <div class="col">
+      <h2>Scenario</h2>
+      <div class="scroll" id="steps"></div>
+    </div>
+    <div class="col">
+      <h2>What happened <button id="clear" type="button">Clear</button></h2>
+      <div class="scroll story" id="story" aria-live="polite"><div class="empty">Press a step on the left, or Enter.</div></div>
+    </div>
+    <div class="col">
+      <h2>Solana network <span id="netstate"></span></h2>
+      <div class="scroll net" id="net"><span class="empty">Everything the CLI and the network answer shows up here.</span></div>
+    </div>
+  </div>
+</div>
+<script>
+const STEPS = /*STEPS*/[];
+const DURATIONS = ['10m', '1h', '6mo', '12mo'];
+const WHO = { owner: 'OWNER', thief: 'THIEF', second: 'SECOND KEY', new: 'NEW WALLET', setup: 'SETUP' };
+const WALLETS = [
+  ['MAIN KEY', 'owner', 'Owner · main key'], ['SECOND KEY', 'second', 'Second key'],
+  ['NEW WALLET', 'new', 'New wallet'], ['THIEF', 'thief', 'Thief'],
+];
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+let duration = '6mo';
+let busy = false;
+let next = STEPS.findIndex((s) => s.group === 'Without a lock');
+
+for (const d of DURATIONS) {
+  const b = el('button', '', d);
+  b.type = 'button';
+  b.setAttribute('aria-pressed', String(d === duration));
+  b.onclick = () => { duration = d; for (const x of $('durations').children) x.setAttribute('aria-pressed', String(x.textContent === d)); };
+  $('durations').append(b);
+}
+
+// Wallet cards
+const cards = {};
+let last = {};
+for (const [name, role, title] of WALLETS) {
+  const c = el('div', 'card');
+  c.style.setProperty('--c', `var(--${role})`);
+  c.append(el('div', 'who', title), el('div', 'sol', '…'), el('div', 'addr', ''));
+  cards[name] = c;
+  $('wallets').append(c);
+}
+const stakeCard = el('div', 'card stake');
+stakeCard.style.setProperty('--c', 'var(--primary)');
+stakeCard.append(el('div', 'who', 'Current stake account'), el('div', 'state none', '…'), el('div', 'meta', ''));
+$('wallets').append(stakeCard);
+
+function setSol(node, sol) {
+  node.replaceChildren(document.createTextNode(sol ? Number(sol).toFixed(4) : '—'), ' ', el('small', '', 'SOL'));
+}
+
+// Network switch: the choice is saved by `sw net`, so the terminals follow it too. Local starts a validator.
+let network = '';
+function showNetwork(n) {
+  network = n.name;
+  const labels = { devnet: 'Public devnet', rpc: n.rpcLabel || 'RPC', local: 'Local' };
+  const box = $('networks');
+  if (!box.children.length) {
+    for (const name of ['devnet', 'rpc', 'local']) {
+      const b = el('button', '', labels[name]);
+      b.type = 'button';
+      b.dataset.net = name;
+      b.onclick = () => {
+        if (name === network) return;
+        stream(`/net/${name}`, { role: 'setup', label: `Switch to ${labels[name]}` }, () => {});
+      };
+      box.append(b);
+    }
+  }
+  for (const b of box.children) {
+    b.textContent = labels[b.dataset.net];
+    b.setAttribute('aria-pressed', String(b.dataset.net === n.name));
+    // demo.env without its own RPC: "rpc" is the public devnet again.
+    b.hidden = b.dataset.net === 'rpc' && n.rpcLabel === 'public devnet';
+  }
+}
+
+async function refresh() {
+  try {
+    const { network: net, wallets, stake } = await (await fetch('/state')).json();
+    if (net?.name) showNetwork(net);
+    for (const w of wallets) {
+      const c = w.name === 'STAKE' ? null : cards[w.name];
+      if (!c) continue;
+      setSol(c.querySelector('.sol'), w.sol);
+      c.querySelector('.addr').textContent = w.address;
+      if (last[w.name] !== undefined && last[w.name] !== w.sol) { c.classList.add('changed'); setTimeout(() => c.classList.remove('changed'), 2500); }
+      last[w.name] = w.sol;
+    }
+    const state = stakeCard.querySelector('.state');
+    const meta = stakeCard.querySelector('.meta');
+    const sol = wallets.find((w) => w.name === 'STAKE')?.sol;
+    if (!stake) {
+      state.className = 'state none';
+      state.textContent = 'No live stake account';
+      meta.textContent = 'Stake 0.1 SOL to start';
+    } else {
+      const locked = stake.plain.includes('PROTECTED');
+      state.className = `state ${locked ? 'locked' : 'open'}`;
+      state.textContent = stake.plain.replace(/, second key:.*$/, '').replace(/^(🔓 NOT LOCKED):.*$/u, '$1');
+      meta.textContent = `${sol ? Number(sol).toFixed(4) + ' SOL · ' : ''}owner: ${stake.owner} · ${stake.address.slice(0, 4)}…${stake.address.slice(-4)}`;
+    }
+  } catch { /* the cards keep the last values */ }
+}
+
+// Steps
+const buttons = [];
+let group = '';
+let n = 0;
+STEPS.forEach((step, i) => {
+  if (step.group !== group) { group = step.group; $('steps').append(el('div', 'group', group)); }
+  n += 1;
+  const b = el('button', 'step');
+  b.type = 'button';
+  b.style.setProperty('--c', `var(--${step.role})`);
+  const body = el('span');
+  body.append(el('div', 'who', WHO[step.role]), el('div', 'label', step.label), el('div', 'expect', step.expect));
+  b.append(el('span', 'n', String(n)), body);
+  b.onclick = () => run(i);
+  buttons.push(b);
+  $('steps').append(b);
+});
+function mark() { buttons.forEach((b, i) => b.classList.toggle('next', i === next)); }
+mark();
+
+// Network pane: role names, program results and instructions get a colour.
+const NET = /(\[MAIN KEY\]|\[SECOND KEY\]|\[NEW WALLET\]|\[THIEF\]|Program log: ERROR[^\n]*|failed: [^\n]*|Status: Error[^\n]*|Error[^\n]*|Status: Ok|success|Program log: Instruction: \w+)/;
+const NET_CLASS = (t) => t.startsWith('[MAIN') ? 'role-owner' : t.startsWith('[SECOND') ? 'role-second' : t.startsWith('[NEW') ? 'role-new'
+  : t.startsWith('[THIEF') ? 'role-thief' : (t === 'success' || t === 'Status: Ok') ? 'good' : t.startsWith('Program log: Instruction') ? 'ins' : 'err';
+function netAppend(text) {
+  const pane = $('net');
+  const follow = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 40;
+  for (const part of text.replace(/\x1b\[\d+m/g, '').split(NET)) {
+    if (!part) continue;
+    pane.append(NET.test(part) && part.match(NET)[0] === part ? el('span', NET_CLASS(part), part) : document.createTextNode(part));
+  }
+  if (follow) pane.scrollTop = pane.scrollHeight;
+}
+
+// Story pane: sw.sh lines by their first character.
+function storyLine(entry, line) {
+  if (!line.trim()) return;
+  if (line.startsWith('▶ ')) {
+    const [who, ...rest] = line.slice(2).split('  ');
+    const p = el('div', 'banner');
+    p.append(el('b', '', who), ' ', rest.join(' ').trim());
+    entry.append(p);
+  } else if (line.startsWith('$ ')) {
+    entry.append(el('div', 'cmd', line));
+  } else if (/^(✅|⛔|🚨|⚠)/u.test(line)) {
+    const cls = line.startsWith('✅') ? 'ok' : line.startsWith('🚨') ? 'stolen' : line.startsWith('⚠') ? 'warn' : 'bad';
+    entry.append(el('div', `verdict ${cls}`, line));
+  } else if (line.includes('https://explorer.solana.com/tx/')) {
+    const a = el('a', '', 'View the transaction on Solana Explorer ↗');
+    a.href = line.trim(); a.target = '_blank'; a.rel = 'noreferrer';
+    entry.append(a);
+  } else {
+    entry.append(el('div', 'detail', line));
+  }
+}
+
+function run(i) {
+  return stream(`/run/${STEPS[i].id}?duration=${duration}`, STEPS[i], () => {
+    buttons[i].classList.add('done');
+    next = i + 1 < STEPS.length ? i + 1 : -1;
+    mark();
+  });
+}
+
+// One request whose sw.sh output goes to the story pane and whose network output goes to the network pane.
+async function stream(url, step, after) {
+  if (busy) return;
+  busy = true;
+  buttons.forEach((b) => (b.disabled = true));
+  for (const b of $('networks').children) b.disabled = true;
+  const story = $('story');
+  story.querySelector('.empty')?.remove();
+  $('net').querySelector('.empty')?.remove();
+  const entry = el('div', 'entry');
+  entry.style.setProperty('--c', `var(--${step.role})`);
+  const title = el('div', 'title');
+  title.append(el('span', 'chip', WHO[step.role]), step.label);
+  const wait = el('div', 'waiting');
+  wait.append(el('span', 'spin'), 'Waiting for Solana…');
+  entry.append(title, wait);
+  story.append(entry);
+  story.scrollTop = story.scrollHeight;
+  const sep = el('span', 'sep', `${new Date().toLocaleTimeString()}  ·  ${WHO[step.role]} · ${step.label}`);
+  $('net').append(sep);
+  $('net').scrollTop = $('net').scrollHeight; // each step starts at its own output; scrolling up pauses the follow
+  $('netstate').textContent = 'receiving…';
+  try {
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', out = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const msg = JSON.parse(buf.slice(0, nl));
+        buf = buf.slice(nl + 1);
+        if (msg.t === 'net') netAppend(msg.s);
+        if (msg.t === 'out') {
+          out += msg.s;
+          let k;
+          while ((k = out.indexOf('\n')) >= 0) {
+            storyLine(entry, out.slice(0, k));
+            out = out.slice(k + 1);
+            entry.append(wait); // the spinner stays last
+          }
+        }
+      }
+      story.scrollTop = story.scrollHeight;
+    }
+    if (out) storyLine(entry, out);
+  } catch (e) {
+    entry.append(el('div', 'verdict bad', `The demo server did not answer (${e.message}). Is "sw ui" still running?`));
+  }
+  wait.remove();
+  story.scrollTop = story.scrollHeight;
+  $('netstate').textContent = '';
+  after();
+  buttons.forEach((b) => (b.disabled = false));
+  for (const b of $('networks').children) b.disabled = false;
+  busy = false;
+  refresh();
+}
+
+$('clear').onclick = () => {
+  $('story').replaceChildren(el('div', 'empty', 'Press a step on the left, or Enter.'));
+  $('net').replaceChildren();
+  buttons.forEach((b) => b.classList.remove('done'));
+  next = STEPS.findIndex((s) => s.group === 'Without a lock');
+  mark();
+};
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.target instanceof HTMLButtonElement || next < 0) return;
+  e.preventDefault();
+  run(next);
+});
+
+refresh();
+</script>
+</body>
+</html>

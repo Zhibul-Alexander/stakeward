@@ -31,7 +31,7 @@ export function transactionFee(signatures: number): bigint {
 /**
  * The same wire format as core's buildTransaction: a legacy message with [SetComputeUnitLimit, SetComputeUnitPrice]
  * and then `instructions`, on a blockhash lifetime. Used for setup transactions and for the few check instructions the
- * product never builds (the thief's AuthorizeChecked, Split, Merge).
+ * product never builds (the thief's AuthorizeChecked, Split, Merge and the bypass attempts of check 15).
  */
 export function buildFormatted(
   instructions: readonly Instruction[],

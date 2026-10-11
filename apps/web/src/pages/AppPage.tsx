@@ -1,8 +1,10 @@
 import type { Address } from '@solana/kit';
-import { useSearchParams } from 'wouter';
+import { SproutIcon } from 'lucide-react';
+import { Link, useSearchParams } from 'wouter';
 import { fetchHealth, type Health } from '@/api/health';
 import { Page } from '@/components/layout/Page';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
 import { useSlot } from '@/ports';
 import { AlertFromLink } from './alert/AlertFromLink.tsx';
@@ -51,6 +53,17 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
           aside={<KeySlot role="main" layout="inline" connectLabel={t('app.connect.mainButton')} onConnected={show} />}
         />
         {address === null ? null : <AccountsResults key={address} address={address} loadHealth={loadHealth} />}
+        {/* Stake more SOL of the connected main key (D139): some wallets cannot stake on devnet. Only on its own view. */}
+        {main?.ready === true && address === main.slot.address ? (
+          <div data-slot="stake-entry">
+            <Button asChild variant="outline">
+              <Link href="/stake">
+                <SproutIcon aria-hidden="true" />
+                {t('stake.entry')}
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
       <ForgetKeys />
     </Page>
