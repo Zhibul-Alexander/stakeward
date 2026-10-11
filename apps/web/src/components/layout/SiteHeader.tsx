@@ -46,16 +46,18 @@ export function SiteHeader() {
             </>
           ) : null}
         </div>
-        <nav aria-label={t('nav.label')} className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <nav aria-label={t('nav.label')} className="flex w-full items-center gap-2 sm:w-auto">
           <NavLink href="/rescue" icon={LifeBuoyIcon}>
             {t('nav.rescue')}
           </NavLink>
           <NavLink href="/demo" icon={PlayIcon}>
-            {t('nav.demo')}
+            {/* On devnet the 360 px row also holds the challenge link: the demo is then an icon, named for screen readers. */}
+            <span className={IS_DEVNET ? 'sr-only sm:not-sr-only' : undefined}>{t('nav.demo')}</span>
           </NavLink>
           {IS_DEVNET ? (
             <NavLink href="/challenge" icon={SwordsIcon}>
-              {t('nav.challenge')}
+              {/* Icon only below 768 px, where the four links share one row; the name stays for screen readers. */}
+              <span className="sr-only md:not-sr-only">{t('nav.challenge')}</span>
             </NavLink>
           ) : null}
           <NavLink href="/app">{t('nav.app')}</NavLink>
