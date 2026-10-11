@@ -16,7 +16,7 @@ owner to fill in.
 - [ ] Every incident below has a source link (section 11): links found and opened on 6 October 2026; the owner opens
       and checks each one before recording.
 - [ ] The wallet table on the landing page shows the wallet matrix results, and section 4 says the same.
-- [ ] Pitch video (2-3 min) and product demo (under 3 min) are recorded from the scripts in sections 6 and 7.
+- [ ] Pitch video (up to 2 min, on camera) and product demo (under 3 min) are recorded from [VIDEO.md](VIDEO.md).
 - [ ] Logo uploaded: `docs/brand/logo-512.png` (PNG) or `docs/brand/logo.svg`.
 - [ ] Wording: Stakeward is a lock on stake accounts, not a wallet and not two-factor authentication. Say "second
       key", never "backup key" or "guardian".
@@ -157,79 +157,14 @@ Plain words, short sentences. Roles are always Main key, Second key and New wall
 (withdrawer, custodian, staker) only in technical answers. Every risk comes with its date or condition. No claim
 beyond what docs/gate.md and the tests show: say "not tested yet" where that is true (Ledger, Solflare, Backpack).
 
-## 6. Pitch video script (target 2:30)
+## 6. Pitch video script
 
-About 310 words of voice-over. Screen recordings come from the devnet site and docs/gate.md; the incident slide
-names its sources on screen.
+Moved to [VIDEO.md](VIDEO.md), section 1 (11 October 2026): Colosseum asks for up to 2:00, with the team on camera.
 
-| Time | On screen | Voice-over |
-| --- | --- | --- |
-| 0:00-0:20 | Black slide, two lines appear: "8 Sep 2025: about 192,600 SOL, SwissBorg" and "31 Jan 2026: 261,854 SOL, Step Finance". Sources in small type: Kiln post-mortem, The Block (section 11). | On the 8th of September 2025, SwissBorg lost about 192,600 staked SOL. A hacked staking partner had slipped hidden instructions into a routine unstaking transaction: they handed the stake accounts' withdraw key to the attacker, and SwissBorg's own signers approved it. In January 2026, Step Finance lost 261,854 staked SOL after attackers got into its executives' devices. |
-| 0:20-0:40 | Diagram: a stake account with one key; the key copied by a hooded figure; arrow out. | Native stake on Solana answers to one key. Whoever gets it, through a phished seed phrase, malware, or a hidden step in a transaction you approved, can withdraw your stake, or make it theirs. |
-| 0:40-1:05 | The same diagram, a padlock appears on the account with a second key. Then the stake program source, `Meta::set_lockup`, highlighted. | But every stake account has a lock built in: the lockup. While it holds, withdrawing, or changing who can withdraw, also needs the lock's own key. The docs say you can only set it when the account is created. The stake program's code says otherwise, and we proved it on mainnet. |
-| 1:05-1:35 | Devnet site: landing, accounts page "Not protected", the protect wizard, "Review and sign", Done. | Stakeward turns that lock on for the stake you already have, with a second key you control, from a different seed phrase. Your stake keeps earning. A thief with your main key cannot withdraw it and cannot hand it to themselves. The network itself refuses. |
-| 1:35-1:55 | Terminal: `Error: lockup has not yet expired`. Phone: Telegram alert "was deactivated". Rescue screen "2 stake accounts are safe". | Stakeward watches your stake every two minutes and messages you in Telegram if anything changes. If your main key is stolen, your main key, your second key and a new wallet sign together, and the stake moves out of the thief's reach. |
-| 1:55-2:15 | Signing screen close-up: "This transaction cannot move your SOL", "Stakeward never asks for your seed phrase". Then the recovery card. | Stakeward never holds your SOL or your keys. It has no program and no token. Your browser builds every transaction, your wallets sign it, and you see what those exact bytes do before you approve. If Stakeward disappears, the lock keeps working, and your printed recovery card has the command-line steps. |
-| 2:15-2:25 | Landing section "Your second key: read this first". | One honest limit: whoever holds your second key can keep your stake locked. Guard it like your main key. |
-| 2:25-2:35 | `/stats` page, then the logo and the repository URL. | Stakeward is free and open source. [TODO owner: "Since launch, N stake accounts and X SOL are under lock."] Stakeward: a lock on your staked SOL, enforced by Solana itself. |
+## 7. Product demo script
 
-## 7. Product demo script (devnet, under 3:00)
-
-The story: protect, key theft, the network refuses the thief, the alert, the rescue. Everything runs on the devnet
-site with devnet SOL. In the voice-over, call it devnet once at the start.
-
-### Before recording
-
-1. Three Phantom accounts, each from its own new seed phrase, created only for this demo: **Main key**, **Second
-   key**, **New wallet**. (Phantom is the wallet tested so far. If another wallet passes the matrix before
-   recording, put the New wallet there: fewer account switches.)
-2. Fund on devnet: Main key 0.05 SOL, New wallet 0.02 SOL (the rescue asks for at least its fees and the
-   link-signing deposit and suggests 0.01 SOL). The Second key needs none.
-3. `pnpm dev-accounts <MAIN_KEY_ADDRESS>` creates a delegated (1 SOL) and an undelegated (0.1 SOL) stake account,
-   both without a lock. The devnet funder key pays about 1.104 SOL (D43). Use the delegated one as `<STAKE>` below.
-4. The thief's terminal (Solana CLI 4.3.0, devnet):
-   - `solana-keygen recover 'prompt://?key=0/0' --outfile stolen-main.json` with the Main key's demo seed phrase,
-     then check that `solana-keygen pubkey stolen-main.json` prints the Main key's address. This plays the stolen
-     key. Only ever with a throwaway demo wallet.
-   - `solana-keygen new --no-bip39-passphrase --outfile thief.json`, fund it with 0.05 devnet SOL.
-5. Telegram: open `@stakeward_dev_bot` with `/start <MAIN_KEY_ADDRESS>` on the phone; also have Telegram Desktop
-   open on the recording computer.
-6. Rehearse once end to end. Expected CLI output is below; if a line differs, film the failed transaction in
-   Solana Explorer instead (docs/gate.md has the same failures on devnet).
-7. Browser at 1280 px, light theme, zoom 110%. Close other tabs and wallet pop-ups.
-8. Phantom may block the rescue signatures: on 10 Oct it showed "Request blocked" ("You are allowing this website
-   to transfer away your staked SOL") on dev, where on 8 Oct it only warned (D116). In the take, press "Proceed
-   anyway (unsafe)" and keep it on screen; voice-over below. If the wallet offers no way through, film the rescue
-   with the recovery card's CLI commands instead (docs/recovery-cli.md).
-
-### Script
-
-| Time | On screen | Voice-over |
-| --- | --- | --- |
-| 0:00-0:10 | Landing page with the "Solana devnet" note. | This is Stakeward on devnet. I have stake, and I am about to have my main key stolen. |
-| 0:10-0:25 | Paste the Main key address in "Check your stake". `/app` lists two stake accounts, both "Not protected"; "Last checked ... ago" at the top. | First, look. No wallet connected, nothing to sign: two stake accounts, not protected. |
-| 0:25-0:40 | Press Protect. Step "Accounts": connect the Main key, both accounts ticked. Step "Second key": connect the Second key; the page warns that both keys are accounts of one wallet app; tick "My second key comes from a different seed phrase". | I connect my main key, then my second key. Both sit in Phantom here, but I imported the second key from its own seed phrase, and the page reminds me to check exactly that. |
-| 0:40-0:50 | Step "Lock period": choose "1 hour (devnet test)". The risk note with the end date. | On devnet I lock for an hour. On mainnet it is 1 to 12 months, and the risk is spelled out before I sign. |
-| 0:50-1:05 | "Review and sign": both stake accounts in full, who signs, the network fee, "This transaction cannot move your SOL", "Stakeward never asks for your seed phrase". Sign as Main key in Phantom, switch account, sign as Second key. | Both keys sign. The summary is read from the exact bytes my wallet receives. |
-| 1:05-1:15 | "Sending", "Waiting for the network to confirm", then Done: "2 stake accounts are protected", the lock's end date next to the Telegram button, recovery card. | Done, checked on the network. With Telegram on, I get an alert on any change and a reminder before the lock ends. |
-| 1:15-1:25 | Terminal, title "The thief has my main key". `solana deactivate-stake <STAKE> --stake-authority stolen-main.json --fee-payer thief.json --url devnet` succeeds. | Now a thief has my main key. They can stop my staking. That works. |
-| 1:25-1:35 | `solana withdraw-stake <STAKE> <THIEF_ADDRESS> ALL --withdraw-authority stolen-main.json --fee-payer thief.json --url devnet` prints `Error: lockup has not yet expired`. | But withdrawing? The Solana network refuses: the lock needs my second key. |
-| 1:35-1:45 | `solana stake-authorize-checked <STAKE> --withdraw-authority stolen-main.json --new-withdraw-authority thief.json --fee-payer thief.json --url devnet` prints `Error: custodian address not present`. | The hidden trick from the SwissBorg case, handing the stake to themselves, is refused too. |
-| 1:45-2:00 | Cut ("2 minutes later"). Phone: the bot's message "Stake <short address> was deactivated. If this was not you, your main key may be stolen. Your SOL cannot be withdrawn without the second key." with the button "Open Rescue". | Two minutes later my phone tells me. |
-| 2:00-2:10 | Telegram Desktop: press "Open Rescue". `/rescue` opens with the Main key filled in; "Find its stake" shows "Your stake is locked until ...". | One tap opens the rescue with my main key filled in. |
-| 2:10-2:20 | Step "New wallet": connect the New wallet, tick "My new wallet comes from a new seed phrase that no one else has seen", balance check passes. Step "Keys": the Second key co-signs here. | I connect a new wallet from a new seed phrase. It pays the fees, so the stolen key never has to. |
-| 2:20-2:35 | Step "Move": "New owner of your stake" with the full address, and the warning (already shown on the New wallet and Keys steps) that the new wallet shares Phantom with the main key and the second key. "Create the link-signing account", then each stake account signed by the New wallet, the Main key and the Second key (montage at 4x, Phantom account switches visible). | Three keys sign: my old main key, which I still have, my second key and the new wallet. Each transaction runs on a durable nonce, so nothing expires while I switch wallets. (If Phantom blocks it, add: "Phantom blocks this, because a thief's transaction looks the same. Here all three keys are mine, and I checked every address on screen.") |
-| 2:35-2:45 | Done: "2 stake accounts are safe", "Now controlled by your new wallet", "Earn rewards again". | My stake now belongs to the new wallet, still locked. The thief's key controls nothing. |
-| 2:45-2:55 | Solana Explorer on one stake account: stake and withdraw authority = New wallet, lockup custodian = Second key. End card: logo, repository URL, "Free. Non-custodial. No program, no token." | Verified on chain. Stakeward: free, open source, and it never touches your SOL. |
-
-### Optional inserts (only if the cut stays under 3:00)
-
-- 5 s, in the protect step: reject once in the Second key's wallet. The page says "Nothing was sent" and offers
-  "Try again". Voice-over: "If something fails, nothing is sent, and you can try again."
-- 5 s, after the rescue: the bot's next message "The main key of stake ... changed to ...". Voice-over: "The
-  alerts follow the stake to the new wallet."
-- 5 s, end: the recovery card in print preview. Voice-over: "If Stakeward goes down, the lock keeps working, and
-  this card has the commands."
+Moved to [VIDEO.md](VIDEO.md), section 2 (11 October 2026): under 3:00, devnet, updated for the current site (custom
+lock date, Phantom's block screens, the rescue without a link-signing account when every key signs here, D121).
 
 ## 8. Go-to-market and demand evidence
 
