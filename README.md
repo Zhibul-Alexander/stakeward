@@ -2,9 +2,9 @@
 
 Stakeward puts a lock on the Solana stake accounts you already have. The lock is built into Solana's own stake program, and it answers to your **second key**: a wallet of yours made from a different seed phrase. While the lock holds, a thief who gets your **main key**, the wallet you stake from, cannot withdraw your stake or make it theirs. You can still move the stake to a new wallet with both keys.
 
-[![Stakeward in 51 seconds: watch the video](docs/media/stakeward-promo.jpg)](docs/media/stakeward-promo.mp4)
+[![Stakeward in 51 seconds: watch the video](docs/media/stakeward-promo.gif)](docs/media/stakeward-promo.mp4)
 
-▶ [Watch Stakeward in 51 seconds](docs/media/stakeward-promo.mp4)
+▶ [Watch with sound (51 seconds)](docs/media/stakeward-promo.mp4)
 
 Stakeward never holds your SOL or your keys. Your browser builds every transaction, your own wallets sign it, and Stakeward has no program of its own on the network. It is free: you pay only Solana network fees.
 
