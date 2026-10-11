@@ -1,6 +1,7 @@
 import { Link, useParams } from 'wouter';
 import { Page } from '@/components/layout/Page';
-import type { Load } from '@/hooks/use-load';
+import { fetchSolPrice } from '@/api/sol-price';
+import { useLoad, type Load } from '@/hooks/use-load';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { t, type MessageKey } from '@/i18n';
 import { Alerts } from './landing/Alerts.tsx';
@@ -44,6 +45,8 @@ export function LearnPage() {
   useHashTarget();
   const deposit = useNonceDeposit();
   const faqParams = useFaqParams(deposit);
+  // The SOL/USD rate only for the Costs tab (D132); a failed read just leaves the dollar figures out.
+  const solUsd = useLoad(tab === 'costs' ? 'sol-usd' : null, () => fetchSolPrice());
   return (
     <Page>
       <PageHeader title={t('learn.title')} lead={t('learn.lead')} />
@@ -59,20 +62,30 @@ export function LearnPage() {
           </Link>
         ))}
       </nav>
-      <LearnTabBody tab={tab} deposit={deposit} params={faqParams} />
+      <LearnTabBody tab={tab} deposit={deposit} params={faqParams} solUsd={solUsd} />
     </Page>
   );
 }
 
 /** What one tab shows. */
-export function LearnTabBody({ tab, deposit, params }: { tab: LearnTab; deposit: Load<bigint>; params: Readonly<Record<string, string>> }) {
+export function LearnTabBody({
+  tab,
+  deposit,
+  params,
+  solUsd,
+}: {
+  tab: LearnTab;
+  deposit: Load<bigint>;
+  params: Readonly<Record<string, string>>;
+  solUsd?: Load<number>;
+}) {
   switch (tab) {
     case 'faq':
       return <Faq params={params} />;
     case 'alerts':
       return <Alerts params={params} />;
     case 'costs':
-      return <Fees deposit={deposit} />;
+      return <Fees deposit={deposit} {...(solUsd === undefined ? {} : { solUsd })} />;
     case 'wallets':
       return <Wallets />;
     case 'safety':

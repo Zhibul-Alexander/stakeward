@@ -165,7 +165,9 @@
       "deposit": "Link-signing deposit",
       "depositPayer": "Comes back when you close the account.",
       "depositUnknown": "A small amount set by the network",
-      "depositFallback": "a small deposit"
+      "depositFallback": "a small deposit",
+      "usd": "≈ {amount}",
+      "usdRate": "Dollar amounts are rough, at about {rate} per SOL. You always pay in SOL."
     },
     "wallets": {
       "title": "Which wallets work",
