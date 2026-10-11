@@ -1,7 +1,7 @@
 import { Button, ErrorState, SummaryBar } from '@stakeward/design-system';
 import type { Address } from '@solana/kit';
 import { formatSol } from '@stakeward/core';
-import { RefreshCwIcon, SendIcon } from 'lucide-react';
+import { RefreshCwIcon, SendIcon, Share2Icon } from 'lucide-react';
 import { MonitoringStatus } from '../../apps/web/src/pages/app/MonitoringStatus';
 import { buildAccountsView, type AccountsView } from '../../apps/web/src/pages/app/view';
 import { SAMPLE, SAMPLE_ERROR_DETAIL, sampleRows, type SampleRow } from '../../apps/web/src/pages/dev-ui/samples';
@@ -64,6 +64,22 @@ function RescueNote() {
   );
 }
 
+/** /app's `footer`: the public proof page of this main key's stake, small and secondary. */
+function ShareProof() {
+  return (
+    <a
+      href={`/proof/${SAMPLE.mainKey}`}
+      onClick={(event) => {
+        event.preventDefault();
+      }}
+      className="inline-flex items-center gap-1 rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+    >
+      <Share2Icon aria-hidden="true" className="size-4" />
+      Share proof page
+    </a>
+  );
+}
+
 /** /app's Summary for a loaded view: the headline, the accounts line, and the new-device line when it applies. */
 function Summary({ view, minutesAgo }: { view: AccountsView; minutesAgo: number }) {
   const owned = view.owned.length;
@@ -90,12 +106,13 @@ function Summary({ view, minutesAgo }: { view: AccountsView; minutesAgo: number 
       }
       monitoring={checked(minutesAgo)}
       tools={<Tools />}
+      footer={owned === 0 ? undefined : <ShareProof />}
       action={owned === 0 ? undefined : <RescueNote />}
     />
   );
 }
 
-/** The answer at the top of /app: how much is protected, how many accounts, how fresh monitoring is, and Rescue. */
+/** The answer at the top of /app: how much is protected, how many accounts, how fresh monitoring is, Rescue, and the proof page. */
 export const Ready = () => <Summary view={viewOf(OWNED, [SAMPLE.secondKey])} minutesAgo={2} />;
 
 /** Reading the accounts: the answer as skeletons; monitoring and the tools already there. */

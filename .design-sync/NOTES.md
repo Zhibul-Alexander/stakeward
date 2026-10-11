@@ -8,6 +8,8 @@
   VITE_CLUSTER=mainnet) and tsc declarations. Run it before the converter whenever apps/web/src changed.
 - dist/index.js keeps every npm dependency as an import (like a published library). Bundling them in Vite left
   CommonJS `require("react")` calls that the converter's React shim cannot reach ("Dynamic require of react").
+- tsc runs on a generated apps/web/.ds-pkg/tsconfig.json whose `files` are the DS modules only (their imports follow).
+  The whole site breaks on macOS: pages/landing/Faq.tsx and faq.ts both emit Faq.d.ts on a case-insensitive disk.
 - tsc emits declarations rooted at the repo (types/apps/web/src/...); the script rewrites `@/` and `.ts(x)` import
   specifiers to plain relative ones, since ts-morph knows neither.
 - Vite lib mode inlines fonts as data URIs and the converter drops those @font-face blocks ("11 dead @font-face
@@ -19,7 +21,8 @@
 - Groups: ui primitives -> "primitives" through the category stub .design-sync/docs/primitives.md (cfg.docsMap: the
   converter treats a ui/ dir as generic); product parts whose names do not match their file are pinned with
   cfg.componentSrcMap so they group under "product" and get their JSDoc.
-- The render check needs `LD_LIBRARY_PATH=$PWD/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu` (scripts/playwright-local-libs.sh)
+- On macOS the render check needs nothing extra (playwright 1.63.0 in .ds-sync, chromium-1243 in
+  ~/Library/Caches/ms-playwright). On Linux it needs `LD_LIBRARY_PATH=$PWD/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu` (scripts/playwright-local-libs.sh)
   and playwright 1.63.0 in .ds-sync (matches the cached chromium-1243).
 
 - Icons: build-package.mjs writes apps/web/.ds-pkg/icons.js re-exporting every lucide-react icon the site imports;
@@ -86,6 +89,12 @@
   /dev/cosign; the signing panel shows inspector refusals as ErrorState, /cosign as StopPanel), the QrCode too-long
   fallback (link.test.ts proves the largest transaction still fits). Never rendered: a disabled Checkbox, Input or
   whole RadioGroup, aria-invalid radios; AccountRow hint={true}.
+- Components added after the first sync (2026-10-11): AlertExplanation (/alert), AskAi (/check, /app, /proof),
+  ProtectionCheck (/app), TransactionCheck and Textarea (/check). ProtectionCheck's empty and error states are DS-only
+  (/app passes only loading/ready); Textarea is never disabled. pages/app/ProtectionCheckSection's setupCheckPrompt is
+  not importable in previews (it pulls @/ports, the wallet stack): AskAi prompts are built from DS exports + core
+  aiPrompt. TransactionCheck's danger and lookup-table reports need 900x1000; ProtectionCheck NeedsFixes overflows
+  700 px with three open rows, so it keeps two.
 - Separator appears only inside RadioCardGroup, before a danger option. RadioCardGroup shows its legend only in
   SignWhere; protect and extend use legendHidden under an h2.
 - en.json keys under devUi.sample.* are /dev/ui copy, not product copy (stepSign, connectionLost, protectTwo,
@@ -115,7 +124,8 @@
 ## Product issues seen while syncing (for the owner, not fixed here)
 
 - SummaryBar's docstring says `action` is for "Connect second key" and `footer` holds the rescue line; /app passes the
-  rescue note as `action` and uses neither footer nor a Connect button in the bar.
+  rescue note as `action`, no Connect button, and `footer` = the "Share proof page" link (/proof/<mainKey>, D124)
+  whenever the address owns stake accounts.
 - CountdownSkeleton draws 2 bars (label, time) but Countdown renders 3 lines (label, time, "Around HH:MM UTC on
   <date>"), a ~20 px layout shift when it loads.
 - On the selected lock-period card (bg-primary-soft) PeriodStep's inline date Skeleton (bg-subtle) is nearly invisible
@@ -136,7 +146,7 @@
   inlines fonts as data URIs (fonts come from cfg.extraFonts); DOM attributes of primitives are dropped from .d.ts by
   design (the conventions header says they pass through).
 - Not machine-checked: the <640 px layouts (captures are 900 px wide) and hover/focus states.
-- Toolchain at this sync: Node 24.21, pnpm, Vite 8.3, Tailwind 4.3.3, playwright 1.63 with chromium-1243 in
+- Toolchain at this sync: Node 24.21 (Linux, 2026-10-09) and Node 26.0 (macOS, 2026-10-11), pnpm, Vite 8.3, Tailwind 4.3.3, playwright 1.63 with chromium-1243 in
   ~/.cache/ms-playwright, LD_LIBRARY_PATH from scripts/playwright-local-libs.sh.
 
 ## Known render warns

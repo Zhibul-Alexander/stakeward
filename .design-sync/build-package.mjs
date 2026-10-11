@@ -138,10 +138,17 @@ await build({
 
 // 3. Declarations: tsc over apps/web/src with the site's tsconfig, emit only .d.ts. The source reaches into other
 // workspace folders, so the declaration tree is rooted at the repo: types/apps/web/src/...
+// Only the design-system files and what they import: on a case-insensitive disk pages/landing/Faq.tsx and faq.ts
+// would both emit Faq.d.ts (TS5056).
+const tsconfig = join(OUT, 'tsconfig.json');
+writeFileSync(
+  tsconfig,
+  JSON.stringify({ extends: '../tsconfig.json', include: [], files: files.map((f) => `../src/${f}`) }, null, 2),
+);
 const tsc = join(WEB, 'node_modules/.bin/tsc');
 execFileSync(
   tsc,
-  ['-p', join(WEB, 'tsconfig.json'), '--noEmit', 'false', '--declaration', '--emitDeclarationOnly', '--rootDir', ROOT, '--declarationDir', join(OUT, 'types')],
+  ['-p', tsconfig, '--noEmit', 'false', '--declaration', '--emitDeclarationOnly', '--rootDir', ROOT, '--declarationDir', join(OUT, 'types')],
   { stdio: 'inherit' },
 );
 

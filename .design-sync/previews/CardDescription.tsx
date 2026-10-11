@@ -9,8 +9,8 @@ export const UnderTitle = () => (
         <h3>Set up the link-signing account</h3>
       </CardTitle>
       <CardDescription>
-        Rescue always signs through a small signing account, so three wallets have time to sign. Your New wallet pays a
-        0.00144768 SOL deposit, returned when you close it.
+        A key that signs by link needs a small signing account, so the link stays valid until every wallet has signed.
+        Your New wallet pays a 0.00144768 SOL deposit, returned when you close it.
       </CardDescription>
     </CardHeader>
     <CardFooter>

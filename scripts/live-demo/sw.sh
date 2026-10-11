@@ -21,6 +21,7 @@ SW_THIEF_KEY="${SW_THIEF_KEY:-$SW_DIR/thief.json}"
 SW_FUNDER_KEY="${SW_FUNDER_KEY:-}"
 SW_VOTE="${SW_VOTE:-}"
 SW_ONCHAIN_FAILS="${SW_ONCHAIN_FAILS:-1}"
+SW_NETLOG="${SW_NETLOG:-1}"
 
 # The Solana CLI: PATH, then $SOLANA_BIN, then the default install location of the Anza installer.
 for dir in "${SOLANA_BIN:-}" "$HOME/.local/share/solana/install/active_release/bin"; do
@@ -49,6 +50,9 @@ say() {
   esac
   printf '\n%s\n' "${B}${color}▶ ${who}${N}${B}  ${what}${N}"
 }
+
+# The RPC URL without its API key: the screen is on a projector.
+shown_url() { printf '%s' "$SW_URL" | mask_key; }
 
 addr() { solana-keygen pubkey "$1" 2>/dev/null; }
 short() { local a="$1"; printf '%s…%s' "${a:0:4}" "${a: -4}"; }
@@ -133,8 +137,9 @@ lock_until() {
 
 # ---- Running a transaction ----
 
-# run <expect: ok|fail> <plain reason shown on rejection, may be empty> -- solana args...
-# Prints the command with role names, runs it, prints ACCEPTED or REJECTED and the explorer link.
+# run <expect: ok|fail|stolen (the thief is expected to get through)> <plain reason shown on rejection, may be empty> -- solana args...
+# Prints the command with role names, everything the CLI and the network answered (unless SW_NETLOG=0), then
+# ACCEPTED or REJECTED and the explorer link last, so the verdict is what stays on screen.
 run() {
   local expect="$1" reason="$2" out status sig labels shown f r
   shift 3
@@ -149,37 +154,72 @@ run() {
   printf '%s\n' "${D}\$ ${shown}${N}"
   out="$(solana "$@" --url "$SW_URL" 2>&1)"
   status=$?
+  out="$(printf '%s\n' "$out" | mask_key)"
   sig="$(printf '%s\n' "$out" | grep -oE '(Signature: |^)[1-9A-HJ-NP-Za-km-z]{80,90}$' | tail -1 | sed 's/^Signature: //')"
-  if [ $status -eq 0 ]; then
-    printf '%s\n' "$out" | grep -v '^Signature' | sed "$labels" | sed "s/^/  ${D}/;s/\$/${N}/" | grep -v "^  ${D}${N}\$" || true
-    if [ "$expect" = ok ]; then
-      printf '%s\n' "${G}${B}✅ ACCEPTED by Solana${N}"
-    else
-      printf '%s\n' "${Y}${B}⚠ ACCEPTED by Solana (this was expected to fail)${N}"
-    fi
-  else
-    printf '%s\n' "$out" | grep -E 'Error|error' | head -2 | sed "$labels" | sed "s/^/  ${D}/;s/\$/${N}/"
-    case "$out" in
-      # The CLI read the stake account and refused to build the transaction: nothing was sent.
-      *'RPC request error: Invalid authority'*)
-        printf '%s\n' "${R}${B}⛔ REJECTED: $(explain "$out" "$reason")${N} ${D}(the CLI read the account on chain and did not send)${N}" ;;
-      *) printf '%s\n' "${R}${B}⛔ REJECTED by Solana: $(explain "$out" "$reason")${N}" ;;
-    esac
-  fi
   # A transaction sent with --skip-preflight failed on chain: its signature is the fee payer's latest one.
   if [ $status -ne 0 ] && [ -z "$sig" ] && [ "$SW_ONCHAIN_FAILS" = 1 ] && [ -n "${RUN_PAYER:-}" ]; then
     case "$out" in
       *'simulation failed'* | *'RPC request error'*) ;;
       *) sig="$(solana transaction-history "$(addr "$RUN_PAYER")" --limit 1 --url "$SW_URL" --output json-compact \
-        2>/dev/null | grep -o '"signature":"[^"]*"' | head -1 | cut -d'"' -f4)"
-        [ -n "$sig" ] && printf '%s\n' "${D}  failed transaction, recorded on chain:${N}" ;;
+        2>/dev/null | grep -o '"signature":"[^"]*"' | head -1 | cut -d'"' -f4)" ;;
     esac
   fi
-  if [ -n "$sig" ]; then
-    printf '%s\n' "${D}  https://explorer.solana.com/tx/${sig}$(cluster_param)${N}"
+  if [ -n "${SW_LOG_FILE:-}" ]; then
+    # "sw menu" with "sw log" in another terminal: the network output scrolls there, the verdict stays here.
+    { printf '\n%s\n' "${B}$(date +%H:%M:%S) \$ ${shown}${N}"; netblock; } >> "$SW_LOG_FILE"
+    short_out
+  elif [ "$SW_NETLOG" = 1 ]; then
+    netblock
+  else
+    short_out
   fi
-  if [ "$expect" = ok ]; then return $status; fi
+  local verdict link=''
+  if [ $status -eq 0 ]; then
+    if [ "$expect" = ok ]; then
+      verdict="${G}${B}✅ ACCEPTED by Solana${N}"
+    elif [ "$expect" = stolen ]; then
+      verdict="${R}${B}🚨 ACCEPTED by Solana: no lock, so the stolen main key was enough. The thief took the SOL.${N}"
+    else
+      verdict="${Y}${B}⚠ ACCEPTED by Solana (this was expected to fail)${N}"
+    fi
+  else
+    case "$out" in
+      # The CLI read the stake account and refused to build the transaction: nothing was sent.
+      *'RPC request error: Invalid authority'*)
+        verdict="${R}${B}⛔ REJECTED: $(explain "$out" "$reason")${N} ${D}(the CLI read the account on chain and did not send)${N}" ;;
+      *) verdict="${R}${B}⛔ REJECTED by Solana: $(explain "$out" "$reason")${N}" ;;
+    esac
+  fi
+  if [ -n "$sig" ]; then link="${D}  https://explorer.solana.com/tx/${sig}$(cluster_param)${N}"; fi
+  printf '%s\n' "$verdict" ${link:+"$link"}
+  if [ -n "${SW_LOG_FILE:-}" ]; then printf '%s\n' "$verdict" ${link:+"$link"} >> "$SW_LOG_FILE"; fi
+  if [ "$expect" != fail ]; then return $status; fi
   [ $status -ne 0 ]
+}
+
+# The RPC API key never reaches the screen: it is on a projector.
+mask_key() { sed -E 's/(api[-_]?key=)[^&") ]*/\1…/g'; }
+
+# Network output: indented and dimmed, blank lines dropped.
+netlog() { grep -v '^ *$' | sed "s/^/  ${D}/;s/\$/${N}/" || true; }
+
+# Everything the CLI answered, then the transaction as the network recorded it (accounts, instruction, status,
+# balances, program logs). Reads run()'s locals.
+netblock() {
+  printf '%s\n' "$out" | sed "$labels" | netlog
+  if [ -n "$sig" ]; then
+    printf '%s\n' "${D}  ── transaction on chain ──${N}"
+    solana confirm -v "$sig" --url "$SW_URL" 2>&1 | mask_key | sed -n '/^Transaction executed/,$p' | sed "$labels" | netlog
+  fi
+}
+
+# Only the answer lines that matter for the verdict.
+short_out() {
+  if [ $status -eq 0 ]; then
+    printf '%s\n' "$out" | grep -v '^Signature' | sed "$labels" | netlog
+  else
+    printf '%s\n' "$out" | grep -E 'Error|error' | head -2 | sed "$labels" | netlog
+  fi
 }
 
 # Plain words for the stake program errors the demo meets (the same table as the site, CLAUDE.md section 9).
@@ -198,6 +238,7 @@ explain() {
         printf 'a required key did not sign'
       fi ;;
     *'Invalid authority'* | *'incorrect authority'*) printf 'this key is not the owner of the stake' ;;
+    *'account does not exist'*) printf 'this stake account is closed: its SOL was withdrawn. Start again with: sw stake 0.1' ;;
     *'insufficient funds for fee'*) printf 'the fee payer has no SOL. Run: sw fund' ;;
     *'insufficient funds for instruction'*) printf 'the stake is still active: unstake, then wait for the epoch to end' ;;
     *'epoch rewards period'*) printf 'epoch rewards are being paid right now; try again in a minute' ;;
@@ -272,7 +313,7 @@ EOF
 
 cmd_keys() {
   local role file
-  printf '%s\n' "${B}Demo keys on ${SW_URL}${N}"
+  printf '%s\n' "${B}Demo keys on $(shown_url)${N}"
   for role in MAIN SECOND NEW THIEF; do
     file="$(key_file "$role")"
     if [ -f "$file" ]; then
@@ -287,7 +328,7 @@ cmd_keys() {
 
 cmd_balances() {
   local role file a
-  printf '%s\n' "${B}Wallet balances on ${SW_URL}${N}"
+  printf '%s\n' "${B}Wallet balances on $(shown_url)${N}"
   for role in MAIN SECOND NEW THIEF; do
     file="$(key_file "$role")"
     [ -f "$file" ] || continue
@@ -471,8 +512,11 @@ cmd_thief() {
   case "$action" in
     withdraw)
       say 'THIEF (stolen MAIN KEY)' "tries: withdraw all SOL to the thief's wallet"
+      # Without a lock the theft is the point of the "before" part of the demo, not a surprise.
+      local expect=fail
+      [ -n "$(lock_until)" ] || expect=stolen
       # shellcheck disable=SC2086
-      run fail '' -- withdraw-stake "$stake" "$(addr "$thief")" ALL \
+      run "$expect" '' -- withdraw-stake "$stake" "$(addr "$thief")" ALL \
         --withdraw-authority "$main" --fee-payer "$thief" $extra ;;
     take)
       say 'THIEF (stolen MAIN KEY)' "tries: make the thief the owner of the stake"
@@ -516,9 +560,98 @@ cmd_sweep() {
   done
 }
 
+# The scenario for "sw menu": group|role|label|command|what the audience sees. Numbered in this order.
+MENU_STEPS='Prepare|setup|Balances|balances|SOL on every demo wallet
+Prepare|setup|Top up wallets, 0.25 SOL each|fund 0.25|from the funder; MAIN needs 0.2 for two stakes
+Without a lock|owner|Stake 0.1 SOL|stake 0.1|new stake account, no lock
+Without a lock|owner|Status|status|NOT LOCKED
+Without a lock|thief|Steal everything|thief withdraw|ACCEPTED: the thief takes it all
+With Stakeward|owner|Stake 0.1 SOL|stake 0.1|new stake account
+With Stakeward|owner|Lock with the second key|lock LOCK|main + second key lock it
+With Stakeward|owner|Status|status|PROTECTED until ...
+With Stakeward|thief|Steal everything|thief withdraw|REJECTED: locked
+With Stakeward|thief|Become the owner|thief take|REJECTED: needs the second key
+With Stakeward|thief|Remove the lock|thief unlock|REJECTED: only the second key
+With Stakeward|thief|Take over staking|thief staker|ACCEPTED: SOL stays put
+With Stakeward|new|Rescue to the new wallet|rescue|stake now belongs to NEW WALLET
+With Stakeward|thief|Steal everything again|thief withdraw|REJECTED: main key no longer owns it
+With Stakeward|owner|Status|status|owner: NEW WALLET
+After the demo|second|Second key removes the lock|unlock|lock off, before the SOL leaves
+After the demo|new|New wallet withdraws|withdraw-new|new wallet + second key; closes the account
+After the demo|setup|Return SOL to the funder|sweep|leftovers back to the funder'
+
+menu_field() { printf '%s\n' "$MENU_STEPS" | sed -n "${1}p" | cut -d'|' -f"$2"; }
+
+role_color() {
+  case "$1" in owner) printf '%s' "$G" ;; thief) printf '%s' "$R" ;; second) printf '%s' "$M" ;; new) printf '%s' "$C" ;; *) printf '%s' "$D" ;; esac
+}
+
+role_title() {
+  case "$1" in owner) echo 'OWNER' ;; thief) echo 'THIEF' ;; second) echo 'SECOND KEY' ;; new) echo 'NEW WALLET' ;; *) echo 'SETUP' ;; esac
+}
+
+menu_list() {
+  local count i group last='' role
+  count="$(printf '%s\n' "$MENU_STEPS" | wc -l | tr -d ' ')"
+  printf '\n%s\n' "${B}Stakeward live demo${N} ${D}· lock for ${1} · $(shown_url)${N}"
+  for i in $(seq 1 "$count"); do
+    group="$(menu_field "$i" 1)"
+    role="$(menu_field "$i" 2)"
+    if [ "$group" != "$last" ]; then printf '\n%s\n' "${B}${group}${N}"; last="$group"; fi
+    printf '  %s%2d%s  %s%-10s%s %-32s %s\n' "$B" "$i" "$N" "$(role_color "$role")$B" "$(role_title "$role")" "$N" \
+      "$(menu_field "$i" 3)" "${D}$(menu_field "$i" 5)${N}"
+  done
+}
+
+# ui [port]: the scenario as a page in the browser, http://127.0.0.1:4848 (ui.ts and ui.html next to this script).
+cmd_ui() {
+  command -v node >/dev/null 2>&1 || die "Node.js not found; the page needs Node 24 or newer."
+  local port="${1:-4848}"
+  (sleep 1; open "http://127.0.0.1:$port" 2>/dev/null || xdg-open "http://127.0.0.1:$port" 2>/dev/null) >/dev/null 2>&1 &
+  exec node "$SCRIPT_DIR/ui.ts" "$port"
+}
+
+# log: the network output of "sw menu", scrolling on its own in this terminal.
+cmd_log() {
+  local file="${SW_LOG_FILE:-$SW_DIR/network.log}"
+  touch "$file"
+  printf '\033]0;%s\007' 'SOLANA NETWORK'
+  printf '%s\n' "${B}${C}SOLANA NETWORK${N}  ${D}everything the CLI and the network answer to \"sw menu\" ($(shown_url))${N}"
+  tail -n 0 -F "$file" 2>/dev/null
+}
+
+# menu [duration]: the scenario as numbered steps; Enter runs the next one. Each step is one sw command.
+cmd_menu() {
+  local lock="${1:-6mo}" count next=3 choice role cmd
+  lock_time "$lock" >/dev/null
+  count="$(printf '%s\n' "$MENU_STEPS" | wc -l | tr -d ' ')"
+  # Unset: the network output goes to the log file; set to empty: it stays inline.
+  export SW_LOG_FILE="${SW_LOG_FILE-$SW_DIR/network.log}"
+  menu_list "$lock"
+  if [ -n "$SW_LOG_FILE" ]; then printf '\n%s\n' "${D}Full network output: run \"sw log\" in another terminal.${N}"; fi
+  while :; do
+    printf '\n%s' "${B}Next ${next}: $(role_color "$(menu_field "$next" 2)")$(role_title "$(menu_field "$next" 2)")${N}${B} $(menu_field "$next" 3)${N}  ${D}[Enter] run · number · m menu · q quit${N} > "
+    read -r choice || break
+    case "$choice" in
+      '') ;;
+      q | Q) break ;;
+      m | M) menu_list "$lock"; continue ;;
+      *[!0-9]*) printf '%s\n' "${D}A step number, Enter, m or q.${N}"; continue ;;
+      *) if [ "$choice" -ge 1 ] && [ "$choice" -le "$count" ]; then next="$choice"; else
+           printf '%s\n' "${D}Steps are 1 to ${count}.${N}"; continue; fi ;;
+    esac
+    role="$(menu_field "$next" 2)"
+    cmd="$(menu_field "$next" 4 | sed "s/LOCK/$lock/")"
+    printf '\n%s\n' "$(role_color "$role")${B}━━ ${next}. $(role_title "$role") · $(menu_field "$next" 3) ━━${N}"
+    # shellcheck disable=SC2086
+    bash "$SCRIPT_DIR/sw.sh" $cmd
+    [ "$next" -lt "$count" ] && next=$((next + 1))
+  done
+}
+
 cmd_help() {
   cat <<EOF
-${B}Stakeward live demo${N} (${SW_URL}). Keys: ${SW_DIR}
+${B}Stakeward live demo${N} ($(shown_url)). Keys: ${SW_DIR}
 
 ${B}Prepare${N}
   sw setup                  create the demo keys (main, second, new, thief) and demo.env
@@ -548,6 +681,11 @@ ${B}Rescue${N}
   sw rescue                 new wallet + main + second: the stake moves to the NEW WALLET
   sw withdraw-new [SOL|ALL] new wallet + second key withdraw
   sw sweep                  return what is left to SW_FUNDER_KEY
+
+${B}Menu${N}
+  sw menu [10m|1h|6mo]      the whole scenario as numbered steps: press Enter for the next one
+  sw log                    in another terminal: the full network output of the menu, scrolling on its own
+  sw ui [port]              the same scenario as a page in the browser (http://127.0.0.1:4848)
 
 Env: SW_URL (devnet), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
      SW_STAKE (another stake account), SW_VOTE, SW_ONCHAIN_FAILS=0 (thief's failures only simulated, no explorer link).
@@ -591,6 +729,10 @@ main() {
     *) check_rpc ;;
   esac
   case "$cmd" in
+    setup | keys | log | ui | help | -h | --help) ;;
+    *) check_rpc ;;
+  esac
+  case "$cmd" in
     setup) cmd_setup ;;
     keys) cmd_keys ;;
     balances | bal) cmd_balances ;;
@@ -608,6 +750,9 @@ main() {
     withdraw-new) cmd_withdraw_new "$@" ;;
     thief) cmd_thief "$@" ;;
     sweep) cmd_sweep ;;
+    menu) cmd_menu "$@" ;;
+    log) cmd_log ;;
+    ui) cmd_ui "$@" ;;
     help | -h | --help) cmd_help ;;
     *) die "Unknown command: $cmd. Run: sw help" ;;
   esac
