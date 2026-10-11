@@ -92,12 +92,11 @@
       "name": "stakeward-dev",
       // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
       "preview_urls": false,
-      // The site's address (D136). The zone stakeward.com is in this Cloudflare account; wrangler creates the DNS
-      // record and the certificate. workers.dev stays on during the move: old links, the Telegram webhook until
-      // SITE_ORIGIN and setWebhook name the new address. zone_name is explicit: the deploy token cannot infer the zone
-      // (Cloudflare API error 10082 on the first deploy).
+      // The site's address (D136): a custom domain in the Cloudflare account that holds the zone stakeward.com;
+      // wrangler creates the DNS record and the certificate. No workers.dev address. The Workers of the first account
+      // (*.stakeward.workers.dev) are no longer deployed from here.
       "routes": [{ "pattern": "dev.stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
-      "workers_dev": true,
+      "workers_dev": false,
       "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [
@@ -129,11 +128,10 @@
       "name": "stakeward-prod",
       // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
       "preview_urls": false,
-      // The site's address (D136); workers.dev stays on during the move, as in dev. www.stakeward.com is not a second
-      // copy of the site: a zone Redirect Rule sends it to stakeward.com (static assets are served before the Worker,
-      // so the Worker cannot redirect it).
+      // The site's address (D136), as in dev. www.stakeward.com is not a second copy of the site: a zone Redirect
+      // Rule sends it to stakeward.com (static assets are served before the Worker, so the Worker cannot redirect it).
       "routes": [{ "pattern": "stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
-      "workers_dev": true,
+      "workers_dev": false,
       "vars": { "CLUSTER": "mainnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [
