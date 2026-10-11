@@ -1,5 +1,5 @@
 // The public "Try to steal it" wallet on devnet: a delegated stake account whose main key (staker = withdrawer = A) is
-// published, protected by the product's own SetLockupChecked until 31 December 2099 with a second key K that stays
+// published, protected by the product's own SetLockupChecked until 13 October 2027 with a second key K that stays
 // in .keys/. Whoever holds A can deactivate, redelegate, split and change the staker; withdrawing the SOL or taking
 // the withdrawer needs K. Devnet only: the SOL is worthless, the point is the public proof.
 //
@@ -13,8 +13,8 @@ import { describeError } from '../gate/checks.ts';
 import { createSender } from '../gate/sender.ts';
 import { createDevAccounts, DevAccountsRefusal, explorerUrl, planDevAccounts } from '../dev-accounts/accounts.ts';
 
-/** 2099-12-31 00:00:00 UTC. */
-export const CHALLENGE_LOCK_UNTIL = 4_102_358_400n;
+/** 2027-10-13 00:00:00 UTC: a year after the demo, inside the worker's watch limit (D128). */
+export const CHALLENGE_LOCK_UNTIL = 1_823_385_600n;
 export const DEV_SITE = 'https://stakeward-dev.stakeward.workers.dev';
 
 export type Challenge = {
@@ -89,7 +89,7 @@ export function renderChallenge(
 ): string[] {
   return [
     'Try to steal it (devnet)',
-    `  stake account  ${challenge.stakeAccount}, ${formatSol(challenge.state.lamports)}, locked until 2099-12-31`,
+    `  stake account  ${challenge.stakeAccount}, ${formatSol(challenge.state.lamports)}, locked until 2027-10-13`,
     `                 ${explorerUrl('address', challenge.stakeAccount)}`,
     `  main key       ${main.address}`,
     `  main key secret (PUBLIC, import into any wallet on devnet):`,

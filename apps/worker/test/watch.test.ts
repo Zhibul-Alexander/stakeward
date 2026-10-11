@@ -152,7 +152,7 @@ describe('POST /api/watch: accepts a locked account', () => {
     ]);
   });
 
-  it('accepts a lock that ends exactly 400 days after the cluster clock', async () => {
+  it('accepts a lock that ends exactly 10 years after the cluster clock', async () => {
     const account = stake({ unixTimestamp: CLOCK_UNIX + WATCH_MAX_LOCK_SECONDS });
     const res = await testApp(chainUpstream(chainOf({ [STAKE]: account }))).watch({ accounts: [STAKE] });
     expect(await res.json()).toMatchObject({ results: [{ account: STAKE, status: 'watched' }] });
@@ -168,7 +168,7 @@ describe('POST /api/watch: rejects what is not a lock worth watching, and writes
     ['an epoch-only lock', stake({ unixTimestamp: 0n, lockupEpoch: EPOCH + 10n }), 'not-locked'],
     ['the main key as the second key', stake({ custodian: MAIN }), 'unsupported-lock'],
     ['the zero key as the second key', stake({ custodian: ZERO_ADDRESS }), 'unsupported-lock'],
-    ['a lock ending more than 400 days ahead', stake({ unixTimestamp: CLOCK_UNIX + WATCH_MAX_LOCK_SECONDS + 1n }), 'unsupported-lock'],
+    ['a lock ending more than 10 years ahead', stake({ unixTimestamp: CLOCK_UNIX + WATCH_MAX_LOCK_SECONDS + 1n }), 'unsupported-lock'],
     ['an account owned by the System program', stake({}, BIG_LAMPORTS, SYSTEM_PROGRAM_ADDRESS), 'not-stake-account'],
     ['a 199-byte stake account', { ...stake(), data: stake().data.slice(0, 199) }, 'not-stake-account'],
     ['an uninitialized stake account', { data: new Uint8Array(200), lamports: 2_282_880n, owner: STAKE_PROGRAM_ADDRESS }, 'not-stake-account'],

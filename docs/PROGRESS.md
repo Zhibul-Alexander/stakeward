@@ -476,5 +476,4 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 
 - Прогон на devnet (10.10, на Mac Паши, `--sol 0.1 --undelegated`: у funder не было 1 SOL на делегирование): стейк-аккаунт `FuXxGyzezXKrmHa784Uio8qfo4D9dzov639wPC6RTVA5`, 0,1017 SOL; основной ключ `9QeBtMG3LbdUz7sHHjmJMQ243Pn8Tb1A4WmwM3SJjRKf`; замок до 2099-12-31, хранитель `GhVdLekCV7KySTbDrdeFWyryPRxQsfbwBn6UUGS7FpK`. Proof: https://stakeward-dev.stakeward.workers.dev/proof/9QeBtMG3LbdUz7sHHjmJMQ243Pn8Tb1A4WmwM3SJjRKf
 
-### Открытые вопросы
-- `POST /api/watch` отклоняет этот аккаунт (`unsupported-lock`: воркер берёт замки не дальше 400 дней, `WATCH_MAX_LOCK_SECONDS`), поэтому тревог по нему нет. Сам замок от этого не зависит.
+- `POST /api/watch` отклонил замок до 2099 (`unsupported-lock`, предел был 400 дней). По слову Паши (11.10): предел мониторинга поднят до 10 лет, замок кошелька переносится на 13.10.2027 вторым ключом (D128).

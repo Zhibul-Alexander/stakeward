@@ -21,7 +21,7 @@ describe('watchVerdict', () => {
     expect(watchVerdict(rawStakeAccount(account), CLOCK)).toEqual({ ok: true, account });
   });
 
-  it('accepts a delegated account and a lock ending exactly 400 days after the cluster clock', () => {
+  it('accepts a delegated account and a lock ending exactly 10 years after the cluster clock', () => {
     const delegated = stakeAccountOf({
       kind: 'delegated',
       lockup: { unixTimestamp: NOW + WATCH_MAX_LOCK_SECONDS, epoch: 0n, custodian: K },
@@ -42,7 +42,7 @@ describe('watchVerdict', () => {
     ['an epoch-only lock (the epoch is ignored)', lockedRaw({ unixTimestamp: 0n, epoch: 2_000n }), 'not-locked'],
     ['a lock held by the main key itself', lockedRaw({ custodian: A }), 'unsupported-lock'],
     ['a lock with the zero key as custodian', lockedRaw({ custodian: ZERO_ADDRESS }), 'unsupported-lock'],
-    ['a lock ending over 400 days ahead', lockedRaw({ unixTimestamp: NOW + WATCH_MAX_LOCK_SECONDS + 1n }), 'unsupported-lock'],
+    ['a lock ending over 10 years ahead', lockedRaw({ unixTimestamp: NOW + WATCH_MAX_LOCK_SECONDS + 1n }), 'unsupported-lock'],
   ] as const)('%s -> %s', (_name, raw, reason) => {
     expect(watchVerdict(raw, CLOCK)).toEqual({ ok: false, reason });
   });

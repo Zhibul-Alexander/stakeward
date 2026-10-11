@@ -7,8 +7,8 @@ import type { ClockView } from './lockup.ts';
 /** Accounts per POST /api/watch request; the site splits longer lists. */
 export const MAX_WATCH_ACCOUNTS = 20;
 
-/** The latest lock end accepted, counted from the cluster clock: 400 days (real ends are at most about 13 months). */
-export const WATCH_MAX_LOCK_SECONDS = 400n * 86_400n;
+/** The latest lock end accepted, counted from the cluster clock: 10 years (3 653 days), D128. */
+export const WATCH_MAX_LOCK_SECONDS = 3_653n * 86_400n;
 
 export type WatchRejectReason = 'not-found' | 'not-stake-account' | 'not-locked' | 'unsupported-lock';
 

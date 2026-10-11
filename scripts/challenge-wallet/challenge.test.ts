@@ -8,13 +8,13 @@ import { LAMPORTS_PER_SOL } from '../gate/tx.ts';
 import { base58SecretKey, CHALLENGE_LOCK_UNTIL, createChallenge, renderChallenge } from './challenge.ts';
 
 describe('challenge wallet on LiteSVM', () => {
-  it('locks a delegated account until 2099 with the second key, and the main key alone cannot withdraw', async () => {
+  it('locks a delegated account until 2027 with the second key, and the main key alone cannot withdraw', async () => {
     const chain = await createLiteSvmChain();
     const [funder, main, second] = await Promise.all([generateKeyPairSigner(), generateKeyPairSigner(), generateKeyPairSigner()]);
     chain.fund(funder.address, 2n * LAMPORTS_PER_SOL);
 
     const challenge = await createChallenge(chain, { funder, main, second }, { stakeLamports: LAMPORTS_PER_SOL, runId: 't' });
-    expect(new Date(Number(CHALLENGE_LOCK_UNTIL) * 1000).toISOString()).toBe('2099-12-31T00:00:00.000Z');
+    expect(new Date(Number(CHALLENGE_LOCK_UNTIL) * 1000).toISOString()).toBe('2027-10-13T00:00:00.000Z');
     expect(challenge.state).toMatchObject({
       kind: 'delegated',
       staker: main.address,
