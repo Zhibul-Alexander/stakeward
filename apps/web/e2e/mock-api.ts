@@ -4,7 +4,7 @@ import { getAddressEncoder, type Address } from '@solana/kit';
 /**
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
- * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption), /api/health
+ * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption, an empty getVoteAccounts), /api/health
  * /api/stats and /api/sol-price (150 USD per SOL).
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
@@ -167,6 +167,9 @@ function rpcResult(fixture: ApiFixture, request: RpcRequest): unknown {
       };
     case 'getBalance':
       return { context, value: Number(fixture.balances?.[request.params[0] as string] ?? 0n) };
+    case 'getVoteAccounts':
+      // No validator to offer: /delegate shows its empty state (DECISIONS.md D134).
+      return { current: [], delinquent: [] };
     case 'getMinimumBalanceForRentExemption':
       return Number(rentExempt(request.params[0] as number));
     default:

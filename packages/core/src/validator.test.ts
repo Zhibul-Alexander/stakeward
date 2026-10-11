@@ -4,7 +4,9 @@ import {
   ADMISSION_FEE_LAMPORTS,
   decodeVoteAccount,
   formatValidatorAlert,
+  meetsOpenCriteria,
   newValidatorRisks,
+  shuffled,
   validatorRisks,
   VOTE_ACCOUNT_RENT_EXEMPT_LAMPORTS,
   VOTE_ACCOUNT_SIZE,
@@ -145,5 +147,30 @@ describe('formatValidatorAlert', () => {
 
   it('refuses details without a risk', () => {
     expect(() => formatValidatorAlert({ ...base, details: { voter, risks: [] } })).toThrow();
+  });
+});
+
+describe('meetsOpenCriteria', () => {
+  const listing = { voteAccount: voter, commission: 5, activatedStake: 1_000n, epochVoteAccount: true };
+
+  it('offers a scheduled validator with stake and a commission up to 10%', () => {
+    expect(meetsOpenCriteria(listing)).toBe(true);
+    expect(meetsOpenCriteria({ ...listing, commission: 10 })).toBe(true);
+  });
+
+  it('leaves out a higher commission, no stake, or no place in this epoch', () => {
+    expect(meetsOpenCriteria({ ...listing, commission: 11 })).toBe(false);
+    expect(meetsOpenCriteria({ ...listing, activatedStake: 0n })).toBe(false);
+    expect(meetsOpenCriteria({ ...listing, epochVoteAccount: false })).toBe(false);
+  });
+});
+
+describe('shuffled', () => {
+  it('keeps every item, leaves the input alone, and follows the random source', () => {
+    const items = [1, 2, 3, 4];
+    const out = shuffled(items, () => 0);
+    expect(out).toEqual([2, 3, 4, 1]);
+    expect(items).toEqual([1, 2, 3, 4]);
+    expect([...shuffled(items)].sort()).toEqual(items);
   });
 });

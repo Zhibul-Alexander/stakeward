@@ -41,7 +41,8 @@ const ACTIVATION_ICON: Record<ActivationStatus, LucideIcon> = {
 
 /**
  * Staking state by epochs (core `stakeActivationStatus`): muted word and icon. It is not a risk, so it is text next to
- * the status badge, never a second badge.
+ * the status badge, never a second badge. An inactive stake earns no rewards, so it also says "Not earning" in warning
+ * (DECISIONS.md D134): word and colour, next to the state's own icon.
  */
 export function ActivationText({ status, className }: { status: ActivationStatus; className?: string | undefined }) {
   const Icon = ACTIVATION_ICON[status];
@@ -49,6 +50,11 @@ export function ActivationText({ status, className }: { status: ActivationStatus
     <span data-activation={status} className={cn('inline-flex items-center gap-1 text-sm text-muted', className)}>
       <Icon aria-hidden="true" className="size-3.5 shrink-0" />
       {t(`components.activation.${status}`)}
+      {status === 'inactive' ? (
+        <span data-slot="not-earning" className="font-medium text-warning">
+          {` · ${t('components.activation.notEarning')}`}
+        </span>
+      ) : null}
     </span>
   );
 }

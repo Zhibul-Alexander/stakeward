@@ -306,6 +306,13 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'change-key',
   },
   {
+    // An inactive stake earns nothing: delegate it to a validator from an openly filtered list (D134).
+    path: `/delegate/${SMOKE_STAKE}`,
+    heading: text('common.pages.delegate'),
+    ready: text('delegate.heading'),
+    screen: 'delegate',
+  },
+  {
     // Telegram's "Open Rescue" lands here with the main key filled in: step 1 reads its stake with no wallet.
     path: `/rescue?address=${MAIN}`,
     heading: text('common.pages.rescue'),

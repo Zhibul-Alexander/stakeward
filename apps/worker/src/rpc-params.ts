@@ -72,6 +72,10 @@ export const METHOD_PARAMS = {
     z.array(signature).min(1).max(MAX_SIGNATURE_STATUSES),
     z.strictObject({ searchTransactionHistory: z.literal(false).optional() }).optional(),
   ]),
+  // The /delegate validator list (DECISIONS.md D134): read-only public data, only the current and delinquent lists.
+  getVoteAccounts: z.tuple([
+    z.strictObject({ commitment: commitment.optional(), keepUnstakedDelinquents: z.literal(false).optional() }).optional(),
+  ]),
   simulateTransaction: z.tuple([transaction, simulateConfig]),
   sendTransaction: z.tuple([transaction, sendConfig]),
 } as const;
