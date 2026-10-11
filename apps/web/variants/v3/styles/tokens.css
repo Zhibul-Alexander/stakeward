@@ -57,9 +57,9 @@
   --color-qr-dark: #10131a;
   --color-qr-light: #ffffff;
 
-  --font-sans: 'DM Sans Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'DM Sans Variable', 'DM Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', 'Instrument Serif Fallback', ui-serif, Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Mono Fallback', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* The app's six sizes (same names), the display ones set larger for a serif face; plus the editorial display sizes. */
   --text-xs: 0.75rem;

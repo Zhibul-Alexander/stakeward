@@ -1,0 +1,94 @@
+import { Link, useParams } from 'wouter';
+import { Page } from '@/components/layout/Page';
+import { fetchSolPrice } from '@/api/sol-price';
+import { useLoad, type Load } from '@/hooks/use-load';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { t, type MessageKey } from '@/i18n';
+import { Alerts } from './landing/Alerts.tsx';
+import { useNonceDeposit } from './landing/deposit.ts';
+import { Faq } from './landing/Faq.tsx';
+import { useFaqParams } from './landing/faq.ts';
+import { Fees } from './landing/Fees.tsx';
+import { Security } from './landing/Security.tsx';
+import { useHashTarget } from './landing/use-hash-target.ts';
+import { Wallets } from './landing/Wallets.tsx';
+
+export const LEARN_TABS = ['faq', 'alerts', 'costs', 'wallets', 'safety'] as const;
+export type LearnTab = (typeof LEARN_TABS)[number];
+
+const TAB_LABEL: Record<LearnTab, MessageKey> = {
+  faq: 'learn.tabs.faq',
+  alerts: 'learn.tabs.alerts',
+  costs: 'learn.tabs.costs',
+  wallets: 'learn.tabs.wallets',
+  safety: 'learn.tabs.safety',
+};
+
+/** Where a landing anchor of the old one-page layout lives now (`/#faq-ledger` -> `/learn/faq#faq-ledger`). */
+export function learnPathForHash(hash: string): string | null {
+  if (hash.startsWith('#faq-') || hash === '#faq') return `/learn/faq${hash}`;
+  if (hash === '#alerts') return '/learn/alerts';
+  if (hash === '#fees') return '/learn/costs';
+  if (hash === '#wallets') return '/learn/wallets';
+  if (hash === '#security' || hash === '#recover') return `/learn/safety${hash}`;
+  return null;
+}
+
+/**
+ * /learn/:tab: the details the landing page used to carry in one long scroll (alerts, costs, wallets, how Stakeward
+ * keeps you safe, the FAQ), one tab at a time. The tabs are links, so each has its own address and a hash such as
+ * `/learn/faq#faq-ledger` opens its question. An unknown tab shows the FAQ.
+ */
+export function LearnPage() {
+  const params = useParams<{ tab?: string }>();
+  const tab = LEARN_TABS.find((candidate) => candidate === params.tab) ?? 'faq';
+  useHashTarget();
+  const deposit = useNonceDeposit();
+  const faqParams = useFaqParams(deposit);
+  // The SOL/USD rate only for the Costs tab (D132); a failed read just leaves the dollar figures out.
+  const solUsd = useLoad(tab === 'costs' ? 'sol-usd' : null, () => fetchSolPrice());
+  return (
+    <Page>
+      <PageHeader title={t('learn.title')} lead={t('learn.lead')} />
+      <nav aria-label={t('learn.tabs.label')} className="-mt-2 flex flex-wrap gap-x-6 gap-y-2">
+        {LEARN_TABS.map((id) => (
+          <Link
+            key={id}
+            href={`/learn/${id}`}
+            aria-current={id === tab ? 'page' : undefined}
+            className="rounded-sm py-1 text-base font-medium text-muted decoration-accent decoration-2 underline-offset-[6px] hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline"
+          >
+            {t(TAB_LABEL[id])}
+          </Link>
+        ))}
+      </nav>
+      <LearnTabBody tab={tab} deposit={deposit} params={faqParams} solUsd={solUsd} />
+    </Page>
+  );
+}
+
+/** What one tab shows. */
+export function LearnTabBody({
+  tab,
+  deposit,
+  params,
+  solUsd,
+}: {
+  tab: LearnTab;
+  deposit: Load<bigint>;
+  params: Readonly<Record<string, string>>;
+  solUsd?: Load<number>;
+}) {
+  switch (tab) {
+    case 'faq':
+      return <Faq params={params} />;
+    case 'alerts':
+      return <Alerts params={params} />;
+    case 'costs':
+      return <Fees deposit={deposit} {...(solUsd === undefined ? {} : { solUsd })} />;
+    case 'wallets':
+      return <Wallets />;
+    case 'safety':
+      return <Security />;
+  }
+}

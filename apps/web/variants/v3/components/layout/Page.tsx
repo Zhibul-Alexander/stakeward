@@ -2,7 +2,7 @@ import { cn } from 'cn';
 import type { ReactNode } from 'react';
 
 type PageProps = {
-  /** `app`: the full content width (landing, /app, /recovery). `flow`: a centred column for flows (/protect, ...). */
+  /** `app`: the full content width (landing, /app, /recovery). `flow`: a column flush with the masthead's left edge for flows (/protect, ...). */
   width?: 'app' | 'flow';
   children: ReactNode;
   className?: string | undefined;
@@ -11,7 +11,7 @@ type PageProps = {
 /** The classes written out in full: Tailwind only generates utilities it finds in the source. */
 const WIDTH: Record<NonNullable<PageProps['width']>, string> = {
   app: 'mx-auto flex w-full max-w-6xl flex-col gap-8 sm:gap-12',
-  flow: 'mx-auto flex w-full max-w-2xl flex-col gap-8 sm:gap-12',
+  flow: 'flex w-full max-w-3xl flex-col gap-8 sm:gap-12',
 };
 
 /**

@@ -4,7 +4,52 @@
 @import '@fontsource/instrument-serif/400-italic.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource/ibm-plex-mono/700.css';
 @import './styles/tokens.css';
+
+/*
+ * Metric-matched local fallbacks (measured in Chromium against the shipped woff2 files): while a web font loads, the
+ * fallback takes the same width and line box, so headlines do not reflow when it swaps in. Instrument Serif is far
+ * narrower than Times; size-adjust brings Times to its advance width, the overrides restore its ascent and descent.
+ */
+@font-face {
+  font-family: 'Instrument Serif Fallback';
+  font-style: normal;
+  src: local('Times New Roman'), local('TimesNewRomanPSMT'), local('Liberation Serif'), local('Tinos');
+  size-adjust: 82.26%;
+  ascent-override: 120.35%;
+  descent-override: 37.69%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Instrument Serif Fallback';
+  font-style: italic;
+  src: local('Times New Roman Italic'), local('TimesNewRomanPS-ItalicMT'), local('Liberation Serif Italic'), local('Tinos Italic');
+  size-adjust: 86.75%;
+  ascent-override: 114.12%;
+  descent-override: 35.73%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Arimo');
+  size-adjust: 103.97%;
+  ascent-override: 95.22%;
+  descent-override: 29.82%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono Fallback';
+  src: local('Courier New'), local('CourierNewPSMT'), local('Liberation Mono'), local('Cousine');
+  size-adjust: 100%;
+  ascent-override: 103%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
 
 /*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
@@ -124,23 +169,58 @@
 
 /*
  * Editorial type system (variant v3). Unlayered on purpose: these win over the utilities that pages set on their
- * headings (font-semibold on an Instrument Serif heading would be a faux bold). Every h1 and h2, and the two display
- * sizes wherever they appear (the SummaryBar answer, /stats figures), are set in the display serif at its one weight.
+ * headings (font-semibold on an Instrument Serif heading would be a faux bold).
+ *
+ * Three heading roles, the same on every page:
+ * - h1: the page title (PageHeader, the masthead), display serif.
+ * - h2 (text-lg / text-2xl in the shared components): a section or step title, display serif at ONE size, whatever
+ *   size class the page put on it, so a wizard step, a done screen and an /app section read as the same role.
+ * - h2.text-base (a small status line inside a stage block): stays in the UI sans, a serif is too thin at 16 px.
+ * Display numerals (the SummaryBar answer, the countdown) share the serif; a mono address that happens to be text-2xl
+ * keeps its mono face.
  */
 h1,
 h2,
-.text-2xl,
+.text-2xl:not(.font-mono),
 .text-3xl {
   font-family: var(--font-display);
   font-weight: 400;
   font-synthesis: none;
 }
 
-/* An app section's h2 is text-lg in the shared components: too small for a serif display face, so it grows here. */
-h2.text-lg {
+h2.text-lg,
+h2.text-2xl,
+[data-slot='stop-panel'] .text-2xl {
   font-size: 1.75rem;
   line-height: 2rem;
   letter-spacing: -0.005em;
+}
+
+@media (min-width: 40rem) {
+  h2.text-lg,
+  h2.text-2xl,
+  [data-slot='stop-panel'] .text-2xl {
+    font-size: 2rem;
+    line-height: 2.25rem;
+  }
+}
+
+/* Instrument Serif ships one weight: never fake a bold of it, wherever it is used. */
+.font-display {
+  font-synthesis: none;
+}
+
+/* A heading inside an alert (the /cosign refusals, the stop panel) is one step down: the alert, not its title, is the block. */
+[data-slot='alert'] h2.text-lg,
+[data-slot='alert'] h2.text-2xl {
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+}
+
+h2.text-base {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-synthesis: initial;
 }
 
 h3.text-lg {
