@@ -232,6 +232,8 @@ export const appLinks = {
   protect: (accounts: readonly Address[]) => `/protect?${new URLSearchParams(accounts.map((a) => ['account', a])).toString()}`,
   extend: (account: Address) => `/extend/${account}`,
   withdraw: (account: Address) => `/withdraw/${account}`,
+  /** F7: hand the lock to a new second key. */
+  changeKey: (account: Address) => `/change-key/${account}`,
   rescue: (mainKey: Address) => `/rescue?${new URLSearchParams({ address: mainKey }).toString()}`,
   /** The recovery card of the pair of keys that locks this account (DECISIONS.md D74). */
   recovery: (account: Address) => `/recovery/${account}`,

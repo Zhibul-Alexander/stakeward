@@ -4,6 +4,7 @@ import {
   ArrowDownToLineIcon,
   CalendarPlusIcon,
   FileTextIcon,
+  KeyRoundIcon,
   LifeBuoyIcon,
   LoaderCircleIcon,
   RefreshCwIcon,
@@ -31,6 +32,7 @@ import { useKnownSecondKeys, usePorts, useProtectedAccounts, useSlot, useWalletS
 import { useHealth, useNow, useStakeAccounts } from './hooks.ts';
 import { KeySlot } from './KeySlot.tsx';
 import { MonitoringStatus } from './MonitoringStatus.tsx';
+import { ProtectionCheckSection } from './ProtectionCheckSection.tsx';
 import {
   appLinks,
   attentionNote,
@@ -355,6 +357,8 @@ function Loaded({ address, view, clock }: { address: Address; view: AccountsView
           <Rows label={lockedKnown ? t('app.groups.locked') : t('app.groups.lockedUnknown')} rows={locked} clock={clock} actions={() => ({})} />
         </Section>
       )}
+      {/* After the lists it checks (D125): a checklist with a score, then Ask your AI. */}
+      <ProtectionCheckSection address={address} accounts={view.owned.map((row) => row.account)} clock={clock} />
       {secondKeyForSection}
     </>
   );
@@ -511,9 +515,19 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
     />
   );
   const steal = <StealLink account={account} />;
+  // Without a lock the main key withdraws alone; the row shows the way, the group's button protects.
   return row.managedByService
-    ? { action: protect, more: steal }
+    ? {
+        action: protect,
+        more: (
+          <>
+            <WithdrawLink account={account} />
+            {steal}
+          </>
+        ),
+      }
     : {
+        action: <WithdrawLink account={account} />,
         more: (
           <>
             {protect}
@@ -524,38 +538,47 @@ function attentionActions(row: AccountView, primary: PrimaryAction): RowActions 
 }
 
 /**
- * Locked by the viewer's own second key: nothing to do, so Extend is behind More with Withdraw and the recovery card;
- * a lock that ends soon shows Extend.
+ * Locked by the viewer's own second key: Withdraw with both keys, with Extend, Change second key and the recovery card
+ * behind More; a lock that ends soon shows Extend, and Withdraw goes behind More.
  */
 function lockedActions(row: AccountView, primary: PrimaryAction): RowActions {
   const account = row.account.address;
   const extend = <ExtendLink account={account} primary={primary} />;
-  const rest = <LockedRest account={account} />;
-  if (row.protection === 'expiring') return { action: extend, more: rest };
+  if (row.protection === 'expiring') return { action: extend, more: <LockedRest account={account} /> };
   return {
+    action: <WithdrawLink account={account} />,
     more: (
       <>
         {extend}
-        {rest}
+        <ChangeKeyLink account={account} />
+        <RecoveryCardLink account={account} />
+        <StealLink account={account} />
       </>
     ),
   };
 }
 
-/** Behind More on a lock the viewer holds: withdrawing with both keys, and the recovery card of the lock. */
+/** Behind More on a lock the viewer holds: withdrawing with both keys, a new second key, the recovery card, and the thief's view. */
 function LockedRest({ account }: { account: Address }) {
   return (
     <>
-      <ActionLink
-        href={appLinks.withdraw(account)}
-        label={t('app.actions.withdraw')}
-        icon={<ArrowDownToLineIcon aria-hidden="true" />}
-        variant="outline"
-        account={account}
-      />
+      <WithdrawLink account={account} />
+      <ChangeKeyLink account={account} />
       <RecoveryCardLink account={account} />
       <StealLink account={account} />
     </>
+  );
+}
+
+function WithdrawLink({ account }: { account: Address }) {
+  return (
+    <ActionLink
+      href={appLinks.withdraw(account)}
+      label={t('app.actions.withdraw')}
+      icon={<ArrowDownToLineIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
+    />
   );
 }
 
@@ -572,11 +595,32 @@ function StealLink({ account }: { account: Address }) {
   );
 }
 
-/** Second-key list: the second key can extend (or remove) the lock it holds, and keep the card of that lock. */
+/** F7: hand the lock to a new second key (a second key that may be stolen). */
+function ChangeKeyLink({ account }: { account: Address }) {
+  return (
+    <ActionLink
+      href={appLinks.changeKey(account)}
+      label={t('app.actions.changeKey')}
+      icon={<KeyRoundIcon aria-hidden="true" />}
+      variant="outline"
+      account={account}
+    />
+  );
+}
+
+/**
+ * Second-key list: the second key can extend (or remove) the lock it holds, hand it to a new second key, and keep the
+ * card of that lock.
+ */
 function secondKeyActions(row: AccountView, primary: PrimaryAction): RowActions {
   return {
     action: <ExtendLink account={row.account.address} primary={primary} />,
-    more: <RecoveryCardLink account={row.account.address} />,
+    more: (
+      <>
+        <ChangeKeyLink account={row.account.address} />
+        <RecoveryCardLink account={row.account.address} />
+      </>
+    ),
   };
 }
 

@@ -40,6 +40,7 @@
       "rescue": "Rescue your stake",
       "cosign": "Co-sign a transaction",
       "rescueKit": "Prepare one-tap rescue",
+      "changeKey": "Change the second key",
       "rescueNow": "Rescue status",
       "steal": "Try to steal it"
     }
@@ -89,9 +90,9 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "Both keys withdraw. Main key stolen? They and a new wallet rescue the stake."
+        "body": "You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake."
       },
-      "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 5 years ahead.",
+      "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 10 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
     },
     "protects": {
@@ -310,6 +311,7 @@
         "deactivate": "Deactivate the stake",
         "delegate": "Delegate the stake",
         "rescue": "Move this stake to your new wallet",
+        "change-second-key": "Hand the lock to a new second key",
         "nonce-setup": "Set up signing by link",
         "nonce-close": "Close the link-signing account"
       },
@@ -319,6 +321,7 @@
       "now": "Now",
       "after": "After",
       "lock": "Lock",
+      "lockEnd": "Lock end",
       "noLock": "No lock",
       "lockedUntil": "Locked until {date}",
       "lockEnded": "Lock ended on {date}",
@@ -350,6 +353,7 @@
         "onlyRecipient": "It can only send SOL to the address shown above.",
         "noKeyChange": "It does not change any key or the lock.",
         "keepsLock": "It does not change the lock.",
+        "keepsEnd": "It does not change when the lock ends.",
         "rescueNoMove": "It cannot move your SOL out of the stake account: only its keys change.",
         "stakeStays": "This transaction cannot move your SOL: it stays in the stake account.",
         "noStake": "It cannot touch your stake accounts."
@@ -728,7 +732,9 @@
       "withDanger": "With a danger option",
       "danger": "Danger",
       "caution": "Caution",
-      "ok": "OK"
+      "ok": "OK",
+      "allPass": "Everything passes",
+      "fromAlert": "Opened from an alert"
     },
     "sample": {
       "stepAccounts": "Accounts",
@@ -798,7 +804,9 @@
       "disclosure": "Disclosure",
       "keyList": "KeyList",
       "askAi": "AskAi",
-      "transactionCheck": "TransactionCheck"
+      "transactionCheck": "TransactionCheck",
+      "protectionCheck": "ProtectionCheck",
+      "alertExplanation": "AlertExplanation"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -905,6 +913,7 @@
       "label": "{action} stake account {address}",
       "recovery": "Recovery card",
       "more": "More for stake account {address}",
+      "changeKey": "Change second key",
       "steal": "Try to steal it"
     },
     "noLongerProtected": {
@@ -1199,6 +1208,40 @@
       "other-second-key": "Another key holds this lock now. Only that key can change it.",
       "not-later": "The lock already ends later than this. Choose again.",
       "lock-end-passed": "The chosen end is too close or has passed. Choose again."
+    }
+  },
+  "changeKey": {
+    "intro": "Hand the lock to a new second key. Do it at once if your second key may be stolen: until then its holder can move the lock date or hand the lock to their own key.",
+    "heading": "Your new second key",
+    "body": "Connect a new wallet: it becomes the second key. Your second key now and the new one both sign, and the new one pays the fee of about 0.00001 SOL. The lock keeps its end date, and your SOL does not move.",
+    "newSeed": "Make it from a new seed phrase: a new Ledger, a spare Ledger reset with a new seed phrase, or a new wallet in an app. Never use the Ledger that holds your main key or your second key, not even another account on it.",
+    "slot": "Signs and pays. It becomes your second key.",
+    "seedCheck": "My new second key comes from a new seed phrase, not from my main key's or my old second key's",
+    "needNew": "Connect the new wallet first.",
+    "fixProblem": "Connect another wallet as the new second key.",
+    "needSeedCheck": "Confirm that the new second key comes from a new seed phrase.",
+    "problem": {
+      "is-second": "This wallet already holds the lock. Connect a new wallet.",
+      "is-main": "This wallet is the main key of this stake. The second key must be another wallet.",
+      "is-staker": "This wallet manages the staking of this stake. The second key must be another wallet.",
+      "is-stake-account": "This is the stake account itself. Connect a wallet."
+    },
+    "review": "Review the change",
+    "signHeading": "Hand the lock to the new second key",
+    "notLocked": "No second key holds a lock on this stake account now, so there is nothing to hand on. Protect it with your main key and a new second key instead.",
+    "protect": "Protect this stake",
+    "result": "Second key change",
+    "refused": {
+      "not-found": "This stake account no longer exists.",
+      "not-stake-account": "This address is not a stake account.",
+      "not-locked": "This stake account has no lock in force any more.",
+      "other-second-key": "Another key holds this lock now. Only that key can change it.",
+      "bad-new-key": "The new second key must be a wallet other than the keys of this stake. Connect another one."
+    },
+    "done": {
+      "title": "Your new second key holds the lock",
+      "body": "The old second key can no longer change this lock. Keep the new one apart from your main key, and print a new recovery card: the old one names the old key.",
+      "recovery": "Print the new recovery card"
     }
   },
   "devCosign": {
@@ -1746,7 +1789,8 @@
       "extend": "Extend in Stakeward",
       "withdraw": "Withdraw in Stakeward",
       "source": "Stakeward source code",
-      "lockedByOther": "Why a stake account says Locked by a second key"
+      "lockedByOther": "Why a stake account says Locked by a second key",
+      "changeKey": "Change second key in Stakeward"
     },
     "commands": {
       "find": "List the stake accounts of the main key",
@@ -1812,7 +1856,8 @@
         "title": "Your second key is stolen, or someone saw its seed phrase",
         "body": "The thief cannot take your SOL, but can freeze it by moving the lock date.",
         "newKey": "Act first: make a new second key.",
-        "cli": "Hand the lock to it. Both second keys sign; the new one pays:",
+        "stakeward": "In Stakeward, use Change second key with both second keys:",
+        "cli": "Or, without Stakeward, hand the lock to it. Both second keys sign; the new one pays:",
         "late": "If the thief acts first, the stake stays locked until the date they chose."
       },
       "down": {
@@ -2008,7 +2053,7 @@
       },
       "period": {
         "q": "Which lock period should I choose?",
-        "a": "Six months suits most people. A shorter lock means a shorter wait if you lose your second key. A longer lock means fewer renewals. Your second key can extend it before it ends. Custom date sets any end from tomorrow to 5 years ahead."
+        "a": "Six months suits most people. A shorter lock means a shorter wait if you lose your second key. A longer lock means fewer renewals. Your second key can extend it before it ends. Custom date sets any end from tomorrow to 10 years ahead."
       },
       "thefts": {
         "q": "Has staked SOL really been stolen like this?",
@@ -2044,7 +2089,7 @@
       },
       "second-stolen": {
         "q": "My second key was stolen. What now?",
-        "a": "The thief cannot take your SOL. They can move the lock date far ahead, or hand the lock to another key.\n\nIf you still have the second key, hand the lock to a new second key at once. Your recovery card has the one command for it; it needs the Solana command line. In Stakeward today: remove the lock with the old second key, then protect the stake again with a new one right away. In between, your main key alone controls the stake.\n\nIf the thief changed the lock first, your SOL is still yours, but it stays locked until the date they set."
+        "a": "The thief cannot take your SOL. They can move the lock date far ahead, or hand the lock to another key.\n\nIf you still have the second key, hand the lock to a new second key at once: Change second key on your accounts page. The old and the new second key sign, the new one pays, and the end date stays. Your recovery card has the same step as one command.\n\nIf the thief changed the lock first, your SOL is still yours, but it stays locked until the date they set."
       },
       "both-stolen": {
         "q": "What if both keys are stolen?",
@@ -2052,7 +2097,7 @@
       },
       "change-second-key": {
         "q": "Can I change my second key?",
-        "a": "Not in Stakeward yet. The Solana command line does it in one step: see your recovery card. In Stakeward, remove the lock with your old second key, then protect the stake again with the new one right away. In between, your main key alone controls the stake."
+        "a": "Yes, while the lock holds. On your accounts page, open More on the stake account and choose Change second key. Connect the second key that holds the lock and a new wallet from a new seed phrase. Both sign, the new one pays, and the lock keeps its end date. Then print a new recovery card: the old one names the old key."
       },
       "locked-by-other": {
         "q": "Why does my stake account say Locked by a second key?",
@@ -2449,6 +2494,153 @@
       "lockedNoDate": "{amount}, locked by second key {key}",
       "notLocked": "{amount}, not locked",
       "ofTotal": "{part} of {total}"
+    }
+  },
+  "setupCheck": {
+    "title": "Protection check",
+    "intro": "A fixed list of checks, worked out from the network and what this browser knows. Nothing here is guessed.",
+    "score": "{passed} of {total} checks pass",
+    "scoreNone": "Nothing to score yet",
+    "loading": "Checking how this stake is protected",
+    "emptyTitle": "Nothing to check yet",
+    "empty": "This main key has no stake account. Once it has one, this check shows what protects it.",
+    "errorTitle": "Could not run the protection check",
+    "optional": "Optional",
+    "notScored": "Not scored",
+    "status": {
+      "pass": "Pass",
+      "fail": "Fix",
+      "warning": "Check",
+      "unknown": "Unknown",
+      "notApplicable": "Not applicable",
+      "info": "Reminder"
+    },
+    "checks": {
+      "locked": {
+        "title": "Every stake account is locked",
+        "pass": "Every stake account of this main key has a lock in force.",
+        "fail": "Some stake accounts have no lock: the main key alone can withdraw them.",
+        "notApplicable": "There is no stake account to lock.",
+        "action": "Protect these accounts"
+      },
+      "notEnding": {
+        "title": "No lock ends within 30 days",
+        "pass": "Every lock has more than 30 days left.",
+        "fail": "Some locks end within 30 days. Your second key can extend them before they end.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Extend"
+      },
+      "secondKey": {
+        "title": "Each lock is held by your second key",
+        "pass": "Each lock is held by a second key this browser knows, and that key is not the main key, the key that manages staking or the stake account.",
+        "fail": "Some locks are held by a key that is not your second key, or by a key that cannot be one.",
+        "unknown": "This browser does not know your second key yet, so it cannot tell whose key holds the locks. Connect your second key on this page to confirm.",
+        "notApplicable": "There is no lock yet."
+      },
+      "alerts": {
+        "title": "Telegram alerts",
+        "pass": "Telegram alerts are on for this main key.",
+        "fail": "Telegram alerts are off for this main key.",
+        "unknown": "Stakeward does not publish which wallets get alerts, so this page cannot tell. Open the bot and send /status to see.",
+        "notApplicable": "There is no stake account to watch.",
+        "action": "Connect Telegram alerts"
+      },
+      "rescueKit": {
+        "title": "One-tap rescue kit",
+        "pass": "Each locked account has a ready one-tap rescue kit.",
+        "fail": "Some locked accounts have no ready one-tap rescue kit. It lets you move the stake to a new wallet from a Telegram alert.",
+        "unknown": "Could not read the one-tap rescue kits. Refresh the page to try again.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Set up one-tap rescue"
+      },
+      "staker": {
+        "title": "Your main key manages staking",
+        "pass": "On every account, staking is managed by your main key.",
+        "fail": "On some accounts another key manages staking.",
+        "notApplicable": "There is no stake account to check.",
+        "action": "Open Rescue"
+      },
+      "recoveryCard": {
+        "title": "Recovery card",
+        "info": "Print the recovery card of each lock and keep it offline. It says how to get your SOL back, also without Stakeward.",
+        "notApplicable": "There is no lock yet.",
+        "action": "Recovery card"
+      }
+    },
+    "reasons": {
+      "no-lock": "No lock: the main key alone can withdraw.",
+      "ends-soon": "The lock ends on {date}.",
+      "zero-key": "The lock has no second key: nobody can lift it before it ends.",
+      "main-key": "The lock is held by the main key itself, so it protects nothing.",
+      "staker": "The second key is also the key that manages staking.",
+      "stake-account": "The second key is the stake account itself.",
+      "locked-by-other": "Locked by a key that is not a second key this browser knows. If you did not set this lock, someone else holds it.",
+      "second-key-not-known": "Locked by a second key this browser does not know yet.",
+      "no-kit": "No ready one-tap rescue kit.",
+      "kit-unknown": "The kit could not be read.",
+      "staker-changed": "Another key manages staking under your lock. If you did not do this, your main key may be stolen.",
+      "managed-by-service": "A staking service may manage this stake. With a lock, it may fail to rebalance or merge it.",
+      "card": "Locked with your second key."
+    },
+    "accountAction": "{action} for stake account {address}",
+    "ai": {
+      "task": "Review my Stakeward protection setup and tell me in plain words what to fix first.",
+      "accounts": "Stake accounts of this main key",
+      "sol": "SOL in them",
+      "locked": "Locked accounts",
+      "score": "Score",
+      "check": "Check “{title}”",
+      "optional": "optional",
+      "account": "Stake account {address}"
+    }
+  },
+  "alertExplain": {
+    "title": "About this alert",
+    "lead": "You opened this page from a Stakeward alert. This is what the monitor saw on the network.",
+    "loading": "Reading this account's recent changes",
+    "errorTitle": "Could not read this account's recent changes",
+    "error": "What the alert said still stands. Check the account on this page, or try again.",
+    "event": "What happened",
+    "when": "Seen",
+    "unknown": "Not known",
+    "account": "Stake account",
+    "now": "Now",
+    "lockEnd": "Lock ends",
+    "noLock": "No lock",
+    "notWatched": "Not watched any more",
+    "recent": "Recent changes of this account",
+    "noRecent": "No other change is recorded.",
+    "lock": {
+      "in-force": "Locked",
+      "ending-soon": "Locked, ends within 30 days",
+      "ended": "No lock in force"
+    },
+    "state": {
+      "initialized": "not staked",
+      "delegated": "delegated",
+      "closed": "closed"
+    },
+    "events": {
+      "DEACTIVATED": "The stake was deactivated: unstaking started.",
+      "DELEGATION_CHANGED": "The validator this stake is delegated to changed.",
+      "STAKER_CHANGED": "The key that can deactivate and delegate this stake changed.",
+      "WITHDRAWER_CHANGED": "The main key of this stake changed.",
+      "LOCKUP_CHANGED": "The lock on this stake changed.",
+      "BALANCE_DECREASED": "SOL left this stake account.",
+      "ACCOUNT_CLOSED": "The stake account was closed.",
+      "EXPIRED": "The lock on this stake ended.",
+      "VALIDATOR_AT_RISK": "The validator this stake is delegated to may stop earning rewards for it.",
+      "REMINDER": "Reminder: the lock on this stake ends soon.",
+      "other": "The monitor saw a change on this stake account."
+    },
+    "ai": {
+      "task": "Explain what this stake alert means for me and what I should do now.",
+      "event": "Event",
+      "time": "Seen at",
+      "account": "Stake account",
+      "status": "Current status",
+      "lockEnd": "Lock ends",
+      "recent": "Earlier change"
     }
   }
 }

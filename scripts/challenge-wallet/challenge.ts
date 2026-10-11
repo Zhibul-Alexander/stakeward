@@ -13,7 +13,7 @@ import { describeError } from '../gate/checks.ts';
 import { createSender } from '../gate/sender.ts';
 import { createDevAccounts, DevAccountsRefusal, explorerUrl, planDevAccounts } from '../dev-accounts/accounts.ts';
 
-/** 2027-10-13 00:00:00 UTC: a year after the demo, inside the worker's watch limit (D128). */
+/** 2027-10-13 00:00:00 UTC: a year after the demo, inside the worker's watch limit (D131). */
 export const CHALLENGE_LOCK_UNTIL = 1_823_385_600n;
 export const DEV_SITE = 'https://stakeward-dev.stakeward.workers.dev';
 

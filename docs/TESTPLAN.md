@@ -136,6 +136,8 @@ Claude правит найденное и пишет «готово к prod».
 
 ### в) Матрица кошельков на /dev/cosign
 
+Ledger без устройства: `scripts/ledger-sim/speculos.sh`, затем `pnpm ledger-sim` (D127, отчёт `docs/ledger-sim.md`). Настоящий Ledger через Phantom на mainnet нужен только для вопроса, дописывает ли Phantom Lighthouse для Ledger-аккаунта.
+
 Подготовка:
 - [ ] В Phantom включить devnet: Settings → Developer Settings → Testnet Mode, сеть Solana Devnet. Режим действует на оба аккаунта.
 
@@ -287,6 +289,8 @@ curl -sS "$API/getWebhookInfo"
 - [ ] Опустошить и основной кошелёк: страница просит пополнить Second key, а не Main key.
 - [ ] С `/withdraw` пройти «Remove the lock first»: галочка, подписывает Second key, затем вывод одним Main key. Перед снятием видно предупреждение, что это открывает окно для вора.
 - [ ] Снять делегированный аккаунт с делегирования и сравнить отсчёт с концом эпохи в эксплорере.
+- [ ] На `/app?address=<Main key>` у защищённого аккаунта в строке видна кнопка Withdraw, у аккаунта без замка тоже (D129).
+- [ ] Смена второго ключа (F7, D129): на защищённом аккаунте More → Change second key. Подключить новый кошелёк из другой seed-фразы с ~0,001 SOL как New wallet, поставить галочку, Review the change. Подписывают New wallet (платит) и Second key. Phantom может предупредить или заблокировать (D116). В эксплорере у аккаунта новый Lockup Custodian, дата замка та же, комиссия списана с нового кошелька. Затем «Extend» старым вторым ключом падает, новым проходит. Карточка восстановления (`/recovery/<аккаунт>`) называет новый ключ.
 
 ## Шаг 7. Спасение, nonce, подпись по ссылке
 
@@ -311,6 +315,11 @@ curl -sS "$API/getWebhookInfo"
 
 - [ ] `/app` с защищённым аккаунтом → «More» → «Try to steal it». Кнопка «Try to steal it»: обе строки «Blocked by the lock», внизу «Your SOL stays put». В эксплорере ничего не изменилось, кошелёк не открывался. «Ask ChatGPT» и «Ask Claude» открывают вопрос в своём аккаунте.
 - [ ] То же на незащищённом аккаунте: «Would succeed» (на делегированном вывод — «Possible after unstaking»), красная строка и кнопка «Protect this stake».
+### Проверка защиты и объяснение тревоги (D125, после деплоя в dev)
+
+- [ ] `/app?address=<Main key>` с аккаунтами разных видов (защищённый, истекающий, незащищённый): под списками раздел «Protection check» со строкой «N of M checks pass». Проваленные проверки раскрыты сами и ведут к действию: «Protect these accounts» → `/protect` с этими аккаунтами, «Extend» у истекающего → `/extend/<аккаунт>`, «Set up one-tap rescue» → `/rescue-kit`. Пройденные свёрнуты, раскрываются с клавиатуры (Tab, Enter). «Telegram alerts» — Unknown и «Not scored», ссылка «Connect Telegram alerts» открывает бота. «Recovery card» — Reminder со ссылкой на карточку каждого замка. Тот же адрес в окне инкогнито (второй ключ не известен): «Each lock is held by your second key» — Unknown, и счёт её не учитывает.
+- [ ] Под проверкой «Ask your AI»: «Ask ChatGPT» и «Ask Claude» открывают новую вкладку с вопросом «Review my Stakeward protection setup…», в нём каждая проверка и её результат; «Show the question» показывает тот же текст. Ответ ИИ ничего не меняет на странице.
+- [ ] Тревога в dev-боте (снять делегирование с защищённого аккаунта): кнопка «Open Rescue» ведёт на `stakeward-dev…/rescue?address=…&event=DEACTIVATED&stake=<аккаунт>`, то есть на наш домен. Вверху страницы «About this alert»: «The stake was deactivated: unstaking started.», время, аккаунт, «Locked · delegated», дата конца замка и прежние изменения этого аккаунта; под ним «Ask your AI» с вопросом «Explain what this stake alert means for me…». То же для «Open Stakeward» (`/app?…`) и «Extend lock» из напоминания (`/extend/<аккаунт>?…`).
 
 ## Шаг 8. Тексты
 

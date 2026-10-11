@@ -150,7 +150,7 @@ test('/app?address= shows every status, the red banner and the second-key list',
   expect(new Set(amountEdges.flat()).size, amountEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
   if (wide) {
     const actionEdges = await edgesOf('[data-slot="row-action"]');
-    expect(actionEdges.map((edges) => edges.length)).toEqual([2, 0, 0, 1]);
+    expect(actionEdges.map((edges) => edges.length)).toEqual([4, 1, 0, 1]);
     expect(new Set(actionEdges.flat()).size, actionEdges.map((edges) => edges.join(', ')).join(' | ')).toBe(1);
   }
 

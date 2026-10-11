@@ -4,6 +4,7 @@ import { rawStakeAccount, stakeAccountOf } from '../test/raw-stake.ts';
 import { STAKE_PROGRAM_ADDRESS, SYSTEM_PROGRAM_ADDRESS, U64_MAX, ZERO_ADDRESS } from './constants.ts';
 import type { Lockup, RawAccount } from './decode.ts';
 import { watchResponseFromJson, watchResponseToJson, type WatchResponse } from './json.ts';
+import { customLockBounds, customLockEnd } from './lockup.ts';
 import { MAX_WATCH_ACCOUNTS, WATCH_MAX_LOCK_SECONDS, watchVerdict } from './watch.ts';
 
 const key = (n: number): Address => getAddressDecoder().decode(new Uint8Array(32).fill(n));
@@ -16,6 +17,16 @@ const lockedRaw = (lockup: Partial<Lockup>): RawAccount =>
   rawStakeAccount(stakeAccountOf({ lockup: { unixTimestamp: NOW + 86_400n, epoch: 0n, custodian: K, ...lockup } }));
 
 describe('watchVerdict', () => {
+  it('accepts the furthest custom lock end the site offers (D131)', () => {
+    // Just before midnight, so the furthest date is nearly CUSTOM_LOCK_MAX_YEARS and a day ahead.
+    for (const now of [NOW, BigInt(Date.UTC(2028, 1, 29, 23, 59) / 1000)]) {
+      const furthest = customLockEnd(customLockBounds(now).max, now);
+      if (!furthest.ok) throw new Error('the furthest bound is a valid custom end');
+      const raw = lockedRaw({ unixTimestamp: furthest.lockUntil });
+      expect(watchVerdict(raw, { unixTimestamp: now, epoch: 1_000n }).ok).toBe(true);
+    }
+  });
+
   it('accepts a stake account locked by a second key, and returns it decoded', () => {
     const account = stakeAccountOf({ lockup: { unixTimestamp: NOW + 180n * 86_400n, epoch: 0n, custodian: K } });
     expect(watchVerdict(rawStakeAccount(account), CLOCK)).toEqual({ ok: true, account });

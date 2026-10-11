@@ -18,7 +18,7 @@ Every stake account also has a lock built in: an end date and a key that guards 
 2. **Get alerts.** Stakeward checks your protected stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes. It also reminds you 30, 14, 7, 3 and 1 days before the lock ends, and when it ends.
 3. **Rescue or withdraw.** If your main key is stolen, your main key, your second key and a new wallet sign together before the lock ends, and the stake moves to the new wallet, out of the thief's reach. To take your SOL out, your two keys withdraw it together.
 
-The lock lasts 1, 3, 6 or 12 months, 6 by default, and ends at 00:00 UTC on the first midnight after that period. Or pick a custom end date from tomorrow to 5 years ahead: the lock ends at 00:00 UTC on that date. Your second key can extend the lock, or remove it early, at any time before it ends. After it ends, your main key alone controls the stake again, and you can protect it again. On devnet you can also try a 10-minute or a 1-hour lock.
+The lock lasts 1, 3, 6 or 12 months, 6 by default, and ends at 00:00 UTC on the first midnight after that period. Or pick a custom end date from tomorrow to 10 years ahead: the lock ends at 00:00 UTC on that date. Your second key can extend the lock, or remove it early, at any time before it ends. After it ends, your main key alone controls the stake again, and you can protect it again. On devnet you can also try a 10-minute or a 1-hour lock.
 
 You can look before you connect anything: paste a wallet address and see which of its stake accounts are protected. Stakeward asks for a wallet only when you act.
 
@@ -64,7 +64,6 @@ So a thief with only your main key can stop your rewards, move your stake to a v
 - It cannot move your SOL, sign for you or change your lock. Only your own wallets can.
 - It cannot promise alerts. If Stakeward is down, alerts come late or not at all. The lock itself keeps working.
 - It cannot see your keys or your seed phrase, and it never holds your SOL.
-- It cannot yet hand the lock to a new second key in one step. The Solana command line can: see [Second key stolen](#second-key-stolen).
 
 ## What it costs
 
@@ -296,7 +295,7 @@ solana stake-set-lockup \
 
 ### Second key stolen
 
-The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
+The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. In Stakeward, open More on the stake account and choose Change second key; without Stakeward, run the command below. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
 
 ```sh
 solana stake-set-lockup-checked \

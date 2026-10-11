@@ -2,13 +2,16 @@
 // lock worth watching. No login and no signature: the proof is the chain itself.
 import { ZERO_ADDRESS } from './constants.ts';
 import { decodeStakeAccount, type RawAccount, type StakeAccount } from './decode.ts';
-import type { ClockView } from './lockup.ts';
+import { CUSTOM_LOCK_MAX_YEARS, type ClockView } from './lockup.ts';
 
 /** Accounts per POST /api/watch request; the site splits longer lists. */
 export const MAX_WATCH_ACCOUNTS = 20;
 
-/** The latest lock end accepted, counted from the cluster clock: 10 years (3 653 days), D128. */
-export const WATCH_MAX_LOCK_SECONDS = 3_653n * 86_400n;
+/**
+ * The latest lock end accepted, counted from the cluster clock: the furthest custom end the site offers
+ * (CUSTOM_LOCK_MAX_YEARS, counted in 366-day years) plus a day of clock skew (D131).
+ */
+export const WATCH_MAX_LOCK_SECONDS = (BigInt(CUSTOM_LOCK_MAX_YEARS) * 366n + 1n) * 86_400n;
 
 export type WatchRejectReason = 'not-found' | 'not-stake-account' | 'not-locked' | 'unsupported-lock';
 

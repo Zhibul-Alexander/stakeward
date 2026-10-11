@@ -1,6 +1,7 @@
 // @stakeward/core: pure TypeScript, no I/O. Used by the site, the worker, scripts and tests.
 export * from './actions.ts';
 export * from './ai-prompt.ts';
+export * from './alert-link.ts';
 export * from './applied.ts';
 export * from './builders.ts';
 export * from './compare.ts';
@@ -22,9 +23,11 @@ export * from './ports.ts';
 export * from './recovery.ts';
 export * from './rescue-kit.ts';
 export * from './scan.ts';
+export * from './setup-check.ts';
 export * from './signing-order.ts';
 export * from './status.ts';
 export * from './theft-test.ts';
+export * from './validator.ts';
 export * from './verify.ts';
 export * from './wallet-queue.ts';
 export * from './watch.ts';

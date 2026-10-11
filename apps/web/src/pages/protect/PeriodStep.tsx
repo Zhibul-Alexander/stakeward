@@ -45,7 +45,7 @@ const SHORT_PERIODS: readonly LockPeriod[] = ['10-minutes', '1-hour'];
 
 /**
  * Step 3 (F1 step 3): how long the lock holds, one card per period with the date it ends, and Custom date: a date
- * field from tomorrow to five years on, the lock ending at 00:00 UTC on that date (D119). T (00:00 UTC after the
+ * field from tomorrow to CUSTOM_LOCK_MAX_YEARS (10) years on, the lock ending at 00:00 UTC on that date (D119). T (00:00 UTC after the
  * period, CLAUDE.md section 5) comes from the cluster clock read when the step opens, and the risk is said with the
  * chosen date right under the cards (UX rule 6). A cluster clock more than a day off this device's clock gives no T:
  * the step says so and offers Try again (SECURITY-CHECK П12).
