@@ -3,6 +3,7 @@ import { bodyLimit } from 'hono/body-limit';
 import { challengeHandler } from './challenge.ts';
 import { accountsHandler, healthHandler, noStore, statsHandler } from './public-api.ts';
 import { securityHeaders } from './security-headers.ts';
+import { solPriceHandler } from './sol-price.ts';
 import { rateLimit } from './rate-limit.ts';
 import { createRescueKitHandler, MAX_RESCUE_KIT_BODY_BYTES, rescueKitStatusHandler } from './rescue-kits.ts';
 import { JSON_RPC_ERRORS, jsonRpcError, MAX_RPC_BODY_BYTES, rpcHandler } from './rpc.ts';
@@ -45,6 +46,8 @@ export function createApp(options: AppOptions = {}) {
   app.get('/accounts', noStore(), lookupLimit, accountsHandler(now));
 
   app.get('/stats', noStore(), lookupLimit, statsHandler(now));
+
+  app.get('/sol-price', noStore(), lookupLimit, solPriceHandler(upstream, now));
 
   app.post(
     '/rpc',

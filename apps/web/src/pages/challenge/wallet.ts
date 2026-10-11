@@ -1,4 +1,4 @@
-// The public "Try to steal it" wallet on devnet (DECISIONS.md D132, created by scripts/challenge-wallet.ts, D130).
+// The public "Try to steal it" wallet on devnet (DECISIONS.md D133, created by scripts/challenge-wallet.ts, D130).
 // Its MAIN key is published on purpose: the SOL is devnet SOL, and the point is that the main key alone cannot take
 // it. The key itself is not in this repository: the page reads it from GET /api/challenge, which the dev Worker serves
 // from its CHALLENGE_MAIN_KEY secret. The second key that holds the lock is never in either. This module is imported

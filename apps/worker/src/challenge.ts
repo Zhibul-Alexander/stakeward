@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 import type { AppEnv } from './app.ts';
 
 /**
- * GET /api/challenge (DECISIONS.md D132), devnet only: the main key of the public "Try to steal it" wallet, which the
+ * GET /api/challenge (DECISIONS.md D133), devnet only: the main key of the public "Try to steal it" wallet, which the
  * /challenge page shows. The key is published on purpose, but it lives in the CHALLENGE_MAIN_KEY secret of the dev
  * Worker (base58 of the 64-byte keypair) rather than in the repository. The second key is never here.
  * Answers 404 outside devnet and 503 while the secret is unset or is not a keypair.

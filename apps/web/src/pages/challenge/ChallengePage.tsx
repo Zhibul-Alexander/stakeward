@@ -16,7 +16,7 @@ import { fetchChallengeKey } from './challenge-key.ts';
 import { CHALLENGE } from './wallet.ts';
 
 /**
- * /challenge, devnet only (DECISIONS.md D132): the public "Try to steal it" wallet. The main key of a locked devnet
+ * /challenge, devnet only (DECISIONS.md D133): the public "Try to steal it" wallet. The main key of a locked devnet
  * stake account is shown in full, with what a thief holding it can and cannot do; the live state is on /proof. The key
  * comes from GET /api/challenge, not from the bundle.
  */

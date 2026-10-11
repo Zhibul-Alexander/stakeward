@@ -6,7 +6,7 @@ import { CHALLENGE } from './wallet.ts';
 
 const SECRET = 'published-main-key';
 
-describe('ChallengePage (D132)', () => {
+describe('ChallengePage (D133)', () => {
   it('shows the main key in full, the lock date and the way to check it live; the second key only as an address', async () => {
     render(<ChallengePage load={() => Promise.resolve(SECRET)} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Try to steal it' })).toBeInTheDocument();

@@ -1,4 +1,4 @@
-// GET /api/challenge (src/challenge.ts, DECISIONS D132): the devnet challenge wallet's published main key.
+// GET /api/challenge (src/challenge.ts, DECISIONS D133): the devnet challenge wallet's published main key.
 import { getAddressDecoder, getBase58Decoder } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { challengeKeypair } from '../src/challenge.ts';
