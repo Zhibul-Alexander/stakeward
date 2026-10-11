@@ -9,12 +9,12 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <a
         href="#main"
-        className="sr-only border-2 border-foreground bg-signal px-4 py-2 text-sm font-bold text-on-signal focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+        className="sr-only rounded-md bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-md focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
       >
         {t('common.skipToContent')}
       </a>
       <SiteHeader />
-      <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-14">
+      <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-10 pb-8 sm:px-6 sm:pt-16">
         {children}
       </main>
       <SiteFooter />

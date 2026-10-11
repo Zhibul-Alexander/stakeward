@@ -7,19 +7,19 @@ import type { ComponentProps } from 'react';
 // A soft fill without a frame for every tone but danger: danger is the only framed alert, the one "shout" on a screen.
 // `size="lg"` is the /cosign stop panel: a thicker frame, larger icon and text.
 const alertVariants = cva(
-  'grid w-full grid-cols-1 items-start gap-x-3 gap-y-1 rounded-none border-0 border-l-[6px] px-4 py-3 text-sm has-[>svg]:grid-cols-icon *:[svg]:row-span-2 *:[svg]:mt-0.5 *:[svg]:size-4 *:[svg]:text-current',
+  'grid w-full grid-cols-1 items-start gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-sm has-[>svg]:grid-cols-icon *:[svg]:row-span-2 *:[svg]:mt-0.5 *:[svg]:size-4 *:[svg]:text-current',
   {
     variants: {
       tone: {
-        neutral: 'border-foreground bg-subtle text-foreground',
-        success: 'border-signal bg-success-soft text-success',
-        warning: 'border-foreground bg-warning-soft text-warning',
-        info: 'border-foreground bg-info-soft text-info',
-        danger: 'border-danger-solid bg-danger-soft text-danger',
+        neutral: 'border-transparent bg-subtle text-foreground',
+        success: 'border-transparent bg-success-soft text-success',
+        warning: 'border-transparent border-l-warning-border border-l-4 bg-warning-soft text-warning',
+        info: 'border-transparent bg-info-soft text-info',
+        danger: 'border-2 border-danger-border bg-danger-soft text-danger',
       },
       size: {
         md: '',
-        lg: 'border-2 border-l-[10px] px-5 py-4 text-base *:[svg]:size-6',
+        lg: 'border-2 px-5 py-4 text-base *:[svg]:size-6',
       },
     },
     defaultVariants: {

@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { DAY, MAIN, mockApi, NOW, SECOND, SMOKE_STAKE, SOL, stakeJson } from '../../e2e/mock-api.ts';
+import { DAY, MAIN, mockApi, NOW, SECOND, SMOKE_STAKE, SOL, stakeJson, VOTE } from '../../e2e/mock-api.ts';
 
 const VARIANT = (process.env['VITE_UI_VARIANT'] || 'base') + (process.env['SHOOT_SCHEME'] === 'dark' ? '-dark' : '');
 const UNPROTECTED = '5Rz9Wg3mAxJ6QeV9WbHk7K1q3sN2x8Ytq6WvGx2fVt9H';
@@ -16,7 +16,7 @@ const FIXTURE = {
 const ROUTES: [string, string][] = [
   ['landing', '/'],
   ['app', `/app?address=${MAIN}`],
-  ['app-empty', `/app?address=${SECOND}1`],
+  ["app-empty", `/app?address=${VOTE}`],
   ['app-nowallet', '/app'],
   ['protect', `/protect?address=${MAIN}`],
   ['withdraw', `/withdraw/${SMOKE_STAKE}`],

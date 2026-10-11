@@ -206,7 +206,7 @@ export function AccountRow({
           bottom-aligned line. */}
       <SolAmount
         lamports={account.lamports}
-        className="shrink-0 font-display text-2xl leading-none tracking-tight sm:col-start-2 sm:ml-6 sm:justify-self-end sm:text-3xl sm:leading-8"
+        className="shrink-0 font-mono text-base font-medium sm:col-start-2 sm:ml-3 sm:justify-self-end sm:text-lg sm:leading-8"
       />
       {hasActions ? (
         // From 640 px its parts take the grid's last two columns (display: contents), in the same order; the action
@@ -268,7 +268,7 @@ export function AccountRow({
       ) : null}
       {!hint || hintText === null ? null : <p className="w-full text-sm text-muted sm:col-span-full">{hintText}</p>}
       {moreActions === undefined ? null : (
-        <CollapsibleContent className="mt-2 flex w-full flex-wrap items-center gap-2 border-l-[6px] border-foreground bg-subtle p-3 sm:col-span-full">
+        <CollapsibleContent className="mt-1 flex w-full flex-wrap items-center gap-2 rounded-md bg-subtle p-3 sm:col-span-full">
           {moreActions}
         </CollapsibleContent>
       )}
@@ -326,7 +326,7 @@ export function AccountList({ label, ordered = false, actionColumns = false, chi
       aria-label={label}
       data-slot="account-list"
       className={cn(
-        'divide-y-2 divide-foreground border-y-[3px] border-foreground bg-surface',
+        'divide-y divide-dashed divide-foreground border-y-2 border-foreground bg-surface',
         'sm:grid sm:[&>li]:col-span-full sm:[&>li]:grid sm:[&>li]:grid-cols-subgrid sm:[&>li>*]:col-span-full',
         actionColumns ? 'sm:grid-cols-account-row-actions' : 'sm:grid-cols-account-row',
         'sm:[&>li>[data-slot=account-row]]:grid-cols-subgrid',
@@ -339,11 +339,11 @@ export function AccountList({ label, ordered = false, actionColumns = false, chi
 }
 
 export function AccountListItem({ children, className }: { children: ReactNode; className?: string | undefined }) {
-  return <li className={cn('py-4 sm:px-1', className)}>{children}</li>;
+  return <li className={cn('px-1 py-4', className)}>{children}</li>;
 }
 
 /** A row standing alone, outside a list (an account page, a result): the list's frame around one row. */
-export const SINGLE_ROW_FRAME = 'border-y-[3px] border-foreground bg-surface px-1 py-4';
+export const SINGLE_ROW_FRAME = 'border-y-2 border-foreground bg-surface px-1 py-4';
 
 /** Loading state of a row, the row's own shape. Decorative; the list announces loading. */
 export function AccountRowSkeleton({ className }: { className?: string | undefined }) {
@@ -362,9 +362,9 @@ export function AccountRowSkeleton({ className }: { className?: string | undefin
 /** Loading state of an AccountList: its frame with `rows` row skeletons. Decorative. */
 export function AccountListSkeleton({ rows = 2, className }: { rows?: number | undefined; className?: string | undefined }) {
   return (
-    <div aria-hidden="true" className={cn('divide-y-2 divide-foreground border-y-[3px] border-foreground bg-surface', className)}>
+    <div aria-hidden="true" className={cn('divide-y divide-dashed divide-foreground border-y-2 border-foreground bg-surface', className)}>
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="px-4 py-3">
+        <div key={index} className="px-1 py-4">
           <AccountRowSkeleton />
         </div>
       ))}

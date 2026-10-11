@@ -8,21 +8,21 @@ import type { ComponentProps } from 'react';
 // text and no frame; `outline` keeps its frame (Unknown, Waiting, Not connected, Devnet). Sizes: `sm` (text-xs) in rows
 // and lists, `md` (text-sm) where the badge stands on its own.
 const badgeVariants = cva(
-  'inline-flex w-fit shrink-0 items-center gap-1 rounded-none border-2 font-bold uppercase tracking-wider whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
+  'inline-flex w-fit shrink-0 items-center gap-1 rounded-sm border font-semibold whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
   {
     variants: {
       tone: {
-        neutral: 'border-foreground bg-background text-foreground',
-        success: 'border-signal bg-signal text-on-signal',
-        warning: 'border-signal bg-background text-foreground',
-        info: 'border-foreground bg-foreground text-background',
-        danger: 'border-danger-solid bg-danger-solid text-on-danger',
-        outline: 'border-foreground bg-background text-foreground',
-        primary: 'border-foreground bg-foreground text-background',
+        neutral: 'border-neutral-border bg-neutral-soft text-neutral',
+        success: 'border-success-border bg-success-soft text-success',
+        warning: 'border-warning-border bg-warning-soft text-warning',
+        info: 'border-info-border bg-info-soft text-info',
+        danger: 'border-danger-border bg-danger-soft text-danger',
+        outline: 'border-foreground bg-surface text-foreground',
+        primary: 'border-transparent bg-primary text-on-primary',
       },
       size: {
-        sm: 'px-1.5 py-0.5 text-[0.6875rem] leading-4 [&>svg]:size-3.5',
-        md: 'px-2 py-1 text-xs [&>svg]:size-4',
+        sm: 'px-2 py-0.5 text-xs [&>svg]:size-3.5',
+        md: 'px-2.5 py-0.5 text-sm [&>svg]:size-4',
       },
     },
     defaultVariants: {

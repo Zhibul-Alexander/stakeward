@@ -27,9 +27,9 @@ function formatCount(value: number): string {
  */
 function Stat({ term, children }: { term: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col-reverse justify-end gap-2 border-t-[6px] border-foreground pt-3">
-      <dt className="micro">{term}</dt>
-      <dd className="font-display text-[3rem] leading-[0.9] tracking-tight tabular-nums wrap-anywhere sm:text-4xl">{children}</dd>
+    <div className="flex flex-col-reverse justify-end gap-2 border-t-2 border-foreground pt-4">
+      <dt className="text-base text-muted">{term}</dt>
+      <dd className="font-condensed text-4xl tabular-nums wrap-anywhere">{children}</dd>
     </div>
   );
 }
@@ -72,7 +72,7 @@ function StatsBody({ stats, onRetry }: { stats: Load<Stats>; onRetry: () => void
       }
       return (
         <div className="flex flex-col gap-4">
-          <dl className="grid gap-6 sm:grid-cols-3 sm:gap-6">
+          <dl className="grid gap-3 sm:grid-cols-3 sm:gap-4">
             <Stat term={t('stats.accountsLocked')}>{formatCount(accountsLocked)}</Stat>
             <Stat term={t('stats.solLocked')}>
               {/* Whole SOL, rounded down; wraps rather than overflows a narrow tile. */}

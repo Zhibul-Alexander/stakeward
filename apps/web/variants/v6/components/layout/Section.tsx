@@ -27,22 +27,17 @@ export function Section({ title, headingLevel = 2, id, count, description, actio
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
     <section id={id} aria-labelledby={headingId} data-slot="section" className={cn('flex flex-col', className)}>
-      <div
-        className={cn(
-          'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 pt-3',
-          headingLevel === 2 ? 'border-t-[6px] border-foreground' : 'border-t-2 border-foreground',
-        )}
-      >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-          <Heading id={headingId} className={headingLevel === 2 ? 'text-lg uppercase sm:text-2xl' : 'text-base font-bold uppercase tracking-wide'}>
+          <Heading id={headingId} className={headingLevel === 2 ? 'text-2xl' : 'text-lg font-semibold'}>
             {title}
           </Heading>
-          {count === undefined ? null : <span className="micro text-muted tabular-nums">{count}</span>}
+          {count === undefined ? null : <span className="font-mono text-sm text-muted tabular-nums">{count}</span>}
         </div>
         {action === undefined ? null : <div className="flex flex-wrap items-center gap-2">{action}</div>}
       </div>
       {description === undefined ? null : <p className="mt-1 max-w-prose text-base text-pretty text-muted">{description}</p>}
-      <div className="mt-3 flex flex-col gap-4">{children}</div>
+      <div className="mt-4 flex flex-col gap-4">{children}</div>
     </section>
   );
 }

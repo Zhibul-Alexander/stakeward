@@ -9,7 +9,7 @@ function Card({ className, ...props }: ComponentProps<'div'>) {
     <div
       data-slot="card"
       className={cn(
-        'flex flex-col gap-4 rounded-none border-2 border-foreground bg-surface py-4 text-foreground sm:py-6',
+        'flex flex-col gap-4 rounded-lg border border-foreground bg-surface py-4 text-foreground sm:py-6',
         className,
       )}
       {...props}
@@ -23,7 +23,7 @@ function CardHeader({ className, ...props }: ComponentProps<'div'>) {
 
 function CardTitle({ className, asChild = false, ...props }: ComponentProps<'div'> & { asChild?: boolean }) {
   const Comp = asChild ? Slot.Root : 'div';
-  return <Comp data-slot="card-title" className={cn('font-display text-lg', className)} {...props} />;
+  return <Comp data-slot="card-title" className={cn('font-condensed text-2xl font-bold', className)} {...props} />;
 }
 
 function CardDescription({ className, ...props }: ComponentProps<'p'>) {
@@ -38,7 +38,7 @@ function CardFooter({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="card-footer"
-      className={cn('flex flex-wrap items-center gap-2 border-t-2 border-foreground px-4 pt-4 sm:px-6 sm:pt-6', className)}
+      className={cn('flex flex-wrap items-center gap-2 border-t border-dashed border-foreground px-4 pt-4 sm:px-6 sm:pt-6', className)}
       {...props}
     />
   );

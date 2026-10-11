@@ -1,10 +1,38 @@
 /*
- * Stakeward v6 "Swiss / Bold Poster" tokens. Same token NAMES as src/styles/tokens.css; new values.
+ * Stakeward design tokens: the only place with raw colours, font stacks, sizes, radii, shadows and durations
+ * (CLAUDE.md section 9). Components and pages use the Tailwind utilities generated from these variables
+ * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
+ * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
  *
- * Paper and ink: white and pure black, nothing between but one grey for secondary text. One signal colour, safety
- * orange (--color-signal), used for exactly two things: the screen's one action and the "locked / protected" state.
- * Orange is never text on white (3.3:1): it is a fill with black text on it (6.4:1). Links and outlines are ink.
- * Zero radius everywhere; no shadows. Dark theme = the same poster inverted (black paper, white ink, same orange).
+ * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
+ * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
+ * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
+ * exist at all.
+ *
+ * Colour roles
+ *   background        page
+ *   surface           cards and panels
+ *   surface-raised    popovers and other elevated layers (lighter than surface in the dark theme)
+ *   subtle            muted fills: secondary buttons, skeletons, progress tracks, hover
+ *   subtle-hover      hover on a subtle fill
+ *   foreground        body text
+ *   muted             secondary text (AA on background, surface, surface-raised and subtle)
+ *   border            decorative lines
+ *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
+ *   ring              focus indicator (3:1 against background and surface)
+ *   primary           main actions and links; on-primary is text on it
+ *   primary-soft      selection and the current step (always with a second cue: checkbox, number or ring)
+ *   inverse           tooltip background; on-inverse is text on it
+ * Colour means state. primary is the only non-state colour: the one action of a screen.
+ * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
+ * background, <tone>-border its outline.
+ *   success   Protected
+ *   warning   Expiring soon
+ *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
+ *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
+ * modules on a light ground, so the code must not invert with the theme.
  */
 
 @theme {
@@ -16,102 +44,125 @@
   --drop-shadow-*: initial;
   --text-shadow-*: initial;
 
+  /*
+   * Verdict first (v6): a poster in two inks. Paper is pure white, ink is pure black; colour appears only where it
+   * carries an answer: verdict red (Yes, a thief can take it) and verdict green (No, the second key holds it).
+   * Primary actions are solid ink, never coloured, so the verdict colour is never mistaken for a button.
+   */
   --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
-  --color-subtle: #ececec;
-  --color-subtle-hover: #dedede;
+  --color-subtle: #f0f0ee;
+  --color-subtle-hover: #e4e4e1;
   --color-foreground: #000000;
-  --color-muted: #4a4a4a;
-  --color-border: #000000;
+  --color-muted: #555555;
+  --color-border: #d4d4d0;
   --color-border-strong: #000000;
-  --color-ring: #000000;
-  /* primary = ink: links, checked boxes, selection. The filled action button uses the signal colour instead. */
+  --color-ring: #0047ff;
   --color-primary: #000000;
-  --color-primary-hover: #3a3a3a;
+  --color-primary-hover: #2e2e2e;
   --color-on-primary: #ffffff;
-  --color-primary-soft: #ffe2d4;
+  --color-primary-soft: #ececea;
   --color-inverse: #000000;
   --color-on-inverse: #ffffff;
 
-  /* The one signal colour. */
-  --color-signal: #ff4f00;
-  --color-signal-hover: #ff7333;
-  --color-on-signal: #000000;
-  /* Hairline grid lines of the poster. */
-  --color-grid: #e6e6e6;
-
-  /* Protected = signal. As text (icons, words on white) a deep orange that passes AA. */
-  --color-success: #a83200;
-  --color-success-soft: #ffe2d4;
-  --color-success-border: #ff4f00;
-  --color-warning: #6e4400;
-  --color-warning-soft: #ffefb3;
-  --color-warning-border: #000000;
+  --color-success: #00703c;
+  --color-success-soft: #e3f4ea;
+  --color-success-border: #00703c;
+  --color-warning: #8a4b00;
+  --color-warning-soft: #fdf0dc;
+  --color-warning-border: #c77700;
   --color-neutral: #000000;
-  --color-neutral-soft: #ffffff;
+  --color-neutral-soft: #ececea;
   --color-neutral-border: #000000;
-  --color-info: #000000;
-  --color-info-soft: #ececec;
-  --color-info-border: #000000;
-  --color-danger: #c40018;
-  --color-danger-soft: #ffe3e6;
-  --color-danger-border: #c40018;
-  --color-danger-solid: #c40018;
-  --color-danger-solid-hover: #9c0013;
+  --color-info: #003cc7;
+  --color-info-soft: #e6edff;
+  --color-info-border: #003cc7;
+  --color-danger: #d0021b;
+  --color-danger-soft: #fde8ea;
+  --color-danger-border: #d0021b;
+  --color-danger-solid: #d0021b;
+  --color-danger-solid-hover: #a80016;
   --color-on-danger: #ffffff;
 
-  --color-qr-dark: #000000;
+  /* The verdict inks: the giant Yes / No. AA large-text and normal-text on paper. */
+  --color-verdict-yes: #d0021b;
+  --color-verdict-no: #00703c;
+
+  /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
+  --color-qr-dark: #10131a;
   --color-qr-light: #ffffff;
 
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Archivo Black', 'Inter Variable', ui-sans-serif, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
+  --font-sans: 'Bricolage Grotesque Variable', 'Bricolage Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Plex Mono Fallback', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Type scale: same names; the top two sizes grow into poster type (set in Archivo Black by index.css). */
+  /*
+   * Type scale: six sizes, no others (test/design-tokens.test.ts rejects a size class that is not declared here;
+   * Tailwind would drop it silently). T-shirt names on purpose: the class merger (cn) recognises them as font sizes,
+   * not colours. Weights 400, 500 and 600 only; tabular-nums on every amount, count, fee and countdown; mono only for
+   * addresses, signatures and commands.
+   *   text-xs    12/16  meta, badges, captions, footer fine print
+   *   text-sm    14/20  UI text: rows, buttons, tables, receipt, labels
+   *   text-base  16/24  prose: landing, explanations, leads, inputs; h3 (font-semibold)
+   *   text-lg    18/28  h2 in the app (Section), receipt title, row amount from 640 px
+   *   text-2xl   24/32  h1 below 640 px (landing hero included), landing h2, the answer (SummaryBar headline, Done
+   *                     headline, /stats numbers)
+   *   text-3xl   36/40  h1 from 640 px (PageHeader and the landing hero)
+   */
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
   --text-sm: 0.875rem;
-  --text-sm--line-height: 1.3125rem;
+  --text-sm--line-height: 1.25rem;
   --text-base: 1rem;
   --text-base--line-height: 1.5rem;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.5rem;
-  --text-2xl: 1.875rem;
-  --text-2xl--line-height: 1.95rem;
-  --text-2xl--letter-spacing: -0.02em;
-  --text-2xl--font-weight: 400;
-  --text-3xl: 3.25rem;
-  --text-3xl--line-height: 3rem;
-  --text-3xl--letter-spacing: -0.03em;
-  --text-3xl--font-weight: 400;
-  /* Poster sizes, for the landing hero and the big numbers only. */
-  --text-4xl: 4.5rem;
-  --text-4xl--line-height: 0.92;
-  --text-4xl--letter-spacing: -0.035em;
-  --text-poster: 8.5rem;
-  --text-poster--line-height: 0.86;
-  --text-poster--letter-spacing: -0.045em;
-  --text-poster-sm: 3.35rem;
-  --text-poster-sm--line-height: 0.9;
-  --text-poster-sm--letter-spacing: -0.04em;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 700;
+  --text-3xl: 2.75rem;
+  --text-3xl--line-height: 1;
+  --text-3xl--letter-spacing: -0.015em;
+  --text-3xl--font-weight: 750;
+  /* v6 additions: the question and the verdict. Fluid, so the one-line answer stays one block at 360 px and 1280 px. */
+  --text-4xl: clamp(2.5rem, 7vw, 4.5rem);
+  --text-4xl--line-height: 0.95;
+  --text-4xl--letter-spacing: -0.02em;
+  --text-4xl--font-weight: 750;
+  --text-display: clamp(3.25rem, 11.5vw, 9.5rem);
+  --text-display--line-height: 0.9;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 800;
 
+  /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
   --spacing: 0.25rem;
 
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   * account-row-actions keeps the action and More columns in every list, used or not, so that the SOL of separate
+   * lists on one page (/app) stands in one column too: the action column fits the widest row action, Protect again
+   * (8.75rem, and its 0.75rem margin), and grows for a wider one; More is its 2rem button, its 0.5rem margin and the
+   * 1rem padding of the list item, which a subgrid adds to its edge columns.
+   */
   --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
   --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
 
-  /* Zero radius: the poster has square corners. */
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
+  /* Radii */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
 
-  /* No soft shadows. The floating layer (tooltip) gets a hard offset instead. */
-  --shadow-sm: none;
-  --shadow-md: 4px 4px 0 0 var(--color-foreground);
-  --shadow-lg: 6px 6px 0 0 var(--color-foreground);
+  /* Shadows (elevation in the light theme; the dark theme also lightens surfaces) */
+  --shadow-sm: 0 1px 2px 0 rgb(16 19 26 / 0.06), 0 1px 3px 0 rgb(16 19 26 / 0.08);
+  --shadow-md: 0 4px 8px -2px rgb(16 19 26 / 0.08), 0 2px 4px -2px rgb(16 19 26 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(16 19 26 / 0.12), 0 4px 8px -4px rgb(16 19 26 / 0.08);
 
+  /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
   --default-transition-duration: var(--motion-duration-fast);
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
@@ -128,61 +179,64 @@
 
 :root {
   color-scheme: light dark;
-  --motion-duration-fast: 120ms;
+  --motion-duration-fast: 150ms;
   --motion-duration-normal: 200ms;
-  --focus-ring-width: 3px;
+  /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
+  --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
 }
 
-/* Dark: the inverted poster. */
 @media screen and (prefers-color-scheme: dark) {
   :root {
     --color-background: #000000;
     --color-surface: #000000;
-    --color-surface-raised: #161616;
-    --color-subtle: #1f1f1f;
-    --color-subtle-hover: #2e2e2e;
+    --color-surface-raised: #1a1a1a;
+    --color-subtle: #1c1c1c;
+    --color-subtle-hover: #2a2a2a;
     --color-foreground: #ffffff;
-    --color-muted: #b8b8b8;
-    --color-border: #ffffff;
+    --color-muted: #b0b0ac;
+    --color-border: #3a3a38;
     --color-border-strong: #ffffff;
-    --color-ring: #ffffff;
+    --color-ring: #7aa2ff;
     --color-primary: #ffffff;
-    --color-primary-hover: #d6d6d6;
+    --color-primary-hover: #dcdcdc;
     --color-on-primary: #000000;
-    --color-primary-soft: #3a1a08;
+    --color-primary-soft: #262626;
     --color-inverse: #ffffff;
     --color-on-inverse: #000000;
 
-    --color-signal: #ff5a14;
-    --color-signal-hover: #ff7a40;
-    --color-on-signal: #000000;
-    --color-grid: #1c1c1c;
-
-    --color-success: #ff8a52;
-    --color-success-soft: #3a1a08;
-    --color-success-border: #ff5a14;
-    --color-warning: #ffd34d;
-    --color-warning-soft: #2e2400;
-    --color-warning-border: #ffffff;
+    --color-success: #4ade80;
+    --color-success-soft: #0b2616;
+    --color-success-border: #4ade80;
+    --color-warning: #fbbf24;
+    --color-warning-soft: #2e1f04;
+    --color-warning-border: #fbbf24;
     --color-neutral: #ffffff;
-    --color-neutral-soft: #000000;
+    --color-neutral-soft: #262626;
     --color-neutral-border: #ffffff;
-    --color-info: #ffffff;
-    --color-info-soft: #1f1f1f;
-    --color-info-border: #ffffff;
-    --color-danger: #ff7a85;
-    --color-danger-soft: #3a0a10;
-    --color-danger-border: #ff4d5e;
-    --color-danger-solid: #d0001b;
-    --color-danger-solid-hover: #ee1a35;
+    --color-info: #8fb0ff;
+    --color-info-soft: #0b1a3d;
+    --color-info-border: #8fb0ff;
+    --color-danger: #ff6b6b;
+    --color-danger-soft: #3a0a0e;
+    --color-danger-border: #ff6b6b;
+    --color-danger-solid: #e0152f;
+    --color-danger-solid-hover: #ff3049;
     --color-on-danger: #ffffff;
+    --color-verdict-yes: #ff4d5e;
+    --color-verdict-no: #4ade80;
 
-    --color-qr-dark: #000000;
+    /* QR code: the light theme's values on purpose (see the colour roles above). */
+    --color-qr-dark: #10131a;
     --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
   }
 }
 
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
 @media print {
   :root {
     color-scheme: light;

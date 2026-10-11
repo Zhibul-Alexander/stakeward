@@ -11,7 +11,7 @@ type PageProps = {
 /** The classes written out in full: Tailwind only generates utilities it finds in the source. */
 const WIDTH: Record<NonNullable<PageProps['width']>, string> = {
   app: 'mx-auto flex w-full max-w-6xl flex-col gap-10 sm:gap-16',
-  flow: 'mx-auto flex w-full max-w-3xl flex-col gap-8 sm:gap-12',
+  flow: 'flex w-full max-w-2xl flex-col gap-8 sm:gap-12',
 };
 
 /**

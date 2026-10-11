@@ -30,7 +30,7 @@ export function PageHeader({ title, lead, meta, back, progress, action, headingR
   return (
     <div data-slot="page-header" className={cn('flex flex-col gap-3', className)}>
       {back === undefined ? null : (
-        <Button asChild variant="ghost" size="sm" className="-ml-2 w-fit text-xs font-bold tracking-wider uppercase">
+        <Button asChild variant="ghost" size="sm" className="-ml-3 w-fit">
           <Link href={back.href}>
             <ChevronLeftIcon aria-hidden="true" />
             {back.label}
@@ -39,10 +39,10 @@ export function PageHeader({ title, lead, meta, back, progress, action, headingR
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-col gap-3">
-          <h1 ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1} className="text-2xl text-balance break-words sm:text-3xl">
+          <h1 ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1} className="text-3xl text-balance">
             {title}
           </h1>
-          {lead === undefined ? null : <p className="max-w-prose border-l-[6px] border-signal pl-3 text-base text-pretty sm:text-lg sm:leading-snug">{lead}</p>}
+          {lead === undefined ? null : <p className="max-w-prose text-lg text-pretty text-muted">{lead}</p>}
           {meta === undefined ? null : (
             <div data-slot="page-header-meta" className="flex flex-col gap-1 text-sm text-muted">
               {meta}

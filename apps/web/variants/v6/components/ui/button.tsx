@@ -16,20 +16,20 @@ import type { ComponentProps } from 'react';
 //   ghost     Back, Refresh, copy, explorer, the row's More, "Stop waiting"            any
 //   link      inline in prose                                                          any
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-none border-2 border-transparent font-semibold tracking-tight whitespace-nowrap transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border-2 border-transparent font-semibold whitespace-nowrap transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        primary: 'border-foreground bg-signal text-on-signal hover:bg-signal-hover',
-        outline: 'border-foreground bg-surface text-foreground hover:bg-foreground hover:text-background',
+        primary: 'border-primary bg-primary text-on-primary hover:bg-primary-hover',
+        outline: 'border-foreground bg-surface text-foreground hover:bg-subtle',
         ghost: 'text-foreground hover:bg-subtle',
-        danger: 'border-foreground bg-danger-solid text-on-danger hover:bg-danger-solid-hover',
-        link: 'h-auto border-0 px-0 text-primary underline decoration-2 underline-offset-4 hover:decoration-signal',
+        danger: 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover',
+        link: 'h-auto px-0 text-foreground underline decoration-2 underline-offset-4 hover:decoration-4',
       },
       size: {
         sm: 'h-8 px-3 text-sm',
         md: 'h-10 px-4 text-sm',
-        lg: 'h-14 px-7 text-base',
+        lg: 'h-14 px-7 text-lg',
         icon: 'size-10',
         'icon-sm': 'size-8',
       },
