@@ -71,6 +71,10 @@ label_sed() {
     a="$(addr "$file")"
     [ -n "$a" ] && script="${script}s/${a}/${a} [$(role_name "$role")]/g;"
   done
+  if [ -f "$SW_DIR/current-stake" ]; then
+    a="$(cat "$SW_DIR/current-stake")"
+    [ -n "$a" ] && script="${script}s/${a}/${a} [STAKE ACCOUNT]/g;"
+  fi
   printf '%s' "$script"
 }
 
@@ -158,7 +162,7 @@ run() {
       printf '%s\n' "${Y}${B}⚠ ACCEPTED by Solana (this was expected to fail)${N}"
     fi
   else
-    printf '%s\n' "$out" | grep -E 'Error|error' | head -2 | sed "$labels" | sed "s/^/  ${D}/;s/\$/${N}/"
+    printf '%s\n' "$out" | grep -v '^ *$' | sed "$labels" | sed "s/^/  ${D}/;s/\$/${N}/"
     case "$out" in
       # The CLI read the stake account and refused to build the transaction: nothing was sent.
       *'RPC request error: Invalid authority'*)
@@ -176,10 +180,46 @@ run() {
     esac
   fi
   if [ -n "$sig" ]; then
+    network_log "$sig"
     printf '%s\n' "${D}  https://explorer.solana.com/tx/${sig}$(cluster_param)${N}"
   fi
   if [ "$expect" = ok ]; then return $status; fi
   [ $status -ne 0 ]
+}
+
+# What the network recorded for a transaction: instruction, status, fee, balance changes, program logs.
+network_log() {
+  [ "${SW_NETWORK_LOG:-1}" = 1 ] || return 0
+  local out labels
+  out="$(solana confirm -v "$1" --url "$SW_URL" 2>/dev/null)" || return 0
+  labels="$(label_sed)"
+  printf '%s\n' "${D}  ── network log ──${N}"
+  printf '%s\n' "$out" | sed "$labels" | awk -v d="$D" -v n="$N" '
+    /^  Account [0-9]+: [-srwx]{4} / {
+      line = $0; sub(/^  Account [0-9]+: [-srwx]+ /, "", line); sub(/ \(fee payer\)$/, "", line)
+      name[$2] = line; next
+    }
+    /^  Instruction [0-9]+$/ { ins = 1; next }
+    ins && /^    (Program|Account [0-9]+):/ { next }
+    ins && /^    [A-Za-z]+\(?.*/ && !/balance/ && !/Fee/ { print d "  instruction: " substr($0, 5) n; next }
+    /^  Status:/ {
+      ins = 0; print d "  status:" substr($0, 10) n
+      # Stake program error codes (StakeError) in plain names.
+      if ($0 ~ /error: 0x1$/) print d "          0x1 = LockupInForce: the lock is on" n
+      if ($0 ~ /error: 0x6$/) print d "          0x6 = MergeMismatch" n
+      if ($0 ~ /error: 0x7$/) print d "          0x7 = CustodianMissing: the second key did not sign" n
+      if ($0 ~ /error: 0x8$/) print d "          0x8 = CustodianSignatureMissing" n
+      next
+    }
+    /^    Fee:/ { print d "  fee: " $2 n; next }
+    /^    Account [0-9]+ balance:/ {
+      if ($0 !~ /->/) next
+      idx = $2 ":"; label = name[idx]
+      print d "  balance " label ": " $4 " " $5 " " $6 n; next
+    }
+    /^  Log Messages:/ { logs = 1; print d "  program log:" n; next }
+    logs && /^    / { print d "  " $0 n; next }
+  '
 }
 
 # Plain words for the stake program errors the demo meets (the same table as the site, CLAUDE.md section 9).
@@ -516,9 +556,89 @@ cmd_sweep() {
   done
 }
 
+# menu [owner|second|new|thief]: a one-key menu of the role's actions, so nobody types commands on stage.
+# Each line: key|label|command (the words after `sw`).
+menu_items() {
+  case "$1" in
+    owner)
+      cat <<'ITEMS'
+1|Status of the stake|status
+2|Wallet balances|balances
+3|New stake account, 0.1 SOL|stake 0.1
+4|New stake account, 1.1 SOL (to delegate)|stake 1.1
+5|Delegate to a validator|delegate
+6|PROTECT: lock for 6 months (main + second key)|lock 6mo
+7|PROTECT: lock for 10 minutes|lock 10m
+8|Unstake|unstake
+9|Withdraw everything (main + second key)|withdraw
+ITEMS
+      ;;
+    thief)
+      cat <<'ITEMS'
+1|Try: withdraw all SOL to the thief|thief withdraw
+2|Try: make the thief the owner|thief take
+3|Try: remove the lock|thief unlock
+4|All three tries|thief all
+5|Unstake (allowed, the SOL stays)|thief unstake
+6|Take the staking role (allowed)|thief staker
+7|Status of the stake|status
+ITEMS
+      ;;
+    second)
+      cat <<'ITEMS'
+1|Status of the stake|status
+2|Extend the lock by 1 day|extend 1d
+3|Extend the lock by 6 months|extend 6mo
+4|Remove the lock now|unlock
+5|Wallet balances|balances
+ITEMS
+      ;;
+    new)
+      cat <<'ITEMS'
+1|RESCUE: move the stake to the new wallet|rescue
+2|Status of the stake|status
+3|Unstake (new wallet)|unstake new
+4|Withdraw everything to the new wallet|withdraw-new
+5|Wallet balances|balances
+ITEMS
+      ;;
+    *) die "Menu roles: owner, second, new, thief" ;;
+  esac
+}
+
+cmd_menu() {
+  local role="${1:-${SW_ROLE:-owner}}" items key k label action found
+  [ "$role" = main ] && role=owner
+  items="$(menu_items "$role")" || exit 1
+  while :; do
+    printf '\n%s\n' "${B}$(echo "$role" | tr a-z A-Z): press a key${N}  ${D}(${SW_URL%%\?*})${N}"
+    while IFS='|' read -r k label action; do
+      printf '  %s  %s\n' "${B}${k}${N}" "$label"
+    done <<ITEMS
+$items
+ITEMS
+    printf '  %s  %s\n' "${B}q${N}" 'Quit'
+    IFS= read -r -s -n 1 key || return 0
+    case "$key" in q | Q) return 0 ;; esac
+    found=''
+    while IFS='|' read -r k label action; do
+      if [ "$k" = "$key" ]; then found="$action"; break; fi
+    done <<ITEMS
+$items
+ITEMS
+    [ -n "$found" ] || continue
+    # A fresh process per action: a failing command (die) returns to the menu instead of closing it.
+    # shellcheck disable=SC2086
+    "$SCRIPT_DIR/sw.sh" $found
+  done
+}
+
 cmd_help() {
   cat <<EOF
 ${B}Stakeward live demo${N} (${SW_URL}). Keys: ${SW_DIR}
+
+${B}Menu${N}
+  sw menu [owner|thief|second|new]   one-key menu of the role's actions
 
 ${B}Prepare${N}
   sw setup                  create the demo keys (main, second, new, thief) and demo.env
@@ -587,7 +707,7 @@ main() {
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
   case "$cmd" in
-    setup | keys | help | -h | --help) ;;
+    setup | keys | help | -h | --help | menu) ;;
     *) check_rpc ;;
   esac
   case "$cmd" in
@@ -608,6 +728,7 @@ main() {
     withdraw-new) cmd_withdraw_new "$@" ;;
     thief) cmd_thief "$@" ;;
     sweep) cmd_sweep ;;
+    menu) cmd_menu "$@" ;;
     help | -h | --help) cmd_help ;;
     *) die "Unknown command: $cmd. Run: sw help" ;;
   esac

@@ -26,5 +26,5 @@ else
   PS1="\[\033[1;${_sw_color}m\][$_sw_label]\[\033[0m\] \$ "
 fi
 printf '\033]0;%s\007' "$_sw_label"
-printf '\033[1;%sm%s\033[0m  type: sw help\n' "$_sw_color" "$_sw_label"
+printf '\033[1;%sm%s\033[0m  type: sw menu (or sw help)\n' "$_sw_color" "$_sw_label"
 unset _sw_here _sw_dir _sw_label _sw_color _sw_zcolor
