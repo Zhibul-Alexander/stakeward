@@ -45,7 +45,7 @@ Nothing fancy required. We're interested in how you think and communicate.» П�
 
 **Блок 4 — почему именно мы (≈25 с)**
 
-> Why us? We look at things from a new angle. This lock is not new: Solana uses it to lock tokens for a fixed time, for example for investors. We use the same lock in a new way: to protect your stake from theft. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
+> Why us? We look at things from a new angle. This lock is not new: Solana uses it to lock tokens for a fixed time, for example for investors. We use the same lock in a new way: to keep your stake safe from thieves. In less than two weeks, we built Stakeward and tested it on mainnet with our own stake.
 
 **Блок 5 — как мы работаем, финал (≈20 с)**
 
