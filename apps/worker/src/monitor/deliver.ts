@@ -20,7 +20,7 @@ import { MONITOR_LIMITS } from './config.ts';
 import type { LinkRow, PendingRow } from './store.ts';
 
 /**
- * Telegram delivery of the monitor pass, pure (step 5 spec section 7; DECISIONS.md D53): who gets an event, the one
+ * Telegram delivery of the monitor pass, pure (step 5 spec section 7; DECISIONS.md D60): who gets an event, the one
  * message per chat a pass sends, and what Telegram's answers commit.
  *
  * Progress lives on the link: `alert_links.last_event_id` is the newest event id the chat has received for that

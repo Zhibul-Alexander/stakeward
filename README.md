@@ -83,7 +83,7 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 
 **The link-signing account is a deposit, not a fee.** To sign on another device, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
 
-For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
+For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a key signs by link, owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
 
 ## Which wallets work
 
@@ -364,7 +364,7 @@ A pnpm monorepo:
 | `apps/web` | The site: Vite, React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, lucide-react. Design tokens in `src/styles/tokens.css`, every UI string in `src/i18n/en.json`. `/dev/ui` shows every component in every state (devnet build only). |
 | `apps/worker` | One Cloudflare Worker on Hono: serves the built site, the API under `/api/*`, the monitor (a Cron Trigger every 2 minutes) and the Telegram webhook. Data in D1; schema only through `migrations/`. |
 | `scripts` | The mechanism check (`gate`), devnet test accounts (`dev-accounts`), an RPC check (`check-rpc`), a runner for the recovery card's CLI commands (`recovery-cli`), the deploy wrapper (`deploy.ts`) and the live-site check (`verify-deploy.ts`). |
-| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `SECURITY-CHECK.md`, `deploys.md`, `gate.md`, `recovery-cli.md` (in Russian), `SUBMISSION.md` (the hackathon entry drafts) and screenshots in `screens/`. |
+| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `SECURITY-CHECK.md`, `deploys.md`, `gate.md`, `recovery-cli.md` (in Russian), `ledger-sim.md`, `live-demo.md`, `BUSINESS-MODEL.md`, `SUBMISSION.md` (the hackathon entry drafts) and screenshots in `screens/`. |
 
 `CLAUDE.md` is the build spec (in Russian). Every deviation from it is recorded in `docs/DECISIONS.md`.
 
@@ -379,6 +379,8 @@ The worker's API:
 | `GET /api/accounts?wallet=` | watched accounts where the wallet is the main or second key, with recent events |
 | `POST /api/rpc` | JSON-RPC proxy: an allow-list of methods with strict params; `simulateTransaction` and `sendTransaction` only for transactions the inspector accepts (`sendTransaction` also needs every signature present and valid), a withdrawal only to the stake account's main key and a nonce account closed only to its owner |
 | `POST /api/telegram/webhook` | the bot's webhook, checked with the secret token header |
+| `POST /api/rescue-kits` | checks a fully signed one-tap rescue against its bytes and the network, then stores it |
+| `GET /api/rescue-kits?account=` | status of the stored one-tap rescue and whether a Telegram chat is bound to it |
 | `GET /api/telegram/link?wallet=` | redirects to the bot with `/start <wallet>` |
 | `GET /api/health` | time of the last successful monitor pass; HTTP 503 when it is older than 10 minutes |
 | `GET /api/stats` | stake accounts under a lock, SOL under a lock, alerts sent |
@@ -450,11 +452,11 @@ Both run `scripts/deploy.ts`. It deploys only the committed HEAD of a clean tree
 
 Each deploy appends its commit, the Cloudflare version id and the sha256 of every site file to [docs/deploys.md](docs/deploys.md); commit that file. Then check the live site against the commit: `pnpm verify-deploy --env <dev|prod> --commit <sha>` builds the commit again in a temporary worktree, compares every file with what the site serves, and checks that every response carries the security headers of the build's `_headers` (the CSP and the rest) unchanged.
 
-`pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys are manual: CI has no Cloudflare token, and it only dry-runs the prod config. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
+`pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys also run from GitHub Actions (`deploy.yml`, manual dispatch from `main`; the GitHub environments `dev` and `prod` hold only the two Cloudflare keys; it runs the same wrapper and migrates D1 after the code, docs/DECISIONS.md D115). CI's `check` job has no Cloudflare token. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
 
 - Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL` and `MONITOR_RPC_URL`. The monitor reads the chain through `MONITOR_RPC_URL` when it is set; it protects the alerts only if that URL has a quota of its own (another Helius account or another provider), so that traffic on the site cannot use up the monitor's credits. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
 - `RPC_URL` must be a private RPC such as Helius: public Solana RPC endpoints refuse requests from Cloudflare Workers.
-- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. They are not part of the deploy: run them as a separate step. The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
+- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. The local wrapper does not run them: run them as a separate step (the GitHub Actions deploy migrates after the code). The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
 - The monitor fits the Workers Free plan in small batches (`MONITOR_PLAN` = `free`); the paid plan allows bigger passes (`paid`).
 - The Telegram webhook registration, the bot token rotation, the manual checks and the release steps are in [docs/TESTPLAN.md](docs/TESTPLAN.md). The monitor checks the bot's webhook on every pass and alerts the admin chat (`bot-mismatch`) when it points elsewhere; then rotate both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` and set the webhook again with the new secret. The current deployment, its decisions and the reasons behind them are in [docs/DECISIONS.md](docs/DECISIONS.md), section "Развёртывание" and D84.
 

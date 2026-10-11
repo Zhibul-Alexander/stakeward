@@ -2,7 +2,7 @@ import type { Cluster } from '@stakeward/core';
 import type { EndpointName, UpstreamEndpoints } from '../upstream.ts';
 
 /**
- * Settings of the monitor pass (CLAUDE.md section 8, DECISIONS.md D47, D48). The preset follows the Cloudflare Workers
+ * Settings of the monitor pass (CLAUDE.md section 8, DECISIONS.md D54, D55). The preset follows the Cloudflare Workers
  * plan (wrangler.jsonc `MONITOR_PLAN`); the limits below hold on every plan.
  */
 

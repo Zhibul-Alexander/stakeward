@@ -89,7 +89,7 @@
       },
       "step3": {
         "title": "Rescue or withdraw",
-        "body": "You can withdraw only with both keys signing together. Main key stolen? Your second key and a new wallet rescue the stake."
+        "body": "Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 5 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
@@ -2104,7 +2104,7 @@
       },
       "deposit": {
         "q": "What is the link-signing deposit?",
-        "a": "Signing on another device needs a small helper account that keeps the transaction valid until the other device signs, even hours later. The network asks for {deposit} to keep it open, and your wallet gets it back when you close the account. Every rescue uses one."
+        "a": "Signing on another device needs a small helper account that keeps the transaction valid until the other device signs, even hours later. The network asks for {deposit} to keep it open, and your wallet gets it back when you close the account. A rescue uses one when a key signs by link."
       },
       "privacy": {
         "q": "What does Stakeward know about me?",

@@ -32,6 +32,8 @@ Ledger отказывается разбирать транзакцию, есл�
 
 Поправка 08.10.2026, матрица на devnet (два аккаунта Phantom, Ledger у владельца нет): ни в одном из четырёх прогонов Phantom не дописал Lighthouse. Lighthouse — защита Phantom для mainnet, на devnet он её, по-видимому, не включает. Поэтому вопрос, что видит Ledger через Phantom, остаётся открытым; на mainnet хвост покажет этап 6 (отчёт подписи на экране и TESTPLAN).
 
+Ответ с mainnet (10.10.2026) — D117.
+
 ## D6. RPC: всегда base64 (02.10.2026)
 
 В каждом запросе явно передаём `encoding: 'base64'`. Публичные узлы отклоняют кодировку по умолчанию (base58) для 200-байтных аккаунтов: getProgramAccounts отвечает `-32602`, getAccountInfo — `-32600`.
@@ -161,6 +163,7 @@ Rent sysvar в mainnet и devnet отдаёт `lamportsPerByte` 5080 (порог
 - `verifyAllSignatures` сообщает сначала «проверка недоступна», потом неверные подписи, потом отсутствующие. Сайту нужен Ed25519 в Web Crypto.
 - Поправка 06.10.2026: вопрос «кто может обновлять Lighthouse» закрыт. Программа в mainnet неизменяемая: programdata `CJ5WEjifs4d77pEA9DpewppByFjHcAkNv3YYSuSoDk7c`, upgrade authority null (SECURITY-CHECK У2). Открытым остаётся только то, что покажет матрица кошельков.
 - Поправка 08.10.2026, матрица кошельков на devnet (Acc 1 / Acc 2, оба в Phantom; TESTPLAN «Шаг 3, в»): blockhash и nonce, в обоих порядках — `changed: none`, `checkSigningStep: ok`, подтверждено. Phantom сообщение не менял и Lighthouse не дописывал, поэтому порядок подписей для пары Phantom/Phantom значения не имеет, и правило §6 (сначала Phantom на неподписанной транзакции, затем плательщик) не меняется. Хвоста не было, так что вопрос о пересортировке read-only аккаунтов остаётся открытым до mainnet (этап 6).
+- Ответ с mainnet (10.10.2026): Phantom дописывает Lighthouse и пересортировывает аккаунты, такой хвост принимается — D117.
 
 ## D25. Мониторинг: события (02.10.2026)
 
@@ -292,7 +295,7 @@ Not protected нейтральный: у нового пользователя �
 
 ## D40. Воркер: лимиты частоты, совместимость, секреты (02.10.2026)
 
-- Лимит частоты — привязка Workers rate limiting по `CF-Connecting-IP`: `RPC_RATE_LIMIT` 30 запросов за 10 с на /api/rpc, `LOOKUP_RATE_LIMIT` 20 за 60 с на /api/stake-accounts. У dev и prod свои `namespace_id`. Если привязка не отвечает, запрос проходит (fail-open): лимит бережёт кредиты Helius, защита денег на нём не держится.
+- Лимит частоты — привязка Workers rate limiting по `CF-Connecting-IP`: `RPC_RATE_LIMIT` 30 запросов за 10 с на /api/rpc, `LOOKUP_RATE_LIMIT` 20 за 60 с на /api/stake-accounts. Поправка: `LOOKUP_RATE_LIMIT` общий для /api/stake-accounts, /api/accounts, /api/stats и GET /api/rescue-kits; `WATCH_RATE_LIMIT` (D49) общий для POST /api/watch и POST /api/rescue-kits (`apps/worker/src/app.ts`). У dev и prod свои `namespace_id`. Если привязка не отвечает, запрос проходит (fail-open): лимит бережёт кредиты Helius, защита денег на нём не держится.
 - `nodejs_compat`: под workerd kit отдаёт свою node-сборку, а она использует `Buffer`.
 - Конфиг vitest воркера убирает `browser` из `mainFields`, поэтому тесты гоняют ту же сборку kit, что и прод.
 - `secrets.required: ["RPC_URL"]` в каждом окружении (поправка к D9). Первый деплой нового воркера без секрета падает, поэтому он идёт с `--secrets-file .dev.vars.dev`. `RPC_FALLBACK_URL` необязателен, ставится через `wrangler secret put`. Секреты Telegram добавятся на шаге 5.
@@ -531,6 +534,7 @@ Not protected нейтральный: у нового пользователя �
 - Один второй ключ за прогон, до 10 аккаунтов. Порядок: без замка, затем по дате конца замка (замки по эпохе после датированных), затем по сумме.
 - Аккаунты без действующего замка тоже переводятся: программа тогда не проверяет хранителя. Замок самого основного ключа или «ничей» не переводится.
 - Новый кошелёк D платит (проверка баланса до старта), владеет nonce-аккаунтом; спасение всегда на nonce, даже если все три ключа в одном браузере (F4.3). Каждый аккаунт — своя транзакция AuthorizeChecked(Staker) + AuthorizeChecked(Withdrawer), подписывают A, D и K.
+- Поправка 11.10.2026: когда все три ключа в этом браузере, спасение идёт на блокхэше, все аккаунты одним раундом; nonce — только когда ключ подписывает по ссылке (D121).
 - После: повторный поиск аккаунтов основного ключа (новые после Split), предложение делегировать снова (подписывает D) и закрыть nonce-аккаунт, ссылка на Telegram для нового кошелька.
 
 ## D71. QR-код (05.10.2026)
@@ -624,7 +628,7 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 
 - Владелец решил пока не покупать домен: prod работает на https://stakeward-prod.stakeward.workers.dev (раздел «Развёртывание»; до 06.10.2026 — на поддомене `zhibul-alexander`, D106). Переход на свой домен — `routes` с `custom_domain`, тогда же `workers_dev: false`, новый `SITE_ORIGIN`, описания ботов, README и новая проверка Phantom.
 - `preview_urls: false` в dev и prod (D63): старые версии не доступны по своим адресам.
-- CI проверяет prod-конфиг сухим деплоем (`build:prod`) на mainnet-сборке; деплой только руками, токена Cloudflare в GitHub нет. Откат — `wrangler rollback`. С 06.10.2026 деплой только через обёртку `pnpm deploy:prod --prod-confirm` и сверку `pnpm verify-deploy` (D96).
+- CI проверяет prod-конфиг сухим деплоем (`build:prod`) на mainnet-сборке; деплой только руками, токена Cloudflare в GitHub нет (с 10.10.2026 основной путь — GitHub Actions `deploy`, D115; локальная обёртка — запасной). Откат — `wrangler rollback`. С 06.10.2026 деплой только через обёртку `pnpm deploy:prod --prod-confirm` и сверку `pnpm verify-deploy` (D96).
 - Адрес prod не публикуем до проверки владельцем на mainnet (шаг 9).
 
 ## D85. Проход по текстам (05.10.2026)
@@ -699,7 +703,7 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - П14. Подсказка поля адреса при подписи по ссылке больше не обещает, что неверный адрес просто не подпишет: «Paste only the address of a wallet you or a person you trust created. Stakeward never gives you a second key address; whoever holds it can freeze this stake.»
 - П4. «What Stakeward cannot do» и FAQ main-stolen: вор с основным ключом может раздробить стейк; каждая часть сохраняет замок, но одно спасение переводит не больше `MAX_RESCUE_ACCOUNTS` = 10 аккаунтов, поэтому действовать рано и сначала продлить замок. Число берётся из кода. Пакетного продления («Extend all») и отдельной тревоги на массовый Split нет. Пакетное спасение по блокхэшу — решение владельца (В9).
 - П26. FAQ «How can I check my lock without Stakeward?»: набрать explorer.solana.com руками, найти баннер «Account is locked! Lockup expires on <date>», сверить Lockup Authority Address и Withdraw Authority Address. Надписи взяты из исходников Solana Explorer (`StakeAccountSection.tsx`); на живой странице их сверяет владелец (TESTPLAN).
-- П7 и П9 — тесты на LiteSVM (`packages/core/test/errors.svm.test.ts`). Непроверяемый Authorize(Withdrawer) от одного основного ключа даёт CustodianMissing в обеих раскладках аккаунтов, с чужим ключом в слоте хранителя — LockupInForce. Второй ключ один не выводит и не меняет основной ключ. После того как второй ключ передал замок X, вывод основным и старым вторым ключом — LockupInForce. Тревога LOCKUP_CHANGED по-прежнему ведёт на /app, а не на `/extend/<account>?remove` (остаток П9).
+- П7 и П9 — тесты на LiteSVM (`packages/core/test/errors.svm.test.ts`). Непроверяемый Authorize(Withdrawer) от одного основного ключа даёт CustodianMissing в обеих раскладках аккаунтов, с чужим ключом в слоте хранителя — LockupInForce. Второй ключ один не выводит и не меняет основной ключ. После того как второй ключ передал замок X, вывод основным и старым вторым ключом — LockupInForce. Тревога LOCKUP_CHANGED по-прежнему ведёт на /app, а не на `/extend/<account>?remove` (остаток П9). Поправка: LOCKUP_CHANGED теперь ведёт на `/extend/<account>` — D105.
 
 ## D95. Логи Workers (06.10.2026, поправка к D39)
 
@@ -1064,10 +1068,10 @@ Helius, бесплатный план, 05.10.2026, тот же VPS: все за�
 - Ветка main (06.10.2026): по слову владельца перемотана (fast-forward) до `build/product`, без merge-коммита. Работа идёт в `build/product`; main догоняется по слову владельца, в том числе перед деплоем prod. С 08.10.2026 ветка одна — main (D111).
 - Миграции 0001–0003 применены на обе базы (`wrangler d1 migrations apply DB --remote`). Миграция 0004 (06.10.2026) ещё не применена ни на одной (D90, D96).
 - `RPC_URL` — Helius devnet и mainnet. `RPC_FALLBACK_URL` не задан: публичные узлы отвечают воркеру 403 (D46).
-- Боты: dev `@stakeward_dev_bot`, prod `@stakeward_bot`. Вебхук `<адрес>/api/telegram/webhook` с `secret_token`, `allowed_updates` — message и my_chat_member, `drop_pending_updates`. Команды /start, /status, /stop, /help. Описание и короткое описание называют адрес сайта (§11), у dev-бота с пометкой «Devnet test bot».
+- Боты: dev `@stakeward_dev_bot`, prod `@stakeward_bot`. Вебхук `<адрес>/api/telegram/webhook` с `secret_token`, `allowed_updates` — message, my_chat_member и (с D118) callback_query, `drop_pending_updates`. Команды /start, /status, /stop, /help. Описание и короткое описание называют адрес сайта (§11), у dev-бота с пометкой «Devnet test bot».
 - Проверено сразу после деплоя: заголовки безопасности на `/`; `/api/rpc` проводит getEpochInfo и отвечает -32601 на getProgramAccounts; `/api/telegram/link` отвечает 302 на нужного бота; вебхук с чужим секретом получает 401, со своим — ответ на /help; `/api/health` отдаёт 503 до первого прохода.
 - Первый проход мониторинга dev в 19:18:10 UTC: исход ok, 0 строк, CPU 9 мс, 844 мс по часам. Пустой проход в холодном изоляте уже съедает 9 из 10 мс бесплатного плана (§8: владелец предупреждён). Первый проход prod на момент записи не подтверждён; подтверждён 06.10.2026: `/api/health` prod 200, проход 02:48:32 UTC (SECURITY-CHECK В1).
-- Следующие деплои (с 06.10.2026) — только `pnpm deploy:dev` или `pnpm deploy:prod --prod-confirm` из оболочки, куда файл секретов не подключён: обёртка сама берёт из него два ключа Cloudflare и отказывает, если ключи файла экспортированы (D96). Затем закоммитить docs/deploys.md и запустить `pnpm verify-deploy --env <dev|prod> --commit <sha>` (обёртка печатает готовую команду). Миграции — отдельной командой (D96). Каждый деплой и каждая удалённая миграция, dev тоже, — после разрешения владельца. Секреты уже хранятся в Cloudflare.
+- Следующие деплои (с 06.10.2026) — только `pnpm deploy:dev` или `pnpm deploy:prod --prod-confirm` из оболочки, куда файл секретов не подключён: обёртка сама берёт из него два ключа Cloudflare и отказывает, если ключи файла экспортированы (D96). Затем закоммитить docs/deploys.md и запустить `pnpm verify-deploy --env <dev|prod> --commit <sha>` (обёртка печатает готовую команду). Миграции — отдельной командой (D96). С 10.10.2026 основной путь — GitHub Actions `deploy` (D115), он мигрирует D1 после кода; локальная обёртка — запасной. Каждый деплой и каждая удалённая миграция, dev тоже, — после разрешения владельца. Секреты уже хранятся в Cloudflare.
 
 ## Зависимости
 
