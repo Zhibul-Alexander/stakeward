@@ -1,6 +1,6 @@
 // Mechanism gate (CLAUDE.md step 1). Usage:
-//   pnpm gate:litesvm   local chain with the mainnet stake program v5.1.0, all 14 checks
-//   pnpm gate:devnet    checks 1-13, paid by .keys/devnet-funder.json (generated on first run)
+//   pnpm gate:litesvm   local chain with the mainnet stake program v5.1.0, all 15 checks
+//   pnpm gate:devnet    checks 1-13 and 15, paid by .keys/devnet-funder.json (generated on first run)
 //   pnpm gate:mainnet   checks 2, 3, 4, 5, 6, 13 with the one-time key .keys/mainnet-gate.json
 // RPC_URL overrides the public endpoint. Each run rewrites its own section of docs/gate.md.
 // Devnet and mainnet runs print the address to fund and the exact amount, and stop (exit code 0) while the balance

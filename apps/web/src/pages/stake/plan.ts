@@ -32,7 +32,7 @@ export function solInputText(lamports: bigint): string {
 export type StakeRefusal = 'exists';
 
 /**
- * Create-and-delegate of a new stake account (D138): `stakeAccount` is derived from the main key and `seed`, which are
+ * Create-and-delegate of a new stake account (D139): `stakeAccount` is derived from the main key and `seed`, which are
  * fixed for the run. Every round reads it again: no account -> build (the main key signs and pays, moving `lamports`
  * into it); an account of this main key delegated to `voteAccount` -> done (a late landing); anything else at that
  * address -> refused.

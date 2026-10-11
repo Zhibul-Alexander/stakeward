@@ -11,8 +11,13 @@ import {
 } from '@solana/kit';
 import {
   getAuthorizeCheckedInstruction,
+  getAuthorizeCheckedWithSeedInstruction,
+  getAuthorizeInstruction,
+  getAuthorizeWithSeedInstruction,
   getInitializeInstruction,
   getMergeInstruction,
+  getMoveLamportsInstruction,
+  getMoveStakeInstruction,
   getSplitInstruction,
   StakeAuthorize,
   StakeInstruction,
@@ -21,6 +26,7 @@ import {
   getCreateAccountWithSeedInstruction,
   getNonceDecoder,
   getTransferSolInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
 } from '@solana-program/system';
 import {
   buildTransaction,
@@ -44,6 +50,7 @@ import { testWallet } from '@stakeward/core/test/wallet';
 import {
   gateBudget,
   MIN_DELEGATION_LAMPORTS,
+  MOVE_LAMPORTS,
   PARTIAL_WITHDRAW_LAMPORTS,
   readRents,
   SPLIT_LAMPORTS,
@@ -484,6 +491,60 @@ export async function runGate(chain: GateChain, options: GateOptions): Promise<G
         );
         await check('14c', withdrawByA(S4.address, null), () => closed(S4.address));
       }
+
+      // 15. The other ways around the lock that a thief with A could try, on S5 (staker = withdrawer = A, locked by
+      // B): every Authorize variant, his own key X signing as the custodian, and moving lamports or stake into S6, an
+      // unlocked account with the same authorities that A alone could withdraw from.
+      const T5 = (await now()) + HOUR;
+      const S5 = await newStakeAccount('S5', rents.stake + MOVE_LAMPORTS, {
+        staker: A.address,
+        withdrawer: A.address,
+        lockup: lockedByB(T5),
+      });
+      const S6 = await newStakeAccount('S6', rents.stake, { staker: A.address, withdrawer: A.address, lockup: NO_LOCKUP });
+      await setup('create S5 (locked by B) and S6 (unlocked, same authorities)', [...S5.instructions, ...S6.instructions]);
+      const asA = createNoopSigner(A.address);
+      const s5Untouched = () => authoritiesAre(S5.address, A.address, A.address, lockedByB(T5));
+      const toX = { stake: S5.address, arg0: X.address, arg1: StakeAuthorize.Withdrawer } as const;
+      // With seed, the program signs for the address derived from the base, never for the base itself. The lockup is
+      // checked before any authority, so the error names the missing custodian whatever the seed.
+      const seed = { stakeAuthorize: StakeAuthorize.Withdrawer, authoritySeed: 'stakeward', authorityOwner: SYSTEM_PROGRAM_ADDRESS };
+      await check('15a', sender.formatted([getAuthorizeInstruction({ ...toX, authority: asA })], A.address, [A]), s5Untouched);
+      await check(
+        '15b',
+        sender.formatted([getAuthorizeInstruction({ ...toX, authority: asA, lockupAuthority: asX })], A.address, [A, X]),
+        s5Untouched,
+      );
+      await check(
+        '15c',
+        sender.formatted(
+          [getAuthorizeWithSeedInstruction({ ...seed, stake: S5.address, base: asA, newAuthorizedPubkey: X.address })],
+          A.address,
+          [A],
+        ),
+        s5Untouched,
+      );
+      await check(
+        '15d',
+        sender.formatted(
+          [getAuthorizeCheckedWithSeedInstruction({ ...seed, stake: S5.address, base: asA, newAuthority: asX })],
+          A.address,
+          [A, X],
+        ),
+        s5Untouched,
+      );
+      const s5Balance = await chain.balance(S5.address);
+      const s6Balance = await chain.balance(S6.address);
+      const balancesKept = async (): Promise<Verdict> => {
+        const ok = (await chain.balance(S5.address)) === s5Balance && (await chain.balance(S6.address)) === s6Balance;
+        return { ok, note: ok ? 'балансы S5 и S6 не изменились' : 'балансы S5 и S6 изменились' };
+      };
+      await check('15e', withdrawByA(S5.address, X), balancesKept);
+      // MoveStake and MoveLamports share their checks, and the lockup comparison comes before MoveStake asks for an
+      // active source, so an undelegated S5 reaches it too.
+      const move = { sourceStake: S5.address, destinationStake: S6.address, stakeAuthority: asA, args: MOVE_LAMPORTS };
+      await check('15f', sender.formatted([getMoveLamportsInstruction(move)], A.address, [A]), balancesKept);
+      await check('15g', sender.formatted([getMoveStakeInstruction(move)], A.address, [A]), balancesKept);
     }
   } catch (error) {
     aborted = error instanceof Error ? error.message : String(error);

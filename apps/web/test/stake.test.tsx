@@ -11,7 +11,7 @@ import type { ValidatorDirectory } from '@/ports';
 import { parseSolAmount, solInputText } from '@/pages/stake/plan';
 import { click, renderStakePage, SCENARIO_TIMEOUT, summarySigners, WAIT } from './support/stake-pages.tsx';
 
-// /stake (DECISIONS.md D138) end to end on the real stake program: the main key stakes SOL in a new stake account,
+// /stake (DECISIONS.md D139) end to end on the real stake program: the main key stakes SOL in a new stake account,
 // delegated to the validator chosen at the start, then goes on to protect it.
 
 type World = { testChain: TestChain; chain: LiteSvmChain; A: KeyPairSigner; vote: Address };
@@ -30,7 +30,7 @@ function directory(offered: readonly Address[]): ValidatorDirectory {
   };
 }
 
-describe('/stake: stake SOL in a new stake account (D138)', () => {
+describe('/stake: stake SOL in a new stake account (D139)', () => {
   it(
     'the main key stakes 1.5 SOL with the preselected validator, then is led to protect the new account',
     async () => {

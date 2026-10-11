@@ -5,7 +5,7 @@
 | Шаг | Состояние | Что ждёт владельца |
 | --- | --- | --- |
 | 0. Подготовка | готово: dev и prod развёрнуты на workers.dev (домен временный), Helius проверен | — |
-| 1. Проверка механизма | LiteSVM 24 из 24, devnet 21 из 21, mainnet 8 из 8 | прочитать docs/gate.md |
+| 1. Проверка механизма | LiteSVM 31 из 31, devnet 28 из 28 (11.10, с проверкой 15), mainnet 8 из 8 | прочитать docs/gate.md |
 | 2. packages/core | готово | — |
 | 3. Каркас, дизайн-система, кошельки | развёрнуто в dev, тестовые аккаунты у Phantom 1; план Workers — Free | матрица на /dev/cosign (пара Phantom 1 / Phantom 2), /dev/ui, /design-sync, форма Phantom для prod |
 | 3б. Макеты | не начат | по-моему, заменить утверждением экранов по скриншотам `docs/screens` (вопрос владельцу) |
@@ -529,8 +529,28 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true vitest run` в apps/web — 1001 тест, 1 пропуск (новый тест в `wallet-slot.test.tsx`).
 - Дальше: владелец утверждает макет; снимки `docs/screens` с подсказкой — при следующем прогоне e2e.
 
+## Живое демо на mainnet (11.10.2026)
+
+- По просьбе владельца: гайд live-demo на mainnet вместо devnet (D138). `sw setup mainnet` создаёт ключ-спонсор, `sw fund` пополняет до нужного сценарию, `sw sweep` возвращает всё, включая незакрытые стейки под замком, на `SW_RETURN_TO`. Шапка `sw ui` называет сеть. На mainnet транзакции идут с приоритетной комиссией, отказы вора — без неё, чтобы они попадали в сеть.
+- В ветку взят фикс 9796fb3 (одна проверка RPC, не для `sw log` и `sw ui`), которого не было в main.
+- Проверено: `pnpm typecheck`, `pnpm lint`, `scripts` 152 теста, из них 15 в `live-demo.test.ts` (новые: сеть по адресу, пересчёт SOL и лампортов, приоритетная комиссия только на проходящих транзакциях, на mainnet без спонсора нет airdrop, `sweep` отправляет только на `SW_RETURN_TO`, сеть в шапке). Весь сценарий и `sweep` на `solana-test-validator` 4.3.0 на маке (`docs/live-demo.md`, «Чем проверено»).
+- Дальше: владелец переводит около 1,3 SOL на FUNDER, вписывает `SW_RETURN_TO` и Helius mainnet в `demo.env` и прогоняет сценарий на mainnet перед Demo Day.
+
+## Проверка 15 в gate: обходные пути вора (11.10.2026)
+
+- По вопросу владельца, точно ли вор с одним основным ключом не выведет SOL: в `scripts/gate` добавлена проверка 15 на отдельном S5 (staker = withdrawer = A, заперт B). Вор пробует обычный Authorize, Authorize и Withdraw со своим X в роли хранителя, AuthorizeWithSeed, AuthorizeCheckedWithSeed, MoveLamports и MoveStake в незапертый S6 с теми же полномочиями. Ожидаемые ошибки сверены с исходниками program@v5.1.0: `Authorized::authorize` проверяет замок раньше полномочий, MoveStake и MoveLamports сравнивают замки в общих проверках раньше, чем MoveStake требует активный стейк.
+- Проверено: `pnpm gate:litesvm` — 31 из 31 (docs/gate.md); `scripts` 152 из 152, в том числе планы devnet и mainnet на LiteSVM с точным бюджетом (devnet теперь просит 1,02400344 SOL, комиссии 348 400 лампортов); `pnpm typecheck`, `pnpm lint`. В `pnpm test` падает только `verify.review` в core (small-order ключи; локально Node 24.11.1 при engines ≥ 24.15), core не менялся.
+- Devnet (11.10.2026 20:09 UTC): 28 из 28, подписи всех отказов в docs/gate.md. Спонсор новый — `.keys/devnet-funder.json` `EcmCPNKzpFTv1WB1CKx6mfrjKWvv2ejje43ajaY4Fgdb`, владелец перевёл 2 SOL; после прогона на нём 1,9996516 SOL, ушли ровно комиссии по плану (348 400 лампортов). Старый спонсор `D8LAb6…ySTL` остался там, где шли прошлые прогоны.
+- Mainnet не гоняли: программа побайтно та же (sha256 в docs/gate.md).
+
+## Слияние ветки live-demo-mainnet с main (12.10.2026)
+
+- По просьбе владельца ветка `claude/live-demo-mainnet` (демо на mainnet, D138; проверка 15 в gate) слита с main. Main за это время ушёл на 13 коммитов, в том числе живое демо Паши: `sw net devnet | rpc | local`, локальный валидатор, стейк 1 SOL и шаг «Empty the main wallet».
+- Как сведено: за основу взят `sw.sh` из main, сверху — mainnet из ветки (спонсор, `SW_RETURN_TO`, `SW_CU_PRICE`, пополнение до цели, `sweep` со стейками). `sw fund` без аргументов теперь пополняет MAIN до 1,25 SOL (сценарий Паши), остальных до 0,01, поэтому на mainnet спонсору нужно около 1,3 SOL, а не 0,3. `sw setup mainnet` ставит `sw net` на `rpc`. Шапка «Live on Solana mainnet» снята: страница показывает сеть переключателем. Решение D137 из ветки перенумеровано в D138 (D137 в main уже занят).
+- Прогон сценария на локальном валидаторе нашёл две ошибки `sweep` (перевод пустому спонсору, порядок вывода стейков). Исправлены, тесты `live-demo.test.ts` 17 из 17.
+
 ## Стейк с сайта (11.10.2026)
 
-- По слову Паши (Phantom не стейкает на devnet): кнопка Stake SOL на `/app` у своего основного ключа, страница `/stake` — сумма, валидатор (выбран сразу из списка по открытым правилам), одна транзакция create-stake (CreateAccountWithSeed + Initialize + DelegateStake), подписывает и платит основной ключ; после «Готово» — Protect it now (D138).
+- По слову Паши (Phantom не стейкает на devnet): кнопка Stake SOL на `/app` у своего основного ключа, страница `/stake` — сумма, валидатор (выбран сразу из списка по открытым правилам), одна транзакция create-stake (CreateAccountWithSeed + Initialize + DelegateStake), подписывает и платит основной ключ; после «Готово» — Protect it now (D139).
 - Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true pnpm test`: core 921 из 922 (тот же `verify.review` под Node 22), web 1033 и 1 пропуск (новый `test/stake.test.tsx`), worker 675, scripts 147; e2e smoke с новым маршрутом `/stake` на 1280 и 360. Ручная проверка — TESTPLAN шаг 6, новый пункт.
 - Не проверено: Ledger и Phantom на этой транзакции.

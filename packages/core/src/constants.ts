@@ -70,7 +70,7 @@ export const NONCE_ACCOUNT_SEED = 'stakeward-nonce';
 export const RESCUE_KIT_NONCE_SEED_PREFIX = 'stakeward-kit-';
 
 /**
- * Seed prefix of a stake account created on the site (`create-stake`, D138): `stakeward-stake-` plus up to 16
+ * Seed prefix of a stake account created on the site (`create-stake`, D139): `stakeward-stake-` plus up to 16
  * lowercase base-36 characters (the creation time), so the address is derived from the owner and no extra keypair is
  * needed. 32 bytes at most, the System program's limit.
  */

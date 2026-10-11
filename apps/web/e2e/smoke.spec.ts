@@ -313,7 +313,7 @@ const ROUTES: readonly SmokeRoute[] = [
     screen: 'delegate',
   },
   {
-    // Stake SOL in a new stake account (D138): without a wallet it asks for the main key first.
+    // Stake SOL in a new stake account (D139): without a wallet it asks for the main key first.
     path: '/stake',
     heading: text('common.pages.stake'),
     shows: async (page) => {

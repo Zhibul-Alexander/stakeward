@@ -24,7 +24,7 @@ type StakeSigningProps = {
   onBack: () => void;
 };
 
-/** The signing section of /stake (D138): one transaction that creates and delegates the account, signed by the main key. */
+/** The signing section of /stake (D139): one transaction that creates and delegates the account, signed by the main key. */
 export function StakeSigning({ headingRef, mainKey, stakeAccount, seed, lamports, voteAccount, runKey, signing, onFinished, onBack }: StakeSigningProps) {
   const ports = usePorts();
   const headingId = useId();

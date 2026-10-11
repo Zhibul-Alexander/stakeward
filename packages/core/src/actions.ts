@@ -127,7 +127,7 @@ export type NonceCloseAction = {
 };
 
 /**
- * Creates a new stake account and delegates it in one transaction (D138): System CreateAccountWithSeed (base = the
+ * Creates a new stake account and delegates it in one transaction (D139): System CreateAccountWithSeed (base = the
  * main key, which pays and signs; owner = the stake program, 200 bytes), stake Initialize with staker = withdrawer =
  * the main key and no lockup, then DelegateStake to `voteAccount`. `stakeAccount` must equal
  * `deriveStakeAccountAddress(mainKey, seed)`. The SOL stays the main key's: only it can deactivate and withdraw.

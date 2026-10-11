@@ -53,7 +53,7 @@ export function AppPage({ loadHealth = loadHealthFromWorker }: AppPageProps) {
           aside={<KeySlot role="main" layout="inline" connectLabel={t('app.connect.mainButton')} onConnected={show} />}
         />
         {address === null ? null : <AccountsResults key={address} address={address} loadHealth={loadHealth} />}
-        {/* Stake more SOL of the connected main key (D138): some wallets cannot stake on devnet. Only on its own view. */}
+        {/* Stake more SOL of the connected main key (D139): some wallets cannot stake on devnet. Only on its own view. */}
         {main?.ready === true && address === main.slot.address ? (
           <div data-slot="stake-entry">
             <Button asChild variant="outline">

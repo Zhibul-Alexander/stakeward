@@ -33,7 +33,7 @@ type Run = {
 type PageState = { kind: 'choose' } | { kind: 'sign'; run: Run } | { kind: 'done'; run: Run; job: JobView };
 
 /**
- * /stake (DECISIONS.md D138): stake SOL of the connected main key in a new stake account, delegated to a validator, in
+ * /stake (DECISIONS.md D139): stake SOL of the connected main key in a new stake account, delegated to a validator, in
  * one transaction the main key signs and pays. Some wallets cannot stake on devnet; this page can. The next step is to
  * protect the new account, so the Done screen leads to /protect with it selected.
  */

@@ -78,7 +78,7 @@ import {
  *   - [System AdvanceNonceAccount]? [ComputeBudget SetComputeUnitLimit] [ComputeBudget SetComputeUnitPrice]
  *     then one action: one stake instruction over one stake account, the rescue pair (AuthorizeChecked Staker then
  *     Withdrawer on the same account), the nonce setup pair (CreateAccountWithSeed + InitializeNonceAccount),
- *     WithdrawNonceAccount, or the stake creation triple (CreateAccountWithSeed + Initialize + DelegateStake, D138);
+ *     WithdrawNonceAccount, or the stake creation triple (CreateAccountWithSeed + Initialize + DelegateStake, D139);
  *   - Withdraw, AuthorizeChecked, Deactivate and DelegateStake only in the legacy account layout
  *     (`LEGACY_SYSVAR_SLOTS`), with the exact account count and roles the builder emits;
  *   - optionally, Lighthouse instructions (`LIGHTHOUSE_PROGRAM_ADDRESS`) at the very end that add no signer.
@@ -895,7 +895,7 @@ async function nonceSetupAction(
 }
 
 /**
- * Stake account creation (D138): CreateAccountWithSeed funded by and based on the main key, owned by the stake
+ * Stake account creation (D139): CreateAccountWithSeed funded by and based on the main key, owned by the stake
  * program, 200 bytes, at the address derived from (base, seed, stake program); Initialize of that account with staker =
  * withdrawer = the main key and no lockup; DelegateStake of that account signed by the main key.
  */

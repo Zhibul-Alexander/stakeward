@@ -12,6 +12,8 @@ export const MIN_DELEGATION_LAMPORTS = LAMPORTS_PER_SOL;
 export const SPLIT_LAMPORTS = 500_000_000n;
 /** Check 10: lamports withdrawn from the locked S2 with both keys. */
 export const PARTIAL_WITHDRAW_LAMPORTS = 250_000_000n;
+/** Check 15: lamports above rent on S5 that the thief tries to move into an unlocked account. */
+export const MOVE_LAMPORTS = 10_000_000n;
 
 /**
  * Signature counts of every transaction each role pays for (order does not matter). gate.test.ts runs the LiteSVM
@@ -19,11 +21,12 @@ export const PARTIAL_WITHDRAW_LAMPORTS = 250_000_000n;
  * On mainnet the one-time key is both the funder and A.
  */
 const SHARED_PLAN = {
-  // fund A, B, D; create S1, S2 (split target), Sm (merge source), S3 (nonce rescue);
-  // sweep: withdraw S1 and S3 (funder, D, B), withdraw Sm (funder, A), one transfer of A, B and D (4 signatures)
-  funder: [1, 1, 1, 1, 1, 3, 3, 2, 4],
-  // 1b delegate, 2 protect, 3, 4, 5, 7a, 7b, 8a split, 8b, 9 merge, 10, 11b, 11c, 13b
-  A: [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 2, 2, 2, 1],
+  // fund A, B, D; create S1, S2 (split target), Sm (merge source), S3 (nonce rescue), S5 and S6 (check 15);
+  // sweep: withdraw S1 and S3 (funder, D, B), withdraw Sm (funder, A), withdraw S5 (funder, A, B), withdraw S6
+  // (funder, A), one transfer of A, B and D (4 signatures)
+  funder: [1, 1, 1, 1, 1, 1, 3, 3, 2, 3, 2, 4],
+  // 1b delegate, 2 protect, 3, 4, 5, 7a, 7b, 8a split, 8b, 9 merge, 10, 11b, 11c, 13b, 15a-15g
+  A: [1, 2, 1, 2, 1, 1, 2, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, 2, 2, 1, 1],
   // 6 extend, 13a unlock
   B: [1, 1],
   // 11a rescue, 12a nonce setup, 12b rescue on the nonce, 12c nonce close
@@ -87,6 +90,10 @@ export function gateBudget(cluster: GateCluster, rents: Rents): Budget {
     { label: 'S1: залог за аренду + 1 SOL, минимум делегации', lamports: rents.stake + MIN_DELEGATION_LAMPORTS },
     { label: 'S2 (цель Split), Sm (для Merge), S3 (спасение на nonce): залоги за аренду', lamports: 3n * rents.stake },
     ...(cluster === 'litesvm' ? [{ label: 'S4 (проверка 14): залог за аренду', lamports: rents.stake }] : []),
+    {
+      label: 'S5 и S6 (проверка 15): залоги за аренду + 0,01 SOL на S5',
+      lamports: 2n * rents.stake + MOVE_LAMPORTS,
+    },
     { label: 'ключ A: остаток + комиссии', lamports: floats.A },
     { label: 'ключ B: остаток + комиссии', lamports: floats.B },
     { label: 'ключ D: остаток + залог nonce-аккаунта + комиссии', lamports: floats.D },

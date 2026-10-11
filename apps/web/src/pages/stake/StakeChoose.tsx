@@ -25,7 +25,7 @@ type StakeChooseProps = {
 };
 
 /**
- * What /stake asks before signing (D138): how much SOL of the main key to stake and with which validator. The wallet
+ * What /stake asks before signing (D139): how much SOL of the main key to stake and with which validator. The wallet
  * balance and the account's rent-exempt reserve are read from the chain; "Max" leaves a little for fees. A validator
  * is chosen at the start (random order, open criteria); the person can pick another or paste one.
  */

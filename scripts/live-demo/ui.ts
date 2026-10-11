@@ -24,7 +24,7 @@ export const LOCK_DURATIONS = ['10m', '1h', '6mo', '12mo'] as const;
 
 export const STEPS: readonly Step[] = [
   { id: 'balances', group: 'Prepare', role: 'setup', label: 'Balances', args: ['balances'], expect: 'SOL on every demo wallet' },
-  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund', '0.25', '1.25'], expect: 'MAIN 1.25 SOL, others 0.25' },
+  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund'], expect: 'from the funder: MAIN to 1.25 SOL, the others 0.01' },
 
   { id: 'before-stake', group: 'Without a lock', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account, no lock' },
   { id: 'before-thief', group: 'Without a lock', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'accepted: the thief takes it all' },

@@ -33,7 +33,7 @@ function validatorOption(choice: ValidatorChoice): RadioCardOption {
  * The validator choice of /delegate and /stake (DECISIONS.md D134): validators that meet open criteria, in random
  * order, or a vote account the person pastes, checked by the same rules. `vote` is the chosen vote account once it is
  * usable (null until then). With `preselect` the first validator of each offer is chosen until the person picks one
- * (D138: /stake starts with a validator chosen, the order is still random).
+ * (D139: /stake starts with a validator chosen, the order is still random).
  */
 export function useValidatorPicker(options: { preselect?: boolean } = {}): { vote: Address | null; picker: ReactNode } {
   const pasteId = useId();
