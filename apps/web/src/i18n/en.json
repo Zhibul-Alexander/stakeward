@@ -168,7 +168,9 @@
       "deposit": "Link-signing deposit",
       "depositPayer": "Comes back when you close the account.",
       "depositUnknown": "A small amount set by the network",
-      "depositFallback": "a small deposit"
+      "depositFallback": "a small deposit",
+      "usd": "≈ {amount}",
+      "usdRate": "Dollar amounts are rough, at about {rate} per SOL. You always pay in SOL."
     },
     "wallets": {
       "title": "Which wallets work",
@@ -2462,6 +2464,36 @@
     "protect": "Protect this stake",
     "details": "Details",
     "aiTask": "Explain what this test shows about my stake and what I should do."
+  },
+  "challenge": {
+    "title": "Try to steal it",
+    "intro": "Below is the main key of a staked account on devnet. Import it into any wallet and try to take the SOL. A second key holds a lock on this stake until {date}, and without that key the network refuses.",
+    "devnetOnly": "Devnet only: this SOL has no value. Never paste a key that holds real funds into any site or wallet you do not control.",
+    "keyTitle": "The main key, in full",
+    "keyHint": "Wallets call this a private key. Phantom, Solflare and Backpack can import it; switch the wallet to devnet.",
+    "keyLoading": "Loading the key",
+    "keyErrorTitle": "Could not load the key",
+    "keyErrorBody": "Could not get the key from the Stakeward server. Wait a minute, then try again.",
+    "mainKey": "Main key address",
+    "stakeAccount": "Stake account",
+    "secondKey": "Second key (address only)",
+    "lockedUntil": "Locked until",
+    "canTitle": "What the main key can still do",
+    "can": {
+      "staker": "Hand the right to manage staking to another address. The main key can take it back.",
+      "delegate": "Stake with any validator, or stop staking.",
+      "split": "Split the stake account in two. The new one carries the same lock."
+    },
+    "cannotTitle": "What it cannot do",
+    "cannot": {
+      "withdraw": "Move the SOL out of the stake account.",
+      "owner": "Hand the stake account to another wallet.",
+      "lock": "Remove or shorten the lock."
+    },
+    "why": "The stake program checks the lock itself: until it ends, withdrawing and changing the owner need the second key's signature too. Stakeward is not in the way, and it could not let you through either.",
+    "proof": "See the lock live",
+    "simulate": "Simulate a theft",
+    "explorer": "Open in Solana Explorer"
   },
   "proof": {
     "title": "Stake lock proof",

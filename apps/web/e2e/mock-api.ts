@@ -5,7 +5,7 @@ import { getAddressEncoder, type Address } from '@solana/kit';
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
  * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption), /api/health
- * and /api/stats.
+ * /api/stats and /api/sol-price (150 USD per SOL).
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
 
@@ -201,6 +201,9 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   });
   await page.route('**/api/stats', async (route) => {
     await json(route, { ...STATS, now: new Date().toISOString() });
+  });
+  await page.route('**/api/sol-price', async (route) => {
+    await json(route, { usd: 150, at: new Date().toISOString() });
   });
   // A ready one-tap rescue kit (D118) for every account, linked to a Telegram chat: the page shows the new owner.
   await page.route('**/api/rescue-kits?*', async (route) => {

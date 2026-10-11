@@ -246,9 +246,11 @@ const ROUTES: readonly SmokeRoute[] = [
   {
     path: '/learn/costs',
     heading: text('learn.title'),
-    // The fees with the deposit read from the network.
+    // The fees with the deposit read from the network, and roughly in dollars at the mocked rate (D132).
     shows: async (page) => {
       await expect(page.locator('#fees')).toContainText('0.00105664 SOL');
+      await expect(page.locator('#fees')).toContainText('≈ $0.2');
+      await expect(page.locator('#fees')).toContainText('at about $150.00 per SOL');
     },
   },
   {

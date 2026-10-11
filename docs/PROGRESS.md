@@ -27,6 +27,17 @@
 - Код: тревога LOCKUP_CHANGED советует Change second key (D105, поправка 11.10); `/kits` в подсказке бота.
 - Проверено: `pnpm typecheck`, `pnpm lint`; тесты web 995 + 1 skipped, worker 663, scripts 142, core 905 из 906. Падает `verify.review.test.ts` (small-order keys, Node WebCrypto) — только на Node 22 в облачном контейнере, файл не менялся; CI идёт на Node 24.
 - Отложено после демо: залог nonce в мастере спасения (A1.4) — режим подписи выбирается шагом позже проверки баланса, правка меняет порядок шагов; SECURITY-CHECK, DECISIONS для /learn и короткого экрана подписи, таблица состояния PROGRESS, FINISH-PLAN, DESIGN.md, /dev/ui.
+## Страница /challenge «Try to steal it» (11.10.2026, D133)
+
+- Сделано: devnet-страница `/challenge` с основным ключом кошелька-челленджа, адресами, датой замка, тем, что может и не может вор, и ссылками на /proof, /try-steal и эксплорер; маршрут воркера `GET /api/challenge` (только devnet) отдаёт ключ из секрета `CHALLENGE_MAIN_KEY`. Ключа в репозитории нет.
+- Чем проверено: web 1001 тест (+ challenge-key, страница с ошибкой и повтором), воркер 667 (`test/challenge.test.ts`), `pnpm typecheck`, `pnpm lint`; build-output: страница не попадает в mainnet-сборку.
+- Дальше: положить ключ в секрет dev-воркера (`wrangler secret put CHALLENGE_MAIN_KEY --env dev`) и выкатить dev.
+
+## Примерные доллары во вкладке Costs (11.10.2026, D132)
+
+- Сделано: `GET /api/sol-price` в воркере (Coinbase, запасной CoinGecko, кэш 5 минут), «≈ $» под суммами на /learn/costs и строка с курсом под таблицей.
+- Проверено: `apps/worker/test/sol-price.test.ts` (кэш, запасной источник, 502 без кэша, таймаут), `apps/web/test/sol-price.test.tsx` (округление, разбор ответа, вкладка с курсом и без), smoke Playwright на 1280 и 360.
+- Дальше: после деплоя в dev открыть /api/sol-price и /learn/costs: из контейнера сборки внешние API курса недоступны, живой ответ Coinbase из Cloudflare ещё не проверен.
 
 ## Проверка здоровья валидатора (10.10.2026, D128)
 
