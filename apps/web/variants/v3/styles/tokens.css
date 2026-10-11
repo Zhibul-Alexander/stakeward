@@ -1,0 +1,193 @@
+/*
+ * Variant v3, "Editorial": the tokens of src/styles/tokens.css with the same names, set for a long read.
+ * Newsprint ground, ink text, one vermilion accent for chapter numbers, figures and the focus ring.
+ * Instrument Serif for display (h1, h2, figures), DM Sans for reading and UI, IBM Plex Mono for addresses.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --color-background: #f0eee7;
+  --color-surface: #faf9f5;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e5e2d8;
+  --color-subtle-hover: #d9d5c8;
+  --color-foreground: #17150f;
+  --color-muted: #514c42;
+  --color-border: #cbc6b8;
+  --color-border-strong: #6f6a5d;
+  --color-ring: #c2361a;
+  --color-primary: #17150f;
+  --color-primary-hover: #3b372d;
+  --color-on-primary: #faf9f5;
+  --color-primary-soft: #f6e8e1;
+  --color-inverse: #17150f;
+  --color-on-inverse: #f0eee7;
+
+  /* The editorial accent: chapter numbers, large figures, rules. accent-ink is the same hue dark enough for small text. */
+  --color-accent: #d23f1d;
+  --color-accent-ink: #b0311a;
+  --color-rule: #17150f;
+
+  --color-success: #1d5b37;
+  --color-success-soft: #dbe8d8;
+  --color-success-border: #8fb79b;
+  --color-warning: #85500a;
+  --color-warning-soft: #f3e3c0;
+  --color-warning-border: #d6b06a;
+  --color-neutral: #46423a;
+  --color-neutral-soft: #e2dfd5;
+  --color-neutral-border: #bdb7a8;
+  --color-info: #1c4a6e;
+  --color-info-soft: #dce5ea;
+  --color-info-border: #93b1c7;
+  --color-danger: #9e1c1c;
+  --color-danger-soft: #f5dcd6;
+  --color-danger-border: #d98a80;
+  --color-danger-solid: #9e1c1c;
+  --color-danger-solid-hover: #7f1414;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #10131a;
+  --color-qr-light: #ffffff;
+
+  --font-sans: 'DM Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* The app's six sizes (same names), the display ones set larger for a serif face; plus the editorial display sizes. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.35rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: 2.125rem;
+  --text-2xl--letter-spacing: -0.005em;
+  --text-2xl--font-weight: 400;
+  --text-3xl: 3rem;
+  --text-3xl--line-height: 3.1rem;
+  --text-3xl--letter-spacing: -0.015em;
+  --text-3xl--font-weight: 400;
+  --text-lede: 1.3125rem;
+  --text-lede--line-height: 1.95rem;
+  --text-display: 3.25rem;
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.02em;
+  --text-mast: 7.5rem;
+  --text-mast--line-height: 0.9;
+  --text-mast--letter-spacing: -0.03em;
+  --text-figure: 4.5rem;
+  --text-figure--line-height: 0.95;
+  --text-figure--letter-spacing: -0.02em;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Radii: nearly square, as type set on a page; full stays round for status stamps. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+
+  /* Paper does not float: only popovers carry a shadow. */
+  --shadow-sm: 0 0 0 0 transparent;
+  --shadow-md: 0 6px 16px -6px rgb(23 21 15 / 0.25);
+  --shadow-lg: 0 16px 32px -12px rgb(23 21 15 / 0.3);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #14130f;
+    --color-surface: #1c1a15;
+    --color-surface-raised: #25221c;
+    --color-subtle: #2a2720;
+    --color-subtle-hover: #353128;
+    --color-foreground: #ece8dd;
+    --color-muted: #b2ac9e;
+    --color-border: #3a362d;
+    --color-border-strong: #8a8475;
+    --color-ring: #ff7350;
+    --color-primary: #ece8dd;
+    --color-primary-hover: #ffffff;
+    --color-on-primary: #14130f;
+    --color-primary-soft: #3a2119;
+    --color-inverse: #ece8dd;
+    --color-on-inverse: #1c1a15;
+
+    --color-accent: #ff6a45;
+    --color-accent-ink: #ff8a6b;
+    --color-rule: #ece8dd;
+
+    --color-success: #9fd8ad;
+    --color-success-soft: #16291c;
+    --color-success-border: #2f6a42;
+    --color-warning: #f1c675;
+    --color-warning-soft: #33260c;
+    --color-warning-border: #8a5f12;
+    --color-neutral: #cdc7b8;
+    --color-neutral-soft: #2a2720;
+    --color-neutral-border: #59544a;
+    --color-info: #9cc8e8;
+    --color-info-soft: #13222f;
+    --color-info-border: #2c5677;
+    --color-danger: #ffa596;
+    --color-danger-soft: #3a1512;
+    --color-danger-border: #8f2a22;
+    --color-danger-solid: #b3261e;
+    --color-danger-solid-hover: #cf3a2f;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #10131a;
+    --color-qr-light: #ffffff;
+
+    --shadow-md: 0 6px 16px -6px rgb(0 0 0 / 0.6);
+    --shadow-lg: 0 16px 32px -12px rgb(0 0 0 / 0.7);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
