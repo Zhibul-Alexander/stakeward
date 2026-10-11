@@ -74,7 +74,7 @@ export function Fees({ deposit, solUsd = { status: 'idle' } }: { deposit: Load<b
           amount={<Amount lamports={networkFeeFor(1)} solUsd={solUsd} />}
           payer={t('landing.fees.extendPayer', { amount: formatSol(networkFeeFor(2)) })}
         />
-        <FeeRow label={t('landing.fees.changeKey')} amount={<SolAmount lamports={networkFeeFor(2)} />} payer={t('landing.fees.changeKeyPayer')} />
+        <FeeRow label={t('landing.fees.changeKey')} amount={<Amount lamports={networkFeeFor(2)} solUsd={solUsd} />} payer={t('landing.fees.changeKeyPayer')} />
         <FeeRow
           label={t('landing.fees.withdraw')}
           amount={<Amount lamports={networkFeeFor(2)} solUsd={solUsd} />}
