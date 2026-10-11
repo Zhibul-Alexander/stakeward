@@ -52,7 +52,8 @@
     "home": "Stakeward home",
     "app": "Your accounts",
     "demo": "Demo",
-    "challenge": "Try to steal it"
+    "challenge": "Try to steal it",
+    "tryTestnet": "Try on testnet"
   },
   "footer": {
     "label": "Footer",
@@ -69,6 +70,7 @@
     "checkStake": "Check my stake",
     "protectStake": "Protect my stake",
     "checkStakeHint": "Checking needs no wallet and signs nothing.",
+    "tryTestnet": "Try it first on testnet, with free test SOL",
     "points": {
       "free": "Free: you pay only network fees",
       "noCustody": "Your SOL stays in your stake accounts"

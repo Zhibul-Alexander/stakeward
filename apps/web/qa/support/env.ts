@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 export type QaTarget = 'local' | 'dev';
 
-const DEV_SITE = 'https://stakeward-dev.stakeward.workers.dev';
-const PROD_HOST = 'stakeward-prod.stakeward.workers.dev';
+const DEV_SITE = 'https://dev.stakeward.com';
+/** Production's hosts: its domain (D136) and its workers.dev address, still served during the move. */
+const PROD_HOSTS = new Set(['stakeward.com', 'www.stakeward.com', 'stakeward-prod.stakeward.workers.dev']);
 
 function readTarget(): QaTarget {
   const raw = process.env['QA_TARGET'] ?? 'local';
@@ -18,7 +19,7 @@ const sitePort = process.env['QA_SITE_PORT'] ?? '8787';
 const baseUrl = (process.env['QA_BASE_URL'] ?? (target === 'local' ? `http://127.0.0.1:${sitePort}` : DEV_SITE)).replace(/\/$/, '');
 
 // The suite signs with throwaway devnet keys and expects devnet behaviour; it must never point at prod (mainnet).
-if (new URL(baseUrl).hostname === PROD_HOST) {
+if (PROD_HOSTS.has(new URL(baseUrl).hostname)) {
   throw new Error(`QA_BASE_URL ${baseUrl} looks like production. The QA suite runs on local or dev only.`);
 }
 

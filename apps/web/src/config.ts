@@ -20,6 +20,9 @@ export const IS_DEVNET = import.meta.env.VITE_CLUSTER === 'devnet';
 /** Wallet Standard chain id for signing requests. */
 export const WALLET_CHAIN = IS_DEVNET ? SOLANA_DEVNET_CHAIN : SOLANA_MAINNET_CHAIN;
 
+/** The devnet copy of the site (D136), linked from the mainnet header and landing page as "Try on testnet". */
+export const TESTNET_SITE_URL = 'https://dev.stakeward.com';
+
 export const SOURCE_CODE_URL = 'https://github.com/Zhibul-Alexander/stakeward';
 
 /** README section "Recover without Stakeward" (GitHub's anchor for that heading), linked from the landing page. */

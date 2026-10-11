@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { SAMPLE, sampleLinkUrl } from '../../apps/web/src/pages/dev-ui/samples';
 
 // The signing link of a rescue on its durable nonce, as core builds it on the production origin.
-const linkUrl = sampleLinkUrl('https://stakeward-prod.stakeward.workers.dev');
+const linkUrl = sampleLinkUrl('https://stakeward.com');
 
 /** The /cosign link for the other device's camera: the longest link Stakeward makes, the densest code. */
 export const SigningLink = () => {

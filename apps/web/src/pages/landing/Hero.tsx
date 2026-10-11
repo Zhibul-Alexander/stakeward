@@ -1,8 +1,9 @@
 import type { Cluster } from '@stakeward/core';
-import { CheckIcon, GlobeIcon, PlayIcon } from 'lucide-react';
+import { CheckIcon, FlaskConicalIcon, GlobeIcon, PlayIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TESTNET_SITE_URL } from '@/config';
 import { t, type MessageKey } from '@/i18n';
 
 const TRUST: readonly MessageKey[] = ['landing.points.free', 'landing.points.noCustody', 'common.neverSeedPhrase'];
@@ -47,6 +48,15 @@ export function Hero({ cluster }: { cluster: Cluster }) {
             {t('landing.demoLink')}
           </Link>
         </Button>
+        {/* On mainnet, a way to try every flow with test SOL first, on the devnet copy of the site (D136). */}
+        {devnet ? null : (
+          <Button asChild variant="link" className="w-fit">
+            <a href={TESTNET_SITE_URL}>
+              <FlaskConicalIcon aria-hidden="true" />
+              {t('landing.tryTestnet')}
+            </a>
+          </Button>
+        )}
       </div>
       <ul className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         {TRUST.map((key) => (

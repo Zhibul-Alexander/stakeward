@@ -15,7 +15,7 @@ import { createDevAccounts, DevAccountsRefusal, explorerUrl, planDevAccounts } f
 
 /** 2027-10-13 00:00:00 UTC: a year after the demo, inside the worker's watch limit (D131). */
 export const CHALLENGE_LOCK_UNTIL = 1_823_385_600n;
-export const DEV_SITE = 'https://stakeward-dev.stakeward.workers.dev';
+export const DEV_SITE = 'https://dev.stakeward.com';
 
 export type Challenge = {
   stakeAccount: Address;

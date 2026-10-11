@@ -88,7 +88,7 @@ describe('parseDeployArgs', () => {
     expect(parseDeployArgs(['--help'], HOME, '/repo')).toEqual({ help: true });
     expect(DEPLOY_USAGE).toContain('--prod-confirm');
     expect(DEPLOY_USAGE).toContain('CI job `check`');
-    expect(ORIGIN_OF.dev).toMatch(/^https:\/\/stakeward-dev\./);
+    expect(ORIGIN_OF).toEqual({ dev: 'https://dev.stakeward.com', prod: 'https://stakeward.com' });
   });
 });
 
