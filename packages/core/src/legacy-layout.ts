@@ -8,7 +8,12 @@ import {
   type ReadonlyUint8Array,
 } from '@solana/kit';
 import { StakeInstruction } from '@solana-program/stake';
-import { STAKE_CONFIG_ADDRESS, SYSVAR_CLOCK_ADDRESS, SYSVAR_STAKE_HISTORY_ADDRESS } from './constants.ts';
+import {
+  STAKE_CONFIG_ADDRESS,
+  SYSVAR_CLOCK_ADDRESS,
+  SYSVAR_RENT_ADDRESS,
+  SYSVAR_STAKE_HISTORY_ADDRESS,
+} from './constants.ts';
 
 /**
  * Legacy (Ledger-parsable) account layouts, DECISIONS.md D1.
@@ -31,8 +36,10 @@ export type LegacySysvarSlot = { readonly at: number; readonly sysvars: readonly
  * - AuthorizeChecked: stake, Clock, authority, newAuthority, [custodian]
  * - Deactivate: stake, Clock, stakeAuthority
  * - DelegateStake: stake, vote, Clock, StakeHistory, StakeConfig, stakeAuthority
+ * - Initialize: stake, Rent
  */
 export const LEGACY_SYSVAR_SLOTS: Readonly<Partial<Record<StakeInstruction, LegacySysvarSlot>>> = {
+  [StakeInstruction.Initialize]: { at: 1, sysvars: [SYSVAR_RENT_ADDRESS] },
   [StakeInstruction.Withdraw]: { at: 2, sysvars: [SYSVAR_CLOCK_ADDRESS, SYSVAR_STAKE_HISTORY_ADDRESS] },
   [StakeInstruction.AuthorizeChecked]: { at: 1, sysvars: [SYSVAR_CLOCK_ADDRESS] },
   [StakeInstruction.Deactivate]: { at: 1, sysvars: [SYSVAR_CLOCK_ADDRESS] },

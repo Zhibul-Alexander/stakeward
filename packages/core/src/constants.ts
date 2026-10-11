@@ -69,6 +69,13 @@ export const NONCE_ACCOUNT_SEED = 'stakeward-nonce';
  */
 export const RESCUE_KIT_NONCE_SEED_PREFIX = 'stakeward-kit-';
 
+/**
+ * Seed prefix of a stake account created on the site (`create-stake`, D139): `stakeward-stake-` plus up to 16
+ * lowercase base-36 characters (the creation time), so the address is derived from the owner and no extra keypair is
+ * needed. 32 bytes at most, the System program's limit.
+ */
+export const STAKE_ACCOUNT_SEED_PREFIX = 'stakeward-stake-';
+
 /** u64::MAX: `deactivation_epoch` of a delegation that is not being deactivated. */
 export const U64_MAX = 0xffff_ffff_ffff_ffffn;
 /** i64::MAX: the largest lockup unix timestamp the program can store. */

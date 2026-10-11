@@ -5,13 +5,18 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildTransaction,
   COMPUTE_UNIT_LIMIT,
+  actionApplied,
   cosignFragment,
   deriveNonceAccountAddress,
+  deriveStakeAccountAddress,
+  inspectTransaction,
   expectedFeePayer,
   lockupEndForPeriod,
   NONCE_ACCOUNT_SEED,
   NONCE_ACCOUNT_SIZE,
+  newStakeAccountSeed,
   parseCosignFragment,
+  STAKE_ACCOUNT_SIZE,
   stakeActivationStatus,
   SYSTEM_PROGRAM_ADDRESS,
   type Lifetime,
@@ -228,6 +233,45 @@ describe('deactivate and delegate (legacy layout, staker only)', () => {
     expect(account?.kind).toBe('delegated');
     expect(account?.delegation?.voter).toBe(voteAccount);
     expect(stakeActivationStatus(account?.delegation ?? null, chain.clock().epoch)).toBe('activating');
+  });
+});
+
+describe('create-stake (CreateAccountWithSeed + Initialize + DelegateStake, main key only)', () => {
+  it('creates and delegates a stake account of the main key, which it can protect right away', async () => {
+    const voteAccount = await chain.createVoteAccount();
+    const seed = newStakeAccountSeed(Date.UTC(2026, 9, 11));
+    const stakeAccount = await deriveStakeAccountAddress(A.address, seed);
+    const rent = chain.minimumBalanceForRentExemption(BigInt(STAKE_ACCOUNT_SIZE));
+    const lamports = rent + LAMPORTS_PER_SOL;
+    const action: TransactionAction = { kind: 'create-stake', stakeAccount, mainKey: A.address, seed, lamports, voteAccount };
+    const tx = build(action);
+    expect(tx.meta.signers).toEqual([A.address]);
+    const inspected = await inspectTransaction(tx.bytes);
+    expect(inspected.ok && inspected.summary.action).toEqual(action);
+    const before = chain.balance(A.address);
+    expectOk(await chain.send(tx.bytes, [A]), 'create-stake');
+
+    const account = chain.stakeAccount(stakeAccount);
+    expect(account).toMatchObject({ kind: 'delegated', staker: A.address, withdrawer: A.address, lamports });
+    expect(account?.lockup).toEqual({ unixTimestamp: 0n, epoch: 0n, custodian: SYSTEM_PROGRAM_ADDRESS });
+    expect(account?.delegation?.voter).toBe(voteAccount);
+    expect(stakeActivationStatus(account?.delegation ?? null, chain.clock().epoch)).toBe('activating');
+    expect(actionApplied(action, chain.account(stakeAccount), null)).toBe(true);
+    expect(before - chain.balance(A.address)).toBeGreaterThanOrEqual(lamports);
+
+    const protect = build({ kind: 'protect', stakeAccount, mainKey: A.address, secondKey: K.address, lockUntil: lockedUntil(30n).unixTimestamp });
+    expectOk(await chain.send(protect.bytes, [A, K]), 'protect');
+    expect(chain.stakeAccount(stakeAccount)?.lockup.custodian).toBe(K.address);
+  });
+
+  it('fails without spending when the account already exists (the same seed twice)', async () => {
+    const voteAccount = await chain.createVoteAccount();
+    const seed = newStakeAccountSeed(1);
+    const stakeAccount = await deriveStakeAccountAddress(A.address, seed);
+    const lamports = chain.minimumBalanceForRentExemption(BigInt(STAKE_ACCOUNT_SIZE)) + LAMPORTS_PER_SOL;
+    const action: TransactionAction = { kind: 'create-stake', stakeAccount, mainKey: A.address, seed, lamports, voteAccount };
+    expectOk(await chain.send(build(action).bytes, [A]), 'create-stake');
+    expect((await chain.send(build(action).bytes, [A])).ok).toBe(false);
   });
 });
 
