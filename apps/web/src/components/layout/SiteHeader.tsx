@@ -44,8 +44,9 @@ export function SiteHeader() {
                 {t('common.devnet')}
               </Badge>
               <span className="hidden text-xs text-muted md:inline">{t('common.devnetNote')}</span>
-              {/* The way back to the real site; icon only below 640 px, the name stays for screen readers. */}
-              <Button asChild variant="outline" size="sm">
+              {/* The way back to the real site: an icon below 640 px (named for screen readers), in words from 1024 px.
+                  Between them the header row has no room for it; there the landing page links back in words. */}
+              <Button asChild variant="outline" size="sm" className="sm:max-lg:hidden">
                 <a href={MAINNET_SITE_URL}>
                   <GlobeIcon aria-hidden="true" />
                   <span className="sr-only sm:not-sr-only">{t('nav.tryMainnet')}</span>
