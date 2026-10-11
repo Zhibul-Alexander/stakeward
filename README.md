@@ -77,6 +77,8 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 | Extend or remove the lock | 1 | 0.0000056 SOL | the second key. If it has no SOL, the main key signs too and pays 0.0000106 SOL |
 | Stop staking, before a withdrawal | 1 | 0.0000056 SOL | the key that manages staking, usually the main key |
 | Withdraw | 2 | 0.0000106 SOL | the main key |
+| Withdraw from a stake with no lock | 1 | 0.0000056 SOL | the main key |
+| Hand the lock to a new second key | 2 | 0.0000106 SOL | the new second key |
 | Rescue one stake account | 3 | 0.0000156 SOL | the new wallet |
 | Open or close a link-signing account | 1 | 0.0000056 SOL | the wallet that owns it |
 
@@ -431,6 +433,7 @@ pnpm e2e:mainnet
 | `pnpm gate:devnet`, `pnpm gate:mainnet` | the same on devnet, or a short version on mainnet with a throwaway key in `.keys/`. Without funds they print the address and the exact amount to send, and stop. Everything but the fees goes back at the end. |
 | `pnpm dev-accounts <address>` | creates a delegated and an undelegated stake account for an address on devnet |
 | `pnpm check-rpc <url>` | checks that an RPC endpoint answers `getProgramAccounts` with the stake filters |
+| `pnpm challenge-wallet [--sol 1] [--undelegated]` | devnet only: creates the public "Try to steal it" stake account, prints its main key for publishing, keeps the second key in `.keys/` |
 | `pnpm recovery-cli --url devnet`, or `--url localhost --funder <keypair>` with `solana-test-validator` | runs every recovery card command with Solana CLI 4.3.0 against that cluster and records the results in `docs/recovery-cli.md`; refuses mainnet |
 
 Keys for scripts and tests live in `.keys/` (gitignored). They are test data, never product code.

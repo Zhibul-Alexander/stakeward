@@ -95,6 +95,8 @@ lockup on your existing stake accounts, for 1, 3, 6 or 12 months or until a date
   nonce owned by the new wallet, so the signatures do not race a one-minute blockhash.
 - **Withdraw, extend, remove.** Both keys withdraw together. The second key alone extends the lock or removes it
   early.
+- **Change the second key.** If the second key may be stolen, it and a new second key from a new seed phrase hand the
+  lock over in one transaction; the end date stays and the new key pays.
 - **Sign by link.** The second key can sign on another device: the partly signed transaction travels in the
   address fragment of a `/cosign` link or a QR code and never reaches the server.
 - **Recovery card.** A printable card for each pair of main key and second key: what to do if a key is lost or
@@ -376,5 +378,5 @@ before submitting.
 | Recovery card commands | 26/26 on `solana-test-validator` 4.3.0 (5 Oct) and 26/26 on devnet (6 Oct), Solana CLI 4.3.0 | docs/recovery-cli.md, D78 |
 | Automated tests | core 790, web 786, worker 598, scripts 130 (6 Oct 2026); Playwright on every route at 1280 and 360 px | docs/PROGRESS.md |
 | Server data | public stake account data and, with alerts on, the Telegram chat id. No accounts, logins, cookies or analytics | CLAUDE.md section 2, FAQ "What does Stakeward know about me?" |
-| Not built yet | changing the second key inside Stakeward (the CLI does it in one command), Squads vault as second key, Mobile Wallet Adapter | CLAUDE.md step 10, FAQ |
+| Not built yet | Squads vault as second key, Mobile Wallet Adapter, signing a second key change by link | CLAUDE.md step 10, FAQ |
 | Hosting | one Cloudflare Worker (Workers Free plan) with D1; RPC through Helius | DECISIONS "Развёртывание" |
