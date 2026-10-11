@@ -57,6 +57,11 @@ shown_url() { printf '%s' "$SW_URL" | mask_key; }
 addr() { solana-keygen pubkey "$1" 2>/dev/null; }
 short() { local a="$1"; printf '%s…%s' "${a:0:4}" "${a: -4}"; }
 
+# A validator on this machine (sw localnet): free airdrops, no rate limits, no internet needed.
+is_local() {
+  case "$SW_URL" in localhost | l | *127.0.0.1* | *localhost*) return 0 ;; *) return 1 ;; esac
+}
+
 cluster_param() {
   case "$SW_URL" in
     devnet | d | *devnet*) printf '?cluster=devnet' ;;
@@ -347,7 +352,7 @@ cmd_fund() {
   for role in main second new thief; do
     file="$(need_key "$role")"
     a="$(addr "$file")"
-    if [ -n "$SW_FUNDER_KEY" ]; then
+    if [ -n "$SW_FUNDER_KEY" ] && ! is_local; then
       say 'FUNDER' "sends ${amount} SOL to $(role_name "$(echo "$role" | tr a-z A-Z)")"
       run ok '' -- transfer "$a" "$amount" --from "$SW_FUNDER_KEY" --fee-payer "$SW_FUNDER_KEY" \
         --allow-unfunded-recipient || return 1
@@ -603,12 +608,19 @@ menu_list() {
   done
 }
 
+# localnet: a fresh Solana network on this machine (solana-test-validator); stop it with Ctrl+C.
+cmd_localnet() {
+  command -v solana-test-validator >/dev/null 2>&1 || die "solana-test-validator not found; it comes with the Solana CLI."
+  info "Local Solana network on http://127.0.0.1:8899, starting from scratch. In the other terminals: export SW_URL=localhost"
+  exec solana-test-validator --reset --quiet --ledger "${SW_LEDGER:-$SW_DIR/ledger}"
+}
+
 # ui [port]: the scenario as a page in the browser, http://127.0.0.1:4848 (ui.ts and ui.html next to this script).
 cmd_ui() {
   command -v node >/dev/null 2>&1 || die "Node.js not found; the page needs Node 24 or newer."
   local port="${1:-4848}"
   (sleep 1; open "http://127.0.0.1:$port" 2>/dev/null || xdg-open "http://127.0.0.1:$port" 2>/dev/null) >/dev/null 2>&1 &
-  exec node "$SCRIPT_DIR/ui.ts" "$port"
+  SW_URL="$SW_URL" exec node "$SCRIPT_DIR/ui.ts" "$port"
 }
 
 # log: the network output of "sw menu", scrolling on its own in this terminal.
@@ -686,6 +698,7 @@ ${B}Menu${N}
   sw menu [10m|1h|6mo]      the whole scenario as numbered steps: press Enter for the next one
   sw log                    in another terminal: the full network output of the menu, scrolling on its own
   sw ui [port]              the same scenario as a page in the browser (http://127.0.0.1:4848)
+  sw localnet               a local Solana network instead of devnet; then SW_URL=localhost elsewhere
 
 Env: SW_URL (devnet), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
      SW_STAKE (another stake account), SW_VOTE, SW_ONCHAIN_FAILS=0 (thief's failures only simulated, no explorer link).
@@ -725,7 +738,7 @@ main() {
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
   case "$cmd" in
-    setup | keys | log | ui | help | -h | --help) ;;
+    setup | keys | log | ui | localnet | help | -h | --help) ;;
     *) check_rpc ;;
   esac
   case "$cmd" in
@@ -749,6 +762,7 @@ main() {
     menu) cmd_menu "$@" ;;
     log) cmd_log ;;
     ui) cmd_ui "$@" ;;
+    localnet) cmd_localnet ;;
     help | -h | --help) cmd_help ;;
     *) die "Unknown command: $cmd. Run: sw help" ;;
   esac

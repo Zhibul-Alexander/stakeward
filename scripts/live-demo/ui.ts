@@ -43,6 +43,14 @@ export const STEPS: readonly Step[] = [
   { id: 'sweep', group: 'After the demo', role: 'setup', label: 'Return SOL to the funder', args: ['sweep'], expect: 'leftovers back to the funder' },
 ];
 
+// Which network the page says it is on, from SW_URL (sw ui passes it on from demo.env).
+export function networkName(url = ''): string {
+  if (/localhost|127\.0\.0\.1|^l$/.test(url)) return 'a local Solana network';
+  if (/mainnet|^m$/.test(url)) return 'Solana mainnet';
+  if (/testnet|^t$/.test(url)) return 'Solana testnet';
+  return 'Solana devnet';
+}
+
 // The sw.sh arguments of a button press; null when the step or the duration is not on the list.
 export function commandFor(id: string, duration = '6mo'): string[] | null {
   const step = STEPS.find((s) => s.id === id);
@@ -141,7 +149,7 @@ function serve(port: string) {
         'content-type': 'text/html; charset=utf-8',
         'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
       });
-      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)));
+      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)).replace('Solana devnet', networkName(process.env.SW_URL)));
       return;
     }
     const font = /^\/fonts\/([a-z-]+\.woff2)$/.exec(url)?.[1];
