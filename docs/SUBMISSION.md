@@ -361,7 +361,7 @@ before submitting.
 
 | Fact | Value | Where it comes from |
 | --- | --- | --- |
-| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Or a custom date from tomorrow to 5 years ahead, ending at 00:00 UTC on it (D119). Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
+| Lock periods | 1, 3, 6, 12 months, default 6; ends at 00:00 UTC on the day after the period. Or a custom date from tomorrow to 10 years ahead, ending at 00:00 UTC on it (D119). Devnet also 10 min and 1 h | `packages/core/src/lockup.ts`, D13 |
 | Network fee | 0.000005 SOL per signature plus 600 lamports priority (limit 60,000 CU at 10,000 micro-lamports) | `packages/core/src/constants.ts`, `fees.ts`, D16 |
 | Protect one stake account | 2 signatures, 0.0000106 SOL, paid by the Main key | `networkFeeFor`, D23 |
 | Rescue one stake account | 3 signatures, 0.0000156 SOL, paid by the New wallet | same |

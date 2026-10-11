@@ -13,6 +13,7 @@
     "gate:devnet": "node gate.ts devnet",
     "gate:mainnet": "node gate.ts mainnet",
     "recovery-cli": "node recovery-cli.ts",
+    "challenge-wallet": "node challenge-wallet.ts",
     "ledger-sim": "node ledger-sim.ts"
   },
   "dependencies": {
