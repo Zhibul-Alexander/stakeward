@@ -119,7 +119,7 @@
         {
           "binding": "DB",
           "database_name": "stakeward-dev",
-          "database_id": "ba00f60b-bd9d-443c-8928-268070d4967d",
+          "database_id": "94d3e4c0-63de-485d-9f40-5b941a16b3ae",
           "migrations_dir": "migrations"
         }
       ]
@@ -154,7 +154,7 @@
         {
           "binding": "DB",
           "database_name": "stakeward-prod",
-          "database_id": "6fd2892c-c158-4235-9ef2-055e490eccf3",
+          "database_id": "40c6f877-b81e-475e-b08e-6bd86a52fd4b",
           "migrations_dir": "migrations"
         }
       ]

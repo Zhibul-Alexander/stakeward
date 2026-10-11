@@ -1092,13 +1092,15 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
   - Тревога-триггер (DEACTIVATED и т. п.) добавляет «Stakeward already sent your one-tap rescue: this stake moves to your new wallet …», кнопка ведёт на аккаунты D, а не в мастер спасения.
   - Смена ключа на любой другой адрес остаётся тревогой: вор не может перевести стейк на D.
 
-## D136. Свой домен stakeward.com (11.10.2026, по слову Паши; поправка к D84, D106 и «Развёртыванию»)
+## D136. Свой домен stakeward.com и новые воркеры (11.10.2026, по слову Паши; поправка к D84, D106 и «Развёртыванию»)
 
-- Паша купил stakeward.com 11.10.2026 через Cloudflare Registrar, зона в том же аккаунте (NS `dell` и `edward.ns.cloudflare.com`). Prod — https://stakeward.com, dev (devnet) — https://dev.stakeward.com: `routes` с `custom_domain: true` в `wrangler.jsonc`, DNS-запись и сертификат создаёт wrangler при деплое.
-- workers.dev пока остаётся включённым (`workers_dev: true`): по старым адресам открываются старые ссылки, а вебхуки ботов указывают туда, пока `SITE_ORIGIN` и `setWebhook` не переведены на новый домен. После этого переключения workers.dev выключаем отдельным коммитом.
-- www.stakeward.com не отдаёт вторую копию сайта: статику Workers отдаёт раньше воркера, поэтому воркер не может сделать редирект. Редирект www → stakeward.com — правило зоны (Rules → Redirect Rules), его ставит Паша.
-- В сборке mainnet в шапке и на лендинге ссылка «Try on testnet» на dev.stakeward.com (`TESTNET_SITE_URL` в `apps/web/src/config.ts`). Паша написал «testnet», но dev работает на Solana devnet: там челлендж-кошелёк и все демо. Подпись кнопки — как он попросил, сеть не меняем.
-- На своём домене начинает работать кэш `/api/stake-accounts` (D39). Phantom проверяет домен заново: форму отправить на https://stakeward.com.
+- Паша купил stakeward.com 11.10.2026 через Cloudflare Registrar в другом аккаунте Cloudflare («Gromovmx355@gmail.com's Account», `f057f2bb210efc14edfc6cfef416a7f9`), не в том, где жили воркеры. Свой домен Cloudflare вешает на воркер, только если зона в том же аккаунте (ошибки 10082 и 10083 при деплое), а перенести домен между аккаунтами нельзя первые 10 дней.
+- Решение Паши: окружения `dev` и `prod` переезжают в аккаунт домена, с пустыми базами (реальных пользователей нет, данные не переносим). dev — https://dev.stakeward.com (devnet), prod — https://stakeward.com (mainnet): `routes` с `custom_domain` и `zone_name`, `workers_dev: false`. Базы D1 (WEUR): stakeward-dev `94d3e4c0-63de-485d-9f40-5b941a16b3ae`, stakeward-prod `40c6f877-b81e-475e-b08e-6bd86a52fd4b`.
+- Старые воркеры (`*.stakeward.workers.dev`, первый аккаунт, базы `ba00f60b…` и `6fd2892c…`) остаются тестовыми и больше не деплоятся из репозитория. Боты переходят на новые воркеры; cron старых выключить в панели, иначе они шлют тревоги bot-mismatch.
+- Токен деплоя в GitHub (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` окружений `dev` и `prod`) — от аккаунта домена. Секреты воркеров кладутся заново, `SITE_ORIGIN` — новые адреса.
+- www.stakeward.com — Redirect Rule зоны на stakeward.com: статику Workers отдаёт раньше воркера.
+- В сборке mainnet в шапке и на лендинге ссылка «Try on testnet» на dev.stakeward.com (`TESTNET_SITE_URL`). Паша написал «testnet», но dev работает на Solana devnet: там челлендж-кошелёк и все демо. Подпись — как он попросил, сеть не меняем.
+- На своём домене работает кэш `/api/stake-accounts` (D39). Phantom проверяет домен заново: форму отправить на https://stakeward.com.
 
 ## Проверка RPC (02.10.2026)
 
@@ -1121,8 +1123,8 @@ Helius, бесплатный план, 05.10.2026, тот же VPS: все за�
 
 | окружение | адрес | кластер | база D1 (WEUR) |
 |---|---|---|---|
-| dev | https://stakeward-dev.stakeward.workers.dev | devnet | stakeward-dev `ba00f60b-bd9d-443c-8928-268070d4967d` |
-| prod | https://stakeward-prod.stakeward.workers.dev | mainnet | stakeward-prod `6fd2892c-c158-4235-9ef2-055e490eccf3` |
+| dev | https://dev.stakeward.com (с 11.10.2026, D136; до этого https://stakeward-dev.stakeward.workers.dev) | devnet | stakeward-dev `94d3e4c0-63de-485d-9f40-5b941a16b3ae` (до D136 `ba00f60b-bd9d-443c-8928-268070d4967d`) |
+| prod | https://stakeward.com (с 11.10.2026, D136; до этого https://stakeward-prod.stakeward.workers.dev) | mainnet | stakeward-prod `40c6f877-b81e-475e-b08e-6bd86a52fd4b` (до D136 `6fd2892c-c158-4235-9ef2-055e490eccf3`) |
 
 - Домен временный: поддомен аккаунта на workers.dev. Владелец решил не покупать домен сейчас; это расходится с CLAUDE.md, где prod с первого дня стоит на постоянном домене. Проверку Phantom проходит именно этот адрес. Переезд на свой домен означает `routes` с `custom_domain`, новый `SITE_ORIGIN`, новые описания ботов, правку README и новую проверку Phantom. Фишинга на workers.dev много (Fortra, 2024), поэтому форму Phantom отправляем в день деплоя prod. По D39 кэш поиска на workers.dev не работает: каждый поиск — getProgramAccounts в Helius, 10 кредитов.
 - В prod выкачена текущая сборка приложения для mainnet, а не заглушка, хотя по шагам 0 и 8 приложение должно было заменить заглушку только на шаге 8. Отдельной заглушки в коде больше нет, страниц /dev в сборке mainnet нет (D30), а проверке Phantom нужна живая страница. Адрес prod не публикуем до проверки владельцем на mainnet (шаг 9).
