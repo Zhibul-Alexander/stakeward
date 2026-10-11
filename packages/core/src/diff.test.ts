@@ -4,6 +4,7 @@ import { address, getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { U64_MAX } from './constants.ts';
 import type { StakeAccount } from './decode.ts';
+import { formatUtcDate } from './format.ts';
 import {
   diffSnapshots,
   formatAlert,
@@ -369,6 +370,54 @@ describe('formatAlert', () => {
         `${X.slice(0, 4)}...${X.slice(-4)}. If this was not you, your main key may be stolen. ` +
         'The lock is not in force, so the main key alone can withdraw this SOL.',
     );
+  });
+
+  describe('after Stakeward sent the one-tap rescue (D135)', () => {
+    const short = (key: string) => `${key.slice(0, 4)}...${key.slice(-4)}`;
+    const rescued = { ...lockedNow, rescueSentTo: D };
+
+    it('the trigger names the rescue and opens the new wallet, not the rescue wizard', () => {
+      const event = alertFor(
+        change({ delegation: { voter: V1, stake: 5_000_000_000n, activationEpoch: 990n, deactivationEpoch: EPOCH } }),
+      );
+      expect(formatAlert(event, rescued)).toEqual({
+        text:
+          'Stake 7xKT...A9fQ was deactivated. If this was not you, your main key may be stolen. Stakeward already ' +
+          `sent your one-tap rescue: this stake moves to your new wallet ${short(D)}. ` +
+          'Your SOL cannot be withdrawn without the second key.',
+        buttonLabel: 'Open Stakeward',
+        path: `/app?address=${D}`,
+      });
+    });
+
+    it('a new staker that is the new wallet is the rescue, not a theft', () => {
+      const alert = formatAlert(alertFor(change({ staker: D })), { ...rescued, withdrawer: D });
+      expect(alert.text).toBe(
+        `Your one-tap rescue moved the key that can deactivate and delegate stake 7xKT...A9fQ to your new wallet ${short(D)}. ` +
+          'The old main key can no longer deactivate or delegate it.',
+      );
+      expect(alert.text).not.toContain('stolen');
+      expect(alert.path).toBe(`/app?address=${D}`);
+    });
+
+    it('a new main key that is the new wallet completes the rescue and says how to withdraw', () => {
+      const alert = formatAlert(alertFor(change({ withdrawer: D })), { ...rescued, withdrawer: D });
+      expect(alert.text).toBe(
+        `Your one-tap rescue is done: the main key of stake 7xKT...A9fQ is now your new wallet ${short(D)}. ` +
+          `The old main key can no longer touch this stake. The lock still holds until ${String(formatUtcDate(T))}: ` +
+          'to withdraw, sign with the new wallet and the second key.',
+      );
+      expect(formatAlert(alertFor(change({ withdrawer: D })), { ...rescued, withdrawer: D, now: T }).text).toContain(
+        'The lock is not in force, so the new wallet alone can withdraw this SOL.',
+      );
+    });
+
+    it('a key moved anywhere else is still an alarm', () => {
+      expect(formatAlert(alertFor(change({ staker: X })), rescued).text).toContain(
+        'If this was not you, your main key may be stolen.',
+      );
+      expect(formatAlert(alertFor(change({ withdrawer: X })), rescued).text).toContain('both of your keys may be stolen');
+    });
   });
 
   it('names the new owner and links to its accounts', () => {

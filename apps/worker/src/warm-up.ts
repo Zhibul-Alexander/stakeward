@@ -269,6 +269,7 @@ function monitorRound(data: SyntheticData, report: WarmUpReport): void {
     custodian: data.second,
     lock_until: data.lockUntil.toString(),
     kit_chat_id: null,
+    kit_sent_to: null,
   });
   const reminder = JSON.stringify({ days: 30, lockUntil: data.lockUntil.toString() });
   const pending = [
