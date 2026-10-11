@@ -387,16 +387,16 @@ describe('formatAlert', () => {
     // Every sentence names the key it means: no "it" that could read as "this SOL".
     const removeAndProtect =
       'Only the second key can do this. If this was not you, your second key may be stolen. ' +
-      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a ' +
-      'new second key; until then the main key alone can withdraw this SOL. ' +
+      'In that case, if you still have the second key, hand the lock to a new second key now with Change second key: ' +
+      'the old key and the new one sign together, the lock keeps holding, and the old key can no longer change it. ' +
       'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.';
     const accountsButton = { buttonLabel: 'Open Stakeward', path: `/app?address=${A}` };
-    // A routine renewal by the second key (the answer to a reminder) moves the date too: a neutral button to the lock's
-    // page, which offers both a new end and the removal, never straight to the removal.
-    const lockButton = { buttonLabel: 'Review the lock', path: `/extend/${STAKE}` };
+    // D129: the way out hands the lock to a new second key at once, never through a removal that leaves the main key
+    // alone in control.
+    const lockButton = { buttonLabel: 'Change second key', path: `/change-key/${STAKE}` };
     const short = (address: Address) => `${address.slice(0, 4)}...${address.slice(-4)}`;
 
-    it('the second key extended a lock in force: remove it now and protect again; the button opens the lock page', () => {
+    it('the second key extended a lock in force: hand the lock to a new second key; the button opens Change second key', () => {
       expect(formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY })).toEqual({
         text: `The lock on stake 7xKT...A9fQ was extended to 12 May 2027. ${removeAndProtect}`,
         ...lockButton,
@@ -471,10 +471,10 @@ describe('formatAlert', () => {
       });
     });
 
-    it('the removal advice stays plain text in the UI vocabulary and links to the site', () => {
+    it('the change-key advice stays plain text in the UI vocabulary and links to the site', () => {
       const alert = formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY });
       expect(alert.text).not.toMatch(/custodian|withdrawer|staker|<|>|\*|_|`|\[/i);
-      expect(alert.path).toMatch(/^\/extend\/[1-9A-HJ-NP-Za-km-z]+$/);
+      expect(alert.path).toMatch(/^\/change-key\/[1-9A-HJ-NP-Za-km-z]+$/);
     });
   });
 

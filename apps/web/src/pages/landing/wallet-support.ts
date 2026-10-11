@@ -35,7 +35,7 @@ export type PairSupport = {
 };
 
 /** UTC 'YYYY-MM-DD' of the wallet matrix run (TESTPLAN step 3). Null: not run. */
-export const WALLET_MATRIX_DATE: string | null = '2026-10-08';
+export const WALLET_MATRIX_DATE: string | null = '2026-10-11';
 
 /**
  * The pairs the wallet matrix runs (TESTPLAN step 3). Only two Phantom accounts: the owner has no Solflare, Backpack or
@@ -44,7 +44,9 @@ export const WALLET_MATRIX_DATE: string | null = '2026-10-08';
  *
  * Phantom + Phantom, 08.10.2026 on devnet: all four one-browser runs landed unchanged, after Phantom's warnings "This
  * transaction could steal your funds in the future" and "This domain is new" (D110). Signing by link stays not verified
- * until the phone run (TESTPLAN stage 4).
+ * until the phone run (TESTPLAN stage 4). Mainnet, 10-11.10.2026 (TESTPLAN stage 6): protect, unlock, protect again and
+ * rescue landed; Phantom blocked the second key's signature and the rescue as a possible theft (D116), and on a nonce
+ * it reorders the instructions, so signing by link with Phantom first cannot land (D121).
  */
 export const WALLET_PAIRS: readonly PairSupport[] = [
   {
@@ -52,8 +54,8 @@ export const WALLET_PAIRS: readonly PairSupport[] = [
     main: 'phantom',
     second: 'phantom-imported',
     here: 'works-with-warning',
-    link: 'not-verified',
-    note: 'authority-warning',
+    link: 'does-not-work',
+    note: 'phantom-mainnet',
   },
 ];
 

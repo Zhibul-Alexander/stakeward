@@ -17,7 +17,8 @@ export const MAX_LINKS_PER_CHAT = 20;
 export const MAX_LINK_WRITES_PER_CHAT_PER_DAY = 50;
 
 const NO_SEED_PHRASE = 'Stakeward never asks for your seed phrase.';
-const COMMANDS = '/status lists the wallets of this chat, /stop turns all alerts off.';
+const COMMANDS =
+  '/status lists the wallets of this chat, /kits lists the one-tap rescues bound to this chat, /stop turns all alerts off.';
 
 /**
  * The last line of an alert message that covers more alerts than it shows (monitor/deliver.ts, a full delivery

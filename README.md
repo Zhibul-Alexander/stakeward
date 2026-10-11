@@ -4,7 +4,7 @@ Stakeward puts a lock on the Solana stake accounts you already have. The lock is
 
 Stakeward never holds your SOL or your keys. Your browser builds every transaction, your own wallets sign it, and Stakeward has no program of its own on the network. It is free: you pay only Solana network fees.
 
-> **Status: work in progress.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The checks with real wallets are still under way, and no wallet is verified yet. A devnet demo runs at https://stakeward-dev.stakeward.workers.dev (devnet SOL has no value). The mainnet version is not public yet. Do not lock real stake with Stakeward until this note changes.
+> **Status: early version, not audited.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The mainnet version runs at https://stakeward-prod.stakeward.workers.dev. On 10 and 11 October 2026 we protected, unlocked, protected again and rescued a real 1.05 SOL stake on mainnet with Phantom; withdrawing with both keys was tested on devnet. A devnet demo runs at https://stakeward-dev.stakeward.workers.dev (devnet SOL has no value). Start with a small stake.
 
 ## Why your stake needs a lock
 
@@ -15,7 +15,7 @@ Every stake account also has a lock built in: an end date and a key that guards 
 ## How it works
 
 1. **Lock it with a second key.** Pick a wallet made from a different seed phrase as your second key. Your main key and your second key sign together, one transaction per stake account, and the lock is written into each stake account on the Solana network. Your stake stays with its validator and keeps earning.
-2. **Get alerts.** Stakeward checks your protected stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes. It also reminds you 30, 14, 7, 3 and 1 days before the lock ends, and when it ends.
+2. **Get alerts.** Stakeward checks your protected stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes. It also reminds you 30, 14, 7, 3 and 1 days before the lock ends, and when it ends. Once a day it checks your validator too, and tells you if it stopped voting, closed its vote account or takes all of your rewards.
 3. **Rescue or withdraw.** If your main key is stolen, your main key, your second key and a new wallet sign together before the lock ends, and the stake moves to the new wallet, out of the thief's reach. To take your SOL out, your two keys withdraw it together.
 
 The lock lasts 1, 3, 6 or 12 months, 6 by default, and ends at 00:00 UTC on the first midnight after that period. Or pick a custom end date from tomorrow to 10 years ahead: the lock ends at 00:00 UTC on that date. Your second key can extend the lock, or remove it early, at any time before it ends. After it ends, your main key alone controls the stake again, and you can protect it again. On devnet you can also try a 10-minute or a 1-hour lock.
@@ -88,15 +88,15 @@ For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a 
 
 ## Which wallets work
 
-**No wallet has been verified with Stakeward yet.** Tests with Phantom are under way on devnet: two Phantom accounts, the second one imported from a different seed phrase. Solflare, Backpack and Ledger have not been tested. A pair of wallets will be listed as working, here and in the wallet table on the site, only after it has been tested. Until then, try every step on devnet first, and then with a small stake.
+**Tested: Phantom with Phantom.** Two Phantom accounts, the second one imported from a different seed phrase, on devnet (8 October 2026) and on mainnet (10 and 11 October 2026). Every step works after Phantom's warnings. Phantom may block the rescue as a possible theft ("Request blocked"), because a thief's transaction looks the same; you can go on with "Proceed anyway" after you check every address on Stakeward's screen. Signing by link does not work when Phantom on mainnet signs first: Phantom reorders a transaction on a link-signing account, and Stakeward refuses to send it. The same is true for preparing a one-tap rescue. Solflare and Backpack have not been tested. A Ledger was checked on the official emulator (Speculos): it shows all 25 kinds of Stakeward transactions as readable fields. It has not been tested on a device yet.
 
-What we know so far comes from wallet documentation and source code, not from tests:
+Also from wallet documentation and source code:
 
 - Stakeward talks to browser wallets through the Wallet Standard. It lists any wallet that offers `standard:connect` and `solana:signTransaction` for legacy transactions on the right cluster. Being listed does not mean the wallet was tested.
 - Stakeward asks a wallet only to sign a transaction. It never asks a wallet to sign a message or to send a transaction: Stakeward sends it, after checking every signature.
 - Phantom may add its own safety-check instructions (Lighthouse) to the end of a transaction. Stakeward accepts only that change, checks that nothing else changed, and asks Phantom to sign first.
 - To sign on the spot, every wallet that signs must be connected in one browser: two wallets from different seed phrases to protect or withdraw, three to rescue. With signing by link, a wallet on another device signs instead.
-- A Ledger connects through a browser wallet. Stakeward builds each transaction in the shape that Ledger's Solana app shows as readable fields, according to that app's source code. This has not been checked on a device yet. Phantom's added instructions may make a Ledger ask for blind signing. The FAQ on the site lists the fields a Ledger should show.
+- A Ledger connects through a browser wallet. Stakeward builds each transaction in the shape that Ledger's Solana app shows as readable fields; on the emulator it does. Phantom's added instructions make a Ledger ask for blind signing, so a Ledger may need to sign through another wallet. The FAQ on the site lists the fields a Ledger shows.
 - On a phone, a wallet app's own browser offers only that wallet. There you can check your stake, extend or remove a lock, and co-sign by link. Protect and rescue on a computer.
 
 ## How Stakeward keeps you safe
@@ -104,11 +104,11 @@ What we know so far comes from wallet documentation and source code, not from te
 - **The lock lives on the Solana network,** inside your stake accounts, enforced by Solana's own stake program. It does not depend on Stakeward. If Stakeward disappears, the lock keeps working and ends on its date; only the alerts stop. See [Recover without Stakeward](#recover-without-stakeward).
 - **Non-custodial.** Your SOL stays in your own stake accounts. Stakeward never asks for, creates, stores or sends a seed phrase or a private key. If anyone asks for your seed phrase in Stakeward's name, it is a scam.
 - **No program of its own.** Transactions use only Solana's stake program, the system program (for the link-signing account) and the compute budget fee settings; Phantom may add its own safety checks at the end. There is no Stakeward program to upgrade or break into, and no token.
-- **Your browser builds, your wallets sign.** Every transaction is built in your browser and signed by your own wallets. Stakeward's server never builds, stores or signs a transaction, and never sees a key.
+- **Your browser builds, your wallets sign.** Every transaction is built in your browser and signed by your own wallets. Stakeward's server never builds or signs a transaction, and never sees a key. It stores a transaction only if you prepare a one-tap rescue: a rescue that your three keys already signed, which can only move the stake to your own new wallet.
 - **You see what you sign.** Before each signature, the screen shows what changes, who signs, what it costs and what the transaction cannot do. That summary is read from the exact bytes your wallet receives, not from what the page believes. After each signature, Stakeward checks that the wallet changed nothing it should not have.
 - **The network decides what happened.** After each action, Stakeward reads the stake accounts again. Nothing counts as done until the network shows it.
 - **The server passes on only Stakeward transactions.** It sends a transaction to the network only if the same check accepts it and every signature is valid, so nobody can use it to relay other transactions. If the server is down, you lose the site and the alerts, not SOL.
-- **Little data.** The server keeps public network data and, if you turn on alerts, your Telegram chat id. There are no accounts, logins, email, cookies, analytics or third-party scripts. Your browser remembers which wallet you used for each key and which stake accounts you protected; that stays on your device.
+- **Little data.** The server keeps public network data and, if you turn on alerts, your Telegram chat id. If you prepare a one-tap rescue, it also keeps that signed rescue. There are no accounts, logins, email, cookies, analytics or third-party scripts. Your browser remembers which wallet you used for each key and which stake accounts you protected; that stays on your device.
 - **Open code, not audited.** The code is open source. It has not been audited. Every kind of transaction is tested against the real stake program, and the lock rules were checked on LiteSVM, devnet and mainnet: see [docs/gate.md](docs/gate.md) (in Russian, with explorer links). Read the code, or ask someone you trust to read it, before you lock a large stake.
 
 ### If Stakeward were hacked
@@ -121,7 +121,7 @@ The same server delivers the website, so whoever took it over could change the p
 
 They could not:
 
-- sign anything or move any SOL on their own: Stakeward holds no keys;
+- sign anything or move any SOL on their own: Stakeward holds no keys. If you prepared a one-tap rescue, they could send it early, and it would move your stake to your own new wallet, still locked;
 - withdraw a locked stake, hand it to another wallet or change its lock unless your second key signs too;
 - change how the lock works: that is the stake program's rule, not Stakeward's;
 - stop you from recovering with the Solana command line, as below.

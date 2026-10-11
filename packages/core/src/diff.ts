@@ -351,18 +351,19 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
         bySecondKey ? 'Only the second key can do this. If this was not you, your second key may be stolen.' : mainKeyStolen,
       );
       // The second key moved the end of a lock that still holds, and still holds it (SECURITY-CHECK П9). If that key
-      // is in other hands, an owner who still has it removes the lock and protects again with a new key; nothing is
-      // promised to one who lost it. A new second key (in this event, or stored by a later pass before this alert
-      // goes out) or a lock that has ended leaves nothing for the old key to remove. A routine renewal (the answer
-      // to a reminder) reads the same, so the button opens the lock's page, which offers a new end and the removal.
+      // is in other hands, an owner who still has it hands the lock to a new second key at once (F7, D129): unlike
+      // removing it and protecting again, that leaves no window for the main key alone. Nothing is promised to one who
+      // lost it. A new second key (in this event, or stored by a later pass before this alert goes out) or a lock
+      // that has ended leaves nothing for the old key to change. A routine renewal (the answer to a reminder) reads the
+      // same; the advice says "if this was not you", and the change-key page changes nothing until both keys sign.
       const sameSecondKey = !secondKeyChanged && context.custodian === toCustodian;
       if (bySecondKey && !removed && sameSecondKey && context.lockUntil > context.now) {
         sentences.push(
-          'In that case, if you still have the second key, remove the lock with it now, then protect this stake again ' +
-            'with a new second key; until then the main key alone can withdraw this SOL.',
+          'In that case, if you still have the second key, hand the lock to a new second key now with Change second key: ' +
+            'the old key and the new one sign together, the lock keeps holding, and the old key can no longer change it.',
           'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.',
         );
-        return { text: sentences.join(' '), buttonLabel: 'Review the lock', path: `/extend/${event.stakeAccount}` };
+        return { text: sentences.join(' '), buttonLabel: 'Change second key', path: `/change-key/${event.stakeAccount}` };
       }
       if (removed) sentences.push('The main key alone can now withdraw this SOL.');
       // Without the second key's lock, the main key and a new second key can lock it again at once; the owner may also

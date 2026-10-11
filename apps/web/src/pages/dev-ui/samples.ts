@@ -446,7 +446,7 @@ export const SAMPLE_WALLET_PAIRS: readonly PairSupport[] = [
     note: 'switch-account',
   },
   { id: 'ledger-phantom+any', main: 'ledger-phantom', second: 'any', here: 'blind-signing', link: 'blind-signing', note: 'ledger-blind' },
-  { id: 'ledger-solflare+any', main: 'ledger-solflare', second: 'any', here: 'does-not-work', link: 'not-verified', note: null },
+  { id: 'ledger-solflare+any', main: 'ledger-solflare', second: 'any', here: 'does-not-work', link: 'not-verified', note: 'phantom-mainnet' },
   {
     id: 'solflare+phantom-imported',
     main: 'solflare',

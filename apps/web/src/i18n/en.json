@@ -146,6 +146,7 @@
         "lock": "the lock or its second key changes",
         "balance": "SOL leaves the stake account",
         "closed": "the stake account is closed",
+        "validator": "your validator stops voting, closes or takes all of your rewards (checked once a day)",
         "reminders": "the lock ends soon: {days} days before, and when it ends"
       },
       "exampleTitle": "Example",
@@ -158,6 +159,8 @@
       "protectPayer": "Paid by your main key.",
       "extend": "Extend or remove a lock",
       "extendPayer": "Paid by your second key. If it has no SOL, your main key pays {amount}.",
+      "changeKey": "Change the second key",
+      "changeKeyPayer": "Paid by your new second key.",
       "withdraw": "Withdraw",
       "withdrawPayer": "Paid by your main key, plus {amount} if the stake must stop staking first.",
       "rescue": "Rescue a stake account",
@@ -169,9 +172,9 @@
     },
     "wallets": {
       "title": "Which wallets work",
-      "intro": "So far only Phantom has been tested. Solflare, Backpack and Ledger have not been tested yet.",
+      "intro": "Phantom has been tested on devnet and mainnet. A Ledger was checked on its official emulator, not on a device. Solflare and Backpack have not been tested yet.",
       "notVerified": "Until a pair says Works, try a small stake first.",
-      "checkedOn": "Tested on Solana devnet on {date}.",
+      "checkedOn": "Last tested on Solana mainnet on {date}.",
       "pairLabel": "{main} and {second}",
       "here": "In one browser",
       "link": "By link",
@@ -191,7 +194,8 @@
         "new-site-warning": "The wallet may warn that this site is new. The warning goes away after a few days.",
         "ledger-blind": "The Ledger asks for blind signing here. Use another pair with a Ledger.",
         "link-same-browser": "Signing by link was tested with both wallets in one browser, not yet from a phone or another computer.",
-        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm."
+        "authority-warning": "Phantom warns that each of these transactions could steal your funds in the future: it says so about any transaction that gives a key a role in an account. Check the keys on the Stakeward signing screen, then confirm.",
+        "phantom-mainnet": "Phantom warns about each of these transactions, and may block the rescue as a possible theft, because a thief's transaction looks the same. Check the keys on the Stakeward signing screen, then confirm or choose Proceed anyway. On mainnet, signing by link does not work when Phantom signs first: Phantom reorders the transaction, and Stakeward refuses to send it."
       },
       "ledgerLink": "What will my Ledger show?",
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
@@ -2062,7 +2066,7 @@
       },
       "good-second-key": {
         "q": "What makes a good second key?",
-        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Stakeward has not been tested with a Ledger, so try one with a small stake first. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase.\n\nUse your second key only to co-sign Stakeward transactions; do not connect it to other sites. One signature on a fake site can hand your lock to a thief's key."
+        "a": "A wallet made from a different seed phrase than your main key. A hardware wallet, such as a Ledger, or a wallet on another device is best. Stakeward was checked on the Ledger emulator, not on a device, so try one with a small stake first. Keep its seed phrase apart from your main key's.\n\nA second account in the same wallet app usually comes from the same seed phrase. Then it does not protect you, unless you imported that account from its own seed phrase.\n\nUse your second key only to co-sign Stakeward transactions; do not connect it to other sites. One signature on a fake site can hand your lock to a thief's key."
       },
       "different-seed": {
         "q": "Why must the two keys come from different seed phrases?",
@@ -2106,11 +2110,11 @@
       },
       "fake-site": {
         "q": "How do I avoid a fake Stakeward site?",
-        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That name comes from the source code of Ledger's Solana app, not from a test on a device. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. Each stake account you protected must say Protected or Expiring soon. One that says Locked by another key is not locked by the key you connected. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
+        "a": "Type the address yourself or use a bookmark, and do not follow links from strangers. A fake site could try to make a thief's wallet your second key. On a Ledger, check the address shown as New authority: it must be your second key. That is the name Ledger's Solana app shows on its official emulator. Browser wallets may not show it.\n\nAfterwards, open your accounts from your bookmark with your second key connected. Each stake account you protected must say Protected or Expiring soon. One that says Locked by another key is not locked by the key you connected. If you did not set that lock, its holder can keep the stake locked, but cannot withdraw it without your main key."
       },
       "check-tx": {
         "q": "Can Stakeward check a transaction from another site?",
-        "a": "Yes. Paste it on the Check a transaction page before you sign. Stakeward reads its bytes in your browser and says whether it changes who controls a stake account, changes its lock or moves staked SOL. Nothing is sent anywhere.\n\nThis is the check that would have flagged the September 2025 SwissBorg loss: a routine unstaking transaction carried a hidden change of the withdrawal key."
+        "a": "Yes. Paste it on the Check a transaction page before you sign. Stakeward reads its bytes in your browser and says whether it changes who controls a stake account, changes its lock or moves staked SOL. Nothing is sent anywhere.\n\nIt reads a hidden change of the withdrawal key, like the one inside a routine unstaking transaction in the September 2025 SwissBorg loss."
       },
       "check-explorer": {
         "q": "How can I check my lock without Stakeward?",
@@ -2150,7 +2154,7 @@
       },
       "privacy": {
         "q": "What does Stakeward know about me?",
-        "a": "Only public data. Stakeward's server keeps the public state of the stake accounts it watches and, if you turn on alerts, your Telegram chat id. There are no accounts, logins, email, cookies or analytics.\n\nYour browser remembers which wallet you used for each key and which stake accounts you protected, so it can warn you when a lock ends. That stays on your device."
+        "a": "Only public data. Stakeward's server keeps the public state of the stake accounts it watches and, if you turn on alerts, your Telegram chat id. If you prepare a one-tap rescue, it also keeps that signed rescue, which can only move your stake to your own new wallet. There are no accounts, logins, email, cookies or analytics.\n\nYour browser remembers which wallet you used for each key and which stake accounts you protected, so it can warn you when a lock ends. That stays on your device."
       },
       "stop-alerts": {
         "q": "How do I stop alerts?",
@@ -2182,7 +2186,7 @@
       }
     },
     "ledger": {
-      "fromSource": "This list comes from the source code of Ledger's Solana app, not from a device. Stakeward has not been tested with a Ledger.",
+      "fromSource": "This list comes from Ledger's Solana app, checked on its official emulator (Speculos), not on a device.",
       "checkedOn": "Checked on a Ledger on {date}.",
       "actions": {
         "protect": "Protect",
@@ -2235,7 +2239,7 @@
       },
       "authorizedBy": "Some screens also show \"Authorized by\": the key that approves the change.",
       "withdrawNote": "When you withdraw, the Ledger does not show your second key. The Stakeward screen shows it in full.",
-      "phantom": "Phantom may add its own safety checks to a transaction. If it does that for a Ledger account, the Ledger cannot read them and asks for blind signing. Whether it does is not known.",
+      "phantom": "Phantom may add its own safety checks to a transaction. A Ledger cannot read them and asks for blind signing: the emulator shows this. Whether Phantom adds them for a Ledger account is not known.",
       "termsLink": "What custodian, withdrawer and staker mean"
     },
     "checkLink": "Check a transaction"

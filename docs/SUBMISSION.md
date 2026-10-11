@@ -1,15 +1,15 @@
 # Stakeward: Colosseum submission drafts
 
 Colosseum Crypto World's Fair. Deadline: 12 October 2026, 23:59 PT (13 October, 10:59 Tbilisi).
-Drafts as of 8 October 2026, matching the code on `main` (steps 0-8 built). Every number below comes
+Drafts as of 11 October 2026, matching the code on `main` (steps 0-9 built; mainnet checks passed on 10-11 October). Every number below comes
 from the code or from docs/gate.md; the fact sheet at the end says where. Text in `[TODO owner: ...]` is for the
 owner to fill in.
 
 ## Before submitting (owner)
 
 - [x] The repository https://github.com/Zhibul-Alexander/stakeward is public (it was private during the build; public as checked on 6 October 2026). Keep it public: the prod deploy reads the CI status without a token.
-- [ ] Prod runs the current build and has passed the mainnet checks of step 9. Then replace `<PROD_URL>` below
-      (D84: the prod address is not published before that).
+- [x] Prod runs the current build and has passed the mainnet checks of step 9 (TESTPLAN stage 6, 10-11 October
+      2026); the prod address is in section 2.
 - [ ] The numbers from `/stats` and the first users' quotes are filled in (section 8).
 - [ ] The business section is written (section 9). TODO: the business model is not decided yet; the idea is in
       [BUSINESS-MODEL.md](BUSINESS-MODEL.md).
@@ -30,7 +30,7 @@ Stakeward
 | What | Link |
 | --- | --- |
 | Repository (MIT) | https://github.com/Zhibul-Alexander/stakeward |
-| Product, Solana mainnet | `<PROD_URL>` [TODO owner: after step 9] |
+| Product, Solana mainnet | https://stakeward-prod.stakeward.workers.dev |
 | Test version, Solana devnet | https://stakeward-dev.stakeward.workers.dev |
 | Telegram alerts bot | `@stakeward_bot` (mainnet), `@stakeward_dev_bot` (devnet) |
 | Proof of the mechanism on mainnet | [docs/gate.md](gate.md), section Mainnet: 8 of 8 checks |
@@ -87,14 +87,21 @@ lockup on your existing stake accounts, for 1, 3, 6 or 12 months or until a date
   the second key exists and is yours.
 - **Alerts.** A Cloudflare Worker reads the watched stake accounts every two minutes and sends a Telegram message
   when one is deactivated, redelegated, split, drained or closed, when its keys or its lock change, and 30, 14, 7, 3
-  and 1 days before the lock ends.
+  and 1 days before the lock ends. Once a day it also checks each watched stake's validator and alerts when it stops
+  voting, closes its vote account, has no BLS key, lacks the Alpenglow fee balance or takes 100% commission.
 - **Rescue.** A stolen key is a copy: the owner still has it. So the main key, the second key and a new wallet
   sign together, and both authorities of each stake account move to the new wallet. This works even if the thief
   already changed who manages staking. The new wallet pays, so the stolen key never pays a fee. With every key in one
-  browser each wallet approves all accounts in one request; with a key on another device the rescue runs on a durable
-  nonce owned by the new wallet, so the signatures do not race a one-minute blockhash.
+  browser each wallet approves all accounts in one request, on a recent blockhash; with a key on another device the
+  rescue runs on a durable nonce owned by the new wallet, so the signatures do not race a one-minute blockhash.
+- **One-tap rescue (optional).** While all three keys are safe, they sign the rescue in advance. The worker keeps the
+  signed transaction and the Telegram chat bound to it gets a Rescue now button under each alert, or the worker sends
+  it by itself when someone changes who manages staking. All it can do is move the stake to the user's own new wallet;
+  the lock stays.
 - **Withdraw, extend, remove.** Both keys withdraw together. The second key alone extends the lock or removes it
   early.
+- **Change the second key.** If the second key may be stolen, it and a new second key from a new seed phrase hand the
+  lock over in one transaction; the end date stays and the new key pays.
 - **Sign by link.** The second key can sign on another device: the partly signed transaction travels in the
   address fragment of a `/cosign` link or a QR code and never reaches the server.
 - **Recovery card.** A printable card for each pair of main key and second key: what to do if a key is lost or
@@ -106,12 +113,14 @@ withdraw authority or touch the lock. Stakeward says this on the landing page in
 
 **Trust model.** Stakeward never holds funds or keys and never asks for a seed phrase. It has no on-chain program
 and no token. The browser builds every transaction from a TypeScript core, the user's own wallets sign, and the
-result is checked on the network. Transactions contain only Stake program instructions for one stake account each,
+result is checked on the network. The server never builds or signs a transaction; it stores one only for a one-tap
+rescue, already signed by all three keys, which can only move the stake to the user's own new wallet. Transactions contain only Stake program instructions for one stake account each,
 System instructions for the durable nonce, and Compute Budget. No address lookup tables. A transaction inspector
 decodes the exact bytes before every signature: the signing screen shows its summary, `/cosign` trusts only the
 bytes and the network, and the worker's RPC proxy sends only transactions the inspector accepts, with every
 signature verified. If the Stakeward server is down, users lose alerts, not SOL: the lock lives in the stake
-program. The same server delivers the website, so a hacked server is a hacked website that could ask for a harmful
+program. A hacked server could send a stored one-tap rescue early; that moves the stake to the owner's new wallet,
+still locked. The same server delivers the website, so a hacked server is a hacked website that could ask for a harmful
 signature; the lock still needs the second key, and the site tells users to check the addresses their wallet or
 Ledger shows.
 
@@ -122,24 +131,30 @@ with the main key can split the stake into many small accounts; each keeps the l
 wallet balance or vote accounts.
 
 **Wallets.** Stakeward talks to browser wallets through the Wallet Standard (Phantom, Solflare, Backpack, and a
-Ledger through them). Tested so far: two Phantom accounts from different seed phrases, both in one browser, on
-devnet on 8 October 2026: 4 of 4 co-signing runs (recent blockhash and durable nonce, either key first) landed
-unchanged. Phantom warns that these transactions "could steal your funds in the future", as it does for any
-transaction that gives a key a role in an account; the signing screen explains this before the wallet asks.
-Solflare, Backpack and Ledger have not been tested yet, and the site marks untested pairs "Not verified yet". In a
-phone wallet's own browser you can check stake, extend or remove a lock and co-sign by link; protecting and rescuing
-need a computer. [TODO owner: signing by link from a phone after TESTPLAN stage 4.]
+Ledger through them). Tested so far: two Phantom accounts from different seed phrases, both in one browser. On
+devnet on 8 October 2026, 4 of 4 co-signing runs (recent blockhash and durable nonce, either key first) landed
+unchanged. On mainnet on 10-11 October 2026, a real 1.05 SOL stake was protected, unlocked by the second key,
+protected again, unstaked by "the thief" with the main key alone (withdrawing stayed impossible) and rescued to a new
+wallet and back, with every alert arriving in Telegram. Phantom warns that these transactions "could steal your funds
+in the future", and on mainnet it blocked the second key's signature and the rescue as a possible theft until the
+owner chose "Proceed anyway"; the signing screen explains this before the wallet asks. On mainnet Phantom, signing
+first, reorders a durable-nonce transaction so that it cannot land; Stakeward detects that and refuses to send it, so
+signing by link and the one-tap rescue need another wallet to sign first (D121). A Ledger was checked on the official
+emulator (Speculos, Nano S Plus and Nano X): 25 of 25 Stakeward transactions shown as readable fields and signed;
+not yet on a device. Solflare and Backpack have not been tested. In a phone wallet's own browser you can check stake,
+extend or remove a lock and co-sign by link; protecting and rescuing need a computer.
 
 **How it is built.** pnpm monorepo in TypeScript. `packages/core` (pure, no I/O): decoding, lock rules, transaction
 builders, inspector, signature checks, monitoring diffs, built on `@solana/kit` 8.4 and `@solana-program/stake`
 0.10. `apps/web`: React 19, Vite, Tailwind CSS 4, shadcn/ui, Wallet Standard directly. `apps/worker`: one Cloudflare
 Worker with Hono, D1 and a Cron Trigger, serving the site, the API and the Telegram webhook. Strict CSP, no
 third-party scripts, fonts or analytics. Ledger: transactions use the account layout the Ledger Solana app parses
-into readable fields; not yet tried on a device. About 2,300 automated tests (core 790, web 786, worker 598,
-scripts 130 on 6 October 2026), including every transaction kind executed against the mainnet stake program in
+into readable fields, checked on its emulator (`pnpm ledger-sim`, docs/ledger-sim.md). About 2,700 automated tests (core 906, web 996, worker 663,
+scripts 142 on 11 October 2026), including every transaction kind executed against the mainnet stake program in
 LiteSVM, plus Playwright with axe on every route at 1280 and 360 px.
 
-**Status.** [TODO owner: live on mainnet since `<date>`; N stake accounts and X SOL under lock; first users.]
+**Status.** Live on Solana mainnet at https://stakeward-prod.stakeward.workers.dev; the owner's mainnet checks passed
+on 10-11 October 2026. [TODO owner: N stake accounts and X SOL under lock from `/stats`; first users.]
 
 ## 4. Logo
 
@@ -223,8 +238,8 @@ Notes only, from CLAUDE.md section 16. Nothing here is built, and the free base 
 - The base stays free: protection, monitoring with Telegram, withdraw, rescue, recovery card.
 - Paid tiers later, as fiat subscriptions. No token, and no payments in crypto (the author is in Georgia, where
   companies may not accept crypto).
-- Pro, for individuals: a phone call on an alert, more alert channels, validator alerts, a check that the second
-  key is still alive.
+- Pro, for individuals: a phone call on an alert, more alert channels, validator reports beyond the free validator
+  health alerts, a check that the second key is still alive.
 - Teams, for organisations: Slack and webhooks, many accounts, reports, a public confirmation page, an API, roles.
 
 ## 10. Code written before 14 September 2026
@@ -309,7 +324,7 @@ before submitting.
 | Message format | legacy messages, no address lookup tables, one stake account per transaction | D17, D23 |
 | Mechanism checks | LiteSVM 24/24 (2 Oct), devnet 21/21 (5 Oct), mainnet 8/8 (5 Oct), stake program v5.1.0 | docs/gate.md, D4 |
 | Recovery card commands | 26/26 on `solana-test-validator` 4.3.0 (5 Oct) and 26/26 on devnet (6 Oct), Solana CLI 4.3.0 | docs/recovery-cli.md, D78 |
-| Automated tests | core 790, web 786, worker 598, scripts 130 (6 Oct 2026); Playwright on every route at 1280 and 360 px | docs/PROGRESS.md |
-| Server data | public stake account data and, with alerts on, the Telegram chat id. No accounts, logins, cookies or analytics | CLAUDE.md section 2, FAQ "What does Stakeward know about me?" |
-| Not built yet | changing the second key inside Stakeward (the CLI does it in one command), Squads vault as second key, Mobile Wallet Adapter | CLAUDE.md step 10, FAQ |
+| Automated tests | core 906, web 996, worker 663, scripts 142 (11 Oct 2026); Playwright on every route at 1280 and 360 px | docs/PROGRESS.md |
+| Server data | public stake account data and, with alerts on, the Telegram chat id; a one-tap rescue the user signed in advance, if they prepare one (D118). No accounts, logins, cookies or analytics | CLAUDE.md section 2, FAQ "What does Stakeward know about me?" |
+| Not built yet | Squads vault as second key, Mobile Wallet Adapter, signing a second key change by link | CLAUDE.md step 10, FAQ |
 | Hosting | one Cloudflare Worker (Workers Free plan) with D1; RPC through Helius | DECISIONS "Развёртывание" |
