@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/jetbrains-mono';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* v4: a soft wash behind the page top (two pastel blobs), drawn in CSS so no inline style is needed. */
+@utility bg-wash {
+  background-image:
+    radial-gradient(60rem 28rem at 85% -6rem, color-mix(in oklab, var(--color-lilac) 85%, transparent), transparent 70%),
+    radial-gradient(40rem 22rem at -8% 4rem, color-mix(in oklab, var(--color-sky) 80%, transparent), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+/* The dashed path that links the journey tiles on the landing page. */
+@utility journey-line {
+  background-image: linear-gradient(to right, var(--color-border-strong) 50%, transparent 0);
+  background-size: 10px 2px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+@utility journey-line-v {
+  background-image: linear-gradient(to bottom, var(--color-border-strong) 50%, transparent 0);
+  background-size: 2px 10px;
+  background-repeat: repeat-y;
+  background-position: center;
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-weight: 750;
+    letter-spacing: -0.015em;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
