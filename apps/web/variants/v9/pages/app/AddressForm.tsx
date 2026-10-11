@@ -1,0 +1,143 @@
+import { isAddress, type Address } from '@solana/kit';
+import { ZERO_ADDRESS } from '@stakeward/core';
+import { ArrowUpIcon } from 'lucide-react';
+import { useId, useRef, useState, type ReactNode } from 'react';
+import { AddressText } from '@/components/product/address-text';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { t } from '@/i18n';
+
+type Problem = 'empty' | 'invalid' | 'zero';
+
+function problemOf(text: string): Problem | null {
+  if (text === '') return 'empty';
+  if (!isAddress(text)) return 'invalid';
+  // The System Program's id: no wallet, and as a second key it would match almost every stake account (no lock).
+  return text === ZERO_ADDRESS ? 'zero' : null;
+}
+
+/** An address the accounts page reads: a Solana address other than the all-zero one (problemOf). */
+export function isCheckableAddress(text: string): text is Address {
+  return problemOf(text) === null;
+}
+
+/** An address from the URL that is not one says so right away; an empty field only after a submit. */
+const initialProblem = (value: string) => (value === '' ? null : problemOf(value));
+
+type AddressFormProps = {
+  /** The address in the URL: when it changes (history back and forth, a connected main key) the field follows it. */
+  value: string;
+  /**
+   * The address whose stake the page shows under the form, if any. While the field is edited away from it, a muted line
+   * names it and says to press Check: the results, Telegram and Rescue are still that address's.
+   */
+  resultsFor?: Address | null | undefined;
+  onSubmit: (address: Address) => void;
+  /** Check is the screen's one filled button only while nothing is shown yet (DECISIONS.md D112). */
+  emphasis?: 'primary' | 'outline' | undefined;
+  /**
+   * Beside the field, outside the form (its buttons must not submit it): the other way to show stake, connecting the
+   * main key. Next to the field from 768 px, under it below.
+   */
+  aside?: ReactNode;
+};
+
+/**
+ * Paste an address, check it, show its stake (UX rule 1: look first, connect later). The label and hint sit above the
+ * field and `aside`, so the field and the connect button start on one line.
+ */
+export function AddressForm({ value, resultsFor, onSubmit, emphasis = 'primary', aside }: AddressFormProps) {
+  const [text, setText] = useState(value);
+  const [problem, setProblem] = useState<Problem | null>(() => initialProblem(value));
+  const [shown, setShown] = useState(value);
+  if (shown !== value) {
+    setShown(value);
+    setText(value);
+    setProblem(initialProblem(value));
+  }
+  const input = useRef<HTMLInputElement>(null);
+  const id = useId();
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const pendingId = `${id}-pending`;
+  const typed = text.trim();
+  const pending = resultsFor !== undefined && resultsFor !== null && typed !== resultsFor;
+  const describedBy = [hintId, pending ? pendingId : null, problem === null ? null : errorId]
+    .filter((part) => part !== null)
+    .join(' ');
+
+  return (
+    <div data-slot="composer" className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-3">
+        <form
+          noValidate
+          className="flex min-w-0 flex-1 flex-col gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const address = text.trim();
+            const found = problemOf(address);
+            setProblem(found);
+            if (found !== null) {
+              input.current?.focus();
+              return;
+            }
+            setText(address);
+            onSubmit(address as Address);
+          }}
+        >
+          {/* v9: a message composer. The label stays for screen readers; the hint is the small print under the box. */}
+          <Label htmlFor={id} className="sr-only">
+            {t('app.form.label')}
+          </Label>
+          <div className="flex items-center gap-2 rounded-full border border-border-strong/50 bg-surface py-1.5 pr-1.5 pl-5 shadow-bubble focus-within:border-primary has-[[aria-invalid=true]]:border-danger">
+            <input
+              ref={input}
+              id={id}
+              name="address"
+              type="text"
+              value={text}
+              placeholder={t('app.form.placeholder')}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-invalid={problem !== null}
+              aria-describedby={describedBy}
+              className="h-10 min-w-0 flex-1 bg-transparent font-mono text-base text-foreground outline-none placeholder:font-sans focus-visible:outline-none md:text-sm"
+              onChange={(event) => {
+                setText(event.target.value);
+              }}
+            />
+            <Button
+              type="submit"
+              variant={emphasis}
+              size="icon"
+              aria-label={t('app.form.submit')}
+              className={emphasis === 'outline' ? 'border-primary/40' : undefined}
+            >
+              <ArrowUpIcon aria-hidden="true" className="size-5" />
+            </Button>
+          </div>
+          <p id={hintId} className="px-5 text-xs text-muted">
+            {t('app.form.hint')}
+          </p>
+          {problem === null ? null : (
+            <p id={errorId} role="alert" className="px-5 text-sm font-medium text-danger">
+              {t(problem === 'empty' ? 'app.form.empty' : problem === 'zero' ? 'app.form.zero' : 'app.form.invalid')}
+            </p>
+          )}
+          {pending ? (
+            <p id={pendingId} data-slot="field-pending" className="flex flex-wrap items-center gap-x-1 px-5 text-sm text-muted">
+              {typed === '' ? null : <span>{t('app.form.pending')}</span>}
+              <span className="inline-flex flex-wrap items-center gap-x-1">
+                <span>Showing now:</span>
+                <AddressText address={resultsFor} />
+              </span>
+            </p>
+          ) : null}
+        </form>
+        {aside === undefined ? null : <div className="shrink-0 md:pt-1">{aside}</div>}
+      </div>
+    </div>
+  );
+}
