@@ -1,7 +1,12 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
-@import '../../src/styles/tokens.css';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource-variable/newsreader/opsz-italic.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import './styles/tokens.css';
 
 /*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
@@ -63,6 +68,29 @@
   }
 }
 
+/* Vault: the serif voice, set on any element. */
+@utility font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+/* Small-caps label, as on a certificate or a bank statement column head. */
+@utility smallcaps {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.06em;
+  font-feature-settings: 'c2sc', 'smcp';
+}
+
+/* A certificate frame: a thin double rule in the seal colour. */
+@utility cert {
+  border: 3px double var(--color-seal);
+}
+
+/* Old-style figures for numerals inside prose; statements keep tabular lining figures. */
+@utility figures-statement {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
 /* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
 @page {
   margin: 14mm;
@@ -86,12 +114,21 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'kern', 'liga';
   }
 
   /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
   :focus-visible {
     outline: var(--focus-ring-width) solid var(--color-ring);
     outline-offset: var(--focus-ring-offset);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    text-wrap: balance;
   }
 
   ::placeholder {
@@ -115,4 +152,18 @@
     transition-duration: 0ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/*
+ * Serif headings are set light and large rather than bold: unlayered, so they win over a component's font-semibold
+ * (that class was chosen for the sans).
+ */
+h1 {
+  font-weight: 380;
+}
+h2 {
+  font-weight: 440;
+}
+h3 {
+  font-weight: 560;
 }

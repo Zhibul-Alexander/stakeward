@@ -71,3 +71,16 @@ jobs:
           }
           JSON
           ../../../worker/node_modules/.bin/wrangler deploy --config wrangler.json
+      - if: steps.has.outputs.ok == 'true'
+        name: smoke check the live preview
+        env:
+          N: ${{ matrix.n }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            page=$(curl -s -o /dev/null -w '%{http_code}' "https://ui$N.stakeward.com/app") || true
+            api=$(curl -s -o /dev/null -w '%{http_code}' "https://ui$N.stakeward.com/api/health") || true
+            echo "try $i: page $page, api $api"
+            [ "$page" = 200 ] && { [ "$api" = 200 ] || [ "$api" = 503 ]; } && exit 0
+            sleep 10
+          done
+          exit 1
