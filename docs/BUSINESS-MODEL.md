@@ -79,3 +79,5 @@ revenue; validators are the sales channel. Pro stays a line for later.
 - [ ] Validator recommendations: paid feature, validator channel, or both; and how to keep listings honest.
 - [ ] Prices: check against what treasuries pay for custody and monitoring today.
 - [ ] Owner writes section 9 of SUBMISSION.md; the result goes into the presentation.
+
+- 11.10.2026, владелец: первая платная функция — автоспасение (одно нажатие и автоотправка, D118, D120). Сейчас оно бесплатно и на mainnet с Phantom первым не собирается (D121). Базовая защита остаётся бесплатной. Цены не решены.
