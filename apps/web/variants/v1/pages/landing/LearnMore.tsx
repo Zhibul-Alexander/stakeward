@@ -20,7 +20,7 @@ export function LearnMore() {
               className="flex items-center justify-between gap-3 border-b border-border py-4 hover:bg-subtle sm:px-2"
             >
               <span className="flex flex-col">
-                <span className="font-display text-lg">{t(`learn.tabs.${id}`)}</span>
+                <span className="font-display text-title font-[560]">{t(`learn.tabs.${id}`)}</span>
                 <span className="text-sm text-muted">{t(`landing.learnMore.${id}`)}</span>
               </span>
               <ChevronRightIcon aria-hidden="true" className="size-4 shrink-0 text-muted" />

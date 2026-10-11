@@ -136,7 +136,7 @@ function RowWarning({ children }: { children: ReactNode }) {
 
 /**
  * One stake account as a compact row (DECISIONS.md D112), usually inside an AccountList:
- * - line 1: [checkbox] status badge, short address (copy, explorer), then SOL, the action and More at its end. From
+ * - line 1: [checkbox] short address (copy, explorer), status badge, then SOL, the action and More at its end. From
  *   640 px the row is a grid of four columns (grid-cols-account-row); in an AccountList the rows share the list's
  *   columns, so SOL stands in one column whichever rows have an action or More, and the action ends next to More.
  *   Below 640 px the badge and address keep line 1 to themselves, and SOL with the action and More take the next line;
@@ -199,8 +199,10 @@ export function AccountRow({
             }}
           />
         )}
-        <StatusBadge status={status} secondKeyKnown={secondKeyKnown} size="sm" />
+        {/* The account number first, as on a statement: short addresses are one width, so the badges and the
+            meta line start in one column down the list. */}
         <AddressText address={account.address} />
+        <StatusBadge status={status} secondKeyKnown={secondKeyKnown} size="sm" />
       </div>
       {/* From 640 px its line box is as tall as the address's icon buttons, so its text stays centred on the
           bottom-aligned line. */}

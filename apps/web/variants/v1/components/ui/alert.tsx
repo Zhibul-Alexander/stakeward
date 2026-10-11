@@ -45,7 +45,7 @@ function Alert({ className, tone = 'neutral', size = 'md', role, ...props }: Ale
 }
 
 function AlertTitle({ className, ...props }: ComponentProps<'div'>) {
-  return <div data-slot="alert-title" className={cn('font-display text-base font-semibold', className)} {...props} />;
+  return <div data-slot="alert-title" className={cn('font-display text-title', className)} {...props} />;
 }
 
 /**

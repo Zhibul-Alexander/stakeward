@@ -55,10 +55,19 @@
   --color-qr-light: #ffffff;
 
   /* Typography: Newsreader for the voice (headings, sums), IBM Plex Sans for the interface, Plex Mono for addresses. */
-  --font-display: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Each family is followed by a metric-matched local fallback (index.css), so text does not jump when the web font
+     arrives (font-display: swap). */
+  --font-display: 'Newsreader Variable', 'Newsreader Fallback', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Mono Fallback', ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /*
+   * One type scale. Interface sizes (xs-xl) are for the sans; the serif roles below are for headings and sums only, and
+   * index.css assigns them by element, so a page cannot pick its own heading size:
+   *   display  the landing hero's h1        page     every other h1
+   *   section  every h2 of a page or step   title    h3, card, alert and empty-state titles, wallet-slot roles
+   * No font weight in a size token: a weight here leaked into sans text set at that size.
+   */
   --text-xs: 0.75rem;
   --text-xs--line-height: 1.1rem;
   --text-sm: 0.875rem;
@@ -72,16 +81,22 @@
   --text-2xl: 1.625rem;
   --text-2xl--line-height: 2.1rem;
   --text-2xl--letter-spacing: -0.005em;
-  --text-2xl--font-weight: 450;
-  --text-3xl: 2.5rem;
-  --text-3xl--line-height: 2.9rem;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.6rem;
   --text-3xl--letter-spacing: -0.015em;
-  --text-3xl--font-weight: 400;
-  /* Landing hero only. */
   --text-4xl: 3.75rem;
   --text-4xl--line-height: 4rem;
   --text-4xl--letter-spacing: -0.025em;
-  --text-4xl--font-weight: 350;
+
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.5rem;
+  --text-section: 1.5rem;
+  --text-section--line-height: 1.9rem;
+  --text-section-lg: 1.75rem;
+  --text-page: 2.25rem;
+  --text-page--line-height: 2.5rem;
+  --text-page-lg: 2.875rem;
+  --text-page-lg--line-height: 3.1rem;
 
   --spacing: 0.25rem;
 

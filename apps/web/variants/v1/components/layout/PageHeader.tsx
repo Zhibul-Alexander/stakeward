@@ -39,7 +39,7 @@ export function PageHeader({ title, lead, meta, back, progress, action, headingR
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-col gap-3">
-          <h1 ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1} className="text-3xl text-balance sm:text-4xl">
+          <h1 ref={headingRef} tabIndex={headingRef === undefined ? undefined : -1} className="text-balance">
             {title}
           </h1>
           {lead === undefined ? null : <p className="max-w-prose font-display text-lg text-pretty text-muted">{lead}</p>}
@@ -51,7 +51,7 @@ export function PageHeader({ title, lead, meta, back, progress, action, headingR
         </div>
         {action === undefined ? null : <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
-      {progress}
+      {progress === undefined ? null : <div className="pt-3">{progress}</div>}
     </div>
   );
 }

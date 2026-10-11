@@ -23,7 +23,7 @@ function CardHeader({ className, ...props }: ComponentProps<'div'>) {
 
 function CardTitle({ className, asChild = false, ...props }: ComponentProps<'div'> & { asChild?: boolean }) {
   const Comp = asChild ? Slot.Root : 'div';
-  return <Comp data-slot="card-title" className={cn('font-display text-lg font-medium', className)} {...props} />;
+  return <Comp data-slot="card-title" className={cn('font-display text-title', className)} {...props} />;
 }
 
 function CardDescription({ className, ...props }: ComponentProps<'p'>) {

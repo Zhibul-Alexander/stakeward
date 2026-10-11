@@ -4,9 +4,40 @@
 @import '@fontsource/ibm-plex-sans/400.css';
 @import '@fontsource/ibm-plex-sans/500.css';
 @import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 @import './styles/tokens.css';
+
+/*
+ * Metric-matched fallbacks (measured in Chromium against Liberation Serif/Sans/Mono, which share Times New Roman's,
+ * Arial's and Courier New's metrics): until a web font arrives, text is set in the local face scaled to the same
+ * width and line box, so nothing reflows on swap.
+ */
+@font-face {
+  font-family: 'Newsreader Fallback';
+  src: local('Times New Roman'), local('Liberation Serif'), local('Tinos');
+  size-adjust: 110.5%;
+  ascent-override: 67%;
+  descent-override: 24.4%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Fallback';
+  src: local('Arial'), local('Liberation Sans'), local('Arimo');
+  size-adjust: 100.6%;
+  ascent-override: 102.4%;
+  descent-override: 27.8%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'IBM Plex Mono Fallback';
+  src: local('Courier New'), local('Liberation Mono'), local('Cousine');
+  size-adjust: 100%;
+  ascent-override: 103%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
 
 /*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
@@ -155,15 +186,113 @@
 }
 
 /*
- * Serif headings are set light and large rather than bold: unlayered, so they win over a component's font-semibold
- * (that class was chosen for the sans).
+ * The type roles (tokens.css). Unlayered, so they win over a page's own text-lg / text-2xl / font-semibold on a
+ * heading: every page and step shares one scale, whichever component drew it. Screen only: the printed recovery card
+ * keeps its print sizes.
  */
-h1 {
-  font-weight: 380;
+@media screen {
+  /* Page title: every h1 but the landing hero's. */
+  :where(main h1:not(#landing-title)) {
+    font-size: var(--text-page);
+    line-height: var(--text-page--line-height);
+    letter-spacing: -0.02em;
+    font-weight: 380;
+  }
+
+  /* Section: every h2 of a page or wizard step (the wizards' step headings were text-lg, the pages' text-2xl). */
+  :where(main h2:not(.text-base, .text-sm)) {
+    font-size: var(--text-section);
+    line-height: var(--text-section--line-height);
+    letter-spacing: -0.01em;
+    font-weight: 420;
+  }
+
+  @media (min-width: 40rem) {
+    :where(main h1:not(#landing-title)) {
+      font-size: var(--text-page-lg);
+      line-height: var(--text-page-lg--line-height);
+    }
+    :where(main h2:not(.text-base, .text-sm)) {
+      font-size: var(--text-section-lg);
+      line-height: var(--text-section--line-height);
+    }
+  }
+
+  /* Title: one size and weight for every heading inside a block. */
+  main h3,
+  main h2.text-base,
+  main h2.text-sm,
+  [data-slot='alert-title'],
+  main [data-slot='alert']:not([data-size='lg']) h2:not(#for-second-key-title),
+  [data-slot='card-title'],
+  [data-slot='empty-state'] > h2,
+  [data-slot='empty-state'] > h3,
+  [data-slot='wallet-slot'] > div:first-child > span[id] {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-size: var(--text-title);
+    line-height: var(--text-title--line-height);
+    letter-spacing: 0;
+    font-weight: 560;
+  }
+
+  /* Label: h4 is a sans label inside a titled block, never a fourth serif size. */
+  main h4 {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    font-weight: 600;
+  }
+
+  /* Large type is the serif's: sums, the stats figures, the countdown. Addresses stay mono. */
+  :where(.text-2xl, .text-3xl, .text-4xl):not(.font-mono) {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  :where(.text-2xl, .text-3xl, .text-4xl):not(.font-mono, h1, h2, h3) {
+    font-weight: 420;
+  }
 }
-h2 {
-  font-weight: 440;
+
+/* Landing hero: the one display size. */
+#landing-title {
+  font-weight: 350;
 }
-h3 {
-  font-weight: 560;
+
+/* Protection check: the status badges share one width, so the check titles start in one column. */
+[data-slot='protection-check'] [data-slot='badge'] {
+  min-width: 5.75rem;
+}
+
+/* The details page's tabs: one line at 360 px. */
+@media (max-width: 39.99rem) {
+  main nav[aria-label='Details'] {
+    gap: 0.25rem;
+  }
+  main nav[aria-label='Details'] > a {
+    padding-inline: 0.5rem;
+  }
+}
+
+/* Commands at 360 px: a size at which one argument fits a line, so a line breaks between arguments, not inside one. */
+@media screen and (max-width: 39.99rem) {
+  [data-slot='command-block'] pre {
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    padding: 0.625rem;
+  }
+}
+
+/*
+ * At 360 px a badge either fits beside the text before it or drops under it, depending on its word: in an account row
+ * and in the protection check it now always takes its own line, so every row has the same shape.
+ */
+@media (max-width: 39.99rem) {
+  [data-slot='row-head']:not(:has([role='checkbox'])) > [data-slot='address-text'] {
+    flex-basis: 100%;
+  }
+  [data-slot='protection-check'] [data-slot='badge'] + span {
+    flex-basis: 100%;
+  }
 }
