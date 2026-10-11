@@ -15,7 +15,7 @@ From CLAUDE.md sections 2 and 16:
 ## Who could pay
 
 1. **Individuals: Pro subscription** (about $5-10 a month). A phone call on an alert, more alert channels, validator
-   alerts, a check that the second key is still alive. High value for large holders, but people rarely pay for
+   reports beyond the free validator health alerts, a check that the second key is still alive. High value for large holders, but people rarely pay for
    alerts. A side line, not the base.
 2. **Organisations: Teams** (about $200-1,000 a month per organisation). DAO treasuries, funds, projects that hold
    stake. Slack and webhooks, many accounts, audit reports, roles, an API, a public page "our stake is under lock".

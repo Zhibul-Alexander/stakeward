@@ -218,7 +218,8 @@ describe('/start <address> links the wallet to the chat', () => {
     expect(reply.chat_id).toBe(String(chat));
     expect(reply.text).toBe(
       `Alerts are on for ${WALLET}. Stakeward watches 2 of its stake accounts. You will get a message here when one ` +
-        'of them changes, and before a lock ends. /status lists the wallets of this chat, /stop turns all alerts off. ' +
+        'of them changes, and before a lock ends. /status lists the wallets of this chat, /kits lists the one-tap rescues ' +
+        'bound to this chat, /stop turns all alerts off. ' +
         `Alerts only link to ${ORIGIN}. Stakeward never asks for your seed phrase.`,
     );
     const maxId = await env.DB.prepare('SELECT MAX(id) AS id FROM events').first<{ id: number }>();
@@ -274,8 +275,8 @@ describe('/start <address> links the wallet to the chat', () => {
     const reply = await replyOf(await b.send(message(freshChat(), text)));
     expect(reply.text).toBe(
       'That is not a wallet address. Send /start followed by a wallet address, or open ' +
-        `${ORIGIN}/app and press Get alerts in Telegram. /status lists the wallets of this chat, /stop turns all ` +
-        'alerts off. Stakeward never asks for your seed phrase.',
+        `${ORIGIN}/app and press Get alerts in Telegram. /status lists the wallets of this chat, /kits lists the one-tap ` +
+        'rescues bound to this chat, /stop turns all alerts off. Stakeward never asks for your seed phrase.',
     );
     expect(await links()).toEqual([]);
     expect(b.db.stats.statements).toBe(0);
@@ -471,7 +472,8 @@ describe('/status, /stop, /help and other text', () => {
   it('/help, /start without an address and any other private text get the help, without D1', async () => {
     const help =
       `Send /start followed by a wallet address, or open ${ORIGIN}/app and press Get alerts in Telegram. ` +
-      '/status lists the wallets of this chat, /stop turns all alerts off. Stakeward never asks for your seed phrase.';
+      '/status lists the wallets of this chat, /kits lists the one-tap rescues bound to this chat, /stop turns all alerts off. ' +
+      'Stakeward never asks for your seed phrase.';
     const b = bot();
     for (const text of ['/help', '/start', '/start   ', 'hi', `/start ${WALLET} extra`, '/startnow', undefined]) {
       const reply = await replyOf(await b.send(message(freshChat(), text)));

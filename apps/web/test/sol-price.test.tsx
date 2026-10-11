@@ -49,6 +49,7 @@ describe('Costs tab in dollars', () => {
       '≈ $0.0008',
       '≈ $0.002',
       '≈ $0.002',
+      '≈ $0.002',
       '≈ $0.2',
     ]);
     // SOL stays the main number.

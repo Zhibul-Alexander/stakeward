@@ -69,7 +69,7 @@ import {
 } from './store.ts';
 
 /**
- * The monitor pass (CLAUDE.md section 8; step 5 spec section 4.2; DECISIONS.md D47, D48): one run of the cron trigger.
+ * The monitor pass (CLAUDE.md section 8; step 5 spec section 4.2; DECISIONS.md D54, D55): one run of the cron trigger.
  * Phases, each committed as it ends, so that a pass killed late (usually by the CPU limit) keeps what it found:
  *
  * 1. config  - the environment (a bad CLUSTER or MONITOR_PLAN fails the pass).
@@ -862,7 +862,7 @@ async function deliver(pass: LoadedPass): Promise<void> {
 
 /**
  * Stage 6: search the stake accounts of (main key, second key) pairs: this pass's urgent pairs first, then the queue.
- * Split copies both keys and the lock, so the pair finds every account split off a watched one (D52). The cluster
+ * Split copies both keys and the lock, so the pair finds every account split off a watched one (D59). The cluster
  * clock judges the locks: the one of this pass's last chunk read, else of a read of the Clock alone (readClockAlone).
  * A failed call keeps its pair at the head and stops the search; an answer over the plan's size limit is not read
  * on and drops its pair (admin alert). The answers parsed in a pass stay within plan.rescanParseChars (CPU): once the

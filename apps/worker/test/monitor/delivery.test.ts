@@ -192,7 +192,7 @@ describe('messages', () => {
       custodian,
     );
 
-  it('the second key moved the lock date: both keys get the removal advice, the button opens the lock page on the site', async () => {
+  it('the second key moved the lock date: both keys get the change-key advice, the button opens Change second key on the site', async () => {
     const h = await watched();
     await h.linkChat(MAIN, CHAT_A);
     await h.linkChat(SECOND, CHAT_B);
@@ -200,18 +200,18 @@ describe('messages', () => {
     expect(await next(h)).toMatchObject({ events: 1, messages: 2 });
     const text = extendedBy(SECOND);
     expect(text).toContain(
-      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a new second key;',
+      'In that case, if you still have the second key, hand the lock to a new second key now with Change second key:',
     );
     for (const chat of [CHAT_A, CHAT_B]) {
       const [message] = h.telegram.delivered(chat);
       expect(message?.text).toBe(`Devnet: ${text}`);
-      // A routine renewal looks the same: the lock page offers a new end and the removal, not the removal alone.
-      expect(message?.button).toEqual({ label: 'Review the lock', url: buttonUrl(`/extend/${STAKE}`, 'LOCKUP_CHANGED', STAKE) });
+      // D129: the way out is the change of the second key, with no window for the main key alone.
+      expect(message?.button).toEqual({ label: 'Change second key', url: buttonUrl(`/change-key/${STAKE}`, 'LOCKUP_CHANGED', STAKE) });
       expect(new URL(message?.button?.url ?? '').origin).toBe(SITE);
     }
   });
 
-  it('a date move delivered only after the lock passed to another key: no removal advice for the old key', async () => {
+  it('a date move delivered only after the lock passed to another key: no change-key advice for the old key', async () => {
     const h = await watched();
     await h.linkChat(MAIN, CHAT_A);
     h.chain.putStake(STAKE, { ...SPEC, unixTimestamp: EXTENDED });
@@ -224,7 +224,7 @@ describe('messages', () => {
     const [message] = h.telegram.delivered(CHAT_A);
     const [moved, handedOver] = alertsIn(message?.text ?? '');
     expect(moved).toBe(extendedBy(OTHER_SECOND));
-    expect(moved).not.toContain('remove the lock');
+    expect(moved).not.toContain('hand the lock to a new second key');
     expect(moved).toContain('If this was not you, your second key may be stolen.');
     expect(handedOver).toContain('The second key of stake');
     expect(message?.button).toEqual({ label: 'Open Stakeward', url: buttonUrl(`/app?address=${MAIN}`, 'LOCKUP_CHANGED', STAKE) });
@@ -240,7 +240,7 @@ describe('messages', () => {
     expect(await next(h)).toMatchObject({ events: 2, messages: 1 });
     const [message] = h.telegram.delivered(CHAT_A);
     expect(alertsIn(message?.text ?? '')).toHaveLength(2);
-    expect(alertsIn(message?.text ?? '')[0]).toContain('remove the lock with it now');
+    expect(alertsIn(message?.text ?? '')[0]).toContain('hand the lock to a new second key now');
     expect(message?.button).toEqual({ label: 'Open Rescue', url: buttonUrl(`/rescue?address=${MAIN}`, 'DEACTIVATED', deactivated) });
   });
 

@@ -118,7 +118,7 @@ describe('/dev/ui flows', () => {
     expect(new Set([...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict')))).toEqual(
       new Set(['not-verified', 'works', 'works-with-warning', 'blind-signing', 'does-not-work']),
     );
-    expect(wallets).toHaveTextContent('Tested on Solana devnet on 6 October 2026.');
+    expect(wallets).toHaveTextContent('Last tested on Solana mainnet on 6 October 2026.');
     for (const note of Object.values(en.landing.wallets.notes)) expect(wallets).toHaveTextContent(note);
   }, 30_000);
 });
