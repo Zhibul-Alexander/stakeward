@@ -2523,9 +2523,9 @@
   },
   "challenge": {
     "title": "Try to steal it",
-    "intro": "Below is the main key of a staked account on devnet. Import it into any wallet and try to take the SOL. A second key holds a lock on this stake until {date}, and without that key the network refuses.",
+    "intro": "Below is the real main key of a stake account on devnet. Import it into a wallet or the Solana CLI and try to take the SOL. A second key holds a lock on this stake until {date}, and without it the network refuses.",
     "devnetOnly": "Devnet only: this SOL has no value. Never paste a key that holds real funds into any site or wallet you do not control.",
-    "keyTitle": "The main key, in full",
+    "keyTitle": "The main key, public on purpose",
     "keyHint": "Wallets call this a private key. Phantom, Solflare and Backpack can import it; switch the wallet to devnet.",
     "keyLoading": "Loading the key",
     "keyErrorTitle": "Could not load the key",
@@ -2534,13 +2534,13 @@
     "stakeAccount": "Stake account",
     "secondKey": "Second key (address only)",
     "lockedUntil": "Locked until",
-    "canTitle": "What the main key can still do",
+    "canTitle": "With this key a thief can",
     "can": {
       "staker": "Hand the right to manage staking to another address. The main key can take it back.",
       "delegate": "Stake with any validator, or stop staking.",
       "split": "Split the stake account in two. The new one carries the same lock."
     },
-    "cannotTitle": "What it cannot do",
+    "cannotTitle": "With this key a thief cannot",
     "cannot": {
       "withdraw": "Move the SOL out of the stake account.",
       "owner": "Hand the stake account to another wallet.",
@@ -2549,7 +2549,25 @@
     "why": "The stake program checks the lock itself: until it ends, withdrawing and changing the owner need the second key's signature too. Stakeward is not in the way, and it could not let you through either.",
     "proof": "See the lock live",
     "simulate": "Simulate a theft",
-    "explorer": "Open in Solana Explorer"
+    "explorer": "Open in Solana Explorer",
+    "lockedBadge": "Locked until {date}",
+    "devnetBadge": "Devnet",
+    "try": {
+      "title": "Try it from the command line",
+      "intro": "Every command below is real and runs against devnet. The three attempts at the end sign with the main key and are refused by the stake program itself.",
+      "waitingForKey": "The commands appear once the key has loaded.",
+      "setupTitle": "Make a devnet wallet to pay the fees",
+      "setupHint": "The attempts are paid from your own throwaway wallet, so the stolen key never needs SOL. Needs the Solana CLI.",
+      "walletLabel": "Create me.json",
+      "airdropLabel": "Get 1 devnet SOL",
+      "keyFileTitle": "Save the stolen main key as thief.json",
+      "withdraw": "Try to withdraw all the SOL to your wallet",
+      "withdrawExpect": "Expected: refused. The lock is in force and the second key did not sign.",
+      "owner": "Try to make your wallet the new owner",
+      "ownerExpect": "Expected: refused. Changing the owner while locked needs the second key.",
+      "unlock": "Try to remove the lock",
+      "unlockExpect": "Expected: refused. Only the second key can change the lock before it ends."
+    }
   },
   "proof": {
     "title": "Stake lock proof",
