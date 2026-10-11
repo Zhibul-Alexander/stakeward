@@ -277,6 +277,11 @@ export type AlertContext = {
   lockUntil: bigint;
   /** Current time, unix seconds. */
   now: bigint;
+  /**
+   * The new wallet of this account's one-tap rescue kit once Stakeward sent it (D118), null or absent otherwise. A
+   * new key equal to it is the owner's own rescue, not a theft, and the alerts say so (D135).
+   */
+  rescueSentTo?: Address | null;
 };
 
 /**
@@ -293,12 +298,28 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
     context.lockUntil > context.now
       ? 'Your SOL cannot be withdrawn without the second key.'
       : 'The lock is not in force, so the main key alone can withdraw this SOL.';
-  const rescue = (what: string): Alert => ({
-    text: `${what} ${mainKeyStolen} ${lockLine}`,
-    buttonLabel: 'Open Rescue',
-    // The rescue wizard opens with the main key filled in (DECISIONS.md D73).
-    path: `/rescue?address=${context.withdrawer}`,
-  });
+  const rescuedTo = context.rescueSentTo ?? null;
+  // The owner's one-tap rescue already went out (D118): the rescue wizard has nothing left to do, so the alert says
+  // where the stake goes and opens the new wallet's accounts (D135).
+  const rescue = (what: string): Alert =>
+    rescuedTo === null
+      ? {
+          text: `${what} ${mainKeyStolen} ${lockLine}`,
+          buttonLabel: 'Open Rescue',
+          // The rescue wizard opens with the main key filled in (DECISIONS.md D73).
+          path: `/rescue?address=${context.withdrawer}`,
+        }
+      : {
+          text:
+            `${what} ${mainKeyStolen} Stakeward already sent your one-tap rescue: this stake moves to your new ` +
+            `wallet ${shortAddress(rescuedTo)}. ${lockLine}`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+  const lockHolds =
+    context.lockUntil > context.now
+      ? `The lock still holds until ${dateOrFallback(context.lockUntil)}: to withdraw, sign with the new wallet and the second key.`
+      : 'The lock is not in force, so the new wallet alone can withdraw this SOL.';
 
   switch (event.type) {
     case 'DEACTIVATED':
@@ -314,10 +335,28 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
       return rescue(what);
     }
     case 'STAKER_CHANGED':
+      if (rescuedTo !== null && event.details.to === rescuedTo) {
+        return {
+          text:
+            `Your one-tap rescue moved the key that can deactivate and delegate ${stakeName} to your new wallet ` +
+            `${shortAddress(rescuedTo)}. The old main key can no longer deactivate or delegate it.`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+      }
       return rescue(
         `The key that can deactivate and delegate ${stakeName} changed to ${shortAddress(event.details.to)}.`,
       );
     case 'WITHDRAWER_CHANGED': {
+      if (rescuedTo !== null && event.details.to === rescuedTo) {
+        return {
+          text:
+            `Your one-tap rescue is done: the main key of ${stakeName} is now your new wallet ` +
+            `${shortAddress(rescuedTo)}. The old main key can no longer touch this stake. ${lockHolds}`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+      }
       const who =
         context.lockUntil > context.now
           ? 'This also needs the second key. If this was not your rescue, both of your keys may be stolen.'

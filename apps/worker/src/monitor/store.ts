@@ -53,6 +53,8 @@ export type PendingRow = {
   lock_until: string;
   /** The chat bound to the account's ready rescue kit, null without one. */
   kit_chat_id: string | null;
+  /** The new wallet of the account's rescue kit once it was sent, null otherwise (D135). */
+  kit_sent_to: Address | null;
 };
 
 /** A LINKS_FOR row. */
@@ -157,10 +159,13 @@ WHERE accounts.stake_account = r.value ->> '$.a'
   // ?1 = how many. Walks the partial index events_pending (id) WHERE notified_at IS NULL (migration 0003): it reads
   // the undelivered rows only, however many events were delivered before. kit_chat_id: the chat bound to the
   // account's ready rescue kit (migration 0005), whose alerts carry the "Rescue now" button; null otherwise.
+  // kit_sent_to: the new wallet of a kit already sent, whose alerts name the owner's own rescue (D135).
   PENDING: `SELECT e.id, e.stake_account, e.type, e.details_json, e.detected_at,
        a.withdrawer, a.custodian, CAST(a.lock_until AS TEXT) AS lock_until,
        (SELECT k.chat_id FROM rescue_kits k WHERE k.stake_account = e.stake_account AND k.status = 'ready')
-         AS kit_chat_id
+         AS kit_chat_id,
+       (SELECT k.new_wallet FROM rescue_kits k WHERE k.stake_account = e.stake_account AND k.status = 'sent')
+         AS kit_sent_to
 FROM events e JOIN accounts a ON a.stake_account = e.stake_account
 WHERE e.notified_at IS NULL ORDER BY e.id LIMIT ?1`,
 

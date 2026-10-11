@@ -83,13 +83,30 @@ describe('monitor: rescue kit auto-send', () => {
     expect(JSON.stringify(h.logs)).not.toContain(CHAT);
     expect((await h.readMeta()).kit_queue).toBe('[]');
 
-    // The kit was sent before the alert went out: no "Rescue now", the usual button.
-    expect(h.telegram.delivered(CHAT).map((m) => m.button?.label)).toEqual(['Open Rescue']);
+    // The kit was sent before the alert went out: no "Rescue now"; the alert names the rescue already sent and opens
+    // the new wallet's accounts (D135).
+    const [alert] = h.telegram.delivered(CHAT);
+    expect(alert?.button?.label).toBe('Open Stakeward');
+    expect(alert?.text).toContain('Stakeward already sent your one-tap rescue: this stake moves to your new wallet');
 
     // Nothing more to send on the next passes.
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ kitSends: 0 });
     expect(sends(h)).toHaveLength(1);
+
+    // The rescue lands: both keys move to the new wallet. The alerts name the owner's own rescue, not a theft.
+    const newWallet = await env.DB.prepare('SELECT new_wallet FROM rescue_kits WHERE stake_account = ?1')
+      .bind(STAKE)
+      .first<string>('new_wallet');
+    if (newWallet === null) throw new Error('no kit');
+    await h.linkChat(newWallet as Address, CHAT);
+    h.chain.putStake(STAKE, { ...SPEC, staker: newWallet as Address, withdrawer: newWallet as Address });
+    h.advance(120_000);
+    await h.pass();
+    const landed = h.telegram.delivered(CHAT).slice(1).map((m) => m.text);
+    expect(landed.join('\n')).toContain('Your one-tap rescue moved the key that can deactivate and delegate');
+    expect(landed.join('\n')).toContain('Your one-tap rescue is done: the main key of');
+    expect(landed.join('\n')).not.toContain('stolen');
   });
 
   it('a DEACTIVATED alone sends nothing: the kit stays ready; the bound chat gets "Rescue now", another chat the link', async () => {
