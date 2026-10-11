@@ -45,7 +45,7 @@ export const COST = {
   rescanCall: 3,
   /** KNOWN_LIVE + INSERT_WATCHED after the rescan calls. */
   rescanPost: 2,
-  /** KITS_READY_FOR before the rescue kit sends. */
+  /** KITS_OF_QUEUE before the rescue kit sends. */
   kitLoad: 1,
   /** One sendTransaction of a rescue kit, one attempt. */
   kitSend: 1,

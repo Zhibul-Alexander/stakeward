@@ -225,7 +225,7 @@ describe('monitor: rescue kit auto-send', () => {
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 0, kitSends: 1, kitsSent: 1 });
     expect((await kits()).map((k) => k.status)).toEqual(accounts.map(() => 'sent'));
-    expect(h.db.journal.filter((e) => e.name === 'KITS_READY_FOR')).toHaveLength(2);
+    expect(h.db.journal.filter((e) => e.name === 'KITS_OF_QUEUE')).toHaveLength(2);
   });
 
   it('an account without a kit costs one statement and leaves the queue', async () => {
@@ -236,8 +236,80 @@ describe('monitor: rescue kit auto-send', () => {
     h.chain.putStake(STAKE, { ...SPEC, staker: THIEF });
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1, kitSends: 0 });
-    expect(h.db.journal.filter((e) => e.name === 'KITS_READY_FOR')).toHaveLength(1);
+    expect(h.db.journal.filter((e) => e.name === 'KITS_OF_QUEUE')).toHaveLength(1);
     expect(sends(h)).toEqual([]);
     expect((await h.readMeta()).kit_queue).toBe('[]');
+  });
+
+  describe('logs: why the auto-send fired or not (D135)', () => {
+    const trail = (h: Harness) =>
+      h.logs.filter((l) => typeof l.msg === 'string' && l.msg.startsWith('rescue kit')).map((l) => ({ ...l }));
+
+    it('a STAKER_CHANGED logs queued, the decision and the send, without the chat id', async () => {
+      const { h, txs } = await withKits([STAKE], true);
+      h.chain.putStake(STAKE, { ...SPEC, staker: THIEF });
+      h.advance(120_000);
+      await h.pass();
+      const signature = kitSignature(txs.get(STAKE) ?? new Uint8Array());
+      expect(trail(h)).toEqual([
+        { msg: 'rescue kit queued', stakeAccount: STAKE, event: 'STAKER_CHANGED' },
+        { msg: 'rescue kit auto decision', stakeAccount: STAKE, trigger: 'staker', decision: 'send' },
+        { msg: 'rescue kit auto-send', stakeAccount: STAKE, outcome: 'sent', signature },
+      ]);
+      expect(JSON.stringify(h.logs)).not.toContain(CHAT);
+    });
+
+    it("a DEACTIVATED in the default mode logs 'needs-staker-change'", async () => {
+      const { h } = await withKits();
+      h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+      h.advance(120_000);
+      await h.pass();
+      expect(trail(h)).toEqual([
+        { msg: 'rescue kit queued', stakeAccount: STAKE, event: 'DEACTIVATED' },
+        { msg: 'rescue kit auto decision', stakeAccount: STAKE, trigger: 'any', decision: 'needs-staker-change' },
+      ]);
+    });
+
+    it("mode 'off', a kit already sent and no kit each log their reason", async () => {
+      const { h } = await withKits([key(10), key(11)]);
+      const third = key(12);
+      h.chain.putStake(third, SPEC);
+      await h.seedWatched([third]);
+      await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'off' WHERE stake_account = ?1").bind(key(10)).run();
+      await env.DB.prepare("UPDATE rescue_kits SET status = 'sent' WHERE stake_account = ?1").bind(key(11)).run();
+      for (const account of [key(10), key(11), third]) h.chain.putStake(account, { ...SPEC, staker: THIEF });
+      h.advance(120_000);
+      expect(await h.pass()).toMatchObject({ kitSends: 0 });
+      const decisions = trail(h).filter((l) => l.msg === 'rescue kit auto decision');
+      expect(Object.fromEntries(decisions.map((l) => [l.stakeAccount, l.decision]))).toEqual({
+        [key(10)]: 'auto-off',
+        [key(11)]: 'kit-already-sent',
+        [third]: 'no-kit',
+      });
+    });
+
+    it("a refusal logs the node's reason", async () => {
+      const { h } = await withKits();
+      h.chain.sendReply = () => ({
+        error: { code: -32002, message: 'Transaction simulation failed', data: { err: { InstructionError: [1, { Custom: 3 }] } } },
+      });
+      h.chain.putStake(STAKE, { ...SPEC, staker: THIEF });
+      h.advance(120_000);
+      await h.pass();
+      expect(trail(h).filter((l) => l.msg === 'rescue kit auto-send')).toEqual([
+        { msg: 'rescue kit auto-send', stakeAccount: STAKE, outcome: 'refused', signature: null, error: '{"InstructionError":[1,{"Custom":3}]}' },
+      ]);
+    });
+
+    it('accounts past the send cap log that they wait for the next pass', async () => {
+      const accounts = Array.from({ length: MONITOR_LIMITS.maxKitSends + 1 }, (_, i) => key(10 + i));
+      const { h } = await withKits(accounts);
+      for (const account of accounts) h.chain.putStake(account, { ...SPEC, staker: THIEF });
+      h.advance(120_000);
+      await h.pass();
+      expect(trail(h).filter((l) => l.msg === 'rescue kit auto-send deferred')).toEqual([
+        { msg: 'rescue kit auto-send deferred', stakeAccount: accounts.at(-1), reason: 'cap' },
+      ]);
+    });
   });
 });

@@ -16,7 +16,7 @@ import {
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
-import { kitSettlement, RESCUE_KIT_EVENTS, sendKit } from '../rescue-kits.ts';
+import { kitAutoDecision, kitSendLogFields, kitSettlement, RESCUE_KIT_EVENTS, sendKit } from '../rescue-kits.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
 import { getBotIdentity, sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
 import { TELEGRAM_WEBHOOK_PATH } from '../telegram/webhook.ts';
@@ -250,7 +250,7 @@ type ValidatorSweep = { day: string; after: string; done: boolean };
 
 /**
  * A meta.kit_queue entry: the account and its trigger, 'staker' for a STAKER_CHANGED, 'any' for another alarming
- * event. The kit's auto mode (D120, KITS_READY_FOR) decides whether the trigger sends it.
+ * event. The kit's auto mode (D120, kitAutoDecision) decides whether the trigger sends it.
  */
 type KitQueued = { a: Address; t: 'staker' | 'any' };
 
@@ -538,9 +538,8 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   if (cursor !== null) entries.cursor = cursor;
   const stored = out.rescan.length > 0 ? queueEntries(pass, withUrgent(pass), entries) : null;
   // Like the rescan queue: once the events are in, no later pass would see this change again.
-  const attacked = out.events
-    .filter((e) => RESCUE_KIT_EVENTS.has(e.type))
-    .map((e): KitQueued => ({ a: e.stakeAccount, t: e.type === 'STAKER_CHANGED' ? 'staker' : 'any' }));
+  const alarming = out.events.filter((e) => RESCUE_KIT_EVENTS.has(e.type));
+  const attacked = alarming.map((e): KitQueued => ({ a: e.stakeAccount, t: e.type === 'STAKER_CHANGED' ? 'staker' : 'any' }));
   const kitQueue = uniqueKitQueue([...pass.kitQueue, ...attacked]);
   const storedKitQueue = JSON.stringify(kitQueue);
   if (storedKitQueue !== pass.storedKitQueue) entries.kit_queue = storedKitQueue;
@@ -550,17 +549,21 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   if (out.events.length > 0) pass.report.events += results[0]?.meta.changes ?? 0;
   if (stored !== null) Object.assign(pass, stored);
   Object.assign(pass, { kitQueue, storedKitQueue });
+  // One line per alarming event: the start of the auto-send trail ('rescue kit auto decision' follows in stage 3b).
+  for (const e of alarming) pass.deps.log({ msg: 'rescue kit queued', stakeAccount: e.stakeAccount, event: e.type });
 }
 
 /**
  * Stage 3b (DECISIONS.md D118, D120): sends the ready rescue kits of the accounts in meta.kit_queue whose auto mode
  * takes the trigger. By default ('staker') only a changed staker sends: it is the thief's first move (it lets them
  * deactivate and delegate, and the owner's main key can no longer), while a DEACTIVATED may be the owner's own
- * unstake. The bound chat may choose 'any' (every alarming event) or 'off' (/kits). One KITS_READY_FOR, then at
+ * unstake. The bound chat may choose 'any' (every alarming event) or 'off' (/kits). One KITS_OF_QUEUE, then at
  * most MONITOR_LIMITS.maxKitSends sends (one attempt each) while the budget keeps the daily stage, the bot check and
  * the delivery possible, then one batch: the outcomes (KIT_SETTLE) and the queue. An account leaves the queue when its
  * kit was sent, turned stale, was refused (it stays ready for the owner's own tap) or is not ready; a send without an
- * answer and the accounts past the cap stay for the next pass. One log line per send, no chat ids.
+ * answer and the accounts past the cap stay for the next pass. Logs (no chat ids, D135): one 'rescue kit auto decision'
+ * per queued account with kitAutoDecision's reason, one line per send with its outcome, and 'rescue kit auto-send
+ * deferred' for what waits for the next pass (budget, deadline, cap).
  */
 async function autoSendKits(pass: LoadedPass): Promise<void> {
   const { budget, report, deps, config } = pass;
@@ -572,22 +575,39 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
     (pass.dailyDue ? COST.daily : 0) +
     COST.webhookCheck +
     (pass.botCheckDue ? COST.usernameCheck : 0);
-  if (pass.pastDeadline() || budget.left() < COST.kitLoad + COST.kitSend + COST.kitCommit + keep) return;
+  if (pass.pastDeadline() || budget.left() < COST.kitLoad + COST.kitSend + COST.kitCommit + keep) {
+    deps.log({ msg: 'rescue kit auto-send deferred', queued: pass.kitQueue.length, reason: deferReason(pass) });
+    return;
+  }
   report.stage = 'kits';
   const db = deps.db;
-  const [result] = await budget.batch(db, [db.prepare(SQL.KITS_READY_FOR).bind(JSON.stringify(pass.kitQueue))]);
-  const kits = rowsOf<{ stake_account: Address; tx: string }>(result);
+  const [result] = await budget.batch(db, [db.prepare(SQL.KITS_OF_QUEUE).bind(JSON.stringify(pass.kitQueue))]);
+  const rows = rowsOf<{ stake_account: Address; status: string; auto_mode: string; tx: string | null }>(result);
+  const byAccount = new Map(rows.map((row) => [row.stake_account, row]));
   // Accounts without a ready kit, or whose kit's mode does not take the trigger, leave the queue.
+  const kits: { stake_account: Address; tx: string }[] = [];
+  for (const entry of pass.kitQueue) {
+    const row = byAccount.get(entry.a);
+    const decision = kitAutoDecision(entry.t, row);
+    deps.log({ msg: 'rescue kit auto decision', stakeAccount: entry.a, trigger: entry.t, decision });
+    if (decision === 'send' && row?.tx != null) kits.push({ stake_account: entry.a, tx: row.tx });
+  }
+  kits.sort((x, y) => (x.stake_account < y.stake_account ? -1 : x.stake_account > y.stake_account ? 1 : 0));
   const ready = new Set<string>(kits.map((kit) => kit.stake_account));
   let queue = pass.kitQueue.filter((entry) => ready.has(entry.a));
   const settled: ReturnType<typeof kitSettlement>[] = [];
   for (const kit of kits) {
-    if (report.kitSends >= MONITOR_LIMITS.maxKitSends) break;
-    if (pass.pastDeadline() || budget.left() < COST.kitSend + COST.kitCommit + keep) break;
+    if (report.kitSends >= MONITOR_LIMITS.maxKitSends) {
+      deps.log({ msg: 'rescue kit auto-send deferred', stakeAccount: kit.stake_account, reason: 'cap' });
+      continue;
+    }
+    if (pass.pastDeadline() || budget.left() < COST.kitSend + COST.kitCommit + keep) {
+      deps.log({ msg: 'rescue kit auto-send deferred', stakeAccount: kit.stake_account, reason: deferReason(pass) });
+      continue;
+    }
     report.kitSends += 1;
     const outcome = await sendKit(kit.tx, { endpoints: config.rpc, options: pass.upstream });
-    const signature = outcome.kind === 'sent' ? outcome.signature : null;
-    deps.log({ msg: 'rescue kit auto-send', stakeAccount: kit.stake_account, outcome: outcome.kind, signature });
+    deps.log({ msg: 'rescue kit auto-send', stakeAccount: kit.stake_account, ...kitSendLogFields(outcome) });
     if (outcome.kind === 'sent' || outcome.kind === 'stale') {
       settled.push(kitSettlement(kit.stake_account, kit.tx, outcome, deps.now()));
       if (outcome.kind === 'sent') report.kitsSent += 1;
@@ -604,6 +624,11 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
   if (statements.length > 0) await budget.batch(db, statements);
   pass.kitQueue = queue;
   pass.storedKitQueue = storedKitQueue;
+}
+
+/** Why a stage waits for the next pass: the pass ran out of time or of its request budget. */
+function deferReason(pass: LoadedPass): 'deadline' | 'budget' {
+  return pass.pastDeadline() ? 'deadline' : 'budget';
 }
 
 /**

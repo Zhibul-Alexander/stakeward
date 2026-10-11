@@ -281,12 +281,11 @@ RETURNING tx, main_key, new_wallet`,
   // ?1 stake account, ?2 chat: why a claim failed (null row: no kit bound to this chat).
   KIT_OF_CHAT: `SELECT status FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2`,
 
-  // ?1 = [{a: stake account, t: 'staker' | 'any'}]: the ready kits among them whose auto mode (migration 0006) the
-  // trigger matches, for the monitor's auto-send. A STAKER_CHANGED ('staker') sends in modes 'staker' and 'any', the
-  // other alarming events ('any') in mode 'any' only; 'off' never.
-  KITS_READY_FOR: `SELECT k.stake_account, k.tx FROM rescue_kits k JOIN json_each(?1) AS q ON k.stake_account = q.value ->> '$.a'
-WHERE k.status = 'ready'
-  AND (k.auto_mode = 'any' OR (k.auto_mode = 'staker' AND q.value ->> '$.t' = 'staker'))
+  // ?1 = [{a: stake account, t: 'staker' | 'any'}]: the kits of the queued accounts, whatever their status and auto
+  // mode (migration 0006), so that the monitor can log why each one is or is not sent (kitAutoDecision); tx only for
+  // a ready kit, the one that can be sent.
+  KITS_OF_QUEUE: `SELECT k.stake_account, k.status, k.auto_mode, CASE WHEN k.status = 'ready' THEN k.tx END AS tx
+FROM rescue_kits k JOIN json_each(?1) AS q ON k.stake_account = q.value ->> '$.a'
 ORDER BY k.stake_account`,
 
   // ?1 chat: the kits bound to it, for /kits (D120), at most ?2.

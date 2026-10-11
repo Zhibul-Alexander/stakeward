@@ -1084,6 +1084,18 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - Stakeward не рекомендует ни одного валидатора. Список собирается по открытым правилам: `getVoteAccounts` (только current, без делинквентов), отбор `meetsOpenCriteria` (голосует в этой эпохе, есть стейк, комиссия ≤ 10%), случайный порядок (`shuffled`, Фишер–Йетс). Из выборки в 30 читаются сами vote-аккаунты, и остаются только те, у кого `validatorRisks` пуст (D128: есть BLS-ключ, хватает SOL на сбор Alpenglow, голосует, комиссия не 100%). Показываем 8. Над списком написано «No paid placement» и сами правила. Свой валидатор можно вставить адресом, его проверяют по тем же правилам. Если есть риск, кнопка неактивна, а причина названа.
 - В список методов `/api/rpc` добавлен `getVoteAccounts`, только чтение. Параметры строгие: `commitment` и `keepUnstakedDelinquents: false`. `votePubkey` не принимается, чтобы прокси не стал справочником по одному валидатору. Ответ проходит насквозь, как у остальных методов. Сервер транзакций не собирает и не хранит (§2 п. 6).
 
+## D135. Логи авто-спасения и где читать логи (11.10.2026, по просьбе Паши)
+
+- Логи остаются в Cloudflare Workers Logs (D95, уже включены для dev и prod), без VPS: строки — JSON, в дашборде Workers → stakeward-dev или stakeward-prod → Logs по ним ищут по полям (`msg`, `stakeAccount`). Живой поток: `pnpm --filter @stakeward/worker exec wrangler tail --env dev --format pretty` (или `--env prod`), с `--search "rescue kit"` для одного сценария.
+- Мониторинг теперь объясняет каждое решение по набору спасения, раньше в лог попадала только сама отправка:
+  - `rescue kit queued` — тревожное событие (`event`) поставило аккаунт в очередь;
+  - `rescue kit auto decision` — по каждому аккаунту очереди `decision`: `send`, `no-kit`, `kit-already-sent`, `kit-stale`, `auto-off`, `needs-staker-change` (режим по умолчанию ждёт смены staker, D120);
+  - `rescue kit auto-send` — исход отправки: подпись при `sent`, причина узла (`error`, до 200 знаков) при `refused`, `reason` при `upstream`;
+  - `rescue kit auto-send deferred` — ждёт следующего прохода: `cap`, `budget` или `deadline`.
+- Кнопка «Rescue now» пишет `rescue kit send` с тем же набором полей и адресом стейк-аккаунта.
+- Ради причин запрос `KITS_READY_FOR` заменён на `KITS_OF_QUEUE`: он отдаёт наборы очереди в любом статусе и режиме, решение принимает `kitAutoDecision`. Число запросов к D1 то же, `tx` читается только у готового набора.
+- В логи идут только публичные данные сети (адрес стейк-аккаунта, подпись, ошибка программы). Chat id, ключи, URL RPC и токен бота не пишутся; тест проверяет отсутствие chat id.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
