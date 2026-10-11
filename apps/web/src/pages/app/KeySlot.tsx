@@ -162,6 +162,26 @@ export function KeySlot({
     setPending({ kind: 'idle' });
   }
 
+  /** The Move action for a conflict: only for a key this device holds in another slot (not a page's main key by address). */
+  function movable(from: WalletRole | undefined, address: Address, wallet: WalletPort): (() => void) | undefined {
+    if (from === undefined || slots.getSnapshot()[from]?.address !== address) return undefined;
+    return () => {
+      moveHere(wallet, address, from);
+    };
+  }
+
+  /** The user chose to give this role the account another slot holds: that slot lets it go first. */
+  function moveHere(wallet: WalletPort, address: Address, from: WalletRole) {
+    slots.clear(from);
+    const assigned = slots.assign(role, { walletId: wallet.id, address });
+    if (!assigned.ok) {
+      setPending({ kind: 'conflict', walletId: wallet.id, address, conflictRole: assigned.role });
+      return;
+    }
+    setPending({ kind: 'idle' });
+    onConnected?.(address);
+  }
+
   /** After the user switched accounts in the wallet: use what it offers now, or ask it again when nothing fits. */
   function continueWith(wallet: WalletPort) {
     if (fits(wallet.accounts)) take(wallet, wallet.accounts);
@@ -220,6 +240,7 @@ export function KeySlot({
             onContinue={() => {
               continueWith(pendingWallet);
             }}
+            onMove={movable(pending.conflictRole, pending.address, pendingWallet)}
             onDisconnect={cancel}
           />
         );

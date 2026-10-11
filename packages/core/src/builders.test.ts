@@ -74,6 +74,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_447_680n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: NONCE, nonceAuthority: D, recipient: D, lamports: 1_447_680n },
 };
@@ -254,9 +255,27 @@ describe('fee payer', () => {
       deactivate: A,
       delegate: A,
       rescue: D,
+      'change-second-key': D,
       'nonce-setup': D,
       'nonce-close': D,
     });
+  });
+
+  it('refuses a second key change that the old second key pays for (it may be stolen)', () => {
+    expect(() => buildTransaction(ACTIONS['change-second-key'], { feePayer: K, lifetime: blockhashLifetime })).toThrow(
+      'paid by the new second key',
+    );
+    expect(() =>
+      buildTransaction(ACTIONS['change-second-key'], {
+        feePayer: D,
+        lifetime: { ...nonceLifetime, nonceAuthority: K },
+      }),
+    ).toThrow("new second key's nonce account");
+  });
+
+  it('refuses a second key change to the same key or the zero key', () => {
+    const same = { ...ACTIONS['change-second-key'], newWallet: K };
+    expect(() => buildTransaction(same, { feePayer: K, lifetime: blockhashLifetime })).toThrow();
   });
 
   it('adds an explicit fee payer as a signer (F5: main key pays for the second key)', () => {

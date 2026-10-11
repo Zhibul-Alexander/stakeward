@@ -8,11 +8,14 @@ interface Env {
    * contain an API key: never log it.
    */
   MONITOR_RPC_URL?: string;
+  /** Optional, dev only: the published main key of the devnet challenge wallet (challenge.ts, D133). */
+  CHALLENGE_MAIN_KEY?: string;
 }
 
 declare namespace Cloudflare {
   interface Env {
     RPC_FALLBACK_URL?: string;
     MONITOR_RPC_URL?: string;
+    CHALLENGE_MAIN_KEY?: string;
   }
 }

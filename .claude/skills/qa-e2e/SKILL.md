@@ -9,14 +9,14 @@ Brings Stakeward up (or points at dev), connects headless wallets, and walks the
 desktop (1280 px) and mobile (360 px, touch, mobile user agent), with positive and negative scenarios. Every
 scenario checks its result on the chain, not only on screen (CLAUDE.md section 12).
 
-**Never run it against prod.** The suite refuses `stakeward-prod.stakeward.workers.dev`, its wallets claim
+**Never run it against prod.** The suite refuses `stakeward.com`, its wallets claim
 `solana:devnet` only (a mainnet build does not list them), and its RPC must report devnet's genesis hash.
 
 ## Two targets
 
 | | `local` (default) | `dev` |
 | --- | --- | --- |
-| Site and API | built here, served by the real worker under `wrangler dev --local` | https://stakeward-dev.stakeward.workers.dev |
+| Site and API | built here, served by the real worker under `wrangler dev --local` | https://dev.stakeward.com |
 | Chain | LiteSVM with the committed mainnet stake program, behind a JSON-RPC server that stands in for devnet | devnet |
 | Network needed | none (npm install only) | devnet RPC, workers.dev, faucet |
 | Rate limits | raised (one IP at test speed) | the real per-IP limits; a 20 s pause before each scenario |
@@ -43,7 +43,7 @@ never deploys, and never to prod.
 Browsers: Playwright's own Chromium (`pnpm --filter @stakeward/web exec playwright install chromium`), or set
 `QA_CHROMIUM` to a preinstalled one. In a Claude Code cloud session: `QA_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 Cloud sessions reach devnet and workers.dev only if the environment's network policy allows
-`api.devnet.solana.com`, `stakeward-dev.stakeward.workers.dev` and `faucet.solana.com`; `local` needs neither.
+`api.devnet.solana.com`, `dev.stakeward.com` and `faucet.solana.com`; `local` needs neither.
 
 ## Read the result
 

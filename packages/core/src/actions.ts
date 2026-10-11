@@ -14,6 +14,7 @@ export type TransactionKind =
   | 'deactivate'
   | 'delegate'
   | 'rescue'
+  | 'change-second-key'
   | 'nonce-setup'
   | 'nonce-close';
 
@@ -86,6 +87,18 @@ export type RescueAction = {
 };
 
 /**
+ * F7. SetLockupChecked signed by the current custodian K with the new wallet as new custodian; the new wallet co-signs
+ * and pays (K may be stolen, and a possibly compromised key never pays). The lockup end and epoch stay as they are.
+ * The new wallet here is a new second key from a new seed phrase, not the rescue's new main key.
+ */
+export type ChangeSecondKeyAction = {
+  kind: 'change-second-key';
+  stakeAccount: Address;
+  secondKey: Address;
+  newWallet: Address;
+};
+
+/**
  * Creates a durable nonce account with System CreateAccountWithSeed (base = `nonceAuthority`, which pays and signs)
  * and initializes it with `nonceAuthority` as its authority. `nonceAccount` must equal
  * `deriveNonceAccountAddress(nonceAuthority, seed)`; no extra keypair is involved.
@@ -120,6 +133,7 @@ export type TransactionAction =
   | DeactivateAction
   | DelegateAction
   | RescueAction
+  | ChangeSecondKeyAction
   | NonceSetupAction
   | NonceCloseAction;
 
@@ -143,6 +157,7 @@ export type Lifetime = BlockhashLifetime | NonceLifetime;
  * - deactivate, delegate: the staker who signs it.
  * - rescue: the new wallet D, never the main key; the builder refuses any other fee payer, and a nonce account that
  *   D does not own.
+ * - change-second-key: the new second key, never the old one (it may be stolen); the builder refuses any other.
  * - nonce setup and close: the nonce authority.
  */
 export function expectedFeePayer(action: TransactionAction): Address {
@@ -157,6 +172,7 @@ export function expectedFeePayer(action: TransactionAction): Address {
     case 'delegate':
       return action.staker;
     case 'rescue':
+    case 'change-second-key':
       return action.newWallet;
     case 'nonce-setup':
     case 'nonce-close':

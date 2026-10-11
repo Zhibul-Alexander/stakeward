@@ -5,7 +5,7 @@ import { QA } from './support/env.ts';
  * End-to-end QA against a running Stakeward with real transactions (.claude/skills/qa-e2e/SKILL.md). Not part of CI:
  * the suite needs a chain (the local LiteSVM stack, or devnet) and spends devnet SOL on dev.
  *   QA_TARGET=local (default): starts qa/local/stack.ts (LiteSVM RPC + the real worker under wrangler dev).
- *   QA_TARGET=dev: https://stakeward-dev.stakeward.workers.dev and devnet. Never prod.
+ *   QA_TARGET=dev: https://dev.stakeward.com and devnet. Never prod.
  * One worker: the scenarios send transactions, and LiteSVM keeps a single valid blockhash.
  */
 export default defineConfig({

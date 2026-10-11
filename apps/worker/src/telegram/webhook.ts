@@ -13,15 +13,25 @@ import {
   type LinkState,
 } from '../monitor/store.ts';
 import { allowRequest } from '../rate-limit.ts';
-import { kitStartToken, kitTokenHash, parseRescueKitCallback, rescueFromButton } from '../rescue-kits.ts';
+import {
+  cycleKitMode,
+  deleteKit,
+  kitCardsOfChat,
+  kitStartToken,
+  kitTokenHash,
+  parseKitCallback,
+  rescueFromButton,
+  type CardResult,
+} from '../rescue-kits.ts';
 import type { UpstreamOptions } from '../upstream.ts';
 import type { AppEnv } from '../app.ts';
-import { answerCallbackQuery, inlineKeyboard, siteUrl } from './api.ts';
+import { answerCallbackQuery, editMessageText, inlineKeyboard, sendTelegramMessage, siteUrl } from './api.ts';
 import {
   chatLinkBudgetText,
   helpText,
   kitLinkedText,
   kitLinkInvalidText,
+  kitsNoneText,
   linkBudgetText,
   linkedText,
   linkLimitText,
@@ -44,9 +54,10 @@ import {
  *    the Bot API runs for us): no outgoing request and no token needed. /start kit-<token> (rescue-kits.ts) binds the
  *    chat to that rescue kit, once (the token hash is cleared), and links the kit's main key like /start <address>.
  *    /stop and a blocked bot also let go of the chat's kits.
- * 7. callback_query `rk:<stake account>`, the "Rescue now" button (D118; the one callback button, CLAUDE.md section 8
- *    otherwise has none): rescueFromButton sends the kit only for the chat bound to it. The toast goes out as
- *    answerCallbackQuery, after a send the outcome as a message in the response body. Only a /start that adds a link counts against
+ * 7. callback_query `rk:<stake account>`, the "Rescue now" button (D118; CLAUDE.md section 8 otherwise has no callback
+ *    buttons): rescueFromButton sends the kit only for the chat bound to it. The toast goes out as
+ *    answerCallbackQuery, after a send the outcome as a message in the response body. /kits lists the chat's kits, and
+ *    `rka:` / `rkd:` change their auto mode or delete them (D120), again only for the bound chat. Only a /start that adds a link counts against
  *    MAX_LINK_WRITES_PER_DAY and MAX_LINK_WRITES_PER_CHAT_PER_DAY; a wallet the chat already follows is confirmed
  *    without a write. The per-chat count is kept under an HMAC of the day and the chat id (linkCounterKey), so the
  *    chat id lives only in alert_links and /stop forgets it, while the count survives /stop.
@@ -96,14 +107,19 @@ const update = z.looseObject({
     .looseObject({
       id: z.string().max(256),
       data: z.string().max(64).optional(),
-      message: z.looseObject({ chat: z.looseObject({ id: z.number().int().refine(Number.isSafeInteger) }) }).optional(),
+      message: z
+        .looseObject({
+          message_id: z.number().int().optional(),
+          chat: z.looseObject({ id: z.number().int().refine(Number.isSafeInteger) }),
+        })
+        .optional(),
     })
     .optional(),
 });
 
-export type Command = { command: 'start' | 'status' | 'stop' | 'help'; arg: string | null };
+export type Command = { command: 'start' | 'status' | 'stop' | 'help' | 'kits'; arg: string | null };
 
-const COMMAND = /^\/(start|status|stop|help)(?:@([A-Za-z0-9_]{5,32}))?(?:\s+(\S+))?\s*$/;
+const COMMAND = /^\/(start|status|stop|help|kits)(?:@([A-Za-z0-9_]{5,32}))?(?:\s+(\S+))?\s*$/;
 
 /**
  * The bot command in `text`, with its one argument. A command addressed to another bot (`/status@OtherBot` in a
@@ -242,6 +258,23 @@ export function telegramWebhookHandler(now: () => number, upstream: UpstreamOpti
       case 'stop':
         await db.batch(stopStatements(db, chatId));
         return reply(c, chatId, stopText());
+      case 'kits': {
+        // One message per kit (D120), so that a tap edits that kit's card alone. They go out as sendMessage calls; the
+        // response carries nothing.
+        const cards = await kitCardsOfChat(db, chatId);
+        if (cards.length === 0) return reply(c, chatId, kitsNoneText());
+        for (const card of cards) {
+          await sendTelegramMessage({
+            token: c.env.TELEGRAM_BOT_TOKEN,
+            chatId,
+            text: card.text,
+            keyboard: card.keyboard,
+            fetch: upstream.fetch ?? fetch,
+            timeoutMs: upstream.timeoutMs,
+          });
+        }
+        return noReply(c);
+      }
     }
   };
 }
@@ -284,15 +317,41 @@ async function linkWallet(c: Context<AppEnv>, chatId: string, wallet: string, no
   return linkedText(wallet, after.watched, origin);
 }
 
-/** A tap on a callback button (step 7). Only `rk:<stake account>` does anything. */
+/**
+ * A tap on a callback button (step 7): `rk:` sends the kit (D118); `rka:` and `rkd:` cycle the auto mode and delete
+ * the kit, then edit the tapped card (D120). Each acts only for the chat bound to the kit; anything else is answered
+ * without effect.
+ */
 async function rescueButton(
   c: Context<AppEnv>,
   chatId: string,
-  callback: { id: string; data?: string | undefined },
+  callback: { id: string; data?: string | undefined; message?: { message_id?: number | undefined } | undefined },
   deps: { upstream: UpstreamOptions; now: () => number },
 ): Promise<Response> {
-  const stakeAccount = callback.data === undefined ? null : parseRescueKitCallback(callback.data);
-  if (stakeAccount === null) return c.json({ method: 'answerCallbackQuery', callback_query_id: callback.id });
+  const parsed = callback.data === undefined ? null : parseKitCallback(callback.data);
+  if (parsed === null) return c.json({ method: 'answerCallbackQuery', callback_query_id: callback.id });
+  const { stakeAccount } = parsed;
+  if (parsed.action !== 'rescue') {
+    const db = c.env.DB;
+    const result: CardResult =
+      parsed.action === 'mode'
+        ? await cycleKitMode(db, chatId, stakeAccount)
+        : await deleteKit(db, chatId, stakeAccount, siteOriginOf(c.env));
+    const answer = result === null ? 'Not linked to this chat.' : result.answer;
+    const messageId = callback.message?.message_id;
+    if (result === null || messageId === undefined) {
+      return c.json({ method: 'answerCallbackQuery', callback_query_id: callback.id, text: answer });
+    }
+    // As for a send: the toast goes out first, the edited card in the body.
+    await answerCallbackQuery({
+      token: c.env.TELEGRAM_BOT_TOKEN,
+      callbackQueryId: callback.id,
+      text: answer,
+      fetch: deps.upstream.fetch ?? fetch,
+      timeoutMs: deps.upstream.timeoutMs,
+    });
+    return c.json(editMessageText({ chatId, messageId, text: result.card.text, keyboard: result.card.keyboard }));
+  }
   const result = await rescueFromButton(c.env, deps, chatId, stakeAccount);
   if (result.message === null) {
     return c.json({ method: 'answerCallbackQuery', callback_query_id: callback.id, text: result.answer });

@@ -277,11 +277,16 @@ export type AlertContext = {
   lockUntil: bigint;
   /** Current time, unix seconds. */
   now: bigint;
+  /**
+   * The new wallet of this account's one-tap rescue kit once Stakeward sent it (D118), null or absent otherwise. A
+   * new key equal to it is the owner's own rescue, not a theft, and the alerts say so (D135).
+   */
+  rescueSentTo?: Address | null;
 };
 
 /**
  * The alert for one event. Key roles use the UI names only (UX rule 4: main key, second key; never "custodian" or
- * "withdrawer"). Example (CLAUDE.md section 8): "Stake 7xK...9fQ was deactivated. If this was not you, your main key
+ * "withdrawer"). Example (CLAUDE.md section 8): "Stake 7xKT...A9fQ was deactivated. If this was not you, your main key
  * may be stolen. Your SOL cannot be withdrawn without the second key." with the button "Open Rescue".
  */
 export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address }, context: AlertContext): Alert {
@@ -293,12 +298,28 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
     context.lockUntil > context.now
       ? 'Your SOL cannot be withdrawn without the second key.'
       : 'The lock is not in force, so the main key alone can withdraw this SOL.';
-  const rescue = (what: string): Alert => ({
-    text: `${what} ${mainKeyStolen} ${lockLine}`,
-    buttonLabel: 'Open Rescue',
-    // The rescue wizard opens with the main key filled in (DECISIONS.md D73).
-    path: `/rescue?address=${context.withdrawer}`,
-  });
+  const rescuedTo = context.rescueSentTo ?? null;
+  // The owner's one-tap rescue already went out (D118): the rescue wizard has nothing left to do, so the alert says
+  // where the stake goes and opens the new wallet's accounts (D135).
+  const rescue = (what: string): Alert =>
+    rescuedTo === null
+      ? {
+          text: `${what} ${mainKeyStolen} ${lockLine}`,
+          buttonLabel: 'Open Rescue',
+          // The rescue wizard opens with the main key filled in (DECISIONS.md D73).
+          path: `/rescue?address=${context.withdrawer}`,
+        }
+      : {
+          text:
+            `${what} ${mainKeyStolen} Stakeward already sent your one-tap rescue: this stake moves to your new ` +
+            `wallet ${shortAddress(rescuedTo)}. ${lockLine}`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+  const lockHolds =
+    context.lockUntil > context.now
+      ? `The lock still holds until ${dateOrFallback(context.lockUntil)}: to withdraw, sign with the new wallet and the second key.`
+      : 'The lock is not in force, so the new wallet alone can withdraw this SOL.';
 
   switch (event.type) {
     case 'DEACTIVATED':
@@ -314,10 +335,28 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
       return rescue(what);
     }
     case 'STAKER_CHANGED':
+      if (rescuedTo !== null && event.details.to === rescuedTo) {
+        return {
+          text:
+            `Your one-tap rescue moved the key that can deactivate and delegate ${stakeName} to your new wallet ` +
+            `${shortAddress(rescuedTo)}. The old main key can no longer deactivate or delegate it.`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+      }
       return rescue(
         `The key that can deactivate and delegate ${stakeName} changed to ${shortAddress(event.details.to)}.`,
       );
     case 'WITHDRAWER_CHANGED': {
+      if (rescuedTo !== null && event.details.to === rescuedTo) {
+        return {
+          text:
+            `Your one-tap rescue is done: the main key of ${stakeName} is now your new wallet ` +
+            `${shortAddress(rescuedTo)}. The old main key can no longer touch this stake. ${lockHolds}`,
+          buttonLabel: 'Open Stakeward',
+          path: `/app?address=${rescuedTo}`,
+        };
+      }
       const who =
         context.lockUntil > context.now
           ? 'This also needs the second key. If this was not your rescue, both of your keys may be stolen.'
@@ -351,18 +390,19 @@ export function formatAlert(event: MonitorEventDetails & { stakeAccount: Address
         bySecondKey ? 'Only the second key can do this. If this was not you, your second key may be stolen.' : mainKeyStolen,
       );
       // The second key moved the end of a lock that still holds, and still holds it (SECURITY-CHECK П9). If that key
-      // is in other hands, an owner who still has it removes the lock and protects again with a new key; nothing is
-      // promised to one who lost it. A new second key (in this event, or stored by a later pass before this alert
-      // goes out) or a lock that has ended leaves nothing for the old key to remove. A routine renewal (the answer
-      // to a reminder) reads the same, so the button opens the lock's page, which offers a new end and the removal.
+      // is in other hands, an owner who still has it hands the lock to a new second key at once (F7, D129): unlike
+      // removing it and protecting again, that leaves no window for the main key alone. Nothing is promised to one who
+      // lost it. A new second key (in this event, or stored by a later pass before this alert goes out) or a lock
+      // that has ended leaves nothing for the old key to change. A routine renewal (the answer to a reminder) reads the
+      // same; the advice says "if this was not you", and the change-key page changes nothing until both keys sign.
       const sameSecondKey = !secondKeyChanged && context.custodian === toCustodian;
       if (bySecondKey && !removed && sameSecondKey && context.lockUntil > context.now) {
         sentences.push(
-          'In that case, if you still have the second key, remove the lock with it now, then protect this stake again ' +
-            'with a new second key; until then the main key alone can withdraw this SOL.',
+          'In that case, if you still have the second key, hand the lock to a new second key now with Change second key: ' +
+            'the old key and the new one sign together, the lock keeps holding, and the old key can no longer change it.',
           'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.',
         );
-        return { text: sentences.join(' '), buttonLabel: 'Review the lock', path: `/extend/${event.stakeAccount}` };
+        return { text: sentences.join(' '), buttonLabel: 'Change second key', path: `/change-key/${event.stakeAccount}` };
       }
       if (removed) sentences.push('The main key alone can now withdraw this SOL.');
       // Without the second key's lock, the main key and a new second key can lock it again at once; the owner may also

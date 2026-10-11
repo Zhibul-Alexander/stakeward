@@ -62,12 +62,13 @@ describe('rfc3339Utc', () => {
 });
 
 describe('shortAddress', () => {
-  it('keeps the first and last three characters', () => {
-    expect(shortAddress('7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ')).toBe('7xK...9fQ');
+  it('keeps the first and last four characters, as Phantom shows them', () => {
+    expect(shortAddress('7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ')).toBe('7xKT...A9fQ');
   });
 
   it('leaves short strings as they are', () => {
-    expect(shortAddress('123456789')).toBe('123456789');
+    expect(shortAddress('12345678901')).toBe('12345678901');
+    expect(shortAddress('123456789012')).toBe('1234...9012');
   });
 });
 

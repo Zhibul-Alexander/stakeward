@@ -433,9 +433,9 @@ describe('/protect: protect stake accounts with a second key (F1)', () => {
   );
 });
 
-describe('/protect: a custom lock end (D118)', () => {
+describe('/protect: a custom lock end (D119)', () => {
   it(
-    'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than five years, and Back keeps the date',
+    'locks until 00:00 UTC of the date typed, says what is wrong with today and with more than ten years, and Back keeps the date',
     async () => {
       const w = await world();
       const { S1 } = await twoAccounts(w);
@@ -454,18 +454,18 @@ describe('/protect: a custom lock end (D118)', () => {
 
       await user.click(screen.getByRole('radio', { name: 'Custom date' }));
       const field = screen.getByLabelText('Lock until');
-      // START_UNIX_TIMESTAMP is 1 October 2026: tomorrow to five years on.
+      // START_UNIX_TIMESTAMP is 1 October 2026: tomorrow to ten years on.
       expect(field).toHaveAttribute('min', '2026-10-02');
-      expect(field).toHaveAttribute('max', '2031-10-01');
-      expect(screen.getByText('The lock ends at 00:00 UTC on this date. From 2 October 2026 to 1 October 2031.')).toBeInTheDocument();
+      expect(field).toHaveAttribute('max', '2036-10-01');
+      expect(screen.getByText('The lock ends at 00:00 UTC on this date. From 2 October 2026 to 1 October 2036.')).toBeInTheDocument();
       // Nothing typed: the step button says what is missing.
       await user.click(continueButton());
       expect(screen.getByText('Pick the date the lock ends.')).toBeInTheDocument();
       fireEvent.change(field, { target: { value: '2026-10-01' } });
       expect(screen.getByRole('alert')).toHaveTextContent('Pick a date from 2 October 2026 on.');
       expect(field).toHaveAttribute('aria-invalid', 'true');
-      fireEvent.change(field, { target: { value: '2031-10-02' } });
-      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2031\./);
+      fireEvent.change(field, { target: { value: '2036-10-02' } });
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Pick a date no later than 1 October 2036\./);
       fireEvent.change(field, { target: { value: '2027-03-15' } });
       expect(screen.queryByRole('alert')).toBeNull();
       const until = BigInt(Date.UTC(2027, 2, 15) / 1000);
@@ -560,17 +560,17 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       }, WAIT);
       await user.click(continueButton());
       await screen.findByRole('heading', { name: 'Connect your second key' });
-      // UX rule 10 under the slot: a phone wallet's browser holds one wallet, so the second key signs elsewhere.
-      const oneBrowser = "A phone wallet's browser holds only that wallet. Sign the second key on another device instead.";
-      expect(screen.getByText(oneBrowser)).toBeVisible();
-      // Where the second key signs is one click away, behind the question for a key on another device.
-      expect(screen.queryByRole('radiogroup', { name: 'Where does your Second key sign?' })).toBeNull();
-      await user.click(screen.getByRole('button', { name: 'Second key on another device? Sign by link' }));
-      // Open, the choice's "In this browser" card says the phone-wallet line, so it is not said twice.
-      expect(screen.queryByText(oneBrowser)).toBeNull();
-      expect(
-        within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', { name: 'In this browser' }),
-      ).toHaveAccessibleDescription(/A phone wallet's browser holds only that wallet\./);
+      // Where the second key signs opens the step, always shown: signing by link is never behind a toggle.
+      const choice = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
+      expect(choice).toBeVisible();
+      expect(screen.queryByRole('button', { name: /Sign by link/ })).toBeNull();
+      // "In this browser" is the default, and its card says UX rule 10: a phone wallet's browser holds one wallet.
+      const here = within(choice).getByRole('radio', { name: 'In this browser' });
+      expect(here).toBeChecked();
+      expect(here).toHaveAccessibleDescription(/A phone wallet's browser holds only that wallet\./);
+      // The slot to connect comes under the choice.
+      const slot = screen.getByRole('group', { name: 'Second key' });
+      expect(choice.compareDocumentPosition(slot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       await user.click(
         within(screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' })).getByRole('radio', {
           name: 'On another device, by link',
@@ -578,9 +578,8 @@ describe('/protect by link (step 7 spec 10.1)', () => {
       );
       // By link the step asks for an address, not a connection.
       expect(screen.getByRole('heading', { name: 'Add your second key' })).toBeInTheDocument();
-      // By link there is no slot to connect: the address is pasted, and the one-browser notes do not apply.
+      // By link there is no slot to connect: the address is pasted.
       expect(screen.queryByRole('group', { name: 'Second key' })).toBeNull();
-      expect(screen.queryByText(en.protect.second.oneBrowser)).toBeNull();
       const field = screen.getByRole('textbox', { name: en.protect.second.linkAddress });
       // The choice comes before the field it asks for, so the next Tab from the chosen radio reaches the field.
       const where = screen.getByRole('radiogroup', { name: 'Where does your Second key sign?' });
@@ -773,15 +772,10 @@ describe('/protect step gates', () => {
       const { user } = renderProtect(w, [S1, theirs, locked], [main, second]);
 
       expect(screen.getByText('From your link: 3 stake accounts. Connect their main key to continue.')).toBeInTheDocument();
-      // Without the main key its Connect is the step's one filled button; the step button is outline and says why
-      // before any click. Pressed, it says what is missing and moves focus there.
+      // Without the main key its Connect is the step's one action: no step button ("Continue with 0 accounts") yet.
       const slot = screen.getByRole('group', { name: 'Main key' });
       expect(within(slot).getByRole('button', { name: 'Connect a wallet as Main key' })).toHaveAttribute('data-variant', 'primary');
-      expect(continueButton()).toHaveAttribute('data-variant', 'outline');
-      expect(continueButton()).toHaveAccessibleDescription('Connect your main key first.');
-      await user.click(continueButton());
-      const needMain = screen.getByText('Connect your main key first.');
-      expect(needMain.closest('[data-slot="step-blockers"]')).toHaveFocus();
+      expect(screen.queryByRole('button', { name: /^Continue with \d+ accounts?$/ })).toBeNull();
 
       await connect(user, 'Main key', 'Main Wallet');
       await waitFor(() => {

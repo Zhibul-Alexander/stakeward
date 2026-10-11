@@ -86,6 +86,11 @@ export type WalletSlotProps = Common &
         expected?: Address | undefined;
         /** Continue after switching; without it only Disconnect is offered (a filled slot is never swapped). */
         onContinue?: (() => void) | undefined;
+        /**
+         * With `conflictRole`: take this account for this role after all; it stops filling `conflictRole` on this device.
+         * The user's explicit choice, so no key changes role behind their back (D35).
+         */
+        onMove?: (() => void) | undefined;
         onDisconnect: () => void;
       }
   );
@@ -319,6 +324,11 @@ function SlotBody(props: WalletSlotProps & { roleText: string }): ReactNode {
             {props.onContinue === undefined ? null : (
               <Button size="sm" onClick={props.onContinue}>
                 {t('common.continue')}
+              </Button>
+            )}
+            {props.onMove === undefined || props.conflictRole === undefined ? null : (
+              <Button variant="outline" size="sm" onClick={props.onMove}>
+                {t('components.walletSlot.move', { role: props.roleText })}
               </Button>
             )}
             <Button

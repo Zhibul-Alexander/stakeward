@@ -68,6 +68,20 @@ function Extra({ item }: { item: FaqId }) {
       </p>
     );
   }
+  if (extra === 'check-link') {
+    return (
+      <p>
+        <PageLink href="/check">{t('faq.checkLink')}</PageLink>
+      </p>
+    );
+  }
+  if (extra === 'rescue-kit-link') {
+    return (
+      <p>
+        <PageLink href="/rescue-kit">{t('faq.rescueKitLink')}</PageLink>
+      </p>
+    );
+  }
   return null;
 }
 

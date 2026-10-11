@@ -4,8 +4,8 @@ import { getAddressEncoder, type Address } from '@solana/kit';
 /**
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
- * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption), /api/health
- * and /api/stats.
+ * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption, an empty getVoteAccounts), /api/health
+ * /api/stats and /api/sol-price (150 USD per SOL).
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
 
@@ -167,6 +167,9 @@ function rpcResult(fixture: ApiFixture, request: RpcRequest): unknown {
       };
     case 'getBalance':
       return { context, value: Number(fixture.balances?.[request.params[0] as string] ?? 0n) };
+    case 'getVoteAccounts':
+      // No validator to offer: /delegate shows its empty state (DECISIONS.md D134).
+      return { current: [], delinquent: [] };
     case 'getMinimumBalanceForRentExemption':
       return Number(rentExempt(request.params[0] as number));
     default:
@@ -202,10 +205,13 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   await page.route('**/api/stats', async (route) => {
     await json(route, { ...STATS, now: new Date().toISOString() });
   });
+  await page.route('**/api/sol-price', async (route) => {
+    await json(route, { usd: 150, at: new Date().toISOString() });
+  });
   // A ready one-tap rescue kit (D118) for every account, linked to a Telegram chat: the page shows the new owner.
   await page.route('**/api/rescue-kits?*', async (route) => {
     const account = new URL(route.request().url()).searchParams.get('account');
-    await json(route, { stakeAccount: account, status: 'ready', newWallet: RESCUE_KIT_NEW_WALLET, signature: null, sentAt: null, telegramLinked: true });
+    await json(route, { stakeAccount: account, status: 'ready', newWallet: RESCUE_KIT_NEW_WALLET, signature: null, sentAt: null, telegramLinked: true, autoMode: 'staker' });
   });
 }
 

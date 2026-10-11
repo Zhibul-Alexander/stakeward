@@ -62,7 +62,7 @@ export function Protects() {
               <li className="text-pretty">{t('landing.secondKey.apart')}</li>
             </ul>
             <p>
-              <HashLink href="#faq-good-second-key">{t('landing.secondKey.more')}</HashLink>
+              <HashLink href="/learn/faq#faq-good-second-key">{t('landing.secondKey.more')}</HashLink>
             </p>
           </div>
         </div>

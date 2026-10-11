@@ -45,6 +45,7 @@ describe('networkFeeFor: the fee a plan expects before anything is built', () =>
     deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
     delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: key(5) },
     rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+    'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
     'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
     'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
   };

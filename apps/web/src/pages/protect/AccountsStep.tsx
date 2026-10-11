@@ -50,7 +50,7 @@ export function AccountsStep(props: AccountsStepProps) {
   const { headingRef, mainKey, mainReady, selected, selectionCount, loaded } = props;
   const headingId = useId();
   const connected = mainReady && mainKey !== null;
-  // Verb and object in every state: "Continue with 0 accounts" while nothing is chosen, with the reason under it.
+  // Verb and object once the main key is connected: "Continue with 0 accounts" while nothing is chosen, with the reason.
   const label =
     selectionCount === 1 ? t('protect.continue.accountsOne') : t('protect.continue.accountsOther', { count: selectionCount });
   return (
@@ -85,7 +85,8 @@ export function AccountsStep(props: AccountsStepProps) {
       ) : (
         <Choices {...props} mainKey={mainKey} clock={loaded.clock} />
       )}
-      <StepButtons label={label} blockers={props.blockers} onContinue={props.onContinue} />
+      {/* Until the main key is connected its slot is the step's one action: no "Continue with 0 accounts" yet. */}
+      {connected ? <StepButtons label={label} blockers={props.blockers} onContinue={props.onContinue} /> : null}
     </section>
   );
 }

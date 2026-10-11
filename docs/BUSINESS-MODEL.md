@@ -15,7 +15,7 @@ From CLAUDE.md sections 2 and 16:
 ## Who could pay
 
 1. **Individuals: Pro subscription** (about $5-10 a month). A phone call on an alert, more alert channels, validator
-   alerts, a check that the second key is still alive. High value for large holders, but people rarely pay for
+   reports beyond the free validator health alerts, a check that the second key is still alive. High value for large holders, but people rarely pay for
    alerts. A side line, not the base.
 2. **Organisations: Teams** (about $200-1,000 a month per organisation). DAO treasuries, funds, projects that hold
    stake. Slack and webhooks, many accounts, audit reports, roles, an API, a public page "our stake is under lock".
@@ -26,6 +26,33 @@ From CLAUDE.md sections 2 and 16:
    incentives, ready-made distribution (Superteam Georgia, validators we know).
 4. **Later partnerships.** Wallets that build the protection in; insurers (a lock lowers risk, so a premium discount
    and a referral fee). One line about the future in the pitch.
+
+## Idea: validator choice, recommended not managed
+
+Added on 11 October 2026. Not decided, not built.
+
+Services like Marinade Native pick validators for the user by holding the account's staking key and moving the
+stake from their own servers. They do not lock withdrawal: whoever steals the user's withdraw key takes the SOL.
+
+Stakeward could pick validators too, without taking the staking key:
+
+- Stakeward watches the user's validator (the validator-health alerts, PR #14) and suggests a better one when it
+  stops voting, raises its commission or falls behind.
+- The user moves the stake with one signature of their own wallet (DelegateStake, signed by the staker). The lock
+  stays in place: redelegating does not need the second key.
+- Nothing is signed on the server, so CLAUDE.md section 2 still holds: a hacked worker loses alerts, not stake or
+  yield.
+
+Why not copy the managed model: holding thousands of staking keys on a server means a breach can undelegate or
+redelegate every client at once (yield lost, SOL still locked). Managed staking also earns from validators paying
+for stake in SOL, which a Georgian company cannot accept.
+
+Where it could fit: a paid Pro or Teams feature ("validator watch and one-click move"), or a validator channel where
+validators pay in fiat to be listed as recommended, with clear rules so the recommendation stays honest.
+
+Pitch line: "Marinade picks validators by holding your staking key. We recommend and you approve. Plus the lock."
+
+Not for the 13 October demo: a roadmap item.
 
 ## Alternatives users have today
 
@@ -49,5 +76,8 @@ revenue; validators are the sales channel. Pro stays a line for later.
 - [ ] Agree on the focus: Teams plus validators, or something else.
 - [ ] One quote from a validator or a treasury ("we would pay for this"), for the jury.
 - [ ] Market size: how much SOL sits in native stake, and how much of it organisations hold.
+- [ ] Validator recommendations: paid feature, validator channel, or both; and how to keep listings honest.
 - [ ] Prices: check against what treasuries pay for custody and monitoring today.
 - [ ] Owner writes section 9 of SUBMISSION.md; the result goes into the presentation.
+
+- 11.10.2026, владелец: первая платная функция — автоспасение (одно нажатие и автоотправка, D118, D120). Сейчас оно бесплатно и на mainnet с Phantom первым не собирается (D121). Базовая защита остаётся бесплатной. Цены не решены.

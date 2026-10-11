@@ -52,10 +52,10 @@ export function SubSection({ id, title, children, className }: Omit<SectionProps
 }
 
 /**
- * A link to a part of this page (`#faq-ledger`): a plain anchor, so the browser changes the hash and useHashTarget
- * opens the FAQ question it names.
+ * A link to a part of a page (`#faq-ledger`, `/learn/faq#faq-ledger`): a plain anchor, so the browser changes the hash
+ * (or loads that page) and useHashTarget opens the FAQ question it names.
  */
-export function HashLink({ href, children }: { href: `#${string}`; children: ReactNode }) {
+export function HashLink({ href, children }: { href: `#${string}` | `/${string}#${string}`; children: ReactNode }) {
   return (
     <a href={href} className={LINK_CLASS}>
       {children}

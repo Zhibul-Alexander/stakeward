@@ -18,7 +18,7 @@ export function CoSignCallout() {
         <AlertDescription className="max-w-prose text-foreground sm:text-base">
           <p className="text-pretty">{t('landing.coSign.body')}</p>
           <p>
-            <HashLink href="#faq-co-sign">{t('landing.coSign.more')}</HashLink>
+            <HashLink href="/learn/faq#faq-co-sign">{t('landing.coSign.more')}</HashLink>
           </p>
         </AlertDescription>
       </Alert>

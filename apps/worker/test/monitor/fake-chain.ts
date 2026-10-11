@@ -3,12 +3,29 @@
 // sendTransaction (scripted by `sendReply`) the way an RPC node writes them (lamports as bare JSON numbers, exact above
 // 2^53).
 import { getBase58Encoder, type Address } from '@solana/kit';
-import { GENESIS_HASH, STAKE_PROGRAM_ADDRESS, SYSVAR_CLOCK_ADDRESS, SYSVAR_PROGRAM_ADDRESS } from '@stakeward/core';
+import {
+  ADMISSION_FEE_LAMPORTS,
+  GENESIS_HASH,
+  STAKE_PROGRAM_ADDRESS,
+  SYSVAR_CLOCK_ADDRESS,
+  SYSVAR_PROGRAM_ADDRESS,
+  VOTE_PROGRAM_ADDRESS,
+} from '@stakeward/core';
+import { voteAccountData } from '@stakeward/core/test/vote';
 import { encodeBase64 } from '../../src/base64.ts';
 import { multipleAccountsText, type AccountJson } from '../fakes.ts';
-import { clockData, stakeAccountData, type StakeAccountSpec } from '../transactions.ts';
+import { clockData, key, stakeAccountData, type StakeAccountSpec } from '../transactions.ts';
 
 export type ChainAccount = { data: Uint8Array; lamports: bigint; owner?: Address };
+
+/**
+ * A validator's vote account (core validator.ts). By default healthy: V4 with a BLS key, 5% commission, 10 SOL, and
+ * credits earned in the current epoch of the chain's clock (`lastVotedEpoch` moves that back).
+ */
+export type VoteSpec = { bls?: boolean; commission?: number; lamports?: bigint; lastVotedEpoch?: bigint };
+
+/** The voter of every stake account test/transactions.ts builds without one. */
+export const DEFAULT_VOTER = key(42);
 
 /**
  * A scripted failure of one call: HTTP 503, no answer until aborted, a network error, a JSON-RPC error, or (for
@@ -32,6 +49,8 @@ const CLOCK_LAMPORTS = 1_169_280n;
 
 export class FakeChain {
   readonly accounts = new Map<Address, ChainAccount>();
+  /** Vote accounts, built at each read from the clock's epoch; DEFAULT_VOTER is a healthy one. */
+  readonly votes = new Map<Address, VoteSpec>([[DEFAULT_VOTER, {}]]);
   /** The harness moves it with the time (harness.ts `at`). */
   slot = 1;
   clock = { unixTimestamp: 0n, epoch: 950n };
@@ -49,6 +68,11 @@ export class FakeChain {
   /** Puts a stake account built from `spec` (test/transactions.ts) at `address`. */
   putStake(address: Address, spec: StakeAccountSpec, lamports = 10_000_000_000n): void {
     this.accounts.set(address, { data: stakeAccountData(spec), lamports });
+  }
+
+  /** Puts a vote account built from `spec` at `address` (replacing one there). */
+  putVote(address: Address, spec: VoteSpec = {}): void {
+    this.votes.set(address, spec);
   }
 
   set(address: Address, account: ChainAccount): void {
@@ -132,6 +156,20 @@ export class FakeChain {
     return null;
   }
 
+  private voteAccount(spec: VoteSpec): { data: Uint8Array; lamports: bigint; owner: Address } {
+    const epoch = Number(spec.lastVotedEpoch ?? this.clock.epoch);
+    const data = voteAccountData({
+      version: 3,
+      commission: spec.commission ?? 500,
+      bls: spec.bls ?? true,
+      credits: [
+        [epoch - 1, 1000, 0],
+        [epoch, 2000, 1000],
+      ],
+    });
+    return { data, lamports: spec.lamports ?? ADMISSION_FEE_LAMPORTS * 6n, owner: VOTE_PROGRAM_ADDRESS };
+  }
+
   private answer(id: unknown, method: string, params: unknown[], short: boolean): string {
     const slot = this.slot - this.lag;
     switch (method) {
@@ -142,6 +180,8 @@ export class FakeChain {
             const data = clockData(BigInt(slot), this.clock.epoch, this.clock.unixTimestamp);
             return { data, lamports: CLOCK_LAMPORTS, owner: SYSVAR_PROGRAM_ADDRESS };
           }
+          const vote = this.votes.get(key);
+          if (vote !== undefined) return this.voteAccount(vote);
           const account = this.accounts.get(key);
           return account === undefined ? null : { ...account, owner: account.owner ?? STAKE_PROGRAM_ADDRESS };
         });

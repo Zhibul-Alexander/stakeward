@@ -3,15 +3,20 @@ import {
   decodeStakeAccount,
   GENESIS_HASH,
   isLockupInForce,
+  newValidatorRisks,
   reminderDue,
   STAKE_PROGRAM_ADDRESS,
   SYSVAR_CLOCK_ADDRESS,
+  validatorRisks,
+  VALIDATOR_RISKS,
+  VOTE_PROGRAM_ADDRESS,
   type ChainClock,
   type Cluster,
+  type ValidatorRisk,
 } from '@stakeward/core';
 import { isAddressText } from '../address.ts';
 import { decodeBase64 } from '../base64.ts';
-import { kitSettlement, sendKit } from '../rescue-kits.ts';
+import { kitSettlement, RESCUE_KIT_EVENTS, sendKit } from '../rescue-kits.ts';
 import { pairAccountsRequest, parseProgramAccountItems, type ProgramAccountItem } from '../stake-accounts.ts';
 import { getBotIdentity, sendTelegramMessage, type TelegramOutcome } from '../telegram/api.ts';
 import { TELEGRAM_WEBHOOK_PATH } from '../telegram/webhook.ts';
@@ -64,7 +69,7 @@ import {
 } from './store.ts';
 
 /**
- * The monitor pass (CLAUDE.md section 8; step 5 spec section 4.2; DECISIONS.md D47, D48): one run of the cron trigger.
+ * The monitor pass (CLAUDE.md section 8; step 5 spec section 4.2; DECISIONS.md D54, D55): one run of the cron trigger.
  * Phases, each committed as it ends, so that a pass killed late (usually by the CPU limit) keeps what it found:
  *
  * 1. config  - the environment (a bad CLUSTER or MONITOR_PLAN fails the pass).
@@ -73,10 +78,14 @@ import {
  * 3. chunks  - per chunk of 99 rows: one getMultipleAccounts with the Clock sysvar first, the genesis check of the node
  *              that answered when any account reads as gone, classifyChunk, and one batch with the events, the row
  *              writes, the cursor and, when the chunk calls for a rescan, the queue with its pairs in front; accounts
- *              with a STAKER_CHANGED join meta.kit_queue in the same batch.
- * 3b. kits   - the ready rescue kits of meta.kit_queue are sent (D118), at most MONITOR_LIMITS.maxKitSends a pass.
+ *              with an alarming event (rescue-kits.ts RESCUE_KIT_EVENTS) join meta.kit_queue in the same batch.
+ * 3b. kits   - the ready rescue kits of meta.kit_queue whose auto mode the event matches are sent (D118, D120), at
+ *              most MONITOR_LIMITS.maxKitSends a pass.
  * 4. daily   - on the first pass after 06:00 UTC: the reminders due (REMINDER_<d> events) are written, one page per
  *              pass; a full page keeps the stage open for the next pass, which goes on after it (meta.daily_sweep).
+ * 4a. validators - once a day from 06:00 UTC (D128): the vote accounts of the validators watched accounts are
+ *              delegated to, 99 a pass (meta.validator_sweep), one getMultipleAccounts with the Clock; a risk a validator
+ *              did not have at the last check (core validatorRisks) is a VALIDATOR_AT_RISK event for each of its accounts.
  * 4b. bot    - every pass getWebhookInfo, once a day from 06:00 UTC getMe too (meta.bot_check_day): a webhook that is
  *              not SITE_ORIGIN's, recent updates it refused with 401, or a token of another bot than
  *              TELEGRAM_BOT_USERNAME is an admin alert.
@@ -126,6 +135,7 @@ export type Stage =
   | 'chunks'
   | 'kits'
   | 'daily'
+  | 'validators'
   | 'bot'
   | 'sends'
   | 'rescans'
@@ -155,6 +165,9 @@ export type PassReport = {
   kitsStale: number;
   reminders: number;
   daily: boolean;
+  /** Validators the daily validator check read in this pass, and the VALIDATOR_AT_RISK events it wrote. */
+  validators: number;
+  validatorEvents: number;
   /** The bot check of this pass (null: not run, past the soft deadline or the budget). */
   botCheck: 'ok' | 'mismatch' | 'config' | 'retry' | null;
   /** Pairs of the daily round this pass added to the rescan queue. */
@@ -225,9 +238,21 @@ type LoadedMeta = {
   readFailures: number;
   adminAlerts: Record<string, number>;
   alertsSent: number;
-  /** meta.kit_queue: stake accounts with a STAKER_CHANGED whose rescue kit, if ready, is still to be sent. */
-  kitQueue: Address[];
+  /** meta.kit_queue: stake accounts with an alarming event whose rescue kit, if ready and in a mode that takes it, is
+   * still to be sent. */
+  kitQueue: KitQueued[];
+  /** meta.validator_sweep: the daily validator check of `day`, done or up to `after`. */
+  validatorSweep: ValidatorSweep | null;
 };
+
+/** The validator check of a day: the last validator read ('' = none yet), and whether the day's check is over. */
+type ValidatorSweep = { day: string; after: string; done: boolean };
+
+/**
+ * A meta.kit_queue entry: the account and its trigger, 'staker' for a STAKER_CHANGED, 'any' for another alarming
+ * event. The kit's auto mode (D120, KITS_READY_FOR) decides whether the trigger sends it.
+ */
+type KitQueued = { a: Address; t: 'staker' | 'any' };
 
 /**
  * The daily stage a pass works on: the UTC day it started, and the last stake account
@@ -290,8 +315,8 @@ type LoadedPass = PassContext & {
   storedPairs: string;
   /** (main key, second key) pairs of this pass's events that call for a rescan. */
   urgent: Pair[];
-  /** meta.kit_queue with this pass's STAKER_CHANGED accounts; storedKitQueue is it as last written (or loaded). */
-  kitQueue: Address[];
+  /** meta.kit_queue with this pass's alarming events; storedKitQueue is it as last written (or loaded). */
+  kitQueue: KitQueued[];
   storedKitQueue: string;
   /** The cluster clock of the last chunk read in this pass, or of a read of the Clock alone; rescans need it. */
   lastRead: { clock: ChainClock; clockMs: number } | null;
@@ -300,6 +325,9 @@ type LoadedPass = PassContext & {
   adminDue: Set<AdminKind>;
   adminCounts: AdminCounts;
   dailyDone: boolean;
+  /** The validator check to work on, when due (not done for today, from 06:00 UTC): from `after` on. */
+  validatorsDue: boolean;
+  validatorsAfter: string;
   /** An empty page after the cursor: the cycle is over, the finish moves the cursor back to the start. */
   resetCursor: boolean;
 };
@@ -334,6 +362,7 @@ export async function runMonitorPass(deps: MonitorDeps): Promise<PassReport> {
     await readChunks(pass);
     await autoSendKits(pass);
     await daily(pass);
+    await checkValidators(pass);
     await checkBot(pass);
     await deliver(pass);
     await rescans(pass);
@@ -402,6 +431,8 @@ async function load(ctx: PassContext, config: MonitorConfig, budget: PassBudget)
     adminDue: new Set<AdminKind>(report.previousDied ? ['pass-died'] : []),
     adminCounts: {},
     dailyDone: false,
+    validatorsDue: afterDailyHour && !(meta.validatorSweep?.day === today && meta.validatorSweep.done),
+    validatorsAfter: meta.validatorSweep?.day === today ? meta.validatorSweep.after : '',
     resetCursor: false,
   });
 }
@@ -507,8 +538,10 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
   if (cursor !== null) entries.cursor = cursor;
   const stored = out.rescan.length > 0 ? queueEntries(pass, withUrgent(pass), entries) : null;
   // Like the rescan queue: once the events are in, no later pass would see this change again.
-  const attacked = out.events.filter((e) => e.type === 'STAKER_CHANGED').map((e) => e.stakeAccount);
-  const kitQueue = uniqueAccounts([...pass.kitQueue, ...attacked]);
+  const attacked = out.events
+    .filter((e) => RESCUE_KIT_EVENTS.has(e.type))
+    .map((e): KitQueued => ({ a: e.stakeAccount, t: e.type === 'STAKER_CHANGED' ? 'staker' : 'any' }));
+  const kitQueue = uniqueKitQueue([...pass.kitQueue, ...attacked]);
   const storedKitQueue = JSON.stringify(kitQueue);
   if (storedKitQueue !== pass.storedKitQueue) entries.kit_queue = storedKitQueue;
   if (Object.keys(entries).length > 0) statements.push(putMetaStatement(db, entries, pass.passId));
@@ -520,9 +553,10 @@ async function commitChunk(pass: LoadedPass, out: ChunkOutcome, cursor: string |
 }
 
 /**
- * Stage 3b (DECISIONS.md D118): sends the ready rescue kits of the accounts in meta.kit_queue, those whose staker
- * changed. A changed staker is the thief's first move (it lets them deactivate and delegate, and the owner's main key
- * can no longer); DEACTIVATED is not a trigger: the owner's own unstake looks the same. One KITS_READY_FOR, then at
+ * Stage 3b (DECISIONS.md D118, D120): sends the ready rescue kits of the accounts in meta.kit_queue whose auto mode
+ * takes the trigger. By default ('staker') only a changed staker sends: it is the thief's first move (it lets them
+ * deactivate and delegate, and the owner's main key can no longer), while a DEACTIVATED may be the owner's own
+ * unstake. The bound chat may choose 'any' (every alarming event) or 'off' (/kits). One KITS_READY_FOR, then at
  * most MONITOR_LIMITS.maxKitSends sends (one attempt each) while the budget keeps the daily stage, the bot check and
  * the delivery possible, then one batch: the outcomes (KIT_SETTLE) and the queue. An account leaves the queue when its
  * kit was sent, turned stale, was refused (it stays ready for the owner's own tap) or is not ready; a send without an
@@ -543,8 +577,9 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
   const db = deps.db;
   const [result] = await budget.batch(db, [db.prepare(SQL.KITS_READY_FOR).bind(JSON.stringify(pass.kitQueue))]);
   const kits = rowsOf<{ stake_account: Address; tx: string }>(result);
+  // Accounts without a ready kit, or whose kit's mode does not take the trigger, leave the queue.
   const ready = new Set<string>(kits.map((kit) => kit.stake_account));
-  let queue = pass.kitQueue.filter((account) => ready.has(account));
+  let queue = pass.kitQueue.filter((entry) => ready.has(entry.a));
   const settled: ReturnType<typeof kitSettlement>[] = [];
   for (const kit of kits) {
     if (report.kitSends >= MONITOR_LIMITS.maxKitSends) break;
@@ -558,7 +593,7 @@ async function autoSendKits(pass: LoadedPass): Promise<void> {
       if (outcome.kind === 'sent') report.kitsSent += 1;
       else report.kitsStale += 1;
     }
-    if (outcome.kind !== 'upstream') queue = queue.filter((account) => account !== kit.stake_account);
+    if (outcome.kind !== 'upstream') queue = queue.filter((entry) => entry.a !== kit.stake_account);
   }
   const statements: D1PreparedStatement[] = [];
   if (settled.length > 0) statements.push(db.prepare(SQL.KIT_SETTLE).bind(JSON.stringify(settled)));
@@ -626,6 +661,62 @@ async function daily(pass: LoadedPass): Promise<void> {
   if (stored !== null) Object.assign(pass, stored);
   pass.dailyDone = last === undefined;
   report.daily = true;
+}
+
+/**
+ * Stage 4a, once a day from 06:00 UTC (DECISIONS.md D128): will the watched stake keep earning? One page of the
+ * validators that delegated, not deactivating, watched accounts point at (VALIDATOR_PAGE, with the risks found last
+ * time), their vote accounts in one getMultipleAccounts with the Clock, and one batch: a VALIDATOR_AT_RISK event per
+ * account of each validator with a risk it did not have last time (risks that went away are just forgotten, so a
+ * relapse alerts again), every validator's risks now, and meta.validator_sweep. A full page leaves the day open from
+ * its last validator; the next pass goes on. A vote account that reads as gone counts as closed only once the node
+ * proved its cluster, as in the chunks. A failed read leaves the check for a later pass; it is not a failed pass
+ * (the stake accounts were read).
+ */
+async function checkValidators(pass: LoadedPass): Promise<void> {
+  const { budget, report, deps, config } = pass;
+  const keep =
+    COST.sendLoad + COST.sendCommit + 1 + COST.webhookCheck + (pass.botCheckDue ? COST.usernameCheck : 0);
+  if (!pass.validatorsDue || pass.pastDeadline() || budget.left() < COST.validators + keep) return;
+  report.stage = 'validators';
+  const db = deps.db;
+  const pageSize = MONITOR_LIMITS.accountsPerChunk;
+  const [page] = await budget.batch(db, [db.prepare(SQL.VALIDATOR_PAGE).bind(pass.validatorsAfter, pageSize)]);
+  const rows = rowsOf<{ voter: Address; risks: string | null }>(page);
+  const day = utcDay(pass.t0);
+  const statements: D1PreparedStatement[] = [];
+  if (rows.length > 0) {
+    const result = await readChunk([SYSVAR_CLOCK_ADDRESS, ...rows.map((row) => row.voter)], {
+      endpoints: config.rpc,
+      options: pass.upstream,
+    });
+    if (!result.ok) return;
+    const { read, endpoint } = result;
+    const gone = read.items.some((item) => item === null || item.owner !== VOTE_PROGRAM_ADDRESS);
+    if (gone && (await checkGenesis(pass, endpoint)) !== 'ok') return;
+    const events: { v: Address; d: string }[] = [];
+    const stored: { v: Address; r: string }[] = [];
+    rows.forEach((row, i) => {
+      const item = read.items[i] ?? null;
+      const data = item === null ? null : decodeBase64(item.dataBase64);
+      // Bytes the node sent that are not base64: no verdict on this validator today.
+      if (item !== null && data === null) return;
+      const account = item === null || data === null ? null : { owner: item.owner, data, lamports: item.lamports };
+      const risks = validatorRisks({ account, epoch: read.clock.epoch });
+      if (newValidatorRisks(parseRisks(row.risks), risks).length > 0) {
+        events.push({ v: row.voter, d: JSON.stringify({ voter: row.voter, risks }) });
+      }
+      stored.push({ v: row.voter, r: JSON.stringify(risks) });
+    });
+    report.validators = rows.length;
+    if (events.length > 0) statements.push(db.prepare(SQL.VALIDATOR_EVENTS).bind(JSON.stringify(events), read.slot, deps.now()));
+    statements.push(db.prepare(SQL.VALIDATORS_PUT).bind(JSON.stringify(stored), deps.now()));
+  }
+  const full = rows.length >= pageSize;
+  const sweep: ValidatorSweep = { day, after: full ? (rows.at(-1)?.voter ?? '') : '', done: !full };
+  statements.push(putMetaStatement(db, { validator_sweep: JSON.stringify(sweep) }, pass.passId));
+  const results = await budget.batch(db, statements);
+  if (statements.length === 3) report.validatorEvents = results[0]?.meta.changes ?? 0;
 }
 
 /**
@@ -771,7 +862,7 @@ async function deliver(pass: LoadedPass): Promise<void> {
 
 /**
  * Stage 6: search the stake accounts of (main key, second key) pairs: this pass's urgent pairs first, then the queue.
- * Split copies both keys and the lock, so the pair finds every account split off a watched one (D52). The cluster
+ * Split copies both keys and the lock, so the pair finds every account split off a watched one (D59). The cluster
  * clock judges the locks: the one of this pass's last chunk read, else of a read of the Clock alone (readClockAlone).
  * A failed call keeps its pair at the head and stops the search; an answer over the plan's size limit is not read
  * on and drops its pair (admin alert). The answers parsed in a pass stay within plan.rescanParseChars (CPU): once the
@@ -1120,6 +1211,8 @@ function emptyReport(): PassReport {
     kitsStale: 0,
     reminders: 0,
     daily: false,
+    validators: 0,
+    validatorEvents: 0,
     botCheck: null,
     pairsQueued: 0,
     rescans: 0,
@@ -1153,20 +1246,60 @@ function parseMeta(rows: readonly { key: string; value: string }[]): LoadedMeta 
     readFailures: parseCount(values.get('read_failures')),
     adminAlerts: parseAdminAlerts(values.get('admin_alerts')),
     alertsSent: parseCount(values.get('alerts_sent')),
-    kitQueue: parseAccounts(values.get('kit_queue')),
+    kitQueue: parseKitQueue(values.get('kit_queue')),
+    validatorSweep: parseValidatorSweep(values.get('validator_sweep')),
   };
 }
 
-/** meta.kit_queue: an array of addresses, deduplicated, at most MONITOR_LIMITS.kitQueueMax; anything else is dropped. */
-function parseAccounts(text: string | undefined): Address[] {
+/** meta.validator_sweep: {"day": "YYYY-MM-DD", "after": "" or an address, "done": boolean}; anything else is null. */
+function parseValidatorSweep(text: string | undefined): ValidatorSweep | null {
   const json = parseJson(text);
-  if (!Array.isArray(json)) return [];
-  return uniqueAccounts((json as unknown[]).filter((value): value is Address => typeof value === 'string' && isAddressText(value)));
+  if (typeof json !== 'object' || json === null) return null;
+  const { day, after, done } = json as Record<string, unknown>;
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day) || typeof done !== 'boolean') return null;
+  if (typeof after !== 'string' || (after !== '' && !isAddressText(after))) return null;
+  return { day, after, done };
 }
 
-/** First occurrence of each address, in order, at most MONITOR_LIMITS.kitQueueMax (the oldest stay). */
-function uniqueAccounts(accounts: readonly Address[]): Address[] {
-  return [...new Set(accounts)].slice(0, MONITOR_LIMITS.kitQueueMax);
+/** validators.risks as stored: the known risks of a JSON array; anything else counts as none. */
+function parseRisks(text: string | null): ValidatorRisk[] {
+  const json = parseJson(text ?? undefined);
+  if (!Array.isArray(json)) return [];
+  return VALIDATOR_RISKS.filter((risk) => (json as unknown[]).includes(risk));
+}
+
+/**
+ * meta.kit_queue: an array of {a: address, t: 'staker' | 'any'} (uniqueKitQueue); a bare address, as D118 stored
+ * them, is a 'staker' entry. Anything else is dropped.
+ */
+function parseKitQueue(text: string | undefined): KitQueued[] {
+  const json = parseJson(text);
+  if (!Array.isArray(json)) return [];
+  const entries: KitQueued[] = [];
+  for (const value of json as unknown[]) {
+    if (typeof value === 'string') {
+      if (isAddressText(value)) entries.push({ a: value, t: 'staker' });
+      continue;
+    }
+    if (typeof value !== 'object' || value === null) continue;
+    const { a, t } = value as Record<string, unknown>;
+    if (typeof a === 'string' && isAddressText(a) && (t === 'staker' || t === 'any')) entries.push({ a, t });
+  }
+  return uniqueKitQueue(entries);
+}
+
+/**
+ * One entry per account, where it first appears, at most MONITOR_LIMITS.kitQueueMax (the oldest stay). 'staker' wins
+ * over 'any': it sends in every mode 'any' sends in, and in 'staker' too.
+ */
+function uniqueKitQueue(entries: readonly KitQueued[]): KitQueued[] {
+  const byAccount = new Map<Address, KitQueued>();
+  for (const entry of entries) {
+    const seen = byAccount.get(entry.a);
+    if (seen === undefined) byAccount.set(entry.a, { ...entry });
+    else if (entry.t === 'staker') seen.t = 'staker';
+  }
+  return [...byAccount.values()].slice(0, MONITOR_LIMITS.kitQueueMax);
 }
 
 function parseLease(text: string | undefined): Lease | null {

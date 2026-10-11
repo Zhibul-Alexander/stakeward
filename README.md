@@ -4,7 +4,7 @@ Stakeward puts a lock on the Solana stake accounts you already have. The lock is
 
 Stakeward never holds your SOL or your keys. Your browser builds every transaction, your own wallets sign it, and Stakeward has no program of its own on the network. It is free: you pay only Solana network fees.
 
-> **Status: work in progress.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The checks with real wallets are still under way, and no wallet is verified yet. A devnet demo runs at https://stakeward-dev.stakeward.workers.dev (devnet SOL has no value). The mainnet version is not public yet. Do not lock real stake with Stakeward until this note changes.
+> **Status: early version, not audited.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The mainnet version runs at https://stakeward.com. On 10 and 11 October 2026 we protected, unlocked, protected again and rescued a real 1.05 SOL stake on mainnet with Phantom; withdrawing with both keys was tested on devnet. A devnet demo runs at https://dev.stakeward.com (devnet SOL has no value). Start with a small stake.
 
 ## Why your stake needs a lock
 
@@ -15,10 +15,10 @@ Every stake account also has a lock built in: an end date and a key that guards 
 ## How it works
 
 1. **Lock it with a second key.** Pick a wallet made from a different seed phrase as your second key. Your main key and your second key sign together, one transaction per stake account, and the lock is written into each stake account on the Solana network. Your stake stays with its validator and keeps earning.
-2. **Get alerts.** Stakeward checks your protected stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes. It also reminds you 30, 14, 7, 3 and 1 days before the lock ends, and when it ends.
+2. **Get alerts.** Stakeward checks your protected stake accounts every few minutes. If you turn on alerts, a Telegram message tells you when anything changes. It also reminds you 30, 14, 7, 3 and 1 days before the lock ends, and when it ends. Once a day it checks your validator too, and tells you if it stopped voting, closed its vote account or takes all of your rewards.
 3. **Rescue or withdraw.** If your main key is stolen, your main key, your second key and a new wallet sign together before the lock ends, and the stake moves to the new wallet, out of the thief's reach. To take your SOL out, your two keys withdraw it together.
 
-The lock lasts 1, 3, 6 or 12 months, 6 by default, and ends at 00:00 UTC on the first midnight after that period. Or pick a custom end date from tomorrow to 5 years ahead: the lock ends at 00:00 UTC on that date. Your second key can extend the lock, or remove it early, at any time before it ends. After it ends, your main key alone controls the stake again, and you can protect it again. On devnet you can also try a 10-minute or a 1-hour lock.
+The lock lasts 1, 3, 6 or 12 months, 6 by default, and ends at 00:00 UTC on the first midnight after that period. Or pick a custom end date from tomorrow to 10 years ahead: the lock ends at 00:00 UTC on that date. Your second key can extend the lock, or remove it early, at any time before it ends. After it ends, your main key alone controls the stake again, and you can protect it again. On devnet you can also try a 10-minute or a 1-hour lock.
 
 You can look before you connect anything: paste a wallet address and see which of its stake accounts are protected. Stakeward asks for a wallet only when you act.
 
@@ -64,7 +64,6 @@ So a thief with only your main key can stop your rewards, move your stake to a v
 - It cannot move your SOL, sign for you or change your lock. Only your own wallets can.
 - It cannot promise alerts. If Stakeward is down, alerts come late or not at all. The lock itself keeps working.
 - It cannot see your keys or your seed phrase, and it never holds your SOL.
-- It cannot yet hand the lock to a new second key in one step. The Solana command line can: see [Second key stolen](#second-key-stolen).
 
 ## What it costs
 
@@ -78,24 +77,26 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 | Extend or remove the lock | 1 | 0.0000056 SOL | the second key. If it has no SOL, the main key signs too and pays 0.0000106 SOL |
 | Stop staking, before a withdrawal | 1 | 0.0000056 SOL | the key that manages staking, usually the main key |
 | Withdraw | 2 | 0.0000106 SOL | the main key |
+| Withdraw from a stake with no lock | 1 | 0.0000056 SOL | the main key |
+| Hand the lock to a new second key | 2 | 0.0000106 SOL | the new second key |
 | Rescue one stake account | 3 | 0.0000156 SOL | the new wallet |
 | Open or close a link-signing account | 1 | 0.0000056 SOL | the wallet that owns it |
 
-**The link-signing account is a deposit, not a fee.** To sign on another device, and in every rescue, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
+**The link-signing account is a deposit, not a fee.** To sign on another device, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
 
-For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
+For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a key signs by link, owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
 
 ## Which wallets work
 
-**No wallet has been verified with Stakeward yet.** Tests with Phantom are under way on devnet: two Phantom accounts, the second one imported from a different seed phrase. Solflare, Backpack and Ledger have not been tested. A pair of wallets will be listed as working, here and in the wallet table on the site, only after it has been tested. Until then, try every step on devnet first, and then with a small stake.
+**Tested: Phantom with Phantom.** Two Phantom accounts, the second one imported from a different seed phrase, on devnet (8 October 2026) and on mainnet (10 and 11 October 2026). Every step works after Phantom's warnings. Phantom may block the rescue as a possible theft ("Request blocked"), because a thief's transaction looks the same; you can go on with "Proceed anyway" after you check every address on Stakeward's screen. Signing by link does not work when Phantom on mainnet signs first: Phantom reorders a transaction on a link-signing account, and Stakeward refuses to send it. The same is true for preparing a one-tap rescue. Solflare and Backpack have not been tested. A Ledger was checked on the official emulator (Speculos): it shows all 25 kinds of Stakeward transactions as readable fields. It has not been tested on a device yet.
 
-What we know so far comes from wallet documentation and source code, not from tests:
+Also from wallet documentation and source code:
 
 - Stakeward talks to browser wallets through the Wallet Standard. It lists any wallet that offers `standard:connect` and `solana:signTransaction` for legacy transactions on the right cluster. Being listed does not mean the wallet was tested.
 - Stakeward asks a wallet only to sign a transaction. It never asks a wallet to sign a message or to send a transaction: Stakeward sends it, after checking every signature.
 - Phantom may add its own safety-check instructions (Lighthouse) to the end of a transaction. Stakeward accepts only that change, checks that nothing else changed, and asks Phantom to sign first.
 - To sign on the spot, every wallet that signs must be connected in one browser: two wallets from different seed phrases to protect or withdraw, three to rescue. With signing by link, a wallet on another device signs instead.
-- A Ledger connects through a browser wallet. Stakeward builds each transaction in the shape that Ledger's Solana app shows as readable fields, according to that app's source code. This has not been checked on a device yet. Phantom's added instructions may make a Ledger ask for blind signing. The FAQ on the site lists the fields a Ledger should show.
+- A Ledger connects through a browser wallet. Stakeward builds each transaction in the shape that Ledger's Solana app shows as readable fields; on the emulator it does. Phantom's added instructions make a Ledger ask for blind signing, so a Ledger may need to sign through another wallet. The FAQ on the site lists the fields a Ledger shows.
 - On a phone, a wallet app's own browser offers only that wallet. There you can check your stake, extend or remove a lock, and co-sign by link. Protect and rescue on a computer.
 
 ## How Stakeward keeps you safe
@@ -103,11 +104,11 @@ What we know so far comes from wallet documentation and source code, not from te
 - **The lock lives on the Solana network,** inside your stake accounts, enforced by Solana's own stake program. It does not depend on Stakeward. If Stakeward disappears, the lock keeps working and ends on its date; only the alerts stop. See [Recover without Stakeward](#recover-without-stakeward).
 - **Non-custodial.** Your SOL stays in your own stake accounts. Stakeward never asks for, creates, stores or sends a seed phrase or a private key. If anyone asks for your seed phrase in Stakeward's name, it is a scam.
 - **No program of its own.** Transactions use only Solana's stake program, the system program (for the link-signing account) and the compute budget fee settings; Phantom may add its own safety checks at the end. There is no Stakeward program to upgrade or break into, and no token.
-- **Your browser builds, your wallets sign.** Every transaction is built in your browser and signed by your own wallets. Stakeward's server never builds, stores or signs a transaction, and never sees a key.
+- **Your browser builds, your wallets sign.** Every transaction is built in your browser and signed by your own wallets. Stakeward's server never builds or signs a transaction, and never sees a key. It stores a transaction only if you prepare a one-tap rescue: a rescue that your three keys already signed, which can only move the stake to your own new wallet.
 - **You see what you sign.** Before each signature, the screen shows what changes, who signs, what it costs and what the transaction cannot do. That summary is read from the exact bytes your wallet receives, not from what the page believes. After each signature, Stakeward checks that the wallet changed nothing it should not have.
 - **The network decides what happened.** After each action, Stakeward reads the stake accounts again. Nothing counts as done until the network shows it.
 - **The server passes on only Stakeward transactions.** It sends a transaction to the network only if the same check accepts it and every signature is valid, so nobody can use it to relay other transactions. If the server is down, you lose the site and the alerts, not SOL.
-- **Little data.** The server keeps public network data and, if you turn on alerts, your Telegram chat id. There are no accounts, logins, email, cookies, analytics or third-party scripts. Your browser remembers which wallet you used for each key and which stake accounts you protected; that stays on your device.
+- **Little data.** The server keeps public network data and, if you turn on alerts, your Telegram chat id. If you prepare a one-tap rescue, it also keeps that signed rescue. There are no accounts, logins, email, cookies, analytics or third-party scripts. Your browser remembers which wallet you used for each key and which stake accounts you protected; that stays on your device.
 - **Open code, not audited.** The code is open source. It has not been audited. Every kind of transaction is tested against the real stake program, and the lock rules were checked on LiteSVM, devnet and mainnet: see [docs/gate.md](docs/gate.md) (in Russian, with explorer links). Read the code, or ask someone you trust to read it, before you lock a large stake.
 
 ### If Stakeward were hacked
@@ -120,7 +121,7 @@ The same server delivers the website, so whoever took it over could change the p
 
 They could not:
 
-- sign anything or move any SOL on their own: Stakeward holds no keys;
+- sign anything or move any SOL on their own: Stakeward holds no keys. If you prepared a one-tap rescue, they could send it early, and it would move your stake to your own new wallet, still locked;
 - withdraw a locked stake, hand it to another wallet or change its lock unless your second key signs too;
 - change how the lock works: that is the stake program's rule, not Stakeward's;
 - stop you from recovering with the Solana command line, as below.
@@ -296,7 +297,7 @@ solana stake-set-lockup \
 
 ### Second key stolen
 
-The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
+The thief cannot take your SOL, but they can move the lock date or hand the lock to their own key, and freeze the stake. Act first: hand the lock to a new second key. In Stakeward, open More on the stake account and choose Change second key; without Stakeward, run the command below. Make it from a new seed phrase: use a new Ledger, a spare Ledger reset with a new seed phrase, or a keypair file made with `solana-keygen new`. Never use the Ledger that holds your main key or your second key, not even another account on it: every account on one Ledger comes from its seed phrase. The old second key and the new one both sign; the new one pays, because a stolen key must never pay. The end time stays the same.
 
 ```sh
 solana stake-set-lockup-checked \
@@ -342,11 +343,11 @@ The site says Main key, Second key and New wallet. The stake program and the Sol
 | Extend or remove | `SetLockup`: only `unix_timestamp` (0 removes the lock) | second key, and the main key when it pays | second key, or the main key if the second key has no SOL |
 | Stop staking | `Deactivate` | staker | staker |
 | Withdraw | `Withdraw` of the whole balance to the main key, custodian signing | main key, second key (the main key alone once the lock is gone) | main key |
-| Rescue | `AuthorizeChecked(Staker → new wallet)` + `AuthorizeChecked(Withdrawer → new wallet)`, always on a nonce owned by the new wallet | main key, second key, new wallet | new wallet |
+| Rescue | `AuthorizeChecked(Staker → new wallet)` + `AuthorizeChecked(Withdrawer → new wallet)`; on a recent blockhash when every key signs in this browser, on a nonce owned by the new wallet when a key signs by link | main key, second key, new wallet | new wallet |
 | Stake again after a rescue | `DelegateStake` | new wallet | new wallet |
 | Link-signing account | System `CreateAccountWithSeed` + `InitializeNonceAccount`; closing is `WithdrawNonceAccount` | its owner | its owner |
 
-Every transaction has one shape: `[AdvanceNonceAccount, if on a nonce] [compute unit limit] [compute unit price] [one stake instruction on one stake account]`, where a rescue is the one allowed pair. Messages are legacy, with no address lookup tables. Stake instructions use the legacy account order with sysvars, which the Ledger Solana app parses ([D1](docs/DECISIONS.md)). Phantom's Lighthouse instructions are accepted only at the end.
+Every transaction has one shape: `[AdvanceNonceAccount, if on a nonce] [compute unit limit] [compute unit price] [one stake instruction on one stake account]`, where a rescue is the one allowed pair. Messages are legacy, with no address lookup tables. Stake instructions use the legacy account order with sysvars, which the Ledger Solana app parses ([D1](docs/DECISIONS.md)). Phantom's Lighthouse instructions are accepted only at the end. Phantom on mainnet also moves the compute budget instructions to the front when it signs first; on a nonce transaction that breaks the nonce, so signing by link does not work when Phantom signs first (D121).
 
 `inspectTransaction(bytes)` in `packages/core` reads a transaction only from its bytes and returns a typed summary: kind, stake account, amount, new keys, new lock, fee payer, lifetime, required and present signatures. It accepts only the shape above and rejects any other program, instruction or lookup table. It runs on every signing screen, on `/cosign`, and in the worker's RPC proxy before `simulateTransaction` and `sendTransaction`. Signing order: Phantom first, on an unsigned transaction; then the fee payer; then the rest. After each signature, `checkSigningStep` compares the message with the one sent; before sending, `verifyAllSignatures` checks every signature.
 
@@ -364,7 +365,7 @@ A pnpm monorepo:
 | `apps/web` | The site: Vite, React 19, TypeScript, Tailwind CSS 4, shadcn/ui on Radix, lucide-react. Design tokens in `src/styles/tokens.css`, every UI string in `src/i18n/en.json`. `/dev/ui` shows every component in every state (devnet build only). |
 | `apps/worker` | One Cloudflare Worker on Hono: serves the built site, the API under `/api/*`, the monitor (a Cron Trigger every 2 minutes) and the Telegram webhook. Data in D1; schema only through `migrations/`. |
 | `scripts` | The mechanism check (`gate`), devnet test accounts (`dev-accounts`), an RPC check (`check-rpc`), a runner for the recovery card's CLI commands (`recovery-cli`), the deploy wrapper (`deploy.ts`) and the live-site check (`verify-deploy.ts`). |
-| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `SECURITY-CHECK.md`, `deploys.md`, `gate.md`, `recovery-cli.md` (in Russian), `SUBMISSION.md` (the hackathon entry drafts) and screenshots in `screens/`. |
+| `docs` | `PROGRESS.md`, `DECISIONS.md`, `TESTPLAN.md`, `SECURITY-CHECK.md`, `deploys.md`, `gate.md`, `recovery-cli.md` (in Russian), `ledger-sim.md`, `live-demo.md`, `BUSINESS-MODEL.md`, `SUBMISSION.md` (the hackathon entry drafts) and screenshots in `screens/`. |
 
 `CLAUDE.md` is the build spec (in Russian). Every deviation from it is recorded in `docs/DECISIONS.md`.
 
@@ -379,6 +380,8 @@ The worker's API:
 | `GET /api/accounts?wallet=` | watched accounts where the wallet is the main or second key, with recent events |
 | `POST /api/rpc` | JSON-RPC proxy: an allow-list of methods with strict params; `simulateTransaction` and `sendTransaction` only for transactions the inspector accepts (`sendTransaction` also needs every signature present and valid), a withdrawal only to the stake account's main key and a nonce account closed only to its owner |
 | `POST /api/telegram/webhook` | the bot's webhook, checked with the secret token header |
+| `POST /api/rescue-kits` | checks a fully signed one-tap rescue against its bytes and the network, then stores it |
+| `GET /api/rescue-kits?account=` | status of the stored one-tap rescue and whether a Telegram chat is bound to it |
 | `GET /api/telegram/link?wallet=` | redirects to the bot with `/start <wallet>` |
 | `GET /api/health` | time of the last successful monitor pass; HTTP 503 when it is older than 10 minutes |
 | `GET /api/stats` | stake accounts under a lock, SOL under a lock, alerts sent |
@@ -430,6 +433,7 @@ pnpm e2e:mainnet
 | `pnpm gate:devnet`, `pnpm gate:mainnet` | the same on devnet, or a short version on mainnet with a throwaway key in `.keys/`. Without funds they print the address and the exact amount to send, and stop. Everything but the fees goes back at the end. |
 | `pnpm dev-accounts <address>` | creates a delegated and an undelegated stake account for an address on devnet |
 | `pnpm check-rpc <url>` | checks that an RPC endpoint answers `getProgramAccounts` with the stake filters |
+| `pnpm challenge-wallet [--sol 1] [--undelegated]` | devnet only: creates the public "Try to steal it" stake account, prints its main key for publishing, keeps the second key in `.keys/` |
 | `pnpm recovery-cli --url devnet`, or `--url localhost --funder <keypair>` with `solana-test-validator` | runs every recovery card command with Solana CLI 4.3.0 against that cluster and records the results in `docs/recovery-cli.md`; refuses mainnet |
 
 Keys for scripts and tests live in `.keys/` (gitignored). They are test data, never product code.
@@ -438,7 +442,7 @@ Keys for scripts and tests live in `.keys/` (gitignored). They are test data, ne
 
 Two Wrangler environments, each with its own D1 database, Telegram bot, RPC URL and secrets:
 
-- `dev`: Solana devnet, https://stakeward-dev.stakeward.workers.dev. It also offers 10-minute and 1-hour locks and the `/dev` pages.
+- `dev`: Solana devnet, https://dev.stakeward.com. It also offers 10-minute and 1-hour locks and the `/dev` pages.
 - `prod`: Solana mainnet. Its address is published after the mainnet checks in the test plan.
 
 ```sh
@@ -450,11 +454,11 @@ Both run `scripts/deploy.ts`. It deploys only the committed HEAD of a clean tree
 
 Each deploy appends its commit, the Cloudflare version id and the sha256 of every site file to [docs/deploys.md](docs/deploys.md); commit that file. Then check the live site against the commit: `pnpm verify-deploy --env <dev|prod> --commit <sha>` builds the commit again in a temporary worktree, compares every file with what the site serves, and checks that every response carries the security headers of the build's `_headers` (the CSP and the rest) unchanged.
 
-`pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys are manual: CI has no Cloudflare token, and it only dry-runs the prod config. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
+`pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys also run from GitHub Actions (`deploy.yml`, manual dispatch from `main`; the GitHub environments `dev` and `prod` hold only the two Cloudflare keys; it runs the same wrapper and migrates D1 after the code, docs/DECISIONS.md D115). CI's `check` job has no Cloudflare token. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
 
 - Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL` and `MONITOR_RPC_URL`. The monitor reads the chain through `MONITOR_RPC_URL` when it is set; it protects the alerts only if that URL has a quota of its own (another Helius account or another provider), so that traffic on the site cannot use up the monitor's credits. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
 - `RPC_URL` must be a private RPC such as Helius: public Solana RPC endpoints refuse requests from Cloudflare Workers.
-- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. They are not part of the deploy: run them as a separate step. The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
+- Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. The local wrapper does not run them: run them as a separate step (the GitHub Actions deploy migrates after the code). The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
 - The monitor fits the Workers Free plan in small batches (`MONITOR_PLAN` = `free`); the paid plan allows bigger passes (`paid`).
 - The Telegram webhook registration, the bot token rotation, the manual checks and the release steps are in [docs/TESTPLAN.md](docs/TESTPLAN.md). The monitor checks the bot's webhook on every pass and alerts the admin chat (`bot-mismatch`) when it points elsewhere; then rotate both `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` and set the webhook again with the new secret. The current deployment, its decisions and the reasons behind them are in [docs/DECISIONS.md](docs/DECISIONS.md), section "Развёртывание" and D84.
 

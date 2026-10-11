@@ -59,7 +59,7 @@ describe('describeMessageChange', () => {
   it('reports a new blockhash as a lifetime change', async () => {
     const bytes = await protectBytes();
     const changed = describeMessageChange(bytes, editMessage(bytes, (m) => ({ ...m, lifetimeToken: OTHER_BLOCKHASH })));
-    expect(changed).toEqual({ kind: 'other', parts: [{ code: 'lifetime', text: 'Blockhash or nonce: EkS...N1N -> 9xQ...Fin' }] });
+    expect(changed).toEqual({ kind: 'other', parts: [{ code: 'lifetime', text: 'Blockhash or nonce: EkSn...KN1N -> 9xQe...VFin' }] });
   });
 
   it('reports an extra account as a header and account change, naming the account', async () => {
@@ -154,9 +154,9 @@ describe('formatReport', () => {
       'Stakeward wallet co-signing report',
       'Date: 2026-10-02T09:30:15Z',
       'Cluster: devnet',
-      'Main key: Phantom (Wallet Standard 1.0.0, accounts offered: 1), 5E5...odY',
-      'Second key: Solflare (Wallet Standard 1.0.0, accounts offered: 2), D7s...BfV',
-      'Stake account: EAV...9qu',
+      'Main key: Phantom (Wallet Standard 1.0.0, accounts offered: 1), 5E5g...zodY',
+      'Second key: Solflare (Wallet Standard 1.0.0, accounts offered: 2), D7sQ...wBfV',
+      'Stake account: EAVG...q9qu',
       'Order: second key first',
       'Lifetime: durable nonce',
       'Signer 1 (Second key, Solflare): not signed: unknown: Something went wrong.',
@@ -183,7 +183,7 @@ describe('formatReport', () => {
     expect(text).toContain(
       `Send: sent, no confirmation within the wait, signature ${signature}, https://explorer.solana.com/tx/${signature}?cluster=devnet`,
     );
-    expect(text).toContain('Lock after: second key D7s...BfV, until 2026-10-01T00:10:00Z (NOT as expected)');
+    expect(text).toContain('Lock after: second key D7sQ...wBfV, until 2026-10-01T00:10:00Z (NOT as expected)');
   });
 });
 

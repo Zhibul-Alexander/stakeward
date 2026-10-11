@@ -5,24 +5,21 @@ import { InfoIcon } from 'lucide-react';
 // 2026), the date RadioCardGroup's LockPeriod shows for the protect wizard's default.
 const LOCK_END = 1_807_315_200n;
 
-/** Protect, review and sign: the hint, then the risk with its date right above the one filled button, and Back. */
+/** Protect, review and sign: the risk with its date right above the one filled button, and Back. */
 export const SignWithRisk = () => (
-  <div className="flex flex-col gap-3">
-    <p className="text-sm text-muted">Check the summary above, then approve the request in Sample Wallet.</p>
-    <ActionBar
-      risk={<RiskNote risk="lose-second-key" date={LOCK_END} variant="inline" />}
-      primary={
-        <Button size="lg" className="h-auto min-h-12 max-w-full whitespace-normal text-balance">
-          Sign 2 transactions in Sample Wallet as Main key
-        </Button>
-      }
-      secondary={
-        <Button variant="ghost" className="h-auto min-h-10 max-w-full whitespace-normal">
-          Back
-        </Button>
-      }
-    />
-  </div>
+  <ActionBar
+    risk={<RiskNote risk="lose-second-key" date={LOCK_END} variant="inline" />}
+    primary={
+      <Button size="lg" className="h-auto min-h-12 max-w-full whitespace-normal text-balance">
+        Sign 2 transactions in Sample Wallet as Main key
+      </Button>
+    }
+    secondary={
+      <Button variant="ghost" className="h-auto min-h-10 max-w-full whitespace-normal">
+        Back
+      </Button>
+    }
+  />
 );
 
 /** Protect, second key step not done yet: the step button turns outline and says why under it, before any click. */

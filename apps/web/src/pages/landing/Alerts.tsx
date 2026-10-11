@@ -6,7 +6,7 @@ import { Section } from './Section.tsx';
 
 type AlertEvent = keyof Messages['landing']['alerts']['events'];
 
-const EVENTS: readonly AlertEvent[] = ['deactivated', 'delegation', 'manager', 'owner', 'lock', 'balance', 'closed', 'reminders'];
+const EVENTS: readonly AlertEvent[] = ['deactivated', 'delegation', 'manager', 'owner', 'lock', 'balance', 'closed', 'validator', 'reminders'];
 
 /** Made-up public addresses for the example: 32 bytes of 7 and of 8. */
 const SAMPLE_STAKE = getAddressDecoder().decode(new Uint8Array(32).fill(7));

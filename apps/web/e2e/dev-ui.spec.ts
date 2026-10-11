@@ -11,9 +11,9 @@ const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
 
 /**
  * Real inspector output rendered in the product components section: protect, a batch of two protects, extend,
- * withdraw, rescue, unlock and one rejected link. The flows sections below it render more (signing panel phases).
+ * withdraw, rescue, second key change, unlock and one rejected link. The flows sections below it render more (signing panel phases).
  */
-const SUMMARIES = 7;
+const SUMMARIES = 8;
 /** SummaryBar samples: ready, loading, error, stale monitoring, new device, second key only, and the dark preview. */
 const SUMMARY_BARS = 7;
 /** AccountRow samples (samples.ts sampleRows): one per status and case, shown again in the dark preview. */

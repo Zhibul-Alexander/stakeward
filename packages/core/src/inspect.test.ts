@@ -91,6 +91,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
 };
@@ -521,7 +522,26 @@ describe('rejects parameters Stakeward never builds', () => {
     expect(await verdict(checked({ unixTimestamp: T, epoch: null }))).toBe('unknown-instruction');
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: T, epoch: 2_000n }))).toBe('unknown-instruction');
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: 0n, epoch: null }))).toBe('unknown-instruction');
+    // No end and no epoch is a second key change (F7, next test); paid by A, as crafted here, the builder refuses it.
     expect(await verdict(checked({ newAuthority: K, unixTimestamp: null, epoch: null }))).toBe('unknown-instruction');
+    expect(await verdict(checked({ newAuthority: K, unixTimestamp: null, epoch: 2_000n }))).toBe('unknown-instruction');
+  });
+
+  it('SetLockupChecked with only a new custodian reads as a second key change, never as a protect', async () => {
+    const bytes = craftBody(
+      [getSetLockupCheckedInstruction({ stake: S, authority: signer(K), newAuthority: signer(D), unixTimestamp: null, epoch: null })],
+      BLOCKHASH,
+      D,
+    );
+    const result = await inspectTransaction(bytes);
+    expect(result.ok && result.summary.action).toEqual({ kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D });
+    // Paid by the old second key: the builder never makes it, so the inspector refuses it.
+    const paidByOld = craftBody(
+      [getSetLockupCheckedInstruction({ stake: S, authority: signer(K), newAuthority: signer(D), unixTimestamp: null, epoch: null })],
+      BLOCKHASH,
+      K,
+    );
+    expect(await verdict(paidByOld)).not.toBe('ok');
   });
 
   it('keys the builder refuses (second key = main key, zero amounts)', async () => {

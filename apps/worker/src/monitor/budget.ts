@@ -1,5 +1,5 @@
 /**
- * Subrequest budget of one monitor pass (DECISIONS.md D48). Cloudflare's documentation can be read two ways: the
+ * Subrequest budget of one monitor pass (DECISIONS.md D55). Cloudflare's documentation can be read two ways: the
  * Workers limits count D1 queries as subrequests ("using the Fetch API or to Cloudflare services like R2, KV, or
  * D1", 50 on Free), and D1 allows "50 queries per Worker invocation" on Free, counting "each individual statement
  * contained within a batch". So the pass counts the worst reading: every fetch attempt (each retry of callUpstream
@@ -26,6 +26,11 @@ export const COST = {
    * meta.
    */
   daily: 4,
+  /**
+   * The daily validator check: VALIDATOR_PAGE, getMultipleAccounts (3 attempts), getGenesisHash (3 attempts), then
+   * the events, the validators and meta.
+   */
+  validators: 10,
   /** The bot check of every pass: getWebhookInfo, one attempt. */
   webhookCheck: 1,
   /** The daily part of the bot check: getMe, one attempt. */

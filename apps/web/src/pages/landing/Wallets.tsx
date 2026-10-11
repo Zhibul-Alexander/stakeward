@@ -69,7 +69,7 @@ export function Wallets({ pairs = WALLET_PAIRS, checkedOn = WALLET_MATRIX_DATE }
       <div className="flex max-w-2xl flex-col gap-2 text-sm">
         <p className="text-pretty">{t('landing.wallets.phone')}</p>
         <p>
-          <HashLink href="#faq-ledger">{t('landing.wallets.ledgerLink')}</HashLink>
+          <HashLink href="/learn/faq#faq-ledger">{t('landing.wallets.ledgerLink')}</HashLink>
         </p>
       </div>
     </Section>

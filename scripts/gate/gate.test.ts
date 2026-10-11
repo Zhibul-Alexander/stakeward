@@ -110,8 +110,8 @@ describe('gate budget', () => {
 
   it('asks devnet for 1 SOL of minimum delegation on top of rents and fees', () => {
     const budget = gateBudget('devnet', LIVE_RENTS);
-    expect(budget.fees).toBe(262_400n);
-    expect(budget.required).toBe(1_010_584_960n);
+    expect(budget.fees).toBe(348_400n);
+    expect(budget.required).toBe(1_024_003_440n);
   });
 });
 

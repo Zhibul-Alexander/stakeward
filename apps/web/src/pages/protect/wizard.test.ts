@@ -155,7 +155,7 @@ describe('blockers', () => {
     expect(blockers('period', { ...ok, clockReady: false })).toEqual(['need-clock']);
   });
 
-  it('period: Custom date needs a valid date once the clock is read (D118)', () => {
+  it('period: Custom date needs a valid date once the clock is read (D119)', () => {
     expect(blockers('period', { ...ok, dateReady: false })).toEqual(['need-date']);
     expect(blockers('period', { ...ok, clockReady: false, dateReady: false })).toEqual(['need-clock']);
   });

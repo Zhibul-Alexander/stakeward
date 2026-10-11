@@ -5,7 +5,7 @@
 | Шаг | Состояние | Что ждёт владельца |
 | --- | --- | --- |
 | 0. Подготовка | готово: dev и prod развёрнуты на workers.dev (домен временный), Helius проверен | — |
-| 1. Проверка механизма | LiteSVM 24 из 24, devnet 21 из 21, mainnet 8 из 8 | прочитать docs/gate.md |
+| 1. Проверка механизма | LiteSVM 31 из 31 (11.10, с проверкой 15), devnet 21 из 21 (без 15), mainnet 8 из 8 | прочитать docs/gate.md |
 | 2. packages/core | готово | — |
 | 3. Каркас, дизайн-система, кошельки | развёрнуто в dev, тестовые аккаунты у Phantom 1; план Workers — Free | матрица на /dev/cosign (пара Phantom 1 / Phantom 2), /dev/ui, /design-sync, форма Phantom для prod |
 | 3б. Макеты | не начат | по-моему, заменить утверждением экранов по скриншотам `docs/screens` (вопрос владельцу) |
@@ -15,10 +15,35 @@
 | 7. Спасение, nonce, подпись по ссылке | готово, тесты зелёные | ручная проверка (TESTPLAN «Шаг 7»), вопросы D68–D70 |
 | 8. Карточка, лендинг, prod | готово; команды карточки на devnet — 26 из 26 (06.10.2026); на dev сборка 27af77c | чтение текстов, решение о выкатке в prod |
 | 9. Mainnet | не начат, это проверки владельца | TESTPLAN на mainnet с маленьким стейком, первые пользователи |
-| 10. Сверх плана | не начат | по-моему, вычеркнуть: до дедлайна важнее шаг 9 (вопрос владельцу) |
+| 10. Сверх плана | F7 сделан на месте (D129, 11.10); F8 и MWA не делаем (D100) | — |
 | 11. Финиш | README, черновики docs/SUBMISSION.md с источниками (06.10.2026), проверка безопасности (docs/SECURITY-CHECK.md), логотип | проход владельца по TESTPLAN (D107), проверка ссылок источников, видео, раздел бизнеса в SUBMISSION |
 
 Работа шла в ветке `build/product` (05–08.10.2026), с 08.10.2026 — в main (D111), шаги собираются в отдельных рабочих копиях git и сливаются в неё. Владелец разрешил 05.10.2026 не останавливаться на контрольных точках: всё, что требует кошельков, денег и доступов, собрано в docs/TESTPLAN.md.
+
+## Правки по ресёрч-циклу перед демо (11.10.2026)
+
+- Разбор находок: `/mnt/project-files/research-loop/triage.md` (файл проекта). PR #21 влит в эту ветку.
+- README, SUBMISSION, сайт: сервер хранит транзакцию только для спасения в одно нажатие (D118); Phantom проверен на mainnet, Ledger — на эмуляторе (D127); подпись по ссылке с Phantom первым на mainnet не проходит (D121); тревоги по валидатору (D128) в списках тревог и вне Pro; строка комиссии «Change the second key»; FAQ check-tx без «would have flagged».
+- Код: тревога LOCKUP_CHANGED советует Change second key (D105, поправка 11.10); `/kits` в подсказке бота.
+- Проверено: `pnpm typecheck`, `pnpm lint`; тесты web 995 + 1 skipped, worker 663, scripts 142, core 905 из 906. Падает `verify.review.test.ts` (small-order keys, Node WebCrypto) — только на Node 22 в облачном контейнере, файл не менялся; CI идёт на Node 24.
+- Отложено после демо: залог nonce в мастере спасения (A1.4) — режим подписи выбирается шагом позже проверки баланса, правка меняет порядок шагов; SECURITY-CHECK, DECISIONS для /learn и короткого экрана подписи, таблица состояния PROGRESS, FINISH-PLAN, DESIGN.md, /dev/ui.
+## Страница /challenge «Try to steal it» (11.10.2026, D133)
+
+- Сделано: devnet-страница `/challenge` с основным ключом кошелька-челленджа, адресами, датой замка, тем, что может и не может вор, и ссылками на /proof, /try-steal и эксплорер; маршрут воркера `GET /api/challenge` (только devnet) отдаёт ключ из секрета `CHALLENGE_MAIN_KEY`. Ключа в репозитории нет.
+- Чем проверено: web 1001 тест (+ challenge-key, страница с ошибкой и повтором), воркер 667 (`test/challenge.test.ts`), `pnpm typecheck`, `pnpm lint`; build-output: страница не попадает в mainnet-сборку.
+- Дальше: положить ключ в секрет dev-воркера (`wrangler secret put CHALLENGE_MAIN_KEY --env dev`) и выкатить dev.
+
+## Примерные доллары во вкладке Costs (11.10.2026, D132)
+
+- Сделано: `GET /api/sol-price` в воркере (Coinbase, запасной CoinGecko, кэш 5 минут), «≈ $» под суммами на /learn/costs и строка с курсом под таблицей.
+- Проверено: `apps/worker/test/sol-price.test.ts` (кэш, запасной источник, 502 без кэша, таймаут), `apps/web/test/sol-price.test.tsx` (округление, разбор ответа, вкладка с курсом и без), smoke Playwright на 1280 и 360.
+- Дальше: после деплоя в dev открыть /api/sol-price и /learn/costs: из контейнера сборки внешние API курса недоступны, живой ответ Coinbase из Cloudflare ещё не проверен.
+
+## Проверка здоровья валидатора (10.10.2026, D128)
+
+- Сделано: `packages/core/src/validator.ts` (декодер vote-аккаунта, риски, текст тревоги), стадия `checkValidators` в мониторинге, миграция 0007 `validators`, событие VALIDATOR_AT_RISK в Telegram.
+- Чем проверено: core `validator.test.ts` 14 тестов; воркер `test/monitor/validators.test.ts` 6 тестов, весь воркер 662 из 662; web 953; `pnpm typecheck`, `pnpm lint`. В core падает `verify.review.test.ts` (small-order keys): это Node 22 в облачной сессии, проекту нужен Node 24. К изменению не относится.
+- Дальше: применить миграцию 0007 на dev и prod до деплоя; сверить декодер с настоящим vote-аккаунтом mainnet; мастер переделегирования.
 
 ## QA-скилл: сквозные проверки с настоящими транзакциями (09.10.2026)
 
@@ -447,9 +472,66 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 
 - `pnpm typecheck`, `eslint apps/web`; web 109 файлов тестов, новый `test/demo.test.tsx` проходит сценарий целиком; e2e smoke на 1280 и 360 с `/demo` (axe, консоль, без запросов к /api). Снимки `docs/screens/demo-*`.
 - TODO (после запуска prod): Phantom блокирует подпись спасения (D116). Владелец подаёт заявку в форму domain review Phantom (https://docs.google.com/forms/d/1JgIxdmolgh_80xMfQKBKx9-QPC7LRdN6LHpFFW8BlKM/viewform, ссылка с docs.phantom.com, «Domain and transaction warnings») на постоянный prod-домен: что делает спасение, почему передача staker и withdrawer легитимна, скрин блока.
+- UX-аудит 10.10 (Владелец, по taste-skill): тексты про блок спасения в Phantom (D116) в таблице кошельков и FAQ, вопрос FAQ «Can the rescue start without me?» со ссылкой на `/rescue-kit`, в слоте ключа кнопка «Use it as … instead» для ключа, занятого другой ролью. Открыто: сократить лендинг (≈3 600 слов, из них 2 600 в FAQ), ждёт решения.
 - Ручной прогон 10.10 на dev (Владелец, Phantom + Solana CLI): вор с основным ключом под замком получил `lockup has not yet expired` и `custodian address not present`, переделегирование прошло, тревога «delegated again» пришла в Telegram через один цикл монитора. `pnpm qa:dev`: из 28 запущенных 27 прошли, мобильный F5 упал на 429 (лимит dev), повтор зелёный.
 - Mainnet, Protect: Phantom дописал Lighthouse и переставил аккаунты, сайт остановил подпись (`The account list was reordered`). Правило сравнения принимает другой порядок при тех же ролях и инструкциях (D117), по слову владельца.
 - Ветка `claude/project-thread-lsxzlt` (D118, согласовано с владельцем 10.10): заранее подписанное спасение. core `checkRescueKit` и сид nonce набора, воркер хранит и шлёт наборы (автоотправка на STAKER_CHANGED, кнопка «Rescue now»), сайт `/rescue-kit` и `/rescue-kit/:account`. Ручные проверки — TESTPLAN шаг 7, «Спасение в одно нажатие».
 - Mainnet, этап 6 (10.10.2026, эпоха 1054): стейк 1,05 SOL `J3JxhnHgVgnqh4VjHAADd4Z7HQzq4ExYt9MH2AEQ4QpV` (Acc 1) защищён на prod до 11.11.2026, второй ключ Acc 2. Подпись Acc 1 прошла после D117. На подписи Acc 2 Phantom трижды блокировал запрос: «Request blocked», «This dApp could be malicious», «This domain is new», «Are you sure?». Владелец прошёл через «Proceed anyway» по сводке сайта. Форму domain review Phantom подать сегодня (TESTPLAN «Шаг 3 д»); для пользователей это главный барьер.
-- Владелец попросил: свой срок замка (D118), короче экран подписи (меньше текста, без прокрутки). Сделано в рабочей копии, выкатка после этапа 6.
+- Владелец попросил: свой срок замка (D119), короче экран подписи (меньше текста, без прокрутки). Сделано в рабочей копии, выкатка после этапа 6.
 - Mainnet, этап 6, продолжение (10.10.2026): Unstake в Phantom с Acc 1 прошёл (снятие с делегирования замок не запрещает), activation = deactivation = 1054, стейк сразу неактивен. Phantom на запертом аккаунте показывает «Lockup Until Nov 11, 2026» и кнопки Withdraw не даёт. Контроль: Acc 2 снял замок (unixTimestamp 0) — у Phantom появилась «Withdraw Stake» (не нажимали); повторная защита Acc 1 + Acc 2 до 11.11.2026 — кнопка исчезла. Все тревоги (снятие с делегирования, изменения замка) пришли в Telegram. Новый срок и короткий экран подписи — на dev (9c09f29), в prod после спасения и вывода.
+
+## Живое демо в терминалах (10.10.2026)
+
+- `scripts/live-demo/sw.sh` и `role.sh`: механизм на сцене обычным Solana CLI, ключи ролей (main, second, new, thief) — одноразовые devnet-файлы в `.keys/live-demo/`. Сценарий и команды — `docs/live-demo.md`.
+- Проверено: весь сценарий на `solana-test-validator` 4.3.0; `scripts/live-demo/live-demo.test.ts` (разбор bash, help, разбор команд, ключи в .gitignore).
+- Дальше: владелец прогоняет сценарий на devnet в zsh на маке перед демо 13.10.
+- Mainnet, спасение (11.10.2026): Phantom, подписывая первым, ставит Compute Budget перед AdvanceNonceAccount, и nonce-транзакция становится недействительной (LiteSVM: `BlockhashNotFound`). Сайт остановил её правильно. Спасение со всеми ключами в браузере теперь на свежем блокхэше, одним раундом; по ссылке — на nonce, с Phantom первым на mainnet не работает (D121). Nonce-аккаунт Acc 3 `4pxrQV…` создан при первой попытке — закрыть после прохода.
+
+## «Not earning» и делегирование (11.10.2026)
+
+- По слову владельца: неактивный стейк ничего не зарабатывает, и об этом надо говорить, а валидатора давать выбрать из безопасных. Сделано (D134): пометка «Not earning» в строке, кнопка Delegate, страница `/delegate/:account` со списком валидаторов по открытым правилам в случайном порядке («No paid placement»), `getVoteAccounts` в прокси RPC.
+- Проверено: `pnpm typecheck`, `pnpm lint`; web 126 файлов зелёные (новые `test/delegate.test.tsx`, `test/delegate-plan.test.ts`), worker 675, core 908 из 909 (тот же `verify.review` под Node 22); `pnpm e2e` 18 из 18 (новый маршрут в smoke). Ручная проверка — TESTPLAN шаг 6, новый пункт.
+
+## Кнопки для ручных сценариев (11.10.2026)
+
+- Прошли README, карточку восстановления и /app в поисках сценариев «только в CLI». Без кнопки было два: смена второго ключа (второй ключ украден) и Withdraw на /app (у защищённых под More, у незащищённых не было вовсе).
+- Сделано (D129): core `change-second-key` (сборщик, инспектор, проверка «применилось», LiteSVM), страница `/change-key/:account`, ссылки в строках /app, в карточке восстановления и FAQ; README больше не говорит, что сайт этого не умеет. Withdraw — видимая кнопка строки; у Active/Activating она называется Unstake (дополнение к D129, 11.10).
+- Проверено: `pnpm typecheck`, `pnpm lint`; `TZ=UTC CI=true pnpm test`: core 833 из 834 (падает `verify.review` про small-order ключи — так же на main под Node 22 в контейнере, в CI Node 24), web 957 и 1 пропуск (новые `test/change-key.test.tsx`, `test/change-key-plan.test.ts`), scripts 135, worker 656; `pnpm e2e` 18 из 18 (новый маршрут в smoke). Ручная проверка — TESTPLAN шаг 6, два новых пункта.
+- Не сделано: смена ключа по ссылке (только на месте); снимки `docs/screens` новой страницы — после ручной проверки на dev.
+- Этап 6 TESTPLAN на mainnet пройден (владелец, 11.10.2026): защита, повторная защита, Unstake вором без вывода, контроль без замка, снятие замка вторым ключом, тревоги в Telegram, спасение Acc 1 → Acc 3 и обратно на блокхэше (D121). Вывод двумя ключами на mainnet не проверяли (стейк оставлен в работе); на devnet и LiteSVM он покрыт. Phantom на телефоне: просмотр по адресу открылся без ошибок.
+- Выкатка 11.10.2026: dev и prod на 43e24ec из GitHub Actions, `verify-deploy` PASS оба. В сборке: адреса 4+4 символа как в Phantom, Custom date в защите и продлении (D119), короткий экран подписи, спасение на блокхэше (D121).
+- Открыто у владельца: Required reviewers на окружении `prod` в GitHub; форма domain review Phantom (без неё Phantom блокирует подписи на prod); закрыть nonce-аккаунт Acc 3 `4pxrQV…` (залог ~0,00106 SOL).
+- Дальше: пункт 4 — презентация и позиционирование (11–12.10).
+
+## Публичный кошелёк «Try to steal it» на devnet (10.10.2026)
+
+### Сделано
+- `pnpm challenge-wallet`: делегированный стейк на devnet под замком (скрипт теперь ставит 13.10.2027), второй ключ хранится в `.keys/`, основной ключ печатается для публикации (D130).
+
+### Чем проверено
+- `scripts/challenge-wallet/challenge.test.ts` на LiteSVM: замок стоит, основной ключ один не выводит и не снимает замок.
+
+- Прогон на devnet (10.10, на Mac владельца, `--sol 0.1 --undelegated`: у funder не было 1 SOL на делегирование): стейк-аккаунт `FuXxGyzezXKrmHa784Uio8qfo4D9dzov639wPC6RTVA5`, 0,1017 SOL; основной ключ `9QeBtMG3LbdUz7sHHjmJMQ243Pn8Tb1A4WmwM3SJjRKf`; замок до 2099-12-31, хранитель `GhVdLekCV7KySTbDrdeFWyryPRxQsfbwBn6UUGS7FpK`. Proof: https://stakeward-dev.stakeward.workers.dev/proof/9QeBtMG3LbdUz7sHHjmJMQ243Pn8Tb1A4WmwM3SJjRKf
+
+- `POST /api/watch` отклонил замок до 2099 (`unsupported-lock`, предел был 400 дней). По слову владельца (11.10): предел мониторинга поднят до 10 лет, замок кошелька переносится на 13.10.2027 вторым ключом (D131).
+
+## Ledger на эмуляторе (10.10.2026)
+
+- `pnpm ledger-sim` + `scripts/ledger-sim/speculos.sh`: приложение Solana для Ledger из исходников в Speculos, все наши транзакции, экраны в `docs/ledger-sim.md` (D127). 25 из 25 — понятным текстом; с хвостом Lighthouse и в порядке аккаунтов без sysvar — слепая подпись.
+- Чем проверено: прогоны на Nano S Plus и Nano X, `vitest run ledger-sim` (4 теста), `tsc` scripts.
+- Не сделано: Phantom, Solflare и Backpack в эмуляции — в облачном контейнере закрыты Chrome Web Store и devnet. Дальше: решение владельца — открыть эти адреса в сетевых настройках окружения или прогнать на своём маке.
+- 11.10.2026: сценарии видео — `docs/VIDEO.md` (питч до 2:00 с владельцем в кадре, демо до 3:00 на devnet). SUBMISSION §6–7 ссылаются туда. Superteam Georgia: подача и на Colosseum, и на Earn (поля в чате 11.10), обязателен офлайн Demo Day, итоги 14.10.
+- 11.10.2026: Stakeward делали вдвоём (владелец и друг) — в питче «we». Добавить друга в команду на Colosseum (Team) и поправить ответ «Did anyone not listed … do meaningful work?»; ответ про «solo developer» в Earn «Anything Else?» не использовать.
+
+## Живое демо на mainnet (11.10.2026)
+
+- По просьбе владельца: гайд live-demo на mainnet вместо devnet (D137). `sw setup mainnet` создаёт ключ-спонсор, `sw fund` пополняет до нужного сценарию, `sw sweep` возвращает всё, включая незакрытые стейки под замком, на `SW_RETURN_TO`. Шапка `sw ui` называет сеть. На mainnet транзакции идут с приоритетной комиссией, отказы вора — без неё, чтобы они попадали в сеть.
+- В ветку взят фикс 9796fb3 (одна проверка RPC, не для `sw log` и `sw ui`), которого не было в main.
+- Проверено: `pnpm typecheck`, `pnpm lint`, `scripts` 152 теста, из них 15 в `live-demo.test.ts` (новые: сеть по адресу, пересчёт SOL и лампортов, приоритетная комиссия только на проходящих транзакциях, на mainnet без спонсора нет airdrop, `sweep` отправляет только на `SW_RETURN_TO`, сеть в шапке). Весь сценарий и `sweep` на `solana-test-validator` 4.3.0 на маке (`docs/live-demo.md`, «Чем проверено»).
+- Дальше: владелец переводит около 0,3 SOL на FUNDER, вписывает `SW_RETURN_TO` и Helius mainnet в `demo.env` и прогоняет сценарий на mainnet перед Demo Day.
+
+## Проверка 15 в gate: обходные пути вора (11.10.2026)
+
+- По вопросу владельца, точно ли вор с одним основным ключом не выведет SOL: в `scripts/gate` добавлена проверка 15 на отдельном S5 (staker = withdrawer = A, заперт B). Вор пробует обычный Authorize, Authorize и Withdraw со своим X в роли хранителя, AuthorizeWithSeed, AuthorizeCheckedWithSeed, MoveLamports и MoveStake в незапертый S6 с теми же полномочиями. Ожидаемые ошибки сверены с исходниками program@v5.1.0: `Authorized::authorize` проверяет замок раньше полномочий, MoveStake и MoveLamports сравнивают замки в общих проверках раньше, чем MoveStake требует активный стейк.
+- Проверено: `pnpm gate:litesvm` — 31 из 31 (docs/gate.md); `scripts` 152 из 152, в том числе планы devnet и mainnet на LiteSVM с точным бюджетом (devnet теперь просит 1,02400344 SOL, комиссии 348 400 лампортов); `pnpm typecheck`, `pnpm lint`. В `pnpm test` падает только `verify.review` в core (small-order ключи; локально Node 24.11.1 при engines ≥ 24.15), core не менялся.
+- Не сделано: прогон на devnet — ключа `.keys/devnet-funder.json` на этом маке нет, новый спонсор просит 1,02400344 SOL devnet. Mainnet не гоняли: программа побайтно та же (sha256 в docs/gate.md).

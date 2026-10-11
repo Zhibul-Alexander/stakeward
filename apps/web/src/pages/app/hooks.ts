@@ -12,6 +12,9 @@ export type StakeAccountsData = {
   accounts: readonly StakeAccount[];
 };
 
+/** Which searches run: by main key and by second key (/app), or by main key only (/proof). */
+export type StakeAccountsScope = 'main-and-second' | 'main';
+
 export type StakeAccountsState =
   | { status: 'loading' }
   | { status: 'error'; error: FriendlyError }
@@ -21,12 +24,13 @@ export type StakeAccountsState =
  * Reads what the accounts page needs from the chain: stake accounts whose main key is `address`, those whose lock
  * `address` holds, and the Clock sysvar. The search is cached for 30 s at the edge, so it only says which accounts
  * exist; their state is read again (refreshStakeAccounts), or a lock that just landed would look like one that ended
- * (DECISIONS D51). One failure fails the whole read: the page never shows a partial list.
+ * (DECISIONS D51). One failure fails the whole read: the page never shows a partial list. With `scope: 'main'` only
+ * the first search runs (the proof page, D124, proves the wallet's own stake).
  */
-export async function loadStakeAccounts(chain: ChainPort, address: Address): Promise<StakeAccountsData> {
+export async function loadStakeAccounts(chain: ChainPort, address: Address, scope: StakeAccountsScope = 'main-and-second'): Promise<StakeAccountsData> {
   const [byMainKey, bySecondKey, clock] = await Promise.all([
     chain.findStakeAccounts({ withdrawer: address }),
-    chain.findStakeAccounts({ custodian: address }),
+    scope === 'main' ? Promise.resolve({ accounts: [] }) : chain.findStakeAccounts({ custodian: address }),
     chain.getClock(),
   ]);
   const accounts = await refreshStakeAccounts(chain, [...byMainKey.accounts, ...bySecondKey.accounts]);
@@ -34,12 +38,17 @@ export async function loadStakeAccounts(chain: ChainPort, address: Address): Pro
 }
 
 /** The read for `address`, again whenever `attempt` changes (Refresh, Try again). Results of older reads are dropped. */
-export function useStakeAccounts(chain: ChainPort, address: Address, attempt: number): StakeAccountsState {
-  const key = `${address}#${String(attempt)}`;
+export function useStakeAccounts(
+  chain: ChainPort,
+  address: Address,
+  attempt: number,
+  scope: StakeAccountsScope = 'main-and-second',
+): StakeAccountsState {
+  const key = `${address}#${scope}#${String(attempt)}`;
   const [result, setResult] = useState<{ key: string; state: StakeAccountsState } | null>(null);
   useEffect(() => {
     let current = true;
-    loadStakeAccounts(chain, address).then(
+    loadStakeAccounts(chain, address, scope).then(
       (data) => {
         if (current) setResult({ key, state: { status: 'ready', data } });
       },
@@ -50,7 +59,7 @@ export function useStakeAccounts(chain: ChainPort, address: Address, attempt: nu
     return () => {
       current = false;
     };
-  }, [chain, address, key]);
+  }, [chain, address, scope, key]);
   return result !== null && result.key === key ? result.state : { status: 'loading' };
 }
 

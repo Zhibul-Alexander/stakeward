@@ -33,7 +33,7 @@ describe('AccountRow', () => {
         action={<button type="button">Extend</button>}
       />,
     );
-    const row = screen.getByRole('article', { name: 'Stake account AYA...DfW' });
+    const row = screen.getByRole('article', { name: 'Stake account AYA9...9DfW' });
     expect(row).toHaveTextContent('1,250.5 SOL');
     expect(screen.getByText('Protected')).toBeInTheDocument();
     expect(screen.getByText('Protected')).toHaveAttribute('data-size', 'sm');
@@ -54,9 +54,9 @@ describe('AccountRow', () => {
     const holder = screen.getByRole('article').querySelector('[data-slot="lock-holder"]');
     if (!(holder instanceof HTMLElement)) throw new Error('no lock holder');
     expect(holder).toHaveTextContent('Second key');
-    expect(within(holder).getByText('57M...3Sz')).toBeInTheDocument();
-    expect(within(holder).getByRole('button', { name: 'Copy address 57M...3Sz' })).toBeInTheDocument();
-    expect(within(holder).getByRole('link', { name: /^View 57M...3Sz on Solana Explorer/ })).toHaveAttribute('href', expect.stringContaining(OTHER));
+    expect(within(holder).getByText('57M4...w3Sz')).toBeInTheDocument();
+    expect(within(holder).getByRole('button', { name: 'Copy address 57M4...w3Sz' })).toBeInTheDocument();
+    expect(within(holder).getByRole('link', { name: /^View 57M4...w3Sz on Solana Explorer/ })).toHaveAttribute('href', expect.stringContaining(OTHER));
     // On a new device this is the owner's own lock as well: say what is not known and what to do, accuse no one.
     expect(
       screen.getByText(
@@ -78,7 +78,7 @@ describe('AccountRow', () => {
     expect(screen.queryByText('Locked by a second key')).toBeNull();
     const holder = row.querySelector('[data-slot="lock-holder"]');
     if (!(holder instanceof HTMLElement)) throw new Error('no lock holder');
-    expect(within(holder).getByText('57M...3Sz')).toBeInTheDocument();
+    expect(within(holder).getByText('57M4...w3Sz')).toBeInTheDocument();
     expect(screen.getByText('This is not the second key you connected here. If you did not set this lock, someone else holds it.')).toBeInTheDocument();
     expect(row).not.toHaveTextContent(/does not know this key|connect it/i);
   });
@@ -190,7 +190,7 @@ describe('AccountRow', () => {
     );
     expect(screen.getByRole('button', { name: 'Extend' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Withdraw' })).toBeNull();
-    const more = screen.getByRole('button', { name: 'More for stake account AYA...DfW' });
+    const more = screen.getByRole('button', { name: 'More for stake account AYA9...9DfW' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await user.click(more);
     expect(more).toHaveAttribute('aria-expanded', 'true');
@@ -211,11 +211,11 @@ describe('AccountRow', () => {
         protection="unprotected"
         managedByService={false}
         secondKeyKnown={false}
-        select={{ checked: false, onCheckedChange, label: 'Protect stake account AYA...DfW' }}
+        select={{ checked: false, onCheckedChange, label: 'Protect stake account AYA9...9DfW' }}
         meta={<span>Transaction 5Kx...</span>}
       />,
     );
-    const box = screen.getByRole('checkbox', { name: 'Protect stake account AYA...DfW' });
+    const box = screen.getByRole('checkbox', { name: 'Protect stake account AYA9...9DfW' });
     await user.click(box);
     expect(onCheckedChange).toHaveBeenCalledWith(true);
     expect(screen.getByText('Transaction 5Kx...').parentElement).toHaveTextContent('Inactive');
@@ -230,10 +230,10 @@ describe('AccountRow', () => {
         protection="locked-by-other"
         managedByService={false}
         secondKeyKnown={false}
-        select={{ checked: false, onCheckedChange: vi.fn(), label: 'Protect stake account AYA...DfW', disabled: true }}
+        select={{ checked: false, onCheckedChange: vi.fn(), label: 'Protect stake account AYA9...9DfW', disabled: true }}
       />,
     );
-    expect(screen.getByRole('checkbox', { name: 'Protect stake account AYA...DfW' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Protect stake account AYA9...9DfW' })).toBeDisabled();
   });
 
   it('hint={false} leaves the status sentence to the group; F6 shows no red sentence, only the red badge', () => {
@@ -242,7 +242,7 @@ describe('AccountRow', () => {
     );
     expect(screen.queryByText(/^This browser does not know this key yet/)).toBeNull();
     // The lock holder is the row's own fact, not part of the hint (D35).
-    expect(screen.getByRole('article').querySelector('[data-slot="lock-holder"]')).toHaveTextContent('57M...3Sz');
+    expect(screen.getByRole('article').querySelector('[data-slot="lock-holder"]')).toHaveTextContent('57M4...w3Sz');
     rerender(
       <AccountRow
         account={account(SECOND, 1_700_000_000n)}
@@ -303,15 +303,15 @@ describe('AccountRow', () => {
       </Router>,
     );
     const row = screen.getByRole('article');
-    await user.click(screen.getByRole('button', { name: 'More for stake account AYA...DfW' }));
+    await user.click(screen.getByRole('button', { name: 'More for stake account AYA9...9DfW' }));
     const tabbable = [...row.querySelectorAll<HTMLElement>('a[href], button')].map(
       (element) => element.getAttribute('aria-label') ?? element.textContent,
     );
     expect(tabbable).toEqual([
-      'Copy address AYA...DfW',
-      expect.stringMatching(/^View AYA...DfW on Solana Explorer/),
+      'Copy address AYA9...9DfW',
+      expect.stringMatching(/^View AYA9...9DfW on Solana Explorer/),
       'Extend',
-      'More for stake account AYA...DfW',
+      'More for stake account AYA9...9DfW',
       'Open Rescue',
       'Withdraw',
     ]);
@@ -368,10 +368,10 @@ describe('AccountList', () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();
     render(<AccountRowError address={OTHER} detail="HTTP 500" onRetry={onRetry} />);
-    const row = screen.getByRole('article', { name: 'Stake account 57M...3Sz' });
+    const row = screen.getByRole('article', { name: 'Stake account 57M4...w3Sz' });
     expect(row).toHaveAttribute('data-status', 'unknown');
     expect(within(row).getByText('Could not read this account.')).toHaveClass('text-danger');
-    expect(within(row).getByText('57M...3Sz')).toBeInTheDocument();
+    expect(within(row).getByText('57M4...w3Sz')).toBeInTheDocument();
     expect(within(row).getByText('Details').closest('details')).toHaveTextContent('HTTP 500');
     await user.click(within(row).getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();

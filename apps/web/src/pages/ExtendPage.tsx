@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useLoad } from '@/hooks/use-load';
 import { t } from '@/i18n';
 import { AccountView, InvalidAccountParam, loadedAccount } from '@/pages/account/AccountView';
+import { AlertFromLink } from '@/pages/alert/AlertFromLink';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { parseAccountParam, useAccountState } from '@/pages/account/load';
 import { useDeviceClock, usePorts } from '@/ports';
@@ -45,6 +46,7 @@ export function ExtendPage({ signing }: ExtendPageProps) {
   const loaded = loadedAccount(load);
   const rent0 = useLoad('rent0', () => chain.getMinimumBalanceForRentExemption(0));
   const [selected, setSelected] = useState<string | null>(null);
+  const [customDate, setCustomDate] = useState('');
   const [page, setPage] = useState<PageState>({ kind: 'choose' });
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
@@ -116,6 +118,8 @@ export function ExtendPage({ signing }: ExtendPageProps) {
         lead={t('extend.intro')}
         meta={<p>{t('common.neverSeedPhrase')}</p>}
       />
+      {/* Opened from a Telegram alert (D125): the account's main key names its watched accounts. */}
+      <AlertFromLink wallet={loaded?.account.withdrawer ?? null} waiting={load.status === 'loading' || load.status === 'idle'} onRetry={reread} />
       {account === null ? (
         <InvalidAccountParam />
       ) : (
@@ -128,6 +132,8 @@ export function ExtendPage({ signing }: ExtendPageProps) {
               removeParam={removeParam}
               selected={selected}
               onSelect={setSelected}
+              customDate={customDate}
+              onCustomDate={setCustomDate}
               onReread={reread}
               onContinue={(choice) => {
                 start({

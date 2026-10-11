@@ -151,6 +151,43 @@ export const CHECKS: readonly CheckSpec[] = [
     clusters: ['litesvm'],
   },
   { id: '14c', title: 'Withdraw всего S4 с подписью только A', expected: 'success', clusters: ['litesvm'] },
+  {
+    id: '15a',
+    title: 'Вор с ключом A: обычный Authorize(Withdrawer -> X) на S5 (staker = withdrawer = A, заперт B), без хранителя',
+    expected: 'CustodianMissing',
+    clusters: FULL,
+  },
+  {
+    id: '15b',
+    title: 'Вор с ключом A: Authorize(Withdrawer -> X), хранителем подписывает X вместо B',
+    expected: 'LockupInForce',
+    clusters: FULL,
+  },
+  {
+    id: '15c',
+    title: 'Вор с ключом A: AuthorizeWithSeed(Withdrawer -> X), base A, без хранителя',
+    expected: 'CustodianMissing',
+    clusters: FULL,
+  },
+  {
+    id: '15d',
+    title: 'Вор с ключом A: AuthorizeCheckedWithSeed(Withdrawer -> X), base A, подписи A и X, без хранителя',
+    expected: 'CustodianMissing',
+    clusters: FULL,
+  },
+  {
+    id: '15e',
+    title: 'Вор с ключом A: Withdraw всего S5, хранителем подписывает X вместо B',
+    expected: 'LockupInForce',
+    clusters: FULL,
+  },
+  {
+    id: '15f',
+    title: 'Вор с ключом A: MoveLamports 0,01 SOL из S5 в незапертый S6 с теми же полномочиями (staker = withdrawer = A)',
+    expected: 'MergeMismatch',
+    clusters: FULL,
+  },
+  { id: '15g', title: 'Вор с ключом A: MoveStake из S5 в S6', expected: 'MergeMismatch', clusters: FULL },
 ];
 
 export function checksFor(cluster: GateCluster): { id: string; title: string; expected: Expectation }[] {

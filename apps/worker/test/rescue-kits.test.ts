@@ -195,6 +195,7 @@ describe('POST /api/rescue-kits', () => {
         link_token_hash: await kitTokenHash(start.slice('kit-'.length)),
         chat_id: null,
         attempted_at: null,
+        auto_mode: 'staker',
       },
     ]);
     expect(JSON.stringify(await kitRows())).not.toContain(start.slice('kit-'.length));
@@ -212,7 +213,9 @@ describe('POST /api/rescue-kits', () => {
     const first = await signedRescueKit(STAKE);
     await watch(STAKE);
     await storeKit(first, 'sent', '777');
-    await env.DB.prepare("UPDATE rescue_kits SET sent_at = 1, signature = 'x', link_token_hash = 'old', attempted_at = 1").run();
+    await env.DB.prepare(
+      "UPDATE rescue_kits SET sent_at = 1, signature = 'x', link_token_hash = 'old', attempted_at = 1, auto_mode = 'off'",
+    ).run();
     const second = await signedRescueKit(STAKE, { keys: { mainKey: first.mainKey, secondKey: first.secondKey } });
     const res = await postKit(testApp(upstreamOf(chainFor(second)), { now }), { transaction: encodeBase64(second.bytes) });
     expect(res.status).toBe(200);
@@ -224,8 +227,9 @@ describe('POST /api/rescue-kits', () => {
         sent_at: null,
         signature: null,
         attempted_at: null,
-        // A new token, and the chat the old one bound is let go.
+        // A new token, the chat the old one bound is let go, and the auto mode is the default again (D120).
         chat_id: null,
+        auto_mode: 'staker',
       }),
     ]);
     expect((await kitRows())[0]?.link_token_hash).toMatch(/^[0-9a-f]{64}$/);
@@ -377,6 +381,7 @@ describe('GET /api/rescue-kits', () => {
       signature: null,
       sentAt: null,
       telegramLinked: false,
+      autoMode: null,
     });
   });
 
@@ -399,9 +404,14 @@ describe('GET /api/rescue-kits', () => {
       signature: null,
       sentAt: null,
       telegramLinked: false,
+      autoMode: 'staker',
     });
     await env.DB.prepare("UPDATE rescue_kits SET chat_id = '4242424242', link_token_hash = NULL").run();
     expect(await status()).toMatchObject({ status: 'ready', telegramLinked: true });
+    for (const mode of ['off', 'any', 'staker'] as const) {
+      await env.DB.prepare('UPDATE rescue_kits SET auto_mode = ?1').bind(mode).run();
+      expect(await status()).toMatchObject({ autoMode: mode });
+    }
 
     await env.DB.prepare("UPDATE rescue_kits SET status = 'sent', sent_at = ?1, signature = 'sig1'").bind(NOW_MS).run();
     expect(await status()).toEqual({
@@ -411,6 +421,7 @@ describe('GET /api/rescue-kits', () => {
       signature: 'sig1',
       sentAt: NOW_MS,
       telegramLinked: true,
+      autoMode: 'staker',
     });
     await env.DB.prepare("UPDATE rescue_kits SET status = 'stale'").run();
     expect(await status()).toMatchObject({ status: 'stale' });
@@ -642,5 +653,147 @@ describe('the "Rescue now" button: callback rk:<stake account>', () => {
     expect(down).toMatchObject({ method: 'answerCallbackQuery', text: 'The network did not answer. Try again in a minute.' });
     expect(sendCalls(upstream)).toHaveLength(2);
     expect(await kitRows()).toEqual([expect.objectContaining({ status: 'ready' })]);
+  });
+});
+
+describe('kit management from the bound chat (D120): /kits, rka:, rkd:', () => {
+  type Sent = { chat_id: string; text: string; reply_markup?: { inline_keyboard: { text: string; callback_data?: string; url?: string }[][] } };
+
+  async function boundKits(count: number): Promise<{ chat: number; kits: RescueKitSetup[]; upstream: ReturnType<typeof upstreamOf> }> {
+    const chat = freshChat();
+    const kits: RescueKitSetup[] = [];
+    for (let i = 0; i < count; i++) {
+      const kit = await signedRescueKit(key(20 + i));
+      await watch(kit.stakeAccount);
+      await storeKit(kit, 'ready', String(chat));
+      kits.push(kit);
+    }
+    const first = kits[0] ?? (await signedRescueKit(STAKE));
+    return { chat, kits, upstream: upstreamOf(chainFor(first)) };
+  }
+  const outbound = (upstream: ReturnType<typeof upstreamOf>) =>
+    upstream.calls.filter((c) => c.endpoint === 'other').map((c) => c.json as unknown as Sent & { callback_query_id?: string });
+
+  it('/kits in a chat without kits: one plain reply', async () => {
+    const { chat, upstream } = await boundKits(0);
+    const body = await (await command(testApp(upstream, { now }), chat, '/kits')).json<{ method: string; text: string }>();
+    expect(body).toMatchObject({ method: 'sendMessage', text: 'No one-tap rescue is linked to this chat.' });
+    expect(outbound(upstream)).toEqual([]);
+  });
+
+  it('/kits: one card per bound kit with its mode, Delete and Rescue now while ready; other chats see none', async () => {
+    const { chat, kits, upstream } = await boundKits(2);
+    const [ready, sent] = kits;
+    if (ready === undefined || sent === undefined) throw new Error('two kits');
+    await env.DB.prepare("UPDATE rescue_kits SET status = 'sent', auto_mode = 'any' WHERE stake_account = ?1").bind(sent.stakeAccount).run();
+    const res = await command(testApp(upstream, { now }), chat, '/kits');
+    expect(await res.json()).toEqual({});
+    const cards = outbound(upstream);
+    expect(cards.map((c) => c.chat_id)).toEqual([String(chat), String(chat)]);
+    expect(cards[0]?.text).toMatch(
+      /^Stake \S+ → new wallet \S+\. Status: ready\. Auto-rescue: when the key that can deactivate and delegate changes\.$/,
+    );
+    expect(cards[0]?.reply_markup?.inline_keyboard).toEqual([
+      [
+        { text: 'Auto: key change', callback_data: `rka:${ready.stakeAccount}` },
+        { text: 'Delete', callback_data: `rkd:${ready.stakeAccount}` },
+      ],
+      [{ text: 'Rescue now', callback_data: `rk:${ready.stakeAccount}` }],
+    ]);
+    expect(cards[1]?.text).toMatch(/Status: sent\. Auto-rescue: on any alarming change\.$/);
+    expect(cards[1]?.reply_markup?.inline_keyboard).toEqual([
+      [
+        { text: 'Auto: any change', callback_data: `rka:${sent.stakeAccount}` },
+        { text: 'Delete', callback_data: `rkd:${sent.stakeAccount}` },
+      ],
+    ]);
+    for (const card of cards) {
+      for (const row of card.reply_markup?.inline_keyboard ?? []) {
+        for (const button of row) expect(new TextEncoder().encode(button.callback_data ?? '').length).toBeLessThanOrEqual(64);
+      }
+    }
+
+    const stranger = upstreamOf(chainFor(ready));
+    const none = await (await command(testApp(stranger, { now }), freshChat(), '/kits')).json<{ text: string }>();
+    expect(none.text).toBe('No one-tap rescue is linked to this chat.');
+  });
+
+  it('rka: cycles off -> staker -> any -> off, persists it, and edits the card; another chat changes nothing', async () => {
+    const { chat, kits, upstream } = await boundKits(1);
+    const kit = kits[0];
+    if (kit === undefined) throw new Error('one kit');
+    const app = testApp(upstream, { now });
+    const modes = async () => (await kitRows()).map((row) => (row as KitRow & { auto_mode: string }).auto_mode);
+
+    const steps: [string, string, string][] = [
+      ['any', 'Auto: any change', 'Auto-rescue: on any alarming change.'],
+      ['off', 'Auto: off', 'Auto-rescue: off.'],
+      ['staker', 'Auto: key change', 'Auto-rescue: when the key that can deactivate and delegate changes.'],
+    ];
+    for (const [mode, label, sentence] of steps) {
+      const body = await (await tap(app, chat, `rka:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+      expect(body).toEqual({
+        method: 'editMessageText',
+        chat_id: String(chat),
+        message_id: 7,
+        text: expect.stringMatching(new RegExp(`Status: ready\\. ${sentence.replace(/\./g, '\\.')}$`)) as unknown,
+        link_preview_options: { is_disabled: true },
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: label, callback_data: `rka:${kit.stakeAccount}` },
+              { text: 'Delete', callback_data: `rkd:${kit.stakeAccount}` },
+            ],
+            [{ text: 'Rescue now', callback_data: `rk:${kit.stakeAccount}` }],
+          ],
+        },
+      });
+      expect(await modes()).toEqual([mode]);
+      expect(outbound(upstream).at(-1)).toMatchObject({ text: sentence });
+    }
+
+    const other = await (await tap(app, freshChat(), `rka:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+    expect(other).toMatchObject({ method: 'answerCallbackQuery', text: 'Not linked to this chat.' });
+    expect(await modes()).toEqual(['staker']);
+  });
+
+  it('rkd: deletes the kit of the bound chat only, and the card says where to close the signing account', async () => {
+    const { chat, kits, upstream } = await boundKits(1);
+    const kit = kits[0];
+    if (kit === undefined) throw new Error('one kit');
+    const app = testApp(upstream, { now });
+
+    const other = await (await tap(app, freshChat(), `rkd:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+    expect(other).toMatchObject({ method: 'answerCallbackQuery', text: 'Not linked to this chat.' });
+    expect(await kitRows()).toHaveLength(1);
+
+    const body = await (await tap(app, chat, `rkd:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+    const page = `https://stakeward.test/rescue-kit/${kit.stakeAccount}`;
+    expect(body).toEqual({
+      method: 'editMessageText',
+      chat_id: String(chat),
+      message_id: 7,
+      text: `Deleted. The signed rescue still works until your new wallet closes its kit signing account; you can do that on ${page}.`,
+      link_preview_options: { is_disabled: true },
+      reply_markup: { inline_keyboard: [[{ text: 'Open Stakeward', url: page }]] },
+    });
+    expect(outbound(upstream).at(-1)).toMatchObject({ text: 'Deleted.' });
+    expect(await kitRows()).toEqual([]);
+
+    // Gone: a second tap, or a Rescue now from the old alert, does nothing.
+    const again = await (await tap(app, chat, `rkd:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+    expect(again).toMatchObject({ method: 'answerCallbackQuery', text: 'Not linked to this chat.' });
+    const rescue = await (await tap(app, chat, `rk:${kit.stakeAccount}`)).json<Record<string, unknown>>();
+    expect(rescue).toMatchObject({ method: 'answerCallbackQuery', text: 'Not linked to this chat.' });
+    expect(upstream.calls.filter((c) => c.json.method === 'sendTransaction')).toEqual([]);
+  });
+
+  it('the bot link reply points to /kits', async () => {
+    const kit = await signedRescueKit(STAKE);
+    await watch(STAKE);
+    const app = testApp(upstreamOf(chainFor(kit)), { now });
+    const { telegramStart } = await (await postKit(app, { transaction: encodeBase64(kit.bytes) })).json<{ telegramStart: string }>();
+    const linked = await (await command(app, freshChat(), `/start ${telegramStart}`)).json<{ text: string }>();
+    expect(linked.text).toContain('Send /kits to choose when Stakeward sends the rescue by itself, or to delete it.');
   });
 });

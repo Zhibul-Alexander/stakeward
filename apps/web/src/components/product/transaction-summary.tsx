@@ -85,6 +85,7 @@ const CANNOT: Record<TransactionKind, readonly MessageKey[]> = {
   deactivate: ['components.tx.cannot.stakeStays', 'components.tx.cannot.noKeyChange'],
   delegate: ['common.cannotMoveSol', 'components.tx.cannot.noKeyChange'],
   rescue: ['components.tx.cannot.rescueNoMove', 'components.tx.cannot.keepsLock'],
+  'change-second-key': ['common.cannotMoveSol', 'components.tx.cannot.keepsEnd'],
   'nonce-setup': ['components.tx.cannot.noStake'],
   'nonce-close': ['components.tx.cannot.noStake'],
 };
@@ -491,6 +492,15 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
           after: <Full address={action.newWallet} role="new" />,
         },
         { label: lockLabel, before: lockNow, after: t('components.tx.lockUnchanged') },
+      ];
+    case 'change-second-key':
+      return [
+        {
+          label: roleLabel('second'),
+          before: <Full address={action.secondKey} />,
+          after: <Full address={action.newWallet} />,
+        },
+        { label: t('components.tx.lockEnd'), before: lockNow, after: t('components.tx.lockUnchanged') },
       ];
     case 'deactivate':
       return [{ label: t('components.tx.staking'), before: t('components.tx.delegated'), after: t('components.tx.deactivating') }];

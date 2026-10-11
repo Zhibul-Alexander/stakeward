@@ -61,7 +61,7 @@ export function Security() {
             <ExternalLink href={SOURCE_CODE_URL} label={t('landing.security.sourceLink')} />
           </RecoverLink>
           <RecoverLink last>
-            <HashLink href="#faq-on-chain">{t('landing.recover.onChain')}</HashLink>
+            <HashLink href="/learn/faq#faq-on-chain">{t('landing.recover.onChain')}</HashLink>
           </RecoverLink>
         </ul>
       </SubSection>

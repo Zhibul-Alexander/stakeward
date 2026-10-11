@@ -4,7 +4,7 @@ import { CircleCheckIcon, CircleDashedIcon, CoinsIcon, ShieldCheckIcon } from 'l
 const MAIN_KEY = 'B1agBSrGRgub2jXMJEozYkRLRzFc9HLd5hHjSrCtuXu8';
 const SECOND_KEY = '9DpLwZiYboWcwYFVtSjSksfaP9EqVoSuZw7Jofet96fi';
 
-/** Body with the card's side padding: what a protect transaction cannot do, as the signing summary lists it. */
+/** Body with the card's side padding: what a rescue transaction cannot do, as the signing summary lists it. */
 export const Text = () => (
   <Card className="w-full max-w-md">
     <CardHeader>
@@ -16,11 +16,11 @@ export const Text = () => (
       <ul className="flex flex-col gap-2 rounded-md bg-subtle p-3 text-sm">
         <li className="flex items-start gap-2">
           <ShieldCheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
-          <span>This transaction cannot move your SOL.</span>
+          <span>It cannot move your SOL out of the stake account: only its keys change.</span>
         </li>
         <li className="flex items-start gap-2">
           <ShieldCheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />
-          <span>It cannot change who can withdraw. Only the lock and its second key change.</span>
+          <span>It does not change the lock.</span>
         </li>
         <li className="flex items-start gap-2 font-medium">
           <ShieldCheckIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-success" />

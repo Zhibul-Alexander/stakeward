@@ -11,7 +11,7 @@ type AddressTextProps = {
   /** Base58 address, or a transaction signature with `kind="tx"`. */
   address: string;
   /**
-   * `short` (default): `7xK...9fQ` with copy and explorer link (UX rule 9).
+   * `short` (default): `7xKT...A9fQ` with copy and explorer link (UX rule 9).
    * `full`: the whole address in monospace, wrapping on narrow screens; for signing screens, where a shortened
    * address could be forged (DECISIONS.md D23).
    */

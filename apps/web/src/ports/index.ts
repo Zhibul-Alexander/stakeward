@@ -32,7 +32,9 @@ export {
   useProtectedAccounts,
   useRescueKits,
   useSlot,
+  useValidators,
   useWallets,
+  useWatchedAccounts,
   useWalletSlots,
   type Ports,
 } from './react.tsx';
@@ -50,5 +52,6 @@ export {
   type StorageLike,
 } from './slots.ts';
 export { MAX_RETRIES, REQUEST_TIMEOUT_MS } from './transport.ts';
+export { createValidatorDirectory, OFFER_READ, parseVoteAccounts, type ValidatorChoice, type ValidatorDirectory } from './validators.ts';
 export { StandardWalletRegistry, StaticWalletRegistry, type WalletRegistry } from './wallet-registry.ts';
 export { isSupportedWallet, StandardWalletPort } from './wallet-standard.ts';

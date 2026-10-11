@@ -53,6 +53,8 @@ export type PendingRow = {
   lock_until: string;
   /** The chat bound to the account's ready rescue kit, null without one. */
   kit_chat_id: string | null;
+  /** The new wallet of the account's rescue kit once it was sent, null otherwise (D135). */
+  kit_sent_to: Address | null;
 };
 
 /** A LINKS_FOR row. */
@@ -157,10 +159,13 @@ WHERE accounts.stake_account = r.value ->> '$.a'
   // ?1 = how many. Walks the partial index events_pending (id) WHERE notified_at IS NULL (migration 0003): it reads
   // the undelivered rows only, however many events were delivered before. kit_chat_id: the chat bound to the
   // account's ready rescue kit (migration 0005), whose alerts carry the "Rescue now" button; null otherwise.
+  // kit_sent_to: the new wallet of a kit already sent, whose alerts name the owner's own rescue (D135).
   PENDING: `SELECT e.id, e.stake_account, e.type, e.details_json, e.detected_at,
        a.withdrawer, a.custodian, CAST(a.lock_until AS TEXT) AS lock_until,
        (SELECT k.chat_id FROM rescue_kits k WHERE k.stake_account = e.stake_account AND k.status = 'ready')
-         AS kit_chat_id
+         AS kit_chat_id,
+       (SELECT k.new_wallet FROM rescue_kits k WHERE k.stake_account = e.stake_account AND k.status = 'sent')
+         AS kit_sent_to
 FROM events e JOIN accounts a ON a.stake_account = e.stake_account
 WHERE e.notified_at IS NULL ORDER BY e.id LIMIT ?1`,
 
@@ -248,8 +253,9 @@ FROM alert_links l WHERE l.chat_id = ?1 ORDER BY l.created_at, l.wallet`,
   WATCHED_LIVE: `SELECT 1 AS watched FROM accounts WHERE stake_account = ?1 AND state != 'closed'`,
 
   // ?1 stake account, ?2 tx (base64), ?3 main key, ?4 new wallet, ?5 nonce account, ?6 nonce value, ?7 now ms,
-  // ?8 link token hash. A new kit, or one that replaces the account's kit whatever its status: a new token, and the
-  // chat the old one bound is let go. Only while the account is watched (0 changes otherwise).
+  // ?8 link token hash. A new kit, or one that replaces the account's kit whatever its status: a new token, the chat
+  // the old one bound is let go, and the auto mode starts again at 'staker' (migration 0006). Only while the account
+  // is watched (0 changes otherwise).
   KIT_UPSERT: `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at,
                          status, sent_at, signature, link_token_hash, chat_id, attempted_at)
 SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready', NULL, NULL, ?8, NULL, NULL
@@ -258,10 +264,10 @@ ON CONFLICT (stake_account) DO UPDATE SET
   tx = excluded.tx, main_key = excluded.main_key, new_wallet = excluded.new_wallet,
   nonce_account = excluded.nonce_account, nonce_value = excluded.nonce_value, created_at = excluded.created_at,
   status = 'ready', sent_at = NULL, signature = NULL, link_token_hash = excluded.link_token_hash, chat_id = NULL,
-  attempted_at = NULL`,
+  attempted_at = NULL, auto_mode = 'staker'`,
 
   // ?1 stake account. Never the bytes, the token hash or the chat.
-  KIT_STATUS: `SELECT status, new_wallet, signature, sent_at, chat_id IS NOT NULL AS linked
+  KIT_STATUS: `SELECT status, new_wallet, signature, sent_at, chat_id IS NOT NULL AS linked, auto_mode
 FROM rescue_kits WHERE stake_account = ?1`,
 
   // ?1 token hash, ?2 chat. One-time: the hash is cleared as the chat is bound.
@@ -280,9 +286,25 @@ RETURNING tx, main_key, new_wallet`,
   // ?1 stake account, ?2 chat: why a claim failed (null row: no kit bound to this chat).
   KIT_OF_CHAT: `SELECT status FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2`,
 
-  // ?1 = [stake account]: the ready kits among them, for the monitor's auto-send.
-  KITS_READY_FOR: `SELECT stake_account, tx FROM rescue_kits
-WHERE status = 'ready' AND stake_account IN (SELECT value FROM json_each(?1)) ORDER BY stake_account`,
+  // ?1 = [{a: stake account, t: 'staker' | 'any'}]: the ready kits among them whose auto mode (migration 0006) the
+  // trigger matches, for the monitor's auto-send. A STAKER_CHANGED ('staker') sends in modes 'staker' and 'any', the
+  // other alarming events ('any') in mode 'any' only; 'off' never.
+  KITS_READY_FOR: `SELECT k.stake_account, k.tx FROM rescue_kits k JOIN json_each(?1) AS q ON k.stake_account = q.value ->> '$.a'
+WHERE k.status = 'ready'
+  AND (k.auto_mode = 'any' OR (k.auto_mode = 'staker' AND q.value ->> '$.t' = 'staker'))
+ORDER BY k.stake_account`,
+
+  // ?1 chat: the kits bound to it, for /kits (D120), at most ?2.
+  KITS_OF_CHAT: `SELECT stake_account, new_wallet, status, auto_mode FROM rescue_kits WHERE chat_id = ?1
+ORDER BY stake_account LIMIT ?2`,
+
+  // ?1 stake account, ?2 chat: the next auto mode, off -> staker -> any -> off; only the bound chat (D120).
+  KIT_CYCLE_MODE: `UPDATE rescue_kits SET auto_mode = CASE auto_mode WHEN 'off' THEN 'staker' WHEN 'staker' THEN 'any' ELSE 'off' END
+WHERE stake_account = ?1 AND chat_id = ?2
+RETURNING stake_account, new_wallet, status, auto_mode`,
+
+  // ?1 stake account, ?2 chat: deletes the kit; only the bound chat (D120).
+  KIT_DELETE: `DELETE FROM rescue_kits WHERE stake_account = ?1 AND chat_id = ?2 RETURNING stake_account`,
 
   // ?1 = [{a, tx, status, sig, at}]: the outcome of sends, each only on the kit that was sent (same bytes) and only
   // while it is still ready: a kit replaced or settled meanwhile stays as it is.
@@ -295,6 +317,28 @@ WHERE rescue_kits.stake_account = s.value ->> '$.a' AND rescue_kits.tx = s.value
   // ?1 wallet
   ACCOUNTS_FOR_WALLET: `SELECT stake_account, withdrawer, custodian, CAST(lock_until AS TEXT) AS lock_until, lamports, state, checked_at
 FROM accounts WHERE withdrawer = ?1 OR custodian = ?1 ORDER BY stake_account LIMIT 200`,
+
+  // Validator health (migration 0007, D128). ?1 = the last validator of the previous page ('' = from the start),
+  // ?2 = page size. The validators delegated, not deactivating, watched accounts point at, with the risks stored.
+  VALIDATOR_PAGE: `SELECT v.voter, val.risks FROM (SELECT DISTINCT voter FROM accounts
+                                         WHERE state = 'delegated' AND deactivation_epoch = '18446744073709551615'
+                                           AND voter > ?1) AS v
+LEFT JOIN validators val ON val.voter = v.voter
+ORDER BY v.voter LIMIT ?2`,
+
+  // ?1 = [{v: voter, d: details JSON}], ?2 = slot of the read, ?3 = detected_at ms: a VALIDATOR_AT_RISK event for
+  // every delegated, not deactivating, watched account of each validator.
+  VALIDATOR_EVENTS: `INSERT INTO events (stake_account, type, details_json, slot, detected_at)
+SELECT a.stake_account, 'VALIDATOR_AT_RISK', q.value ->> '$.d', ?2, ?3
+FROM json_each(?1) AS q JOIN accounts a ON a.voter = q.value ->> '$.v'
+WHERE a.state = 'delegated' AND a.deactivation_epoch = '18446744073709551615'
+ON CONFLICT (stake_account, type, slot) DO NOTHING`,
+
+  // ?1 = [{v: voter, r: risks JSON array}], ?2 = now ms.
+  VALIDATORS_PUT: `INSERT INTO validators (voter, risks, checked_at)
+SELECT q.value ->> '$.v', q.value ->> '$.r', ?2 FROM json_each(?1) AS q
+WHERE true
+ON CONFLICT (voter) DO UPDATE SET risks = excluded.risks, checked_at = excluded.checked_at`,
 
   // ?1 wallet
   EVENTS_FOR_WALLET: `SELECT stake_account, type, details_json, slot, detected_at FROM events

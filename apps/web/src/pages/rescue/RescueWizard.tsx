@@ -3,6 +3,7 @@ import { isLockupInForce, type ChainClock } from '@stakeward/core';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useSearch } from 'wouter';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { AlertFromLink } from '@/pages/alert/AlertFromLink';
 import { StepProgress } from '@/components/product/step-progress';
 import { Button } from '@/components/ui/button';
 import { t, type MessageKey } from '@/i18n';
@@ -257,6 +258,8 @@ export function RescueWizard({ signing, mode = 'rescue' }: { signing?: SigningTe
           />
         }
       />
+      {/* Opened from a Telegram alert's Open Rescue (D125): what it was, on the first step only. */}
+      {state.step === 'stake' && !kit ? <AlertFromLink wallet={paramA} /> : null}
       {state.step === 'stake' ? (
         <StakeStep
           headingRef={headingRef}

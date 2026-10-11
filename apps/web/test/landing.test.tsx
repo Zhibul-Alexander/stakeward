@@ -13,6 +13,9 @@ import { GATE_RESULTS_URL, README_RECOVERY_URL, SOURCE_CODE_URL } from '@/config
 import en from '@/i18n/en.json';
 import { CosignPage } from '@/pages/CosignPage';
 import { LandingPage } from '@/pages/LandingPage';
+import { useNonceDeposit } from '@/pages/landing/deposit.ts';
+import { useFaqParams } from '@/pages/landing/faq.ts';
+import { LEARN_TABS, LearnTabBody } from '@/pages/LearnPage';
 import { FAQ_GROUPS, type FaqId } from '@/pages/landing/faq.ts';
 import { Wallets } from '@/pages/landing/Wallets.tsx';
 import { LEDGER_CHECKED_ON, type PairSupport } from '@/pages/landing/wallet-support.ts';
@@ -49,6 +52,20 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
+/** Every /learn tab at once, so the content tests read the whole site's copy as the one-page layout did. */
+function AllLearnTabs() {
+  const deposit = useNonceDeposit();
+  const params = useFaqParams(deposit);
+  return (
+    <div data-testid="learn-tabs">
+      {LEARN_TABS.map((tab) => (
+        <LearnTabBody key={tab} tab={tab} deposit={deposit} params={params} />
+      ))}
+    </div>
+  );
+}
+
+/** `/` and, below it, every /learn tab (alerts, costs, wallets, safety, FAQ moved there from the landing page). */
 function renderLanding({ chain = new CountingChain(lite), cluster = 'devnet' }: { chain?: CountingChain; cluster?: Cluster } = {}) {
   const location = memoryLocation({ path: '/', record: true });
   render(
@@ -56,6 +73,7 @@ function renderLanding({ chain = new CountingChain(lite), cluster = 'devnet' }: 
       <Router hook={location.hook} searchHook={location.searchHook}>
         <PortsProvider ports={testPorts(chain, [])}>
           <LandingPage cluster={cluster} />
+          <AllLearnTabs />
         </PortsProvider>
       </Router>
     </StrictMode>,
@@ -114,11 +132,21 @@ describe('landing page structure', () => {
 
   it('links only to targets that exist, to /app, and to the repository in a new tab', async () => {
     renderLanding();
-    const hashLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
-    // Without the table of contents, every link into the page leads to an answer: from the second key's rules, the
-    // wallets, the recovery links, the co-sign callout and the Ledger answer.
-    expect(hashLinks.map((link) => link.getAttribute('href'))).toEqual(['#faq-good-second-key', '#faq-ledger', '#faq-on-chain', '#faq-co-sign', '#faq-terms']);
-    expect(hashLinks.map((link) => link.getAttribute('href')).filter((href) => document.getElementById((href ?? '#').slice(1)) === null)).toEqual([]);
+    const hashLinks = [...document.querySelectorAll<HTMLAnchorElement>('a[href*="#"]:not([href^="http"])')];
+    // Every link to an answer leads to the FAQ tab: from the second key's rules and the co-sign callout on `/`, then
+    // (tabs in order: FAQ, alerts, costs, wallets, safety) the Ledger answer, the wallets and the recovery links.
+    expect(hashLinks.map((link) => link.getAttribute('href'))).toEqual([
+      '/learn/faq#faq-good-second-key',
+      '/learn/faq#faq-co-sign',
+      '#faq-terms',
+      '/learn/faq#faq-ledger',
+      '/learn/faq#faq-on-chain',
+    ]);
+    const target = (href: string | null) => (href ?? '#').slice((href ?? '#').indexOf('#') + 1);
+    expect(hashLinks.map((link) => link.getAttribute('href')).filter((href) => document.getElementById(target(href)) === null)).toEqual([]);
+    // The way to the details: one link per /learn tab.
+    const learnMore = section('learn-more-title').closest('section') as HTMLElement;
+    expect([...learnMore.querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual(LEARN_TABS.map((tab) => `/learn/${tab}`));
 
     // Look first (UX rule 1): the hero's primary button and the closing call both go to /app; protecting is the
     // hero's outline alternative.
@@ -133,13 +161,13 @@ describe('landing page structure', () => {
     // If Stakeward disappears: the recovery cards, the guide, the source code and what changes on the network.
     const recover = section('recover');
     expect(within(recover).getByRole('link', { name: 'Find your recovery cards' })).toHaveAttribute('href', '/app');
-    expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '#faq-on-chain');
+    expect(within(recover).getByRole('link', { name: 'What changes on the network' })).toHaveAttribute('href', '/learn/faq#faq-on-chain');
     // The promise of recovery without Stakeward carries its condition where it is made.
     expect(recover).toHaveTextContent('Its Solana CLI steps need a Ledger or keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
     expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
-    expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '#faq-co-sign');
+    expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '/learn/faq#faq-co-sign');
 
     const external = [
       ['Read the source code (opens in a new tab)', SOURCE_CODE_URL],
@@ -175,6 +203,7 @@ describe('landing fees', () => {
     expect(rows.map((row) => row.querySelector('dt')?.textContent)).toEqual([
       'Protect a stake account',
       'Extend or remove a lock',
+      'Change the second key',
       'Withdraw',
       'Rescue a stake account',
       'Link-signing deposit',
@@ -185,6 +214,8 @@ describe('landing fees', () => {
     expect(within(fees).getByText('Paid by your main key, plus 0.0000056 SOL if the stake must stop staking first.')).toBeVisible();
     // CLAUDE.md section 5: the new wallet pays for a rescue, never the stolen main key.
     expect(within(fees).getByText('Paid by your new wallet.')).toBeVisible();
+    // A stolen second key never pays for handing the lock over (D129).
+    expect(within(fees).getByText('Paid by your new second key.')).toBeVisible();
 
     await depositShown();
     expect(section('faq-deposit')).toHaveTextContent(`The network asks for ${DEPOSIT} to keep it open`);
@@ -226,34 +257,35 @@ describe('landing network line', () => {
 });
 
 describe('landing wallet table', () => {
-  it('the wallet matrix of 8 October 2026: the one Phantom pair works here after a warning, by link not verified yet (D110)', async () => {
+  it('the wallet runs up to 11 October 2026: the one Phantom pair works here after a warning, not by link on mainnet (D110, D121)', async () => {
     renderLanding();
     const wallets = section('wallets');
     // Only the pair the matrix runs (TESTPLAN step 3: two Phantom accounts; no Solflare, Backpack or Ledger to test).
     expect([...wallets.querySelectorAll('[data-pair]')].map((pair) => pair.getAttribute('data-pair'))).toEqual(['phantom+phantom-imported']);
     const verdicts = [...wallets.querySelectorAll('[data-verdict]')].map((badge) => badge.getAttribute('data-verdict'));
-    expect(verdicts).toEqual(['works-with-warning', 'not-verified']);
+    expect(verdicts).toEqual(['works-with-warning', 'does-not-work']);
     expect(wallets).toHaveTextContent('Works, with a wallet warning');
-    expect(wallets).toHaveTextContent(en.landing.wallets.notes['authority-warning']);
-    expect(within(wallets).getByRole('note')).toHaveTextContent(en.landing.wallets.notVerified);
+    expect(wallets).toHaveTextContent(en.landing.wallets.notes['phantom-mainnet']);
+    // No pair is left unverified, so the not-verified note is gone.
+    expect(wallets).not.toHaveTextContent(en.landing.wallets.notVerified);
     expect(within(wallets).getAllByText('By link')).toHaveLength(1);
     expect(within(wallets).getAllByText('In one browser')).toHaveLength(1);
     expect(
       within(wallets).getByRole('heading', { level: 3, name: 'Phantom and Phantom, an account imported from another seed phrase' }),
     ).toBeInTheDocument();
     // The wallets that are not in the table are named as untested.
-    expect(wallets).toHaveTextContent('Solflare, Backpack and Ledger have not been tested yet.');
-    expect(wallets).toHaveTextContent('Tested on Solana devnet on 8 October 2026.');
+    expect(wallets).toHaveTextContent('Solflare and Backpack have not been tested yet.');
+    expect(wallets).toHaveTextContent('Last tested on Solana mainnet on 11 October 2026.');
     await depositShown();
   });
 
   it('promises no test that is not planned and claims none that has not run (UX rule П10)', async () => {
     renderLanding();
     expect(document.body.textContent).not.toMatch(/still testing|what we have tested|on a device yet|not tested yet/i);
-    // The Ledger is known from its Solana app's source code only: every answer that leans on it says so.
-    expect(section('faq-ledger')).toHaveTextContent('Stakeward has not been tested with a Ledger.');
-    expect(section('faq-good-second-key')).toHaveTextContent('Stakeward has not been tested with a Ledger');
-    expect(section('faq-fake-site')).toHaveTextContent("source code of Ledger's Solana app, not from a test on a device");
+    // The Ledger is known from its Solana app on the emulator only (D127): every answer that leans on it says so.
+    expect(section('faq-ledger')).toHaveTextContent('checked on its official emulator (Speculos), not on a device.');
+    expect(section('faq-good-second-key')).toHaveTextContent('Stakeward was checked on the Ledger emulator, not on a device');
+    expect(section('faq-fake-site')).toHaveTextContent("the name Ledger's Solana app shows on its official emulator");
     await depositShown();
   });
 
@@ -266,7 +298,7 @@ describe('landing wallet table', () => {
     expect(within(pair).getByText('Works')).toBeInTheDocument();
     expect(within(pair).getByText('Works, with a wallet warning')).toBeInTheDocument();
     expect(within(pair).getByText(en.landing.wallets.notes['phantom-first'])).toBeInTheDocument();
-    expect(screen.getByText('Tested on Solana devnet on 6 October 2026.')).toBeInTheDocument();
+    expect(screen.getByText('Last tested on Solana mainnet on 6 October 2026.')).toBeInTheDocument();
     expect(screen.queryByText(en.landing.wallets.notVerified)).toBeNull();
   });
 
@@ -276,7 +308,7 @@ describe('landing wallet table', () => {
     unmount();
     render(<Wallets pairs={[filled]} checkedOn="6.10.2026" />);
     expect(screen.getByText(en.landing.wallets.notVerified)).toBeInTheDocument();
-    expect(screen.queryByText(/Tested on Solana devnet/)).toBeNull();
+    expect(screen.queryByText(/Last tested on Solana/)).toBeNull();
   });
 });
 
@@ -354,7 +386,7 @@ describe('landing FAQ', () => {
     const labels = [...ledger.querySelectorAll('dt')].map((term) => term.textContent);
     for (const label of ['New authority', 'Custodian', 'Create nonce acct']) expect(labels).toContain(label);
     expect(LEDGER_CHECKED_ON).toBeNull();
-    expect(ledger).toHaveTextContent("This list comes from the source code of Ledger's Solana app, not from a device.");
+    expect(ledger).toHaveTextContent("This list comes from Ledger's Solana app, checked on its official emulator (Speculos), not on a device.");
     expect(ledger.querySelector('a[href="#faq-terms"]')).toHaveTextContent('What custodian, withdrawer and staker mean');
     expect(document.body.textContent).not.toContain('without blind signing');
     await depositShown();
@@ -406,7 +438,7 @@ describe('landing words and numbers', () => {
     // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Rescue or withdraw": withdrawing
     // takes both keys (F3), and a rescue needs a new wallet as well (F4: main key, second key and new wallet sign).
     expect(steps[0]).toHaveTextContent('Both keys sign.');
-    expect(steps[2]).toHaveTextContent('Both keys withdraw. Main key stolen? They and a new wallet rescue the stake.');
+    expect(steps[2]).toHaveTextContent('Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet.');
     // UX rule 6: the lock stops a thief only until it ends.
     expect(within(section('protects')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
     // CLAUDE.md 2.3: Phantom may append Lighthouse, so the claim is what Stakeward uses, and it names the programs.
@@ -461,12 +493,12 @@ describe('landing words and numbers', () => {
     expect(section('alerts').querySelector('details')).toBeNull();
     expect(within(section('alerts')).getByText(/messages you in Telegram when:$/)).toBeVisible();
     const triggers = [...section('alerts').querySelectorAll('ul > li')];
-    expect(triggers).toHaveLength(8);
+    expect(triggers).toHaveLength(9);
     for (const trigger of triggers) expect(trigger).toBeVisible();
     const figure = section('alerts').querySelector('figure') as HTMLElement;
     expect(figure.querySelector('figcaption')).toHaveTextContent('Example');
     expect([...figure.querySelectorAll('p')].map((p) => p.textContent)).toEqual([alert.text]);
-    expect(alert.text).toMatch(/^Stake \w{3}\.\.\.\w{3} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
+    expect(alert.text).toMatch(/^Stake \w{4}\.\.\.\w{4} was deactivated\. If this was not you, your main key may be stolen\. Your SOL cannot be withdrawn without the second key\.$/);
     expect(within(figure).getByText('Open Rescue')).toBeInTheDocument();
     // An example, not a control.
     expect(within(figure).queryByRole('button')).toBeNull();

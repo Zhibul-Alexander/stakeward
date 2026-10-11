@@ -81,6 +81,8 @@ describe('D1 migrations', () => {
       ['link_token_hash', 'TEXT', 0],
       ['chat_id', 'TEXT', 0],
       ['attempted_at', 'INTEGER', 0],
+      // 0006
+      ['auto_mode', 'TEXT', 1],
     ]);
     const insert = env.DB.prepare(
       `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at, status)
@@ -88,6 +90,27 @@ describe('D1 migrations', () => {
     );
     await insert.bind('Stake1').run();
     await expect(insert.bind('Stake1').run()).rejects.toThrow(/UNIQUE|PRIMARY KEY/);
+  });
+
+  it("0006 adds rescue_kits.auto_mode, TEXT NOT NULL DEFAULT 'staker', also to the kits stored before it", async () => {
+    expect((await columns('rescue_kits')).find((c) => c.name === 'auto_mode')).toEqual({
+      name: 'auto_mode',
+      type: 'TEXT',
+      notnull: 1,
+      dflt_value: "'staker'",
+    });
+    const migration = env.TEST_MIGRATIONS.find((m) => m.name.startsWith('0006_'));
+    expect(migration?.queries).toHaveLength(1);
+    // A kit stored under 0005 alone: rebuild the table without the column, then run 0006 on it.
+    await env.DB.prepare('DROP TABLE rescue_kits').run();
+    const created = env.TEST_MIGRATIONS.find((m) => m.name.startsWith('0005_'));
+    for (const query of created?.queries ?? []) await env.DB.prepare(query).run();
+    await env.DB.prepare(
+      `INSERT INTO rescue_kits (stake_account, tx, main_key, new_wallet, nonce_account, nonce_value, created_at, status)
+       VALUES ('Stake1', 'AA==', 'A', 'D', 'N', 'V', 1, 'ready')`,
+    ).run();
+    for (const query of migration?.queries ?? []) await env.DB.prepare(query).run();
+    expect(await env.DB.prepare('SELECT auto_mode FROM rescue_kits').first()).toEqual({ auto_mode: 'staker' });
   });
 
   it('0002 adds alert_links.last_event_id, INTEGER NOT NULL DEFAULT 0', async () => {

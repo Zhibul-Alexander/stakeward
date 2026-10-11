@@ -123,6 +123,13 @@ function transactionMessage(action: TransactionAction, options: BuildOptions) {
       "A rescue runs on a blockhash or on the new wallet's nonce account",
     );
   }
+  if (action.kind === 'change-second-key') {
+    check(options.feePayer === action.newWallet, 'A second key change is paid by the new second key');
+    check(
+      lifetime.kind === 'blockhash' || lifetime.nonceAuthority === action.newWallet,
+      "A second key change runs on a blockhash or on the new second key's nonce account",
+    );
+  }
   const instructions = [
     getSetComputeUnitLimitInstruction({ units: COMPUTE_UNIT_LIMIT }),
     getSetComputeUnitPriceInstruction({ microLamports: COMPUTE_UNIT_PRICE_MICRO_LAMPORTS }),
@@ -167,6 +174,18 @@ function actionInstructions(action: TransactionAction): Instruction[] {
           authority: signer(action.mainKey),
           newAuthority: signer(action.secondKey),
           unixTimestamp: action.lockUntil,
+          epoch: null,
+        }),
+      ];
+    case 'change-second-key':
+      requireDistinct([action.secondKey, action.newWallet, action.stakeAccount]);
+      check(action.newWallet !== ZERO_ADDRESS, 'New second key must not be the zero key');
+      return [
+        getSetLockupCheckedInstruction({
+          stake: action.stakeAccount,
+          authority: signer(action.secondKey),
+          newAuthority: signer(action.newWallet),
+          unixTimestamp: null,
           epoch: null,
         }),
       ];

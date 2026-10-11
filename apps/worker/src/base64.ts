@@ -23,7 +23,7 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 
 /**
  * True exactly when `decodeBase64(text)` is not null, without decoding: the monitor checks every account of a
- * getMultipleAccounts answer and decodes only the few that changed (CPU, DECISIONS.md D49). Canonical means the
+ * getMultipleAccounts answer and decodes only the few that changed (CPU, DECISIONS.md D56). Canonical means the
  * standard alphabet, padded to a multiple of 4, and zero bits under the padding.
  */
 export function isCanonicalBase64(text: string): boolean {

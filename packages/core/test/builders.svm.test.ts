@@ -141,6 +141,29 @@ describe('extend and unlock (SetLockup by the second key)', () => {
   });
 });
 
+describe('change-second-key (SetLockupChecked by the second key, F7)', () => {
+  it('hands the lock to a new second key, paid by it; the end stays and the old key loses the lock', async () => {
+    const lockup = lockedUntil(100n);
+    const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address, lockup });
+    const tx = build({ kind: 'change-second-key', stakeAccount, secondKey: K.address, newWallet: D.address });
+    expect(tx.meta.signers).toEqual([D.address, K.address]);
+    expectOk(await chain.send(tx.bytes, [D, K]), 'change-second-key');
+    expect(chain.stakeAccount(stakeAccount)?.lockup).toEqual({ ...lockup, custodian: D.address });
+
+    // The old second key can no longer change the lock: a thief who holds it is shut out.
+    const unlock = build({ kind: 'unlock', stakeAccount, secondKey: K.address });
+    expect((await chain.send(unlock.bytes, [K])).ok).toBe(false);
+    // The new one can.
+    expectOk(await chain.send(build({ kind: 'unlock', stakeAccount, secondKey: D.address }).bytes, [D]), 'unlock');
+  });
+
+  it('is refused while the lock is not in force: the main key protects then', async () => {
+    const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address });
+    const tx = build({ kind: 'change-second-key', stakeAccount, secondKey: K.address, newWallet: D.address });
+    expect((await chain.send(tx.bytes, [D, K])).ok).toBe(false);
+  });
+});
+
 describe('withdraw (legacy layout, main key + second key)', () => {
   it('withdraws the full balance of a locked account to the main key', async () => {
     const stakeAccount = await chain.createStakeAccount({ staker: A.address, withdrawer: A.address, lockup: lockedUntil(100n) });

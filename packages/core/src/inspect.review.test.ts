@@ -91,6 +91,7 @@ const ACTIONS: { [Kind in TransactionKind]: Extract<TransactionAction, { kind: K
   deactivate: { kind: 'deactivate', stakeAccount: S, staker: A },
   delegate: { kind: 'delegate', stakeAccount: S, staker: A, voteAccount: VOTE },
   rescue: { kind: 'rescue', stakeAccount: S, mainKey: A, secondKey: K, newWallet: D },
+  'change-second-key': { kind: 'change-second-key', stakeAccount: S, secondKey: K, newWallet: D },
   'nonce-setup': { kind: 'nonce-setup', nonceAccount: SETUP_NONCE, nonceAuthority: D, seed: NONCE_ACCOUNT_SEED, lamports: 1_056_640n },
   'nonce-close': { kind: 'nonce-close', nonceAccount: SETUP_NONCE, nonceAuthority: D, recipient: D, lamports: 1_056_640n },
 };
@@ -248,7 +249,7 @@ describe('review: what the summary exposes (accepted on purpose; the screens mus
   });
 
   // Withdraw and nonce close accept any recipient; nonce setup accepts any deposit. Shown in full on screen (a
-  // short "7xK...9fQ" form can be matched by a ground vanity address).
+  // short "7xKT...A9fQ" form can be matched by a ground vanity address).
   it('S4: recipients and deposits are taken from the bytes', async () => {
     const toThief = await summaryOf(build({ ...ACTIONS.withdraw, recipient: THIEF }, BLOCKHASH).bytes);
     expect(toThief.action).toMatchObject({ kind: 'withdraw', recipient: THIEF });

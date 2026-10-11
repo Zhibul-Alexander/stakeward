@@ -489,3 +489,17 @@ describe('review: HOLES (fixed)', () => {
     });
   });
 });
+
+describe('review: a changed instruction is described in the error', () => {
+  it('lists the sent and returned instructions (program, account count, first data bytes; public data only)', async () => {
+    const { main, lifetime, built } = await protect('nonce');
+    // An instruction put in front of the nonce advance, as a wallet adding its own would.
+    const inserted = craft([lighthouseInstruction(), ...instructionsOf(built.bytes)], main.address, lifetimeToken(lifetime));
+    const result = await checkSigningStep(built.bytes, inserted);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('message-changed');
+    expect(result.error.message).toContain('Instruction 1 was changed or a new instruction was inserted before it (sent: 1 1111…1111 3acc 04000000, 2 Comp…1111 0acc 02');
+    expect(result.error.message).toContain('; returned: 1 L2TE…3S95 0acc 0b00010203040506…, 2 1111…1111 3acc 04000000');
+  });
+});

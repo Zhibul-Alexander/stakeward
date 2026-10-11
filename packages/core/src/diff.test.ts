@@ -4,6 +4,7 @@ import { address, getAddressDecoder, type Address } from '@solana/kit';
 import { describe, expect, it } from 'vitest';
 import { U64_MAX } from './constants.ts';
 import type { StakeAccount } from './decode.ts';
+import { formatUtcDate } from './format.ts';
 import {
   diffSnapshots,
   formatAlert,
@@ -349,7 +350,7 @@ describe('formatAlert', () => {
     );
     expect(formatAlert(event, lockedNow)).toEqual({
       text:
-        'Stake 7xK...9fQ was deactivated. If this was not you, your main key may be stolen. ' +
+        'Stake 7xKT...A9fQ was deactivated. If this was not you, your main key may be stolen. ' +
         'Your SOL cannot be withdrawn without the second key.',
       buttonLabel: 'Open Rescue',
       path: `/rescue?address=${A}`,
@@ -365,16 +366,64 @@ describe('formatAlert', () => {
   it('says when the lock no longer protects the SOL', () => {
     const event = alertFor(change({ staker: X }));
     expect(formatAlert(event, { ...lockedNow, now: T }).text).toBe(
-      'The key that can deactivate and delegate stake 7xK...9fQ changed to ' +
-        `${X.slice(0, 3)}...${X.slice(-3)}. If this was not you, your main key may be stolen. ` +
+      'The key that can deactivate and delegate stake 7xKT...A9fQ changed to ' +
+        `${X.slice(0, 4)}...${X.slice(-4)}. If this was not you, your main key may be stolen. ` +
         'The lock is not in force, so the main key alone can withdraw this SOL.',
     );
+  });
+
+  describe('after Stakeward sent the one-tap rescue (D135)', () => {
+    const short = (key: string) => `${key.slice(0, 4)}...${key.slice(-4)}`;
+    const rescued = { ...lockedNow, rescueSentTo: D };
+
+    it('the trigger names the rescue and opens the new wallet, not the rescue wizard', () => {
+      const event = alertFor(
+        change({ delegation: { voter: V1, stake: 5_000_000_000n, activationEpoch: 990n, deactivationEpoch: EPOCH } }),
+      );
+      expect(formatAlert(event, rescued)).toEqual({
+        text:
+          'Stake 7xKT...A9fQ was deactivated. If this was not you, your main key may be stolen. Stakeward already ' +
+          `sent your one-tap rescue: this stake moves to your new wallet ${short(D)}. ` +
+          'Your SOL cannot be withdrawn without the second key.',
+        buttonLabel: 'Open Stakeward',
+        path: `/app?address=${D}`,
+      });
+    });
+
+    it('a new staker that is the new wallet is the rescue, not a theft', () => {
+      const alert = formatAlert(alertFor(change({ staker: D })), { ...rescued, withdrawer: D });
+      expect(alert.text).toBe(
+        `Your one-tap rescue moved the key that can deactivate and delegate stake 7xKT...A9fQ to your new wallet ${short(D)}. ` +
+          'The old main key can no longer deactivate or delegate it.',
+      );
+      expect(alert.text).not.toContain('stolen');
+      expect(alert.path).toBe(`/app?address=${D}`);
+    });
+
+    it('a new main key that is the new wallet completes the rescue and says how to withdraw', () => {
+      const alert = formatAlert(alertFor(change({ withdrawer: D })), { ...rescued, withdrawer: D });
+      expect(alert.text).toBe(
+        `Your one-tap rescue is done: the main key of stake 7xKT...A9fQ is now your new wallet ${short(D)}. ` +
+          `The old main key can no longer touch this stake. The lock still holds until ${String(formatUtcDate(T))}: ` +
+          'to withdraw, sign with the new wallet and the second key.',
+      );
+      expect(formatAlert(alertFor(change({ withdrawer: D })), { ...rescued, withdrawer: D, now: T }).text).toContain(
+        'The lock is not in force, so the new wallet alone can withdraw this SOL.',
+      );
+    });
+
+    it('a key moved anywhere else is still an alarm', () => {
+      expect(formatAlert(alertFor(change({ staker: X })), rescued).text).toContain(
+        'If this was not you, your main key may be stolen.',
+      );
+      expect(formatAlert(alertFor(change({ withdrawer: X })), rescued).text).toContain('both of your keys may be stolen');
+    });
   });
 
   it('names the new owner and links to its accounts', () => {
     const event = alertFor(change({ withdrawer: D }));
     const alert = formatAlert(event, { ...lockedNow, withdrawer: D });
-    expect(alert.text).toContain('The main key of stake 7xK...9fQ changed to');
+    expect(alert.text).toContain('The main key of stake 7xKT...A9fQ changed to');
     expect(alert.text).toContain('If this was not your rescue, both of your keys may be stolen.');
     expect(alert.path).toBe(`/app?address=${D}`);
   });
@@ -387,25 +436,25 @@ describe('formatAlert', () => {
     // Every sentence names the key it means: no "it" that could read as "this SOL".
     const removeAndProtect =
       'Only the second key can do this. If this was not you, your second key may be stolen. ' +
-      'In that case, if you still have the second key, remove the lock with it now, then protect this stake again with a ' +
-      'new second key; until then the main key alone can withdraw this SOL. ' +
+      'In that case, if you still have the second key, hand the lock to a new second key now with Change second key: ' +
+      'the old key and the new one sign together, the lock keeps holding, and the old key can no longer change it. ' +
       'If you no longer have the second key, you cannot undo this, but your SOL still cannot leave without the main key.';
     const accountsButton = { buttonLabel: 'Open Stakeward', path: `/app?address=${A}` };
-    // A routine renewal by the second key (the answer to a reminder) moves the date too: a neutral button to the lock's
-    // page, which offers both a new end and the removal, never straight to the removal.
-    const lockButton = { buttonLabel: 'Review the lock', path: `/extend/${STAKE}` };
-    const short = (address: Address) => `${address.slice(0, 3)}...${address.slice(-3)}`;
+    // D129: the way out hands the lock to a new second key at once, never through a removal that leaves the main key
+    // alone in control.
+    const lockButton = { buttonLabel: 'Change second key', path: `/change-key/${STAKE}` };
+    const short = (address: Address) => `${address.slice(0, 4)}...${address.slice(-4)}`;
 
-    it('the second key extended a lock in force: remove it now and protect again; the button opens the lock page', () => {
+    it('the second key extended a lock in force: hand the lock to a new second key; the button opens Change second key', () => {
       expect(formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY })).toEqual({
-        text: `The lock on stake 7xK...9fQ was extended to 12 May 2027. ${removeAndProtect}`,
+        text: `The lock on stake 7xKT...A9fQ was extended to 12 May 2027. ${removeAndProtect}`,
         ...lockButton,
       });
     });
 
     it('shortened and still in force: the same advice and button', () => {
       expect(formatAlert(lockMoved(NOW + 10n * DAY), { ...lockedNow, lockUntil: NOW + 10n * DAY })).toEqual({
-        text: `The lock on stake 7xK...9fQ was shortened to 11 October 2026. ${removeAndProtect}`,
+        text: `The lock on stake 7xKT...A9fQ was shortened to 11 October 2026. ${removeAndProtect}`,
         ...lockButton,
       });
     });
@@ -414,7 +463,7 @@ describe('formatAlert', () => {
       // The date move by K went out late (Telegram down, a full window); meanwhile the lock passed to K2, so K can no
       // longer remove it.
       expect(formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, custodian: K2, lockUntil: T + 30n * DAY })).toEqual({
-        text: `The lock on stake 7xK...9fQ was extended to 12 May 2027. ${secondKeyStolen}`,
+        text: `The lock on stake 7xKT...A9fQ was extended to 12 May 2027. ${secondKeyStolen}`,
         ...accountsButton,
       });
     });
@@ -422,21 +471,21 @@ describe('formatAlert', () => {
     it('the moved lock has ended by the time the alert goes out: nothing to remove, the accounts page', () => {
       const event = lockMoved(NOW + DAY);
       expect(formatAlert(event, { ...lockedNow, lockUntil: NOW + DAY, now: NOW + 2n * DAY })).toEqual({
-        text: `The lock on stake 7xK...9fQ was shortened to 2 October 2026. ${secondKeyStolen}`,
+        text: `The lock on stake 7xKT...A9fQ was shortened to 2 October 2026. ${secondKeyStolen}`,
         ...accountsButton,
       });
     });
 
     it('a new second key: it may be stolen; the accounts page, since only that key can change the lock now', () => {
       expect(formatAlert(lockMoved(T, K2), lockedNow)).toEqual({
-        text: `The second key of stake 7xK...9fQ changed to ${short(K2)}. ${secondKeyStolen}`,
+        text: `The second key of stake 7xKT...A9fQ changed to ${short(K2)}. ${secondKeyStolen}`,
         ...accountsButton,
       });
     });
 
     it('a new second key and a new end at once (F7): the accounts page', () => {
       expect(formatAlert(lockMoved(T + DAY, K2), { ...lockedNow, lockUntil: T + DAY })).toEqual({
-        text: `The lock on stake 7xK...9fQ was extended to 13 April 2027. Its second key is now ${short(K2)}. ${secondKeyStolen}`,
+        text: `The lock on stake 7xKT...A9fQ was extended to 13 April 2027. Its second key is now ${short(K2)}. ${secondKeyStolen}`,
         ...accountsButton,
       });
     });
@@ -444,7 +493,7 @@ describe('formatAlert', () => {
     it('warns that a removed lock leaves the main key alone in control, and says to protect it again with a new key', () => {
       expect(formatAlert(lockMoved(0n), { ...lockedNow, lockUntil: 0n })).toEqual({
         text:
-          'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
+          'The lock on stake 7xKT...A9fQ was removed. Only the second key can do this. ' +
           'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL. ' +
           'If you did not remove it, protect this stake again now with your main key and a new second key.',
         ...accountsButton,
@@ -455,7 +504,7 @@ describe('formatAlert', () => {
       // Removed on purpose (the F3 fallback) or not, the stake is locked again by the time the alert goes out.
       expect(formatAlert(lockMoved(0n), { ...lockedNow, lockUntil: T })).toEqual({
         text:
-          'The lock on stake 7xK...9fQ was removed. Only the second key can do this. ' +
+          'The lock on stake 7xKT...A9fQ was removed. Only the second key can do this. ' +
           'If this was not you, your second key may be stolen. The main key alone can now withdraw this SOL.',
         ...accountsButton,
       });
@@ -466,28 +515,28 @@ describe('formatAlert', () => {
       const [event] = diffSnapshots(ended, locked, context());
       if (event === undefined) throw new Error('no event');
       expect(formatAlert(event, lockedNow)).toEqual({
-        text: 'The lock on stake 7xK...9fQ was extended to 12 April 2027. If this was not you, your main key may be stolen.',
+        text: 'The lock on stake 7xKT...A9fQ was extended to 12 April 2027. If this was not you, your main key may be stolen.',
         ...accountsButton,
       });
     });
 
-    it('the removal advice stays plain text in the UI vocabulary and links to the site', () => {
+    it('the change-key advice stays plain text in the UI vocabulary and links to the site', () => {
       const alert = formatAlert(lockMoved(T + 30n * DAY), { ...lockedNow, lockUntil: T + 30n * DAY });
       expect(alert.text).not.toMatch(/custodian|withdrawer|staker|<|>|\*|_|`|\[/i);
-      expect(alert.path).toMatch(/^\/extend\/[1-9A-HJ-NP-Za-km-z]+$/);
+      expect(alert.path).toMatch(/^\/change-key\/[1-9A-HJ-NP-Za-km-z]+$/);
     });
   });
 
   it('reports the amount that left the stake', () => {
     const event = alertFor(change({ lamports: 3_001_666_240n }));
-    expect(formatAlert(event, lockedNow).text).toMatch(/^2 SOL left stake 7xK\.\.\.9fQ; 3\.00166624 SOL remains\. /);
+    expect(formatAlert(event, lockedNow).text).toMatch(/^2 SOL left stake 7xKT\.\.\.A9fQ; 3\.00166624 SOL remains\. /);
   });
 
   it('expired: asks to protect again and gives the date', () => {
     const event = alertFor(locked, context(T));
     expect(formatAlert(event, { ...lockedNow, now: T })).toEqual({
       text:
-        'The lock on stake 7xK...9fQ ended on 12 April 2027. ' +
+        'The lock on stake 7xKT...A9fQ ended on 12 April 2027. ' +
         'The main key alone can now withdraw this SOL. Protect it again to keep it safe.',
       buttonLabel: 'Protect again',
       path: `/app?address=${A}`,
@@ -549,7 +598,7 @@ describe('reminders', () => {
   it('reminder text and the extend link for the second key', () => {
     expect(formatReminder({ stakeAccount: STAKE, lockUntil: T, now: T - 7n * DAY + 6n * 3_600n })).toEqual({
       text:
-        'The lock on stake 7xK...9fQ ends on 12 April 2027 (in 7 days). ' +
+        'The lock on stake 7xKT...A9fQ ends on 12 April 2027 (in 7 days). ' +
         'After that the main key alone can withdraw this SOL. Your second key can extend the lock.',
       buttonLabel: 'Extend lock',
       path: `/extend/${STAKE}`,

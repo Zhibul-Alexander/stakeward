@@ -83,13 +83,30 @@ describe('monitor: rescue kit auto-send', () => {
     expect(JSON.stringify(h.logs)).not.toContain(CHAT);
     expect((await h.readMeta()).kit_queue).toBe('[]');
 
-    // The kit was sent before the alert went out: no "Rescue now", the usual button.
-    expect(h.telegram.delivered(CHAT).map((m) => m.button?.label)).toEqual(['Open Rescue']);
+    // The kit was sent before the alert went out: no "Rescue now"; the alert names the rescue already sent and opens
+    // the new wallet's accounts (D135).
+    const [alert] = h.telegram.delivered(CHAT);
+    expect(alert?.button?.label).toBe('Open Stakeward');
+    expect(alert?.text).toContain('Stakeward already sent your one-tap rescue: this stake moves to your new wallet');
 
     // Nothing more to send on the next passes.
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ kitSends: 0 });
     expect(sends(h)).toHaveLength(1);
+
+    // The rescue lands: both keys move to the new wallet. The alerts name the owner's own rescue, not a theft.
+    const newWallet = await env.DB.prepare('SELECT new_wallet FROM rescue_kits WHERE stake_account = ?1')
+      .bind(STAKE)
+      .first<string>('new_wallet');
+    if (newWallet === null) throw new Error('no kit');
+    await h.linkChat(newWallet as Address, CHAT);
+    h.chain.putStake(STAKE, { ...SPEC, staker: newWallet as Address, withdrawer: newWallet as Address });
+    h.advance(120_000);
+    await h.pass();
+    const landed = h.telegram.delivered(CHAT).slice(1).map((m) => m.text);
+    expect(landed.join('\n')).toContain('Your one-tap rescue moved the key that can deactivate and delegate');
+    expect(landed.join('\n')).toContain('Your one-tap rescue is done: the main key of');
+    expect(landed.join('\n')).not.toContain('stolen');
   });
 
   it('a DEACTIVATED alone sends nothing: the kit stays ready; the bound chat gets "Rescue now", another chat the link', async () => {
@@ -103,7 +120,7 @@ describe('monitor: rescue kit auto-send', () => {
     expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
     expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Rescue now', callbackData: `rk:${STAKE}` }]);
     expect(h.telegram.delivered(otherChat).map((m) => m.button)).toEqual([
-      { label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` },
+      { label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}&event=DEACTIVATED&stake=${STAKE}` },
     ]);
   });
 
@@ -112,7 +129,7 @@ describe('monitor: rescue kit auto-send', () => {
     h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
     h.advance(120_000);
     await h.pass();
-    expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}` }]);
+    expect(h.telegram.delivered(CHAT).map((m) => m.button)).toEqual([{ label: 'Open Rescue', url: `${SITE}/rescue?address=${MAIN}&event=DEACTIVATED&stake=${STAKE}` }]);
   });
 
   it('delegation and balance alerts carry it too, and a message with another account takes the kit account', async () => {
@@ -140,6 +157,48 @@ describe('monitor: rescue kit auto-send', () => {
     expect(message?.button?.url).toMatch(/^https:\/\/stakeward\.test\//);
   });
 
+  it("auto mode 'any' sends on a DEACTIVATED too (D120); 'staker' does not", async () => {
+    const other = key(11);
+    const { h } = await withKits([STAKE, other]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'any' WHERE stake_account = ?1").bind(STAKE).run();
+    h.chain.putStake(STAKE, { ...SPEC, deactivationEpoch: 951n });
+    h.chain.putStake(other, { ...SPEC, deactivationEpoch: 951n });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 2, kitSends: 1, kitsSent: 1 });
+    expect(await kits()).toEqual([
+      expect.objectContaining({ stake_account: STAKE, status: 'sent' }),
+      expect.objectContaining({ stake_account: other, status: 'ready' }),
+    ]);
+    // The 'staker' kit left the queue: its mode does not take a DEACTIVATED.
+    expect((await h.readMeta()).kit_queue).toBe('[]');
+  });
+
+  it("auto mode 'any' sends on a delegation or balance change", async () => {
+    const { h } = await withKits([STAKE]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'any'").run();
+    h.chain.putStake(STAKE, SPEC, 9_000_000_000n);
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', kitSends: 1, kitsSent: 1 });
+  });
+
+  it("auto mode 'off' never sends, not even on a STAKER_CHANGED; the kit stays ready", async () => {
+    const { h } = await withKits([STAKE]);
+    await env.DB.prepare("UPDATE rescue_kits SET auto_mode = 'off'").run();
+    h.chain.putStake(STAKE, { ...SPEC, staker: THIEF });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 1, kitSends: 0 });
+    expect(sends(h)).toEqual([]);
+    expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
+    expect((await h.readMeta()).kit_queue).toBe('[]');
+  });
+
+  it('a queue stored by D118 (bare addresses) reads as STAKER_CHANGED entries', async () => {
+    const { h } = await withKits([STAKE]);
+    await h.setMeta({ kit_queue: JSON.stringify([STAKE, 'not an address']) });
+    h.advance(120_000);
+    expect(await h.pass()).toMatchObject({ outcome: 'ok', events: 0, kitSends: 1, kitsSent: 1 });
+  });
+
   it('a nonce that moved on marks the kit stale; an RPC failure keeps it queued for the next pass', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { h } = await withKits();
@@ -148,7 +207,7 @@ describe('monitor: rescue kit auto-send', () => {
     h.advance(120_000);
     expect(await h.pass()).toMatchObject({ outcome: 'ok', kitSends: 1, kitsSent: 0 });
     expect(await kits()).toEqual([expect.objectContaining({ status: 'ready' })]);
-    expect(JSON.parse((await h.readMeta()).kit_queue ?? '[]')).toEqual([STAKE]);
+    expect(JSON.parse((await h.readMeta()).kit_queue ?? '[]')).toEqual([{ a: STAKE, t: 'staker' }]);
 
     h.chain.sendReply = () => ({
       error: { code: -32002, message: 'Transaction simulation failed: Blockhash not found', data: { err: 'BlockhashNotFound' } },

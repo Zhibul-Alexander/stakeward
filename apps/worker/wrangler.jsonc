@@ -41,6 +41,8 @@
   //   ADMIN_CHAT_ID            required. Telegram chat id for monitor and worker error reports.
   //   TELEGRAM_BOT_USERNAME    required. The bot's username without `@`.
   //   SITE_ORIGIN              required. This environment's site origin, `https://...` without a trailing slash.
+  //   CHALLENGE_MAIN_KEY       optional, dev only. The published main key of the devnet challenge wallet, base58 of its
+  //                            64-byte keypair (src/challenge.ts, DECISIONS D133). Never the second key.
   // TELEGRAM_BOT_USERNAME and SITE_ORIGIN are not secret, but they live with the secrets (in .dev.vars.<env> too):
   // `wrangler types` gives `vars` literal types and CI checks that the types are fresh, while secrets are typed `string`
   // and can change without a commit. With secrets.required the FIRST deploy of a new Worker must pass them all:
@@ -50,7 +52,7 @@
   // Cron trigger: one monitor pass every 2 minutes per environment; dev and prod take 2 of the account's 5 free triggers.
   // Rate limits, Workers rate limiting binding, period 10 or 60 s:
   //   RPC_RATE_LIMIT       POST /api/rpc                 30 requests / 10 s per client IP (CF-Connecting-IP)
-  //   LOOKUP_RATE_LIMIT    GET /api/stake-accounts, /api/accounts, /api/stats, /api/rescue-kits   20 requests / 60 s
+  //   LOOKUP_RATE_LIMIT    GET /api/stake-accounts, /api/accounts, /api/stats, /api/rescue-kits, /api/sol-price   20 requests / 60 s
   //                        per client IP, shared
   //   WATCH_RATE_LIMIT     POST /api/watch, /api/rescue-kits   10 requests / 60 s per client IP, shared
   //   TELEGRAM_RATE_LIMIT  POST /api/telegram/webhook    20 updates / 60 s per chat (updates come from Telegram's IPs)
@@ -90,6 +92,11 @@
       "name": "stakeward-dev",
       // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
       "preview_urls": false,
+      // The site's address (D136): a custom domain in the Cloudflare account that holds the zone stakeward.com;
+      // wrangler creates the DNS record and the certificate. No workers.dev address. The Workers of the first account
+      // (*.stakeward.workers.dev) are no longer deployed from here.
+      "routes": [{ "pattern": "dev.stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
+      "workers_dev": false,
       "vars": { "CLUSTER": "devnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [
@@ -112,7 +119,7 @@
         {
           "binding": "DB",
           "database_name": "stakeward-dev",
-          "database_id": "ba00f60b-bd9d-443c-8928-268070d4967d",
+          "database_id": "94d3e4c0-63de-485d-9f40-5b941a16b3ae",
           "migrations_dir": "migrations"
         }
       ]
@@ -121,6 +128,10 @@
       "name": "stakeward-prod",
       // No preview URLs: every uploaded version would stay reachable at its own address (old code, experiments).
       "preview_urls": false,
+      // The site's address (D136), as in dev. www.stakeward.com is not a second copy of the site: a zone Redirect
+      // Rule sends it to stakeward.com (static assets are served before the Worker, so the Worker cannot redirect it).
+      "routes": [{ "pattern": "stakeward.com", "zone_name": "stakeward.com", "custom_domain": true }],
+      "workers_dev": false,
       "vars": { "CLUSTER": "mainnet", "MONITOR_PLAN": "free" },
       "secrets": {
         "required": [
@@ -143,13 +154,10 @@
         {
           "binding": "DB",
           "database_name": "stakeward-prod",
-          "database_id": "6fd2892c-c158-4235-9ef2-055e490eccf3",
+          "database_id": "40c6f877-b81e-475e-b08e-6bd86a52fd4b",
           "migrations_dir": "migrations"
         }
       ]
-      // Served on workers.dev for now: https://stakeward-prod.stakeward.workers.dev (DECISIONS.md, «Развёртывание»).
-      // A permanent domain, once it is on Cloudflare:
-      // "routes": [{ "pattern": "<domain>", "custom_domain": true }]
     }
   }
 }
