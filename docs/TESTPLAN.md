@@ -404,8 +404,8 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [ ] В8, по возможности: второй аккаунт Helius (другая почта; на Free у аккаунта один ключ) или другой провайдер только для монитора; URL положить в секрет `MONITOR_RPC_URL` командой `wrangler secret put MONITOR_RPC_URL --env prod` (и `--env dev` с ключом devnet) в подоболочке с двумя ключами Cloudflare, как миграции (DECISIONS D96, D101). Без него всё работает, просто монитор делит квоту с сайтом.
 - [x] В9. Решено D121: когда все три ключа в одном браузере, спасение идёт на блокхэше, все аккаунты одним раундом; nonce — только когда ключ подписывает по ссылке.
 
-## Живое демо на mainnet (D137, docs/live-demo.md)
+## Живое демо на mainnet (D138, docs/live-demo.md)
 
-- [ ] `scripts/live-demo/sw.sh setup mainnet`; около 0,3 SOL со своего кошелька на FUNDER; в `demo.env` — `SW_RETURN_TO` (адрес своего кошелька) и `SW_URL` Helius mainnet.
+- [ ] `scripts/live-demo/sw.sh setup mainnet`; около 1,3 SOL со своего кошелька на FUNDER; в `demo.env` — `SW_RETURN_TO` (адрес своего кошелька) и `SW_URL` Helius mainnet.
 - [ ] `sw ui`: в шапке «Live on Solana mainnet». Top up wallets, затем все шаги по порядку. Вор без замка забирает стейк. Под замком три отказа, у каждого ссылка на эксплорер mainnet (без `?cluster=`). Take over staking проходит, спасение проходит, повторная кража отказывает.
 - [ ] Return SOL to the funder: все пять кошельков и демо-стейки по нулям, на своём кошельке вернулось всё, кроме комиссий (около 0,0002 SOL).

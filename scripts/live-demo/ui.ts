@@ -24,35 +24,45 @@ export const LOCK_DURATIONS = ['10m', '1h', '6mo', '12mo'] as const;
 
 export const STEPS: readonly Step[] = [
   { id: 'balances', group: 'Prepare', role: 'setup', label: 'Balances', args: ['balances'], expect: 'SOL on every demo wallet' },
-  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund'], expect: 'from the funder: MAIN to 0.22 SOL, the others 0.01' },
+  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund'], expect: 'from the funder: MAIN to 1.25 SOL, the others 0.01' },
 
   { id: 'before-stake', group: 'Without a lock', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account, no lock' },
   { id: 'before-thief', group: 'Without a lock', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'accepted: the thief takes it all' },
 
-  { id: 'stake', group: 'With Stakeward', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account' },
+  { id: 'stake', group: 'With Stakeward', role: 'owner', label: 'Stake 1 SOL', args: ['stake', '1'], expect: 'new stake account' },
   { id: 'lock', group: 'With Stakeward', role: 'owner', label: 'Lock with the second key', args: ['lock', '{duration}'], expect: 'main + second key sign' },
-  { id: 'thief-withdraw', group: 'With Stakeward', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'rejected: locked' },
+  { id: 'thief-wallet', group: 'With Stakeward', role: 'thief', label: 'Empty the main wallet', args: ['thief', 'wallet'], expect: 'accepted: the free SOL is gone' },
+  { id: 'thief-withdraw', group: 'With Stakeward', role: 'thief', label: 'Steal the stake', args: ['thief', 'withdraw'], expect: 'rejected: locked' },
   { id: 'thief-take', group: 'With Stakeward', role: 'thief', label: 'Become the owner', args: ['thief', 'take'], expect: 'rejected: needs the second key' },
   { id: 'thief-unlock', group: 'With Stakeward', role: 'thief', label: 'Remove the lock', args: ['thief', 'unlock'], expect: 'rejected: only the second key' },
   { id: 'thief-staker', group: 'With Stakeward', role: 'thief', label: 'Take over staking', args: ['thief', 'staker'], expect: 'accepted, but the SOL stays put' },
   { id: 'rescue', group: 'With Stakeward', role: 'new', label: 'Rescue to the new wallet', args: ['rescue'], expect: 'new wallet + main + second key' },
-  { id: 'after-thief', group: 'With Stakeward', role: 'thief', label: 'Steal everything again', args: ['thief', 'withdraw'], expect: 'rejected: main key no longer owns it' },
+  { id: 'after-thief', group: 'With Stakeward', role: 'thief', label: 'Steal the stake again', args: ['thief', 'withdraw'], expect: 'rejected: main key no longer owns it' },
 
   { id: 'unlock', group: 'After the demo', role: 'second', label: 'Remove the lock', args: ['unlock'], expect: 'second key alone, before the SOL leaves' },
   { id: 'withdraw-new', group: 'After the demo', role: 'new', label: 'New wallet withdraws', args: ['withdraw-new'], expect: 'closes the stake account' },
   { id: 'sweep', group: 'After the demo', role: 'setup', label: 'Return SOL to the funder', args: ['sweep'], expect: 'leftovers back to the funder' },
 ];
 
+export const NETWORKS = ['devnet', 'rpc', 'local'] as const;
+
+export interface Network {
+  name: string;
+  label: string;
+  rpcLabel: string;
+}
+
+// `sw net` -> the network the demo is on now.
+export function parseNetwork(text: string): Network {
+  const field = (key: string) => new RegExp(`^${key}=(.*)$`, 'm').exec(text)?.[1]?.trim() ?? '';
+  return { name: field('network'), label: field('label'), rpcLabel: field('rpc_label') };
+}
+
 // The sw.sh arguments of a button press; null when the step or the duration is not on the list.
 export function commandFor(id: string, duration = '6mo'): string[] | null {
   const step = STEPS.find((s) => s.id === id);
   if (!step || !(LOCK_DURATIONS as readonly string[]).includes(duration)) return null;
   return step.args.map((a) => (a === '{duration}' ? duration : a));
-}
-
-// The cluster named in the page header; sw.sh passes it as SW_CLUSTER.
-export function clusterLabel(value: string | undefined): string {
-  return value === 'mainnet' || value === 'testnet' || value === 'localnet' ? value : 'devnet';
 }
 
 export interface Wallet {
@@ -146,11 +156,7 @@ function serve(port: string) {
         'content-type': 'text/html; charset=utf-8',
         'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
       });
-      res.end(
-        readFileSync(PAGE, 'utf8')
-          .replace('/*STEPS*/[]', JSON.stringify(STEPS))
-          .replace('Live on Solana devnet', `Live on Solana ${clusterLabel(process.env.SW_CLUSTER)}`),
-      );
+      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)));
       return;
     }
     const font = /^\/fonts\/([a-z-]+\.woff2)$/.exec(url)?.[1];
@@ -165,10 +171,23 @@ function serve(port: string) {
       return;
     }
     if (req.method === 'GET' && url === '/state') {
-      void Promise.all([capture(['balances']), capture(['status'])]).then(([balances, status]) => {
-        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-        res.end(JSON.stringify({ wallets: parseBalances(balances), stake: parseStatus(status) }));
-      });
+      // `sw net` first: on the local network it starts the validator before the other two ask it anything.
+      void capture(['net'])
+        .then((net) => Promise.all([Promise.resolve(net), capture(['balances']), capture(['status'])]))
+        .then(([net, balances, status]) => {
+          res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+          res.end(JSON.stringify({ network: parseNetwork(net), wallets: parseBalances(balances), stake: parseStatus(status) }));
+        });
+      return;
+    }
+    const net = /^\/net\/([a-z]+)$/.exec(url)?.[1];
+    if (req.method === 'POST' && net && req.headers.origin === origin) {
+      if (!(NETWORKS as readonly string[]).includes(net)) {
+        res.writeHead(400).end('unknown network');
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'application/x-ndjson', 'cache-control': 'no-store' });
+      runStep(['net', net], res);
       return;
     }
     const run = /^\/run\/([a-z-]+)(?:\?duration=([0-9a-z]+))?$/.exec(url);

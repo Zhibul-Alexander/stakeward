@@ -213,6 +213,8 @@ export function TransactionSummary({
         </div>
       )}
 
+      <WalletCheck action={action} />
+
       {batch !== undefined ? (
         <BatchAccounts action={action} accounts={batch.accounts} shared={shared !== undefined} tag={SectionTag} />
       ) : 'stakeAccount' in action ? (
@@ -363,6 +365,56 @@ function BatchAccounts({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+type CheckTarget = { label: MessageKey; address: Address };
+
+/**
+ * The one address a hacked copy of this site would swap for the attacker's (SECURITY-CHECK У6,
+ * security/server-compromise.md): the new second key, where the SOL goes, the new wallet. The summary above is read by
+ * this page's own code, so the wallet's screen is the only check that holds if the page is not ours. Null for actions
+ * that name no such address.
+ */
+export function walletCheckTarget(action: TransactionAction): CheckTarget | null {
+  switch (action.kind) {
+    case 'protect':
+      return { label: 'components.tx.check.secondKey', address: action.secondKey };
+    case 'withdraw':
+      return { label: 'components.tx.check.recipient', address: action.recipient };
+    case 'rescue':
+      return { label: 'components.tx.check.newWallet', address: action.newWallet };
+    case 'change-second-key':
+      return { label: 'components.tx.check.newSecondKey', address: action.newWallet };
+    default:
+      return null;
+  }
+}
+
+/** "Check this on your wallet": the address in large type, its first and last four characters set apart. */
+function WalletCheck({ action }: { action: TransactionAction }) {
+  const target = walletCheckTarget(action);
+  if (target === null) return null;
+  const { address } = target;
+  const head = address.slice(0, 4);
+  const tail = address.slice(-4);
+  const middle = address.slice(4, -4);
+  return (
+    <section data-slot="wallet-check" data-address={address} className="flex flex-col gap-2">
+      <Alert tone="warning">
+        <ShieldCheckIcon aria-hidden="true" />
+        <AlertDescription className="flex flex-col gap-2 text-foreground">
+          <p className="font-semibold">{t('components.tx.check.title')}</p>
+          <p>{t('components.tx.check.body')}</p>
+          <p className="text-sm text-muted">{t(target.label)}</p>
+          <p className="font-mono text-2xl break-all">
+            <span className="font-bold underline underline-offset-4">{head}</span>
+            <span className="text-muted">{middle}</span>
+            <span className="font-bold underline underline-offset-4">{tail}</span>
+          </p>
+        </AlertDescription>
+      </Alert>
     </section>
   );
 }

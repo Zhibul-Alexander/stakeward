@@ -8,12 +8,35 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SW_DIR="${SW_DIR:-$REPO_DIR/.keys/live-demo}"
+# SW_URL set by the user, not by demo.env: an sw started by another sw (the menu, the page) inherits the answer.
+if [ -n "${SW_URL_EXPLICIT+set}" ]; then
+  SW_URL_ENV="$SW_URL_EXPLICIT"
+  # The parent's resolved SW_URL must not pass for demo.env's own.
+  [ -n "$SW_URL_ENV" ] || unset SW_URL
+else
+  SW_URL_ENV="${SW_URL:-}"
+fi
+export SW_URL_EXPLICIT="$SW_URL_ENV"
 # demo.env sets SW_* only where the caller's environment has not set them already.
 if [ -f "$SW_DIR/demo.env" ]; then
   # shellcheck disable=SC1091
   . "$SW_DIR/demo.env"
 fi
-SW_URL="${SW_URL:-devnet}"
+# The network: SW_URL from the environment wins; otherwise the choice saved by "sw net": devnet (public),
+# local (a validator on this machine) or rpc (the SW_URL of demo.env, e.g. Helius devnet).
+SW_RPC_URL="${SW_URL:-devnet}"
+SW_NET="$(cat "$SW_DIR/network" 2>/dev/null || echo rpc)"
+if [ -n "$SW_URL_ENV" ]; then
+  SW_NET=custom
+  SW_URL="$SW_URL_ENV"
+else
+  case "$SW_NET" in
+    devnet) SW_URL=devnet ;;
+    local) SW_URL=localhost ;;
+    *) SW_NET=rpc; SW_URL="$SW_RPC_URL" ;;
+  esac
+fi
+SW_LEDGER="${SW_LEDGER:-$SW_DIR/ledger}"
 SW_MAIN_KEY="${SW_MAIN_KEY:-$SW_DIR/main.json}"
 SW_SECOND_KEY="${SW_SECOND_KEY:-$SW_DIR/second.json}"
 SW_NEW_KEY="${SW_NEW_KEY:-$SW_DIR/new.json}"
@@ -58,6 +81,11 @@ shown_url() { printf '%s' "$SW_URL" | mask_key; }
 
 addr() { solana-keygen pubkey "$1" 2>/dev/null; }
 short() { local a="$1"; printf '%s…%s' "${a:0:4}" "${a: -4}"; }
+
+# A validator on this machine (sw localnet): free airdrops, no rate limits, no internet needed.
+is_local() {
+  case "$SW_URL" in localhost | l | *127.0.0.1* | *localhost*) return 0 ;; *) return 1 ;; esac
+}
 
 # The cluster behind SW_URL (a moniker or an RPC URL that names it, as Helius URLs do).
 cluster() {
@@ -123,10 +151,15 @@ need_key() {
 
 # ---- The current stake account ----
 
+# The current stake account is kept per chain: a local validator does not know the devnet one.
+stake_file() {
+  if is_local; then echo "$SW_DIR/current-stake.local"; else echo "$SW_DIR/current-stake"; fi
+}
+
 stake_address() {
   if [ -n "${SW_STAKE:-}" ]; then printf '%s' "$SW_STAKE"; return; fi
-  [ -f "$SW_DIR/current-stake" ] || die "No stake account yet. Run: sw stake 0.1"
-  cat "$SW_DIR/current-stake"
+  [ -f "$(stake_file)" ] || die "No stake account yet. Run: sw stake 0.1"
+  cat "$(stake_file)"
 }
 
 # One field of `solana stake-account --output json-compact`; empty when absent.
@@ -203,6 +236,8 @@ run() {
       verdict="${G}${B}✅ ACCEPTED by Solana${N}"
     elif [ "$expect" = stolen ]; then
       verdict="${R}${B}🚨 ACCEPTED by Solana: no lock, so the stolen main key was enough. The thief took the SOL.${N}"
+    elif [ "$expect" = drained ]; then
+      verdict="${R}${B}🚨 ACCEPTED by Solana: the stolen main key emptied the wallet. The stake is not in the wallet.${N}"
     else
       verdict="${Y}${B}⚠ ACCEPTED by Solana (this was expected to fail)${N}"
     fi
@@ -302,7 +337,8 @@ cmd_setup() {
   command -v solana-keygen >/dev/null 2>&1 \
     || die "Solana CLI not found. Install it (https://docs.anza.xyz/cli/install) or set SOLANA_BIN."
   local net="${1:-}" was role file funder="$SW_FUNDER_KEY" cu=''
-  was="$(cluster)"
+  # The cluster demo.env is set up for, whatever "sw net" picked for now.
+  was="$(SW_URL="$SW_RPC_URL" cluster)"
   case "$net" in
     '') ;;
     mainnet | mainnet-beta | m) SW_URL=mainnet-beta ;;
@@ -314,6 +350,8 @@ cmd_setup() {
   fi
   mkdir -p "$SW_DIR"
   chmod 700 "$SW_DIR"
+  # A network named here is the one to use: demo.env's SW_URL, not an earlier "sw net devnet" or "sw net local".
+  if [ -n "$net" ]; then printf 'rpc' > "$SW_DIR/network"; fi
   for role in main second new thief; do
     file="$SW_DIR/$role.json"
     if [ -f "$file" ]; then
@@ -362,7 +400,7 @@ ENV
   fi
   cmd_keys
   if [ "$(cluster)" = mainnet ]; then
-    printf '\n%s\n' "${B}Mainnet: real SOL.${N} Send about 0.3 SOL from your wallet to the FUNDER above, then run: sw fund"
+    printf '\n%s\n' "${B}Mainnet: real SOL.${N} Send about 1.3 SOL from your wallet to the FUNDER above, then run: sw fund"
     printf '%s\n' "Put your wallet's address into SW_RETURN_TO in $SW_DIR/demo.env: \"sw sweep\" sends everything back there."
   fi
 }
@@ -380,7 +418,7 @@ cmd_keys() {
   done
   if [ -n "$SW_FUNDER_KEY" ] && [ -f "$SW_FUNDER_KEY" ]; then printf '  %-11s %s\n' 'FUNDER' "$(addr "$SW_FUNDER_KEY")"; fi
   if [ -n "$SW_RETURN_TO" ]; then printf '  %-11s %s\n' 'RETURN TO' "$SW_RETURN_TO"; fi
-  if [ -f "$SW_DIR/current-stake" ]; then printf '  %-11s %s\n' 'STAKE' "$(cat "$SW_DIR/current-stake")"; fi
+  if [ -f "$(stake_file)" ]; then printf '  %-11s %s\n' 'STAKE' "$(cat "$(stake_file)")"; fi
 }
 
 cmd_balances() {
@@ -392,28 +430,31 @@ cmd_balances() {
     a="$(addr "$file")"
     printf '  %-11s %-20s %s\n' "$(role_name "$role")" "$(short "$a")" "$(solana balance "$a" --url "$SW_URL" 2>&1)"
   done
-  if [ -f "$SW_DIR/current-stake" ] || [ -n "${SW_STAKE:-}" ]; then
+  if [ -f "$(stake_file)" ] || [ -n "${SW_STAKE:-}" ]; then
     a="$(stake_address)"
     printf '  %-11s %-20s %s\n' 'STAKE' "$(short "$a")" "$(solana balance "$a" --url "$SW_URL" 2>&1)"
   fi
 }
 
-# What "sw fund" without an amount tops each wallet up to: the menu scenario stakes 0.1 SOL twice from MAIN plus
-# rent and fees; the others pay only fees. On mainnet the funder parts with no more than that.
+# What "sw fund" without an amount tops each wallet up to: the menu scenario stakes 0.1 SOL and then 1 SOL from MAIN,
+# plus rent and fees; the others pay only fees. On mainnet the funder parts with no more than that.
 fund_target() {
-  case "$1" in main) echo 0.22 ;; *) echo 0.01 ;; esac
+  case "$1" in main) echo 1.25 ;; *) echo 0.01 ;; esac
 }
 
-# fund [SOL]: tops every demo wallet up to SOL (default: fund_target), from the funder or by airdrop.
+# fund [SOL] [MAIN SOL]: tops every demo wallet up to SOL, MAIN up to MAIN SOL (default: fund_target), from the funder
+# or by airdrop (always on the local network).
 cmd_fund() {
-  local amount="${1:-}" role file a target have need
+  local each="${1:-}" role file a target have need
   if [ -z "$SW_FUNDER_KEY" ] && [ "$(cluster)" = mainnet ]; then
     die "Mainnet has no faucet. Run: sw setup mainnet (it makes a demo funder you send SOL to), or set SW_FUNDER_KEY."
   fi
   for role in main second new thief; do
     file="$(need_key "$role")"
     a="$(addr "$file")"
-    target="${amount:-$(fund_target "$role")}"
+    target="$each"
+    [ "$role" = main ] && target="${2:-$each}"
+    target="${target:-$(fund_target "$role")}"
     have="$(balance_lamports "$a")"
     case "$have" in '' | *[!0-9]*) die "Could not read the balance of $(role_name "$(echo "$role" | tr a-z A-Z)"). Is the RPC up?" ;; esac
     need=$(($(lamports "$target") - have))
@@ -421,7 +462,7 @@ cmd_fund() {
       info "$(role_name "$(echo "$role" | tr a-z A-Z)") has $(sol "$have") SOL, enough (${target})"
       continue
     fi
-    if [ -n "$SW_FUNDER_KEY" ]; then
+    if [ -n "$SW_FUNDER_KEY" ] && ! is_local; then
       say 'FUNDER' "tops $(role_name "$(echo "$role" | tr a-z A-Z)") up to ${target} SOL: sends $(sol "$need") SOL"
       run ok '' -- transfer "$a" "$(sol "$need")" --from "$SW_FUNDER_KEY" --fee-payer "$SW_FUNDER_KEY" \
         --allow-unfunded-recipient || return 1
@@ -452,7 +493,7 @@ cmd_stake() {
   say 'MAIN KEY' "puts ${amount} SOL into a new stake account $(short "$a")"
   if run ok '' -- create-stake-account "$file" "$amount" \
     --stake-authority "$main" --withdraw-authority "$main" --from "$main" --fee-payer "$main"; then
-    printf '%s' "$a" > "$SW_DIR/current-stake"
+    printf '%s' "$a" > "$(stake_file)"
     info "  current stake: $a"
   fi
 }
@@ -592,6 +633,13 @@ cmd_thief() {
       # shellcheck disable=SC2086
       run "$expect" '' -- withdraw-stake "$stake" "$(addr "$thief")" ALL \
         --withdraw-authority "$main" --fee-payer "$thief" $extra ;;
+    wallet)
+      # The free SOL in the main wallet is not protected: the lock covers the stake account only.
+      say 'THIEF (stolen MAIN KEY)' "empties the main wallet: every free SOL to the thief"
+      RUN_PAYER="$main"
+      run drained '' -- transfer "$(addr "$thief")" ALL --from "$main" --fee-payer "$main" \
+        --allow-unfunded-recipient \
+        && info "  The SOL in the stake account did not move. Next: the thief tries the stake." ;;
     take)
       say 'THIEF (stolen MAIN KEY)' "tries: make the thief the owner of the stake"
       # shellcheck disable=SC2086
@@ -618,17 +666,27 @@ cmd_thief() {
       cmd_thief withdraw
       cmd_thief take
       cmd_thief unlock ;;
-    *) die "Usage: sw thief withdraw | take | unlock | unstake | staker | all" ;;
+    *) die "Usage: sw thief wallet | withdraw | take | unlock | unstake | staker | all" ;;
   esac
 }
 
-# sweep: everything goes back. Demo stake accounts that still hold SOL are withdrawn to the funder (their owner and the
-# second key sign, the funder pays), the four wallets send their SOL to the funder, and the funder sends it all to
-# SW_RETURN_TO when that is set. On mainnet this is what leaves no real SOL on throwaway keys.
+# sweep: everything goes back. The four wallets send their SOL to the funder, demo stake accounts that still hold SOL
+# are withdrawn to the funder (their owner and the second key sign, the funder pays: by now it has the SOL for that),
+# and the funder sends it all to SW_RETURN_TO when that is set. On mainnet this is what leaves no real SOL on throwaway
+# keys.
 cmd_sweep() {
   [ -n "$SW_FUNDER_KEY" ] && [ -f "$SW_FUNDER_KEY" ] || die "Set SW_FUNDER_KEY to return the SOL to it."
   local funder role file a json owner key name have
   funder="$(addr "$SW_FUNDER_KEY")"
+  for role in MAIN SECOND NEW THIEF; do
+    file="$(key_file "$role")"
+    [ -f "$file" ] || continue
+    have="$(balance_lamports "$(addr "$file")")"
+    [ "${have:-0}" -gt 0 ] 2>/dev/null || continue
+    say "$(role_name "$role")" "returns its SOL to the funder"
+    # The funder may hold nothing yet: on the local network "sw fund" airdrops instead of spending it.
+    run ok '' -- transfer "$funder" ALL --from "$file" --fee-payer "$file" --allow-unfunded-recipient || true
+  done
   for file in "$SW_DIR"/stake-*.json; do
     [ -f "$file" ] || continue
     a="$(addr "$file")"
@@ -647,14 +705,6 @@ cmd_sweep() {
     SW_STAKE="$a" run ok '' -- withdraw-stake "$a" "$funder" ALL --withdraw-authority "$key" \
       --custodian "$SW_SECOND_KEY" --fee-payer "$SW_FUNDER_KEY" || true
   done
-  for role in MAIN SECOND NEW THIEF; do
-    file="$(key_file "$role")"
-    [ -f "$file" ] || continue
-    have="$(balance_lamports "$(addr "$file")")"
-    [ "${have:-0}" -gt 0 ] 2>/dev/null || continue
-    say "$(role_name "$role")" "returns its SOL to the funder"
-    run ok '' -- transfer "$funder" ALL --from "$file" --fee-payer "$file" || true
-  done
   if [ -z "$SW_RETURN_TO" ]; then
     info "The SOL stays on the FUNDER $funder. Set SW_RETURN_TO to your wallet's address to get it back with: sw sweep"
     return 0
@@ -669,19 +719,20 @@ cmd_sweep() {
 
 # The scenario for "sw menu": group|role|label|command|what the audience sees. Numbered in this order.
 MENU_STEPS='Prepare|setup|Balances|balances|SOL on every demo wallet
-Prepare|setup|Top up wallets|fund|from the funder: MAIN to 0.22 SOL for two stakes, the others 0.01 for fees
+Prepare|setup|Top up wallets|fund|from the funder: MAIN to 1.25 SOL for stakes of 0.1 and 1 SOL, the others 0.01 for fees
 Without a lock|owner|Stake 0.1 SOL|stake 0.1|new stake account, no lock
 Without a lock|owner|Status|status|NOT LOCKED
 Without a lock|thief|Steal everything|thief withdraw|ACCEPTED: the thief takes it all
-With Stakeward|owner|Stake 0.1 SOL|stake 0.1|new stake account
+With Stakeward|owner|Stake 1 SOL|stake 1|new stake account
 With Stakeward|owner|Lock with the second key|lock LOCK|main + second key lock it
 With Stakeward|owner|Status|status|PROTECTED until ...
-With Stakeward|thief|Steal everything|thief withdraw|REJECTED: locked
+With Stakeward|thief|Empty the main wallet|thief wallet|ACCEPTED: the free SOL is gone
+With Stakeward|thief|Steal the stake|thief withdraw|REJECTED: locked
 With Stakeward|thief|Become the owner|thief take|REJECTED: needs the second key
 With Stakeward|thief|Remove the lock|thief unlock|REJECTED: only the second key
 With Stakeward|thief|Take over staking|thief staker|ACCEPTED: SOL stays put
 With Stakeward|new|Rescue to the new wallet|rescue|stake now belongs to NEW WALLET
-With Stakeward|thief|Steal everything again|thief withdraw|REJECTED: main key no longer owns it
+With Stakeward|thief|Steal the stake again|thief withdraw|REJECTED: main key no longer owns it
 With Stakeward|owner|Status|status|owner: NEW WALLET
 After the demo|second|Second key removes the lock|unlock|lock off, before the SOL leaves
 After the demo|new|New wallet withdraws|withdraw-new|new wallet + second key; closes the account
@@ -710,14 +761,81 @@ menu_list() {
   done
 }
 
+local_up() {
+  curl -s -m 2 -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}' \
+    http://127.0.0.1:8899 2>/dev/null | grep -q '"ok"'
+}
+
+# Starts a fresh local validator in the background when none answers, then tops the demo wallets up.
+ensure_local() {
+  local_up && return 0
+  command -v solana-test-validator >/dev/null 2>&1 || die "solana-test-validator not found; it comes with the Solana CLI."
+  command -v curl >/dev/null 2>&1 || die "curl not found; it is needed to see when the local network is up."
+  local i
+  # Another sw (the page asks for balances and status at once) is starting it already: wait for that one.
+  if ! mkdir "$SW_DIR/.local-starting" 2>/dev/null; then
+    for i in $(seq 1 90); do local_up && return 0; sleep 1; done
+    rmdir "$SW_DIR/.local-starting" 2>/dev/null
+    die "The local network did not start. See $SW_DIR/validator.log"
+  fi
+  trap 'rmdir "$SW_DIR/.local-starting" 2>/dev/null' EXIT
+  say 'LOCAL NETWORK' "starting a fresh Solana network on this machine (solana-test-validator)"
+  mkdir -p "$SW_LEDGER"
+  nohup solana-test-validator --reset --quiet --ledger "$SW_LEDGER" > "$SW_DIR/validator.log" 2>&1 &
+  for i in $(seq 1 60); do
+    local_up && break
+    sleep 1
+  done
+  local_up || die "The local network did not start in 60 s. See $SW_DIR/validator.log"
+  rm -f "$SW_DIR/current-stake.local"
+  info "  up on http://127.0.0.1:8899 after ${i} s; topping up the demo wallets"
+  cmd_fund 2 > /dev/null 2>&1 || die "Airdrops on the local network failed. See $SW_DIR/validator.log"
+  info "  2 SOL on each demo wallet"
+  rmdir "$SW_DIR/.local-starting" 2>/dev/null
+  trap - EXIT
+}
+
+# localnet [stop]: the local network in the foreground (Ctrl+C stops it), or stop the background one.
+cmd_localnet() {
+  if [ "${1:-}" = stop ]; then
+    pkill -f "solana-test-validator.*$SW_LEDGER" && info "Local network stopped." || info "No local network was running."
+    return 0
+  fi
+  command -v solana-test-validator >/dev/null 2>&1 || die "solana-test-validator not found; it comes with the Solana CLI."
+  info "Local Solana network on http://127.0.0.1:8899, starting from scratch. Elsewhere: sw net local"
+  exec solana-test-validator --reset --quiet --ledger "$SW_LEDGER"
+}
+
+net_label() {
+  case "$SW_NET" in
+    devnet) echo 'public devnet' ;;
+    local) echo 'local network' ;;
+    rpc) case "$SW_RPC_URL" in devnet | d) echo 'public devnet' ;; *) printf '%s' "$SW_RPC_URL" | sed -E 's#^[a-z]+://##; s#[/?].*##' ;; esac ;;
+    *) shown_url ;;
+  esac
+}
+
+# net [devnet|rpc|local]: which network the demo uses from now on (saved for every terminal and the page).
+cmd_net() {
+  case "${1:-}" in
+    '') ;;
+    devnet | rpc | local) printf '%s' "$1" > "$SW_DIR/network" ;;
+    helius) printf 'rpc' > "$SW_DIR/network" ;;
+    *) die "Usage: sw net [devnet | rpc | local]   (rpc = the SW_URL of demo.env)" ;;
+  esac
+  if [ -n "${1:-}" ]; then exec bash "$SCRIPT_DIR/sw.sh" net; fi
+  [ "$SW_NET" = local ] && ensure_local
+  printf 'network=%s\nlabel=%s\nrpc_label=%s\n' "$SW_NET" "$(net_label)" "$(SW_NET=rpc net_label)"
+  if [ "$SW_NET" = custom ]; then info "SW_URL is set in this shell, so it wins over sw net."; fi
+}
+
 # ui [port]: the scenario as a page in the browser, http://127.0.0.1:4848 (ui.ts and ui.html next to this script).
 cmd_ui() {
   command -v node >/dev/null 2>&1 || die "Node.js not found; the page needs Node 24 or newer."
   local port="${1:-4848}"
-  # The page names the cluster in its header.
-  SW_CLUSTER="$(cluster)"
-  export SW_CLUSTER
   (sleep 1; open "http://127.0.0.1:$port" 2>/dev/null || xdg-open "http://127.0.0.1:$port" 2>/dev/null) >/dev/null 2>&1 &
+  # The page's commands pick the network from "sw net" unless this shell set SW_URL itself.
+  if [ -z "$SW_URL_ENV" ]; then unset SW_URL; fi
   exec node "$SCRIPT_DIR/ui.ts" "$port"
 }
 
@@ -766,7 +884,7 @@ ${B}Stakeward live demo${N} ($(shown_url)). Keys: ${SW_DIR}
 ${B}Prepare${N}
   sw setup [mainnet]        create the demo keys (main, second, new, thief) and demo.env; mainnet adds a funder key
   sw keys | sw balances     addresses / balances (role names, not addresses)
-  sw fund [SOL]             top every demo wallet up to SOL (default: what the menu needs), from SW_FUNDER_KEY or airdrop
+  sw fund [SOL] [MAIN SOL]  top every wallet up to SOL, MAIN to MAIN SOL (default: what the menu needs), from SW_FUNDER_KEY or airdrop
   sw transfer <from> <to> <SOL|ALL>   e.g. sw transfer main new 0.02
 
 ${B}Owner${N}
@@ -780,7 +898,8 @@ ${B}Owner${N}
   sw unlock                 second key ends the lock now
 
 ${B}Thief${N} (has a stolen copy of the main key)
-  sw thief withdraw         withdraw everything          -> rejected
+  sw thief wallet           empty the main wallet        -> accepted (the stake stays)
+  sw thief withdraw         withdraw the stake           -> rejected
   sw thief take             make himself the owner       -> rejected
   sw thief unlock           remove the lock              -> rejected
   sw thief all              the three above
@@ -796,6 +915,8 @@ ${B}Menu${N}
   sw menu [10m|1h|6mo]      the whole scenario as numbered steps: press Enter for the next one
   sw log                    in another terminal: the full network output of the menu, scrolling on its own
   sw ui [port]              the same scenario as a page in the browser (http://127.0.0.1:4848)
+  sw net [devnet|rpc|local] switch the network for every terminal and the page; local starts a validator
+  sw localnet [stop]        the local network in the foreground, or stop the background one
 
 Env: SW_URL (devnet, mainnet-beta or an RPC URL), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
      SW_RETURN_TO (your wallet's address for sweep), SW_CU_PRICE (priority fee), SW_STAKE (another stake account),
@@ -836,8 +957,8 @@ main() {
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
   case "$cmd" in
-    setup | keys | log | ui | help | -h | --help) ;;
-    *) check_rpc ;;
+    setup | keys | log | ui | localnet | net | help | -h | --help) ;;
+    *) if is_local; then ensure_local; fi; check_rpc ;;
   esac
   case "$cmd" in
     setup) cmd_setup "$@" ;;
@@ -860,6 +981,8 @@ main() {
     menu) cmd_menu "$@" ;;
     log) cmd_log ;;
     ui) cmd_ui "$@" ;;
+    localnet) cmd_localnet "$@" ;;
+    net) cmd_net "$@" ;;
     help | -h | --help) cmd_help ;;
     *) die "Unknown command: $cmd. Run: sw help" ;;
   esac

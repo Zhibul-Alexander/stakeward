@@ -27,6 +27,8 @@
   .pill { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
   .pill::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
   .spacer { flex: 1; }
+  #networks button[aria-pressed="true"] { background: var(--ok-soft); border-color: var(--ok); }
+  #networks button[aria-pressed="true"]::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
   .seg { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
   .seg button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--text); }
@@ -104,7 +106,7 @@
     <div class="brand"><span class="logo" aria-hidden="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
     </span>Stakeward</div>
-    <span class="pill">Live on Solana devnet</span>
+    <div class="seg" id="network" aria-label="Network">Network <span id="networks"></span></div>
     <span class="spacer"></span>
     <div class="seg">Lock for <span id="durations"></span></div>
     <span class="hint"><kbd>Enter</kbd> next step</span>
@@ -168,9 +170,36 @@ function setSol(node, sol) {
   node.replaceChildren(document.createTextNode(sol ? Number(sol).toFixed(4) : '—'), ' ', el('small', '', 'SOL'));
 }
 
+// Network switch: the choice is saved by `sw net`, so the terminals follow it too. Local starts a validator.
+let network = '';
+function showNetwork(n) {
+  network = n.name;
+  const labels = { devnet: 'Public devnet', rpc: n.rpcLabel || 'RPC', local: 'Local' };
+  const box = $('networks');
+  if (!box.children.length) {
+    for (const name of ['devnet', 'rpc', 'local']) {
+      const b = el('button', '', labels[name]);
+      b.type = 'button';
+      b.dataset.net = name;
+      b.onclick = () => {
+        if (name === network) return;
+        stream(`/net/${name}`, { role: 'setup', label: `Switch to ${labels[name]}` }, () => {});
+      };
+      box.append(b);
+    }
+  }
+  for (const b of box.children) {
+    b.textContent = labels[b.dataset.net];
+    b.setAttribute('aria-pressed', String(b.dataset.net === n.name));
+    // demo.env without its own RPC: "rpc" is the public devnet again.
+    b.hidden = b.dataset.net === 'rpc' && n.rpcLabel === 'public devnet';
+  }
+}
+
 async function refresh() {
   try {
-    const { wallets, stake } = await (await fetch('/state')).json();
+    const { network: net, wallets, stake } = await (await fetch('/state')).json();
+    if (net?.name) showNetwork(net);
     for (const w of wallets) {
       const c = w.name === 'STAKE' ? null : cards[w.name];
       if (!c) continue;
@@ -189,7 +218,7 @@ async function refresh() {
     } else {
       const locked = stake.plain.includes('PROTECTED');
       state.className = `state ${locked ? 'locked' : 'open'}`;
-      state.textContent = stake.plain.replace(/, second key:.*$/, '').replace(/:.*$/, '');
+      state.textContent = stake.plain.replace(/, second key:.*$/, '').replace(/^(🔓 NOT LOCKED):.*$/u, '$1');
       meta.textContent = `${sol ? Number(sol).toFixed(4) + ' SOL · ' : ''}owner: ${stake.owner} · ${stake.address.slice(0, 4)}…${stake.address.slice(-4)}`;
     }
   } catch { /* the cards keep the last values */ }
@@ -251,11 +280,20 @@ function storyLine(entry, line) {
   }
 }
 
-async function run(i) {
+function run(i) {
+  return stream(`/run/${STEPS[i].id}?duration=${duration}`, STEPS[i], () => {
+    buttons[i].classList.add('done');
+    next = i + 1 < STEPS.length ? i + 1 : -1;
+    mark();
+  });
+}
+
+// One request whose sw.sh output goes to the story pane and whose network output goes to the network pane.
+async function stream(url, step, after) {
   if (busy) return;
   busy = true;
-  const step = STEPS[i];
   buttons.forEach((b) => (b.disabled = true));
+  for (const b of $('networks').children) b.disabled = true;
   const story = $('story');
   story.querySelector('.empty')?.remove();
   $('net').querySelector('.empty')?.remove();
@@ -273,7 +311,7 @@ async function run(i) {
   $('net').scrollTop = $('net').scrollHeight; // each step starts at its own output; scrolling up pauses the follow
   $('netstate').textContent = 'receiving…';
   try {
-    const res = await fetch(`/run/${step.id}?duration=${duration}`, { method: 'POST' });
+    const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -306,10 +344,9 @@ async function run(i) {
   wait.remove();
   story.scrollTop = story.scrollHeight;
   $('netstate').textContent = '';
-  buttons[i].classList.add('done');
-  next = i + 1 < STEPS.length ? i + 1 : -1;
-  mark();
+  after();
   buttons.forEach((b) => (b.disabled = false));
+  for (const b of $('networks').children) b.disabled = false;
   busy = false;
   refresh();
 }

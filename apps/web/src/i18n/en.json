@@ -53,7 +53,8 @@
     "app": "Your accounts",
     "demo": "Demo",
     "challenge": "Try to steal it",
-    "tryTestnet": "Try on testnet"
+    "tryTestnet": "Try on testnet",
+    "tryMainnet": "Go to mainnet"
   },
   "footer": {
     "label": "Footer",
@@ -71,6 +72,7 @@
     "protectStake": "Protect my stake",
     "checkStakeHint": "Checking needs no wallet and signs nothing.",
     "tryTestnet": "Try it first on testnet, with free test SOL",
+    "tryMainnet": "Ready for real SOL? Go to the mainnet site",
     "points": {
       "free": "Free: you pay only network fees",
       "noCustody": "Your SOL stays in your stake accounts"
@@ -297,6 +299,7 @@
       "connectAs": "Connect a wallet as {role}",
       "labelAs": "{label} as {role}",
       "chooseWallet": "Choose a wallet",
+      "ledgerHint": "Using a Ledger? Pick the wallet app you use it with, such as Phantom.",
       "noWallets": "No Solana wallet found in this browser. Install a wallet such as Phantom, Solflare or Backpack, then reload this page.",
       "approve": "Approve the connection in {wallet}.",
       "disconnect": "Disconnect",
@@ -373,6 +376,14 @@
       "nonceLifetime": "Valid until it is sent or cancelled.",
       "technical": "Technical details",
       "lighthouse": "Checks your wallet added at the end (Lighthouse): {count}. They only read accounts and cannot move funds.",
+      "check": {
+        "title": "Check this on your wallet",
+        "body": "Before you approve, find this address on your wallet or Ledger screen. It must match, and it must be yours. If it shows another address, reject: this page may not be the real Stakeward.",
+        "secondKey": "Your second key",
+        "recipient": "Where the SOL goes",
+        "newWallet": "Your new wallet",
+        "newSecondKey": "Your new second key"
+      },
       "walletWarning": "Phantom may flag this as unsafe or block it: it does so for any transaction that gives a key a role in a stake account. Go on only if every address on this screen is yours.",
       "warn": {
         "replacesSecondKey": "This replaces the current second key:",
