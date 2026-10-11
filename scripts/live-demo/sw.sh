@@ -725,10 +725,6 @@ main() {
   local cmd="${1:-help}"
   [ $# -gt 0 ] && shift
   case "$cmd" in
-    setup | keys | help | -h | --help) ;;
-    *) check_rpc ;;
-  esac
-  case "$cmd" in
     setup | keys | log | ui | help | -h | --help) ;;
     *) check_rpc ;;
   esac
