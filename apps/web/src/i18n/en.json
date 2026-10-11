@@ -53,7 +53,8 @@
     "app": "Your accounts",
     "demo": "Demo",
     "challenge": "Try to steal it",
-    "tryTestnet": "Try on testnet"
+    "tryTestnet": "Try on testnet",
+    "tryMainnet": "Go to mainnet"
   },
   "footer": {
     "label": "Footer",
@@ -71,6 +72,7 @@
     "protectStake": "Protect my stake",
     "checkStakeHint": "Checking needs no wallet and signs nothing.",
     "tryTestnet": "Try it first on testnet, with free test SOL",
+    "tryMainnet": "Ready for real SOL? Go to the mainnet site",
     "points": {
       "free": "Free: you pay only network fees",
       "noCustody": "Your SOL stays in your stake accounts"
