@@ -80,7 +80,7 @@ export function DelegateChoose({ headingRef, loaded, onContinue }: DelegateChoos
   const vote: Address | null =
     chosen === PASTE
       ? pastedValid && check.status === 'ready' && check.value.length === 0
-        ? (pastedAddress as Address)
+        ? pastedAddress
         : null
       : offered.some((choice) => choice.voteAccount === chosen)
         ? (chosen as Address)

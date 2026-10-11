@@ -309,7 +309,7 @@ const ROUTES: readonly SmokeRoute[] = [
     // An inactive stake earns nothing: delegate it to a validator from an openly filtered list (D134).
     path: `/delegate/${SMOKE_STAKE}`,
     heading: text('common.pages.delegate'),
-    ready: text('delegate.empty.title'),
+    ready: text('delegate.heading'),
     screen: 'delegate',
   },
   {
