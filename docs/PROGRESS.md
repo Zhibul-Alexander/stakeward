@@ -5,7 +5,7 @@
 | Шаг | Состояние | Что ждёт владельца |
 | --- | --- | --- |
 | 0. Подготовка | готово: dev и prod развёрнуты на workers.dev (домен временный), Helius проверен | — |
-| 1. Проверка механизма | LiteSVM 24 из 24, devnet 21 из 21, mainnet 8 из 8 | прочитать docs/gate.md |
+| 1. Проверка механизма | LiteSVM 31 из 31 (11.10, с проверкой 15), devnet 21 из 21 (без 15), mainnet 8 из 8 | прочитать docs/gate.md |
 | 2. packages/core | готово | — |
 | 3. Каркас, дизайн-система, кошельки | развёрнуто в dev, тестовые аккаунты у Phantom 1; план Workers — Free | матрица на /dev/cosign (пара Phantom 1 / Phantom 2), /dev/ui, /design-sync, форма Phantom для prod |
 | 3б. Макеты | не начат | по-моему, заменить утверждением экранов по скриншотам `docs/screens` (вопрос владельцу) |
@@ -529,3 +529,9 @@ TESTPLAN «Шаг 5»: боты, секреты, регистрация вебх
 - В ветку взят фикс 9796fb3 (одна проверка RPC, не для `sw log` и `sw ui`), которого не было в main.
 - Проверено: `pnpm typecheck`, `pnpm lint`, `scripts` 152 теста, из них 15 в `live-demo.test.ts` (новые: сеть по адресу, пересчёт SOL и лампортов, приоритетная комиссия только на проходящих транзакциях, на mainnet без спонсора нет airdrop, `sweep` отправляет только на `SW_RETURN_TO`, сеть в шапке). Весь сценарий и `sweep` на `solana-test-validator` 4.3.0 на маке (`docs/live-demo.md`, «Чем проверено»).
 - Дальше: владелец переводит около 0,3 SOL на FUNDER, вписывает `SW_RETURN_TO` и Helius mainnet в `demo.env` и прогоняет сценарий на mainnet перед Demo Day.
+
+## Проверка 15 в gate: обходные пути вора (11.10.2026)
+
+- По вопросу владельца, точно ли вор с одним основным ключом не выведет SOL: в `scripts/gate` добавлена проверка 15 на отдельном S5 (staker = withdrawer = A, заперт B). Вор пробует обычный Authorize, Authorize и Withdraw со своим X в роли хранителя, AuthorizeWithSeed, AuthorizeCheckedWithSeed, MoveLamports и MoveStake в незапертый S6 с теми же полномочиями. Ожидаемые ошибки сверены с исходниками program@v5.1.0: `Authorized::authorize` проверяет замок раньше полномочий, MoveStake и MoveLamports сравнивают замки в общих проверках раньше, чем MoveStake требует активный стейк.
+- Проверено: `pnpm gate:litesvm` — 31 из 31 (docs/gate.md); `scripts` 152 из 152, в том числе планы devnet и mainnet на LiteSVM с точным бюджетом (devnet теперь просит 1,02400344 SOL, комиссии 348 400 лампортов); `pnpm typecheck`, `pnpm lint`. В `pnpm test` падает только `verify.review` в core (small-order ключи; локально Node 24.11.1 при engines ≥ 24.15), core не менялся.
+- Не сделано: прогон на devnet — ключа `.keys/devnet-funder.json` на этом маке нет, новый спонсор просит 1,02400344 SOL devnet. Mainnet не гоняли: программа побайтно та же (sha256 в docs/gate.md).

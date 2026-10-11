@@ -3,8 +3,9 @@
 Скрипт `scripts/gate.ts` (CLAUDE.md, шаг 1) проверяет на настоящей стейк-программе правила замка (lockup), на которых
 держится Stakeward. Транзакции, которые отправляет и продукт, собирает `buildTransaction` из `packages/core`: формат
 из §4 и старый порядок аккаунтов для Ledger (D1). Действия, которых в продукте нет (AuthorizeChecked вора, Split,
-Merge), собраны в том же формате. Неудачные транзакции в devnet и mainnet отправляются без preflight, поэтому у них
-тоже есть подпись в сети. Ключи: A — основной, B — второй (хранитель замка), X — staker вора, D — новый кошелёк.
+Merge, обходные пути из проверки 15), собраны в том же формате. Неудачные транзакции в devnet и mainnet
+отправляются без preflight, поэтому у них тоже есть подпись в сети. Ключи: A — основной, B — второй (хранитель
+замка), X — staker вора, D — новый кошелёк.
 
 - LiteSVM: `pnpm gate:litesvm`. Тот же прогон идёт в CI как тест `scripts/gate/gate.test.ts`.
 - Devnet: `pnpm gate:devnet`. Платит ключ-спонсор `.keys/devnet-funder.json`, ключи ролей прогона лежат в `.keys/gate-devnet-<роль>.json`, в конце всё, кроме комиссий, возвращается спонсору.
@@ -16,45 +17,54 @@ Merge), собраны в том же формате. Неудачные тра�
 <!-- gate:litesvm:begin -->
 ## LiteSVM
 
-Прогон 2026-10-02 12:30:22 UTC: 24 из 24 шагов совпали с ожиданием.
+Прогон 2026-10-11 19:41:48 UTC: 31 из 31 шагов совпали с ожиданием.
 
 - Стейк-программа: загружена в LiteSVM из фикстуры; programdata `6WU8Nxarf9fudRK5atWwjLY4vFaw5UrrWhL88qz7iCMJ`, слот развёртывания 447552000, ELF 212 056 байт, sha256 `3d2d39c596ce8be2d47816b4ee5db9fc759d80fde54b08c930ad0b6daed64c2c`: совпадает с релизом program@v5.1.0 (фикстура `packages/core/test/fixtures/programs/stake-v5.1.0.so`).
 - Часы кластера в начале: 2026-10-01 00:00:00 UTC, эпоха 1000.
-- Ключи: A `4di5mPweJ4aCrPgQzNBX79hu94r7HRLWf7rgoi3UyTxP`, B `9tqoyYBtbkCchHq4AyQJFD4r4tBSYCLFk8aM7QUsPb14`, X `4dZLYQ6hosuBSiXMGEmhPWf3aXvQE3FNeXiDzYUiB7JZ`, D `Ci7j9ARdgsf5urFhmayM23c7LAfBZidGtt2wMyesgMy`. Спонсор `Bj4dEuVP4ivazEqJUZXnGrMu2oPSy7wuWBbpfzF4sQz4`.
-- Делегация на vote-аккаунт `2mL64qC2BuhyWWqEFZSgqB7XDY4YAVciNFik9smGViaa`.
-- Транзакций: 33, комиссии сети: 284 800 лампортов (0,0002848 SOL). На старте у плательщика было ровно 1,0122736 SOL.
+- Ключи: A `Gmeg2QZQRqYjuXoVLgg1Wvkv7sFg4AhYoMZhFB6f5ViR`, B `BnCpibQKCtL3of6McZSW2svk1heph8ibSNHGSk9s2Vhz`, X `ADuraF9aBx6uLqsy9GSj3vcHS3XY3vw9qA6v7oQjqd8h`, D `56uKUYxuyL3PC79baJ4J38msaocRjsQRBXvhGWeBN3zN`. Спонсор `CNv7s1ndsB52T63j64SgMobDMQ5vcqRxhGanUNP5ZXY2`.
+- Делегация на vote-аккаунт `3WxgwX456fCReT5rsHA1ozZiizfsL1H6JCKw8KQPLgiP`.
+- Транзакций: 43, комиссии сети: 370 800 лампортов (0,0003708 SOL). На старте у плательщика было ровно 1,02569208 SOL.
 - Возврат средств завершён, ключи ролей пусты:
-  - Sm `5uhuU5ts2hg4jzva3EEU52WrEkbw4hcmpP1rYAdkkFrA`: Withdraw 0,00166624 SOL плательщику: ok
-  - S1 `2QLxPxB6ndeMFdZtfeGMQxmyV8ce9Y3fWDFTTwCSh3Pq`: Withdraw 0,50166624 SOL плательщику: ok
-  - S3 `CS66NFGPsoUFjVBfSr7eCdHzJ85uoPZB4whLh4gym3Th`: Withdraw 0,00166624 SOL плательщику: ok
+  - S6 `J3Ca6dGF1WuA1AommdxQcjfhGfLwZcwjnf6pVCVod3x9`: Withdraw 0,00166624 SOL плательщику: ok
+  - S5 `7obbuAotATqQD2NXWNCosJJc4fGsxTk1gNJpCnCZ5fCM`: Withdraw 0,01166624 SOL плательщику: ok
+  - Sm `8E2yi1Y8yjw3XTdhwbkejGLfF7dFLzE8S7id4g9h3cxi`: Withdraw 0,00166624 SOL плательщику: ok
+  - S1 `4BgR7cKmVWg9c39GtjyMXb9Pq9DH7rptHusq2gBF4jWF`: Withdraw 0,50166624 SOL плательщику: ok
+  - S3 `87Yzva94hwwoRy8PQ5wmCUuUoUDL2wX2nVtGqr9hD1tw`: Withdraw 0,00166624 SOL плательщику: ok
   - остатки ключей ролей (0,50633984 SOL) переведены плательщику: ok
 
 | № | Проверка | Ожидание | Результат | Подпись или код ошибки |
 |---|---|---|---|---|
-| 1a | Создать стейк-аккаунт S1: staker = withdrawer = A, без замка, 1 SOL сверх залога | успех | совпало: успех; 1,00166624 SOL, staker A, withdrawer A, без замка | `4s1H…AfNM` |
-| 1b | Делегировать S1: DelegateStake с подписью A | успех | совпало: успех; делегирован 2mL64qC2BuhyWWqEFZSgqB7XDY4YAVciNFik9smGViaa в эпохе 1000 | `5MrW…u57v` |
-| 2 | Главное утверждение. SetLockupChecked на S1 с подписями A и B: unix_timestamp = сейчас + 1 час, хранитель B | успех | совпало: успех; unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | `Quqx…GSL4` |
-| 3 | Withdraw всего S1 с подписью только A | ошибка LockupInForce | совпало: ошибка; баланс S1 не изменился | LockupInForce (код 1), инструкция 3 · `4SGd…VbpQ` |
-| 4 | AuthorizeChecked(Withdrawer -> X) с подписями A и X, без хранителя | ошибка CustodianMissing | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | CustodianMissing (код 7), инструкция 3 · `3jGM…6t2K` |
-| 5 | SetLockup (unix_timestamp = 0) с подписью A при действующем замке | ошибка MissingRequiredSignature | совпало: ошибка; unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | MissingRequiredSignature, инструкция 3 · `cj7k…HKQr` |
-| 6 | SetLockup с подписью B: продление до сейчас + 2 часа | успех | совпало: успех; unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `DTAV…QUZA` |
-| 7a | Вор с ключом A: Deactivate S1 с подписью A | успех | совпало: успех; deactivation_epoch = 1000 | `4saq…1dKe` |
-| 7b | Вор с ключом A: AuthorizeChecked(Staker -> X) с подписями A и X | успех | совпало: успех; staker X, withdrawer A, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `2w7o…XCqQ` |
-| 8a | Split S1 в S2 (подпись staker X): у S2 тот же замок | успех | совпало: успех; staker X, withdrawer A, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `4A5m…k58F` |
-| 8b | Withdraw всего S2 с подписью только A | ошибка LockupInForce | совпало: ошибка | LockupInForce (код 1), инструкция 3 · `NfeL…PPrX` |
-| 9 | Merge незапертого Sm (staker X, withdrawer A, как у S1) в запертый S1 | ошибка MergeMismatch | совпало: ошибка; Sm на месте | MergeMismatch (код 6), инструкция 3 · `3iXM…9NiP` |
-| 10 | Withdraw 0,25 SOL из запертого неделегированного S2 с подписями A и B | успех | совпало: успех; на S2 осталось 0,25166624 SOL | `4cP5…n61z` |
-| 11a | Спасение S1 после шага 7, одна транзакция, комиссию платит D: AuthorizeChecked(Staker -> D) с подписями A и D и AuthorizeChecked(Withdrawer -> D) с подписями A, D и B | успех | совпало: успех; staker D, withdrawer D, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `25pu…GzqR` |
-| 11b | После спасения: Withdraw из S1 с подписями A и B | любая ошибка стейк-программы | совпало: ошибка | MissingRequiredSignature, инструкция 3 · `4RkB…XE3i` |
-| 11c | После спасения: AuthorizeChecked(Staker -> X) на S1 с подписями A и X | любая ошибка стейк-программы | совпало: ошибка | MissingRequiredSignature, инструкция 3 · `3DvX…FUs5` |
-| 12a | D создаёт nonce-аккаунт (CreateAccountWithSeed + InitializeNonceAccount, authority D) | успех | совпало: успех; nonce-аккаунт 3j5NBE5PEJSHgADYhvFM5SZeUWod8P7LHvFPM2K7N3M2, authority D | `4FdH…E3bi` |
-| 12b | То же спасение запертого S3 на durable nonce D: подписи D, A, B добавляются по одной, между ними транзакция уходит в ссылку /cosign#tx= и разбирается обратно | успех | совпало: успех; staker D, withdrawer D, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B; nonce сдвинут: да; ссылка /cosign 818 символов | `2PBf…TaQ9` |
-| 12c | D закрывает nonce-аккаунт и забирает залог | успех | совпало: успех; аккаунт закрыт, всё выведено | `2t4y…7UDS` |
-| 13a | B ставит unix_timestamp = 0 на запертом S2 | успех | совпало: успех; unix_timestamp = 0, хранитель B | `2bvk…aJVW` |
-| 13b | Withdraw всего S2 с подписью только A | успех | совпало: успех; аккаунт закрыт, всё выведено | `21sj…Qc3U` |
-| 14a | S4 заперт B до T: Withdraw с подписью только A | ошибка LockupInForce | совпало: ошибка | LockupInForce (код 1), инструкция 3 · `RXda…R6qf` |
-| 14b | Часы переведены за T: SetLockup (unix_timestamp = 0) с подписью только A | успех | совпало: успех; unix_timestamp = 0, хранитель B | `2jFR…PUgp` |
-| 14c | Withdraw всего S4 с подписью только A | успех | совпало: успех; аккаунт закрыт, всё выведено | `KBiD…y1Lu` |
+| 1a | Создать стейк-аккаунт S1: staker = withdrawer = A, без замка, 1 SOL сверх залога | успех | совпало: успех; 1,00166624 SOL, staker A, withdrawer A, без замка | `ik9b…aPpT` |
+| 1b | Делегировать S1: DelegateStake с подписью A | успех | совпало: успех; делегирован 3WxgwX456fCReT5rsHA1ozZiizfsL1H6JCKw8KQPLgiP в эпохе 1000 | `tLex…DEWD` |
+| 2 | Главное утверждение. SetLockupChecked на S1 с подписями A и B: unix_timestamp = сейчас + 1 час, хранитель B | успех | совпало: успех; unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | `5B8o…vY6q` |
+| 3 | Withdraw всего S1 с подписью только A | ошибка LockupInForce | совпало: ошибка; баланс S1 не изменился | LockupInForce (код 1), инструкция 3 · `284R…GUHK` |
+| 4 | AuthorizeChecked(Withdrawer -> X) с подписями A и X, без хранителя | ошибка CustodianMissing | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | CustodianMissing (код 7), инструкция 3 · `2srf…P1Uy` |
+| 5 | SetLockup (unix_timestamp = 0) с подписью A при действующем замке | ошибка MissingRequiredSignature | совпало: ошибка; unix_timestamp = 2026-10-01 01:00:00 UTC, хранитель B | MissingRequiredSignature, инструкция 3 · `2HB8…tNeL` |
+| 6 | SetLockup с подписью B: продление до сейчас + 2 часа | успех | совпало: успех; unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `45ib…9abU` |
+| 7a | Вор с ключом A: Deactivate S1 с подписью A | успех | совпало: успех; deactivation_epoch = 1000 | `4W71…dGtE` |
+| 7b | Вор с ключом A: AuthorizeChecked(Staker -> X) с подписями A и X | успех | совпало: успех; staker X, withdrawer A, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `5uFi…Q87n` |
+| 8a | Split S1 в S2 (подпись staker X): у S2 тот же замок | успех | совпало: успех; staker X, withdrawer A, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `3gVg…D5zE` |
+| 8b | Withdraw всего S2 с подписью только A | ошибка LockupInForce | совпало: ошибка | LockupInForce (код 1), инструкция 3 · `dF6m…KKq6` |
+| 9 | Merge незапертого Sm (staker X, withdrawer A, как у S1) в запертый S1 | ошибка MergeMismatch | совпало: ошибка; Sm на месте | MergeMismatch (код 6), инструкция 3 · `3c87…wC92` |
+| 10 | Withdraw 0,25 SOL из запертого неделегированного S2 с подписями A и B | успех | совпало: успех; на S2 осталось 0,25166624 SOL | `5LKZ…bCtF` |
+| 11a | Спасение S1 после шага 7, одна транзакция, комиссию платит D: AuthorizeChecked(Staker -> D) с подписями A и D и AuthorizeChecked(Withdrawer -> D) с подписями A, D и B | успех | совпало: успех; staker D, withdrawer D, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B | `2PLe…9Cbt` |
+| 11b | После спасения: Withdraw из S1 с подписями A и B | любая ошибка стейк-программы | совпало: ошибка | MissingRequiredSignature, инструкция 3 · `2jxM…xgtp` |
+| 11c | После спасения: AuthorizeChecked(Staker -> X) на S1 с подписями A и X | любая ошибка стейк-программы | совпало: ошибка | MissingRequiredSignature, инструкция 3 · `FZSP…ydLa` |
+| 12a | D создаёт nonce-аккаунт (CreateAccountWithSeed + InitializeNonceAccount, authority D) | успех | совпало: успех; nonce-аккаунт GpbazAtvNkgUmbd6Jn549HyzHSzr7DUGAG6msg6GGW1V, authority D | `EHLW…57Dn` |
+| 12b | То же спасение запертого S3 на durable nonce D: подписи D, A, B добавляются по одной, между ними транзакция уходит в ссылку /cosign#tx= и разбирается обратно | успех | совпало: успех; staker D, withdrawer D, unix_timestamp = 2026-10-01 02:00:00 UTC, хранитель B; nonce сдвинут: да; ссылка /cosign 818 символов | `sxnX…4AWN` |
+| 12c | D закрывает nonce-аккаунт и забирает залог | успех | совпало: успех; аккаунт закрыт, всё выведено | `3dNJ…Pf43` |
+| 13a | B ставит unix_timestamp = 0 на запертом S2 | успех | совпало: успех; unix_timestamp = 0, хранитель B | `5kgD…r7Qm` |
+| 13b | Withdraw всего S2 с подписью только A | успех | совпало: успех; аккаунт закрыт, всё выведено | `367U…3AYd` |
+| 14a | S4 заперт B до T: Withdraw с подписью только A | ошибка LockupInForce | совпало: ошибка | LockupInForce (код 1), инструкция 3 · `4ciz…W1pX` |
+| 14b | Часы переведены за T: SetLockup (unix_timestamp = 0) с подписью только A | успех | совпало: успех; unix_timestamp = 0, хранитель B | `2P46…2PBT` |
+| 14c | Withdraw всего S4 с подписью только A | успех | совпало: успех; аккаунт закрыт, всё выведено | `2CX7…rZxE` |
+| 15a | Вор с ключом A: обычный Authorize(Withdrawer -> X) на S5 (staker = withdrawer = A, заперт B), без хранителя | ошибка CustodianMissing | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 02:00:01 UTC, хранитель B | CustodianMissing (код 7), инструкция 3 · `XyxA…BRtY` |
+| 15b | Вор с ключом A: Authorize(Withdrawer -> X), хранителем подписывает X вместо B | ошибка LockupInForce | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 02:00:01 UTC, хранитель B | LockupInForce (код 1), инструкция 3 · `Hzct…D3bC` |
+| 15c | Вор с ключом A: AuthorizeWithSeed(Withdrawer -> X), base A, без хранителя | ошибка CustodianMissing | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 02:00:01 UTC, хранитель B | CustodianMissing (код 7), инструкция 3 · `HUFx…kBh1` |
+| 15d | Вор с ключом A: AuthorizeCheckedWithSeed(Withdrawer -> X), base A, подписи A и X, без хранителя | ошибка CustodianMissing | совпало: ошибка; staker A, withdrawer A, unix_timestamp = 2026-10-01 02:00:01 UTC, хранитель B | CustodianMissing (код 7), инструкция 3 · `32Hr…tyrP` |
+| 15e | Вор с ключом A: Withdraw всего S5, хранителем подписывает X вместо B | ошибка LockupInForce | совпало: ошибка; балансы S5 и S6 не изменились | LockupInForce (код 1), инструкция 3 · `2hhn…ttqr` |
+| 15f | Вор с ключом A: MoveLamports 0,01 SOL из S5 в незапертый S6 с теми же полномочиями (staker = withdrawer = A) | ошибка MergeMismatch | совпало: ошибка; балансы S5 и S6 не изменились | MergeMismatch (код 6), инструкция 3 · `5y4P…4mCy` |
+| 15g | Вор с ключом A: MoveStake из S5 в S6 | ошибка MergeMismatch | совпало: ошибка; балансы S5 и S6 не изменились | MergeMismatch (код 6), инструкция 3 · `5YTC…mzfP` |
 <!-- gate:litesvm:end -->
 
 <!-- gate:devnet:begin -->
