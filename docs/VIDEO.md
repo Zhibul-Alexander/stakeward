@@ -17,11 +17,11 @@
 
 ## 1. Pitch video — 2:00, вы в кадре
 
-Камера на уровне глаз, свет спереди, фон спокойный. Английский уровня B1: короткие предложения, простые слова, у каждой фразы один смысл. Говорите спокойно, не быстро: около 260 слов — это 2:00 (без двух TODO; ваши фразы держите короткими). Текст можно учить кусками по блокам; читать с листа не нужно. Слайды не нужны.
+Камера на уровне глаз, свет спереди, фон спокойный. Stakeward сделали вдвоём с другом: говорим «we». Лучше, если в кадре вы оба (каждый говорит свои блоки); если в кадре один — текст тот же. Английский уровня B1: короткие предложения, простые слова, у каждой фразы один смысл. Говорите спокойно, не быстро: около 260 слов — это 2:00 (без двух TODO; ваши фразы держите короткими). Текст можно учить кусками по блокам; читать с листа не нужно. Слайды не нужны.
 
 **0:00–0:12. Кто вы**
 
-> Hi, my name is `<name>`. I am a developer from Tbilisi, Georgia. `[TODO: one simple sentence about you.]` I built Stakeward.
+> Hi, we are `<name>` and `<friend's name>`, developers from Tbilisi, Georgia. `[TODO: one simple sentence about you two.]` We built Stakeward.
 
 **0:12–0:40. Проблема**
 
@@ -29,11 +29,11 @@
 
 **0:40–1:05. Решение**
 
-> Solana already has a lock for staked SOL. When the lock is on, a second key must also sign before anyone can take the SOL out. The documentation says you can turn it on only when you create a stake. I tested it on mainnet: you can turn it on later too. Stakeward turns on this lock for your stake. The second key is another wallet that you own.
+> Solana already has a lock for staked SOL. When the lock is on, a second key must also sign before anyone can take the SOL out. The documentation says you can turn it on only when you create a stake. We tested it on mainnet: you can turn it on later too. Stakeward turns on this lock for your stake. The second key is another wallet that you own.
 
 **1:05–1:25. Что уже работает**
 
-> Stakeward works on mainnet today. I protected my own stake. Then I acted as a thief with my main key. I could stop the staking, but Solana did not let me take the SOL out. I got a message in Telegram, and I moved my stake to a new wallet. Stakeward never holds your SOL or your keys.
+> Stakeward works on mainnet today. We protected our own stake. Then we acted as a thief with the main key. We could stop the staking, but Solana did not let us take the SOL out. We got a message in Telegram, and we moved the stake to a new wallet. Stakeward never holds your SOL or your keys.
 
 **1:25–1:45. Для кого и деньги**
 
@@ -41,9 +41,9 @@
 
 **1:45–2:00. Почему вы**
 
-> `[TODO: why you, one or two simple sentences.]` The code is open, and before you sign, Stakeward shows exactly what the transaction does. Stakeward: a lock for your staked SOL, and Solana itself checks it.
+> `[TODO: why you two, one or two simple sentences.]` The code is open, and before you sign, Stakeward shows exactly what the transaction does. Stakeward: a lock for your staked SOL, and Solana itself checks it.
 
-Проверка перед записью: 192 600 и 261 854 SOL и годы — из SUBMISSION §11. «I tested it on mainnet» — docs/gate.md. «I could stop the staking … did not let me take the SOL out … message in Telegram … moved my stake» — проход владельца на mainnet 10–11.10.2026 (PROGRESS). Строку про деньги держать как в BUSINESS-MODEL.md, без цен.
+Проверка перед записью: 192 600 и 261 854 SOL и годы — из SUBMISSION §11. «We tested it on mainnet» — docs/gate.md. «We could stop the staking … did not let us take the SOL out … message in Telegram … moved the stake» — проход на mainnet 10–11.10.2026 (PROGRESS). Строку про деньги держать как в BUSINESS-MODEL.md, без цен.
 
 ---
 
@@ -67,7 +67,7 @@
 
 | Время | На экране | Голос |
 |---|---|---|
-| 0:00–0:10 | Лендинг dev с пометкой Devnet. | This is Stakeward on devnet. I ran the same steps on mainnet with real SOL; here I'm about to have my main key stolen. |
+| 0:00–0:10 | Лендинг dev с пометкой Devnet. | This is Stakeward on devnet. We ran the same steps on mainnet with real SOL. Here, my main key is about to be stolen. |
 | 0:10–0:22 | В «Check your stake» вставить адрес Demo Main. `/app`: два аккаунта, оба **Not protected**, сверху «Last checked … ago». | First I just look. No wallet, nothing to sign: two stake accounts, both unprotected. |
 | 0:22–0:40 | **Protect** → Accounts: подключить Demo Main, оба отмечены → Second key: переключить Phantom на Demo Second, подключить; предупреждение про один кошелёк; галочка «My second key comes from a different seed phrase». | I connect my main key, then my second key. It lives in the same app here, but it comes from its own seed phrase, and the page makes me confirm exactly that. |
 | 0:40–0:50 | **Lock period**: показать карточки и **Custom date**, выбрать «1 hour (devnet test)». Предупреждение с датой. | I pick how long the lock holds, a fixed period or any date. The risk is said before I sign: lose the second key, and you wait until this date. |
