@@ -1,0 +1,12 @@
+[
+  {"n":1,"name":"Vault","wave":"Restyle","text":"Private-bank statement: ivory paper, serif figures, the stake shown like a statement of holdings. For the cautious holder on a Ledger."},
+  {"n":2,"name":"Terminal","wave":"Restyle","text":"Operator console: monospace, dense tables, a terminal session where the withdraw fails with LockupInForce. For validators."},
+  {"n":3,"name":"Editorial","wave":"Restyle","text":"Magazine story in chapters: the thefts first, then the lock already inside every stake account, then how Stakeward turns it on."},
+  {"n":4,"name":"Guided","wave":"Restyle","text":"Friendly fintech, phone first: soft cards, helper bubbles, a big shield medallion with your protection status."},
+  {"n":5,"name":"Console","wave":"Restyle","text":"Security SaaS app shell: sidebar, KPI tiles, a protection ring and a dense accounts table."},
+  {"n":6,"name":"Verdict first","wave":"Rethink","text":"One question, one answer. A giant wallet field; the accounts page opens with a one-line verdict on whether a thief can take your SOL."},
+  {"n":7,"name":"Two futures","wave":"Rethink","text":"A key leak played out side by side: without the lock the SOL is gone, with Stakeward the withdraw is rejected and you rescue."},
+  {"n":8,"name":"Safety checklist","wave":"Rethink","text":"A pre-flight checklist with a score: each item says what it protects against; the accounts page leads with your checks."},
+  {"n":9,"name":"Conversation","wave":"Rethink","text":"A calm chat with a security expert: reply chips reveal the next answer, results arrive as messages with account cards."},
+  {"n":10,"name":"Mechanism, drawn","wave":"Rethink","text":"A blueprint strongbox with two keyholes shows what each key can and cannot do; accounts become tiles sized by SOL."}
+]

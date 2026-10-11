@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
 import { DAY, MAIN, mockApi, NOW, SECOND, SMOKE_STAKE, SOL, stakeJson } from '../../e2e/mock-api.ts';
 
-const VARIANT = process.env['VITE_UI_VARIANT'] || 'base';
+const VARIANT = (process.env['VITE_UI_VARIANT'] || 'base') + (process.env['SHOOT_SCHEME'] === 'dark' ? '-dark' : '');
 const UNPROTECTED = '5Rz9Wg3mAxJ6QeV9WbHk7K1q3sN2x8Ytq6WvGx2fVt9H';
 const EXPIRING = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
 const FIXTURE = {

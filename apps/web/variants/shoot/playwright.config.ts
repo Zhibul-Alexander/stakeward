@@ -12,7 +12,7 @@ export default defineConfig({
   testMatch: 'shoot.spec.ts',
   reporter: [['list']],
   workers: 2,
-  use: { baseURL: `http://localhost:${String(PORT)}`, launchOptions: process.env['SHOOT_CHROMIUM'] ? { executablePath: process.env['SHOOT_CHROMIUM'] } : {} },
+  use: { baseURL: `http://localhost:${String(PORT)}`, colorScheme: process.env['SHOOT_SCHEME'] === 'dark' ? 'dark' : 'light', launchOptions: process.env['SHOOT_CHROMIUM'] ? { executablePath: process.env['SHOOT_CHROMIUM'] } : {} },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
     { name: 'mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 360, height: 740 } } },

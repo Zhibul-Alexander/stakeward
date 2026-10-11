@@ -35,3 +35,4 @@ apps/worker/.wrangler.qa-local.json
 /.idea/
 variants-dist/
 variants-shots/
+apps/web/variants/hub/site/
