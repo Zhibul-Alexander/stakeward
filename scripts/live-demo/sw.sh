@@ -19,6 +19,8 @@ SW_SECOND_KEY="${SW_SECOND_KEY:-$SW_DIR/second.json}"
 SW_NEW_KEY="${SW_NEW_KEY:-$SW_DIR/new.json}"
 SW_THIEF_KEY="${SW_THIEF_KEY:-$SW_DIR/thief.json}"
 SW_FUNDER_KEY="${SW_FUNDER_KEY:-}"
+SW_RETURN_TO="${SW_RETURN_TO:-}"
+SW_CU_PRICE="${SW_CU_PRICE:-}"
 SW_VOTE="${SW_VOTE:-}"
 SW_ONCHAIN_FAILS="${SW_ONCHAIN_FAILS:-1}"
 SW_NETLOG="${SW_NETLOG:-1}"
@@ -57,30 +59,47 @@ shown_url() { printf '%s' "$SW_URL" | mask_key; }
 addr() { solana-keygen pubkey "$1" 2>/dev/null; }
 short() { local a="$1"; printf '%s…%s' "${a:0:4}" "${a: -4}"; }
 
-cluster_param() {
+# The cluster behind SW_URL (a moniker or an RPC URL that names it, as Helius URLs do).
+cluster() {
   case "$SW_URL" in
-    devnet | d | *devnet*) printf '?cluster=devnet' ;;
-    testnet | t | *testnet*) printf '?cluster=testnet' ;;
-    mainnet-beta | m | *mainnet*) printf '' ;;
+    devnet | d | *devnet*) echo devnet ;;
+    testnet | t | *testnet*) echo testnet ;;
+    mainnet-beta | m | *mainnet*) echo mainnet ;;
+    *) echo localnet ;;
+  esac
+}
+
+cluster_param() {
+  case "$(cluster)" in
+    devnet) printf '?cluster=devnet' ;;
+    testnet) printf '?cluster=testnet' ;;
+    mainnet) printf '' ;;
     *) printf '?cluster=custom&customUrl=%s' "http://127.0.0.1:8899" ;;
   esac
 }
 
+# SOL -> lamports and back; balances in lamports (empty when the RPC did not answer).
+lamports() { awk -v s="$1" 'BEGIN { printf "%.0f", s * 1000000000 }'; }
+sol() { awk -v l="$1" 'BEGIN { printf "%.9f", l / 1000000000 }' | sed -E 's/0+$//;s/\.$//'; }
+balance_lamports() { solana balance "$1" --lamports --url "$SW_URL" 2>/dev/null | cut -d' ' -f1; }
+
 # Role names instead of addresses, so the projector shows "MAIN KEY" rather than 44 characters.
 label_sed() {
   local role file a script=''
-  for role in MAIN SECOND NEW THIEF; do
+  for role in MAIN SECOND NEW THIEF FUNDER; do
     file="$(key_file "$role")"
-    [ -f "$file" ] || continue
+    [ -n "$file" ] && [ -f "$file" ] || continue
     a="$(addr "$file")"
     [ -n "$a" ] && script="${script}s/${a}/${a} [$(role_name "$role")]/g;"
   done
+  if [ -n "$SW_RETURN_TO" ]; then script="${script}s/${SW_RETURN_TO}/${SW_RETURN_TO} [YOUR WALLET]/g;"; fi
   printf '%s' "$script"
 }
 
 role_name() {
   case "$1" in
     MAIN) echo 'MAIN KEY' ;; SECOND) echo 'SECOND KEY' ;; NEW) echo 'NEW WALLET' ;; THIEF) echo 'THIEF' ;;
+    FUNDER) echo 'FUNDER' ;;
   esac
 }
 
@@ -152,6 +171,11 @@ run() {
   done
   shown="${shown//"$SW_DIR"\//}"
   printf '%s\n' "${D}\$ ${shown}${N}"
+  # The priority fee is not shown: it is not what the step is about. A transaction that should fail goes without it:
+  # with a price the CLI simulates first and drops a failing transaction instead of sending it (no explorer link).
+  if [ -n "$SW_CU_PRICE" ] && [ "$expect" != fail ] && [ "$1" != airdrop ]; then
+    set -- "$@" --with-compute-unit-price "$SW_CU_PRICE"
+  fi
   out="$(solana "$@" --url "$SW_URL" 2>&1)"
   status=$?
   out="$(printf '%s\n' "$out" | mask_key)"
@@ -272,12 +296,24 @@ lock_time() {
 
 # ---- Commands ----
 
+# setup [devnet|mainnet]: the demo keys and demo.env. On mainnet there is no faucet: setup also makes the demo's own
+# funder key, you send it SOL from your wallet, and "sw sweep" sends everything back to SW_RETURN_TO.
 cmd_setup() {
   command -v solana-keygen >/dev/null 2>&1 \
     || die "Solana CLI not found. Install it (https://docs.anza.xyz/cli/install) or set SOLANA_BIN."
+  local net="${1:-}" was role file funder="$SW_FUNDER_KEY" cu=''
+  was="$(cluster)"
+  case "$net" in
+    '') ;;
+    mainnet | mainnet-beta | m) SW_URL=mainnet-beta ;;
+    devnet | d) SW_URL=devnet ;;
+    *) die "Usage: sw setup [devnet|mainnet]" ;;
+  esac
+  if [ -n "$net" ] && [ -f "$SW_DIR/demo.env" ] && [ "$was" != "$(cluster)" ]; then
+    die "$SW_DIR/demo.env is set up for $was. Set SW_URL there (and SW_FUNDER_KEY), or move the file away and run: sw setup $net"
+  fi
   mkdir -p "$SW_DIR"
   chmod 700 "$SW_DIR"
-  local role file
   for role in main second new thief; do
     file="$SW_DIR/$role.json"
     if [ -f "$file" ]; then
@@ -288,27 +324,47 @@ cmd_setup() {
       info "$(role_name "$(echo "$role" | tr a-z A-Z)"): new demo key $file"
     fi
   done
+  if [ "$(cluster)" = mainnet ] && [ -z "$funder" ]; then
+    funder="$SW_DIR/funder.json"
+    if [ ! -f "$funder" ]; then
+      solana-keygen new --no-bip39-passphrase --silent --outfile "$funder" >/dev/null || die "keygen failed"
+      chmod 600 "$funder"
+      info "FUNDER: new demo key $funder"
+    fi
+    SW_FUNDER_KEY="$funder"
+    cu=100000
+  fi
   if [ ! -f "$SW_DIR/demo.env" ]; then
-    cat > "$SW_DIR/demo.env" <<EOF
-# Stakeward live demo. Throwaway devnet keys; never put a real wallet here.
+    cat > "$SW_DIR/demo.env" <<ENV
+# Stakeward live demo on $(cluster). Throwaway demo keys; never put a real wallet's key here.
 # Each line keeps a value already set in the environment.
-# devnet, or a faster RPC: https://devnet.helius-rpc.com/?api-key=<key> (the public devnet answers 429 when busy).
-export SW_URL="\${SW_URL:-devnet}"
+# The RPC: devnet or mainnet-beta, or a faster one: https://$([ "$(cluster)" = mainnet ] && echo mainnet || echo devnet).helius-rpc.com/?api-key=<key>
+# (the public RPC answers 429 when busy).
+export SW_URL="\${SW_URL:-$SW_URL}"
 export SW_MAIN_KEY="\${SW_MAIN_KEY:-$SW_DIR/main.json}"
 export SW_SECOND_KEY="\${SW_SECOND_KEY:-$SW_DIR/second.json}"
 export SW_NEW_KEY="\${SW_NEW_KEY:-$SW_DIR/new.json}"
 export SW_THIEF_KEY="\${SW_THIEF_KEY:-$SW_DIR/thief.json}"
-# A keypair file with devnet SOL that pays for "sw fund" (empty = airdrop).
-export SW_FUNDER_KEY="\${SW_FUNDER_KEY:-}"
-# Validator vote account for "sw delegate" (empty = the largest devnet validator).
+# The keypair file that pays for "sw fund" and takes the SOL back on "sw sweep".
+# devnet: a key with devnet SOL (empty = airdrop). mainnet: the demo's own funder; send it SOL from your wallet.
+export SW_FUNDER_KEY="\${SW_FUNDER_KEY:-$funder}"
+# Your wallet's address (the public key, never a key file): "sw sweep" sends everything back there at the end.
+export SW_RETURN_TO="\${SW_RETURN_TO:-}"
+# Priority fee, micro-lamports per compute unit (empty = none). It helps transactions land on a busy mainnet.
+export SW_CU_PRICE="\${SW_CU_PRICE:-$cu}"
+# Validator vote account for "sw delegate" (empty = the validator with the most stake).
 export SW_VOTE="\${SW_VOTE:-}"
 # 1 = the thief's failing transactions land on chain and get an explorer link; 0 = only simulated (faster).
 export SW_ONCHAIN_FAILS="\${SW_ONCHAIN_FAILS:-1}"
-EOF
+ENV
     chmod 600 "$SW_DIR/demo.env"
     info "settings: $SW_DIR/demo.env"
   fi
   cmd_keys
+  if [ "$(cluster)" = mainnet ]; then
+    printf '\n%s\n' "${B}Mainnet: real SOL.${N} Send about 0.3 SOL from your wallet to the FUNDER above, then run: sw fund"
+    printf '%s\n' "Put your wallet's address into SW_RETURN_TO in $SW_DIR/demo.env: \"sw sweep\" sends everything back there."
+  fi
 }
 
 cmd_keys() {
@@ -323,15 +379,16 @@ cmd_keys() {
     fi
   done
   if [ -n "$SW_FUNDER_KEY" ] && [ -f "$SW_FUNDER_KEY" ]; then printf '  %-11s %s\n' 'FUNDER' "$(addr "$SW_FUNDER_KEY")"; fi
+  if [ -n "$SW_RETURN_TO" ]; then printf '  %-11s %s\n' 'RETURN TO' "$SW_RETURN_TO"; fi
   if [ -f "$SW_DIR/current-stake" ]; then printf '  %-11s %s\n' 'STAKE' "$(cat "$SW_DIR/current-stake")"; fi
 }
 
 cmd_balances() {
   local role file a
   printf '%s\n' "${B}Wallet balances on $(shown_url)${N}"
-  for role in MAIN SECOND NEW THIEF; do
+  for role in MAIN SECOND NEW THIEF FUNDER; do
     file="$(key_file "$role")"
-    [ -f "$file" ] || continue
+    [ -n "$file" ] && [ -f "$file" ] || continue
     a="$(addr "$file")"
     printf '  %-11s %-20s %s\n' "$(role_name "$role")" "$(short "$a")" "$(solana balance "$a" --url "$SW_URL" 2>&1)"
   done
@@ -341,19 +398,36 @@ cmd_balances() {
   fi
 }
 
-# fund [SOL]: sends SOL (default 0.05) to every demo wallet from the funder, or by airdrop.
+# What "sw fund" without an amount tops each wallet up to: the menu scenario stakes 0.1 SOL twice from MAIN plus
+# rent and fees; the others pay only fees. On mainnet the funder parts with no more than that.
+fund_target() {
+  case "$1" in main) echo 0.22 ;; *) echo 0.01 ;; esac
+}
+
+# fund [SOL]: tops every demo wallet up to SOL (default: fund_target), from the funder or by airdrop.
 cmd_fund() {
-  local amount="${1:-0.05}" role file a
+  local amount="${1:-}" role file a target have need
+  if [ -z "$SW_FUNDER_KEY" ] && [ "$(cluster)" = mainnet ]; then
+    die "Mainnet has no faucet. Run: sw setup mainnet (it makes a demo funder you send SOL to), or set SW_FUNDER_KEY."
+  fi
   for role in main second new thief; do
     file="$(need_key "$role")"
     a="$(addr "$file")"
+    target="${amount:-$(fund_target "$role")}"
+    have="$(balance_lamports "$a")"
+    case "$have" in '' | *[!0-9]*) die "Could not read the balance of $(role_name "$(echo "$role" | tr a-z A-Z)"). Is the RPC up?" ;; esac
+    need=$(($(lamports "$target") - have))
+    if [ "$need" -le 0 ]; then
+      info "$(role_name "$(echo "$role" | tr a-z A-Z)") has $(sol "$have") SOL, enough (${target})"
+      continue
+    fi
     if [ -n "$SW_FUNDER_KEY" ]; then
-      say 'FUNDER' "sends ${amount} SOL to $(role_name "$(echo "$role" | tr a-z A-Z)")"
-      run ok '' -- transfer "$a" "$amount" --from "$SW_FUNDER_KEY" --fee-payer "$SW_FUNDER_KEY" \
+      say 'FUNDER' "tops $(role_name "$(echo "$role" | tr a-z A-Z)") up to ${target} SOL: sends $(sol "$need") SOL"
+      run ok '' -- transfer "$a" "$(sol "$need")" --from "$SW_FUNDER_KEY" --fee-payer "$SW_FUNDER_KEY" \
         --allow-unfunded-recipient || return 1
     else
-      say 'FAUCET' "airdrops ${amount} SOL to $(role_name "$(echo "$role" | tr a-z A-Z)")"
-      run ok '' -- airdrop "$amount" "$a" || info "  The devnet faucet limits airdrops. Set SW_FUNDER_KEY or use https://faucet.solana.com"
+      say 'FAUCET' "airdrops $(sol "$need") SOL to $(role_name "$(echo "$role" | tr a-z A-Z)")"
+      run ok '' -- airdrop "$(sol "$need")" "$a" || info "  The devnet faucet limits airdrops. Set SW_FUNDER_KEY or use https://faucet.solana.com"
     fi
   done
 }
@@ -548,21 +622,54 @@ cmd_thief() {
   esac
 }
 
-# sweep: send what is left on the demo wallets back to the funder.
+# sweep: everything goes back. Demo stake accounts that still hold SOL are withdrawn to the funder (their owner and the
+# second key sign, the funder pays), the four wallets send their SOL to the funder, and the funder sends it all to
+# SW_RETURN_TO when that is set. On mainnet this is what leaves no real SOL on throwaway keys.
 cmd_sweep() {
   [ -n "$SW_FUNDER_KEY" ] && [ -f "$SW_FUNDER_KEY" ] || die "Set SW_FUNDER_KEY to return the SOL to it."
-  local role file
-  for role in main second new thief; do
+  local funder role file a json owner key name have
+  funder="$(addr "$SW_FUNDER_KEY")"
+  for file in "$SW_DIR"/stake-*.json; do
+    [ -f "$file" ] || continue
+    a="$(addr "$file")"
+    json="$(stake_json "$a")"
+    [ -n "$json" ] || continue # closed: its SOL is already out
+    owner="$(stake_field "$json" withdrawer)"
+    key=''
+    for role in MAIN NEW SECOND THIEF; do
+      if [ "$(addr "$(key_file "$role")")" = "$owner" ]; then key="$(key_file "$role")"; name="$(role_name "$role")"; fi
+    done
+    if [ -z "$key" ]; then
+      info "stake $(short "$a") belongs to $(short "$owner"), not to a demo key: left as is"
+      continue
+    fi
+    say "${name} + SECOND KEY" "withdraw what is left in stake $(short "$a") to the funder"
+    SW_STAKE="$a" run ok '' -- withdraw-stake "$a" "$funder" ALL --withdraw-authority "$key" \
+      --custodian "$SW_SECOND_KEY" --fee-payer "$SW_FUNDER_KEY" || true
+  done
+  for role in MAIN SECOND NEW THIEF; do
     file="$(key_file "$role")"
     [ -f "$file" ] || continue
-    say "$(role_name "$(echo "$role" | tr a-z A-Z)")" "returns its SOL to the funder"
-    run ok '' -- transfer "$(addr "$SW_FUNDER_KEY")" ALL --from "$file" --fee-payer "$file" || true
+    have="$(balance_lamports "$(addr "$file")")"
+    [ "${have:-0}" -gt 0 ] 2>/dev/null || continue
+    say "$(role_name "$role")" "returns its SOL to the funder"
+    run ok '' -- transfer "$funder" ALL --from "$file" --fee-payer "$file" || true
   done
+  if [ -z "$SW_RETURN_TO" ]; then
+    info "The SOL stays on the FUNDER $funder. Set SW_RETURN_TO to your wallet's address to get it back with: sw sweep"
+    return 0
+  fi
+  case "$SW_RETURN_TO" in
+    *[!1-9A-HJ-NP-Za-km-z]*) die "SW_RETURN_TO is not a Solana address: $SW_RETURN_TO" ;;
+  esac
+  [ ${#SW_RETURN_TO} -ge 32 ] && [ ${#SW_RETURN_TO} -le 44 ] || die "SW_RETURN_TO is not a Solana address: $SW_RETURN_TO"
+  say 'FUNDER' "sends everything back to your wallet $(short "$SW_RETURN_TO")"
+  run ok '' -- transfer "$SW_RETURN_TO" ALL --from "$SW_FUNDER_KEY" --fee-payer "$SW_FUNDER_KEY" --allow-unfunded-recipient
 }
 
 # The scenario for "sw menu": group|role|label|command|what the audience sees. Numbered in this order.
 MENU_STEPS='Prepare|setup|Balances|balances|SOL on every demo wallet
-Prepare|setup|Top up wallets, 0.25 SOL each|fund 0.25|from the funder; MAIN needs 0.2 for two stakes
+Prepare|setup|Top up wallets|fund|from the funder: MAIN to 0.22 SOL for two stakes, the others 0.01 for fees
 Without a lock|owner|Stake 0.1 SOL|stake 0.1|new stake account, no lock
 Without a lock|owner|Status|status|NOT LOCKED
 Without a lock|thief|Steal everything|thief withdraw|ACCEPTED: the thief takes it all
@@ -607,6 +714,9 @@ menu_list() {
 cmd_ui() {
   command -v node >/dev/null 2>&1 || die "Node.js not found; the page needs Node 24 or newer."
   local port="${1:-4848}"
+  # The page names the cluster in its header.
+  SW_CLUSTER="$(cluster)"
+  export SW_CLUSTER
   (sleep 1; open "http://127.0.0.1:$port" 2>/dev/null || xdg-open "http://127.0.0.1:$port" 2>/dev/null) >/dev/null 2>&1 &
   exec node "$SCRIPT_DIR/ui.ts" "$port"
 }
@@ -654,9 +764,9 @@ cmd_help() {
 ${B}Stakeward live demo${N} ($(shown_url)). Keys: ${SW_DIR}
 
 ${B}Prepare${N}
-  sw setup                  create the demo keys (main, second, new, thief) and demo.env
+  sw setup [mainnet]        create the demo keys (main, second, new, thief) and demo.env; mainnet adds a funder key
   sw keys | sw balances     addresses / balances (role names, not addresses)
-  sw fund [SOL]             send SOL to every demo wallet (from SW_FUNDER_KEY, else airdrop)
+  sw fund [SOL]             top every demo wallet up to SOL (default: what the menu needs), from SW_FUNDER_KEY or airdrop
   sw transfer <from> <to> <SOL|ALL>   e.g. sw transfer main new 0.02
 
 ${B}Owner${N}
@@ -680,15 +790,16 @@ ${B}Thief${N} (has a stolen copy of the main key)
 ${B}Rescue${N}
   sw rescue                 new wallet + main + second: the stake moves to the NEW WALLET
   sw withdraw-new [SOL|ALL] new wallet + second key withdraw
-  sw sweep                  return what is left to SW_FUNDER_KEY
+  sw sweep                  everything back: stake accounts and wallets to SW_FUNDER_KEY, then to SW_RETURN_TO
 
 ${B}Menu${N}
   sw menu [10m|1h|6mo]      the whole scenario as numbered steps: press Enter for the next one
   sw log                    in another terminal: the full network output of the menu, scrolling on its own
   sw ui [port]              the same scenario as a page in the browser (http://127.0.0.1:4848)
 
-Env: SW_URL (devnet), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
-     SW_STAKE (another stake account), SW_VOTE, SW_ONCHAIN_FAILS=0 (thief's failures only simulated, no explorer link).
+Env: SW_URL (devnet, mainnet-beta or an RPC URL), SW_MAIN_KEY, SW_SECOND_KEY, SW_NEW_KEY, SW_THIEF_KEY, SW_FUNDER_KEY,
+     SW_RETURN_TO (your wallet's address for sweep), SW_CU_PRICE (priority fee), SW_STAKE (another stake account),
+     SW_VOTE, SW_ONCHAIN_FAILS=0 (thief's failures only simulated, no explorer link).
 EOF
 }
 
@@ -715,8 +826,8 @@ check_rpc() {
     *429* | *'rate limit'*) problem='refuses: rate limit (HTTP 429)' ;;
   esac
   [ -z "$problem" ] && return 0
-  die "The RPC ${url%%\?*} ${problem}. Use another one, e.g.:
-  export SW_URL=\"https://devnet.helius-rpc.com/?api-key=<your key>\""
+  die "The RPC ${url%%\?*} ${problem}. Use another one, e.g. in $SW_DIR/demo.env:
+  export SW_URL=\"https://$([ "$(cluster)" = mainnet ] && echo mainnet || echo devnet).helius-rpc.com/?api-key=<your key>\""
 }
 
 main() {
@@ -729,7 +840,7 @@ main() {
     *) check_rpc ;;
   esac
   case "$cmd" in
-    setup) cmd_setup ;;
+    setup) cmd_setup "$@" ;;
     keys) cmd_keys ;;
     balances | bal) cmd_balances ;;
     fund) cmd_fund "$@" ;;

@@ -24,7 +24,7 @@ export const LOCK_DURATIONS = ['10m', '1h', '6mo', '12mo'] as const;
 
 export const STEPS: readonly Step[] = [
   { id: 'balances', group: 'Prepare', role: 'setup', label: 'Balances', args: ['balances'], expect: 'SOL on every demo wallet' },
-  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund', '0.25'], expect: '0.25 SOL each from the funder' },
+  { id: 'fund', group: 'Prepare', role: 'setup', label: 'Top up wallets', args: ['fund'], expect: 'from the funder: MAIN to 0.22 SOL, the others 0.01' },
 
   { id: 'before-stake', group: 'Without a lock', role: 'owner', label: 'Stake 0.1 SOL', args: ['stake', '0.1'], expect: 'new stake account, no lock' },
   { id: 'before-thief', group: 'Without a lock', role: 'thief', label: 'Steal everything', args: ['thief', 'withdraw'], expect: 'accepted: the thief takes it all' },
@@ -48,6 +48,11 @@ export function commandFor(id: string, duration = '6mo'): string[] | null {
   const step = STEPS.find((s) => s.id === id);
   if (!step || !(LOCK_DURATIONS as readonly string[]).includes(duration)) return null;
   return step.args.map((a) => (a === '{duration}' ? duration : a));
+}
+
+// The cluster named in the page header; sw.sh passes it as SW_CLUSTER.
+export function clusterLabel(value: string | undefined): string {
+  return value === 'mainnet' || value === 'testnet' || value === 'localnet' ? value : 'devnet';
 }
 
 export interface Wallet {
@@ -141,7 +146,11 @@ function serve(port: string) {
         'content-type': 'text/html; charset=utf-8',
         'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
       });
-      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)));
+      res.end(
+        readFileSync(PAGE, 'utf8')
+          .replace('/*STEPS*/[]', JSON.stringify(STEPS))
+          .replace('Live on Solana devnet', `Live on Solana ${clusterLabel(process.env.SW_CLUSTER)}`),
+      );
       return;
     }
     const font = /^\/fonts\/([a-z-]+\.woff2)$/.exec(url)?.[1];
