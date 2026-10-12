@@ -4,166 +4,288 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stakeward live demo</title>
+<script>
+  // A theme chosen on this page before (light or dark; none = the system theme), set before the first paint.
+  try { const t = localStorage.getItem('stakeward:demo-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+</script>
 <style>
-  /* The site's dark theme (apps/web/src/styles/tokens.css) plus one colour per demo role. */
-  @font-face { font-family: Geist; src: url(/fonts/geist.woff2) format('woff2'); font-weight: 100 900; }
-  @font-face { font-family: 'Geist Mono'; src: url(/fonts/geist-mono.woff2) format('woff2'); font-weight: 100 900; }
-  :root {
-    --bg: #0d1017; --surface: #151922; --raised: #1d222d; --subtle: #262b38; --line: #2c3240;
-    --text: #eceef3; --muted: #a6adbb; --primary: #818cf8; --primary-soft: #22244a;
-    --ok: #86efac; --ok-soft: #0f2e1c; --bad: #fca5a5; --bad-soft: #3b1212; --warn: #fcd34d; --warn-soft: #3a2a07;
-    --owner: #86efac; --thief: #fca5a5; --second: #d8b4fe; --new: #7dd3fc; --setup: #a6adbb;
-    --sans: Geist, -apple-system, system-ui, sans-serif; --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  }
+  /*
+   * The site's look (DECISIONS.md D145-D147, D150). ui.ts puts the design tokens of apps/web/src/styles/tokens.css on
+   * the next line, light and dark, so this file names no colour, size, radius or shadow of its own and cannot drift
+   * from the site. Each demo role wears the colour the site gives it: the main key the action orange, the second key
+   * cobalt, the thief danger red, the new wallet ink, setup steps muted.
+   */
+  /*TOKENS*/
+
+  /* The site's fonts (D145), served by ui.ts from the web app's packages; local fallbacks sized to their metrics. */
+  @font-face { font-family: 'Space Grotesk Variable'; font-style: normal; font-display: swap; font-weight: 300 700; src: url(/fonts/space-grotesk.woff2) format('woff2-variations'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-display: swap; font-weight: 400; src: url(/fonts/ibm-plex-sans-400.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-display: swap; font-weight: 500; src: url(/fonts/ibm-plex-sans-500.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-display: swap; font-weight: 600; src: url(/fonts/ibm-plex-sans-600.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-display: swap; font-weight: 400; src: url(/fonts/ibm-plex-mono-400.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-display: swap; font-weight: 500; src: url(/fonts/ibm-plex-mono-500.woff2) format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans Fallback'; src: local('Arial'), local('Helvetica'), local('Liberation Sans'); size-adjust: 101%; ascent-override: 101%; descent-override: 27%; line-gap-override: 0%; }
+  @font-face { font-family: 'Space Grotesk Fallback'; src: local('Arial'), local('Helvetica'), local('Liberation Sans'); size-adjust: 103%; ascent-override: 95%; descent-override: 28%; line-gap-override: 0%; }
+
+  :root { color-scheme: light dark; }
+  :root[data-theme='light'] { color-scheme: light; }
+  :root[data-theme='dark'] { color-scheme: dark; }
+
+  /* Roles: --c is the role's text and line colour, --c-soft its ground, --c-fill a filled mark with --c-on on it.
+     live-demo.test.ts checks every pair for AA in both themes. */
+  .role-owner { --c: var(--color-primary); --c-soft: var(--color-primary-soft); --c-fill: var(--color-primary); --c-on: var(--color-on-primary); }
+  .role-second { --c: var(--color-accent-ink); --c-soft: var(--color-accent-soft); --c-fill: var(--color-accent); --c-on: var(--color-on-accent); }
+  .role-new { --c: var(--color-foreground); --c-soft: var(--color-subtle); --c-fill: var(--color-foreground); --c-on: var(--color-surface); }
+  .role-thief { --c: var(--color-danger); --c-soft: var(--color-danger-soft); --c-fill: var(--color-danger); --c-on: var(--color-surface); }
+  .role-setup { --c: var(--color-muted); --c-soft: var(--color-neutral-soft); --c-fill: var(--color-muted); --c-on: var(--color-surface); }
+
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 var(--sans); overflow: hidden; }
+  html { background-color: var(--color-background); }
+  body {
+    margin: 0; overflow: hidden;
+    color: var(--color-foreground); font-family: var(--font-sans); font-size: var(--text-sm); line-height: var(--text-sm--line-height);
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    /* Drafting paper, as bg-blueprint in apps/web/src/index.css. */
+    background-color: var(--color-background);
+    background-image:
+      linear-gradient(var(--color-grid) var(--blueprint-line), transparent var(--blueprint-line)),
+      linear-gradient(90deg, var(--color-grid) var(--blueprint-line), transparent var(--blueprint-line));
+    background-size: var(--blueprint-cell) var(--blueprint-cell);
+    background-position: calc(var(--blueprint-line) * -1) calc(var(--blueprint-line) * -1);
+  }
+  h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 600; }
   button { font: inherit; color: inherit; }
+  :focus-visible { outline: var(--focus-ring-width) solid var(--color-ring); outline-offset: var(--focus-ring-offset); }
+  ::selection { background-color: var(--color-primary); color: var(--color-on-primary); }
+  .icon { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .page { display: grid; grid-template-rows: auto auto minmax(0, 1fr); height: 100vh; }
 
-  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
-  .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--primary-soft); display: grid; place-items: center; color: var(--primary); }
-  .pill { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
-  .pill::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+  /* Header: the site's (SiteHeader.tsx): surface, a 2 px orange rule, the mark and the name in orange. */
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 10px 20px; background: var(--color-surface); border-bottom: 2px solid var(--color-primary); }
+  .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--text-lg); line-height: var(--text-lg--line-height); letter-spacing: -0.025em; color: var(--color-primary); }
+  .mark { width: 24px; height: 24px; flex: none; }
+  .mark .l { fill: var(--color-accent-ink); } .mark .r { fill: var(--color-accent); } .mark .hole { fill: var(--color-surface); }
+  .badge { padding: 2px 8px; font-family: var(--font-sans); font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 500; letter-spacing: normal; color: var(--color-foreground); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
   .spacer { flex: 1; }
-  #networks button[aria-pressed="true"] { background: var(--ok-soft); border-color: var(--ok); }
-  #networks button[aria-pressed="true"]::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
-  .seg { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
-  .seg button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--primary-soft); border-color: var(--primary); color: var(--text); }
-  .hint { font-size: 12px; color: var(--muted); }
-  kbd { font: 12px var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+  .seg { display: flex; align-items: center; gap: 8px; color: var(--color-muted); }
+  .seg-buttons { display: flex; gap: 4px; }
+  /* A choice of a few (the key diagram's tabs): framed; the chosen one a soft orange with an orange frame. */
+  .tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-foreground); font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color var(--motion-duration-fast), border-color var(--motion-duration-fast), transform var(--motion-duration-fast); }
+  .tab[hidden] { display: none; }
+  .tab.square { width: 32px; padding: 0; }
+  .tab[aria-pressed='false']:hover:not(:disabled) { background: var(--color-subtle); }
+  .tab[aria-pressed='true'] { border-color: var(--color-primary); background: var(--color-primary-soft); }
+  .tab:active:not(:disabled) { transform: scale(0.98); }
+  .tab:disabled { opacity: 0.5; cursor: progress; }
+  .hint { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); line-height: var(--text-xs--line-height); color: var(--color-muted); }
+  kbd { padding: 1px 6px; font: 500 var(--text-xs)/var(--text-xs--line-height) var(--font-mono); color: var(--color-foreground); background: var(--color-surface); border: 1px solid var(--color-border-strong); border-bottom-width: 2px; border-radius: var(--radius-sm); }
 
-  .wallets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr); gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; transition: box-shadow .4s, border-color .4s; }
-  .card .who { font-size: 11px; font-weight: 700; letter-spacing: .07em; color: var(--c); display: flex; align-items: center; gap: 6px; }
-  .card .who::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
-  .card .sol { font: 600 22px/1.2 var(--mono); margin-top: 4px; white-space: nowrap; }
-  .card .sol small { font-size: 13px; color: var(--muted); font-weight: 400; }
-  .card .addr { font: 12px var(--mono); color: var(--muted); }
-  .card.changed { border-color: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
-  .stake .state { font-weight: 700; font-size: 16px; margin-top: 4px; }
-  .stake .state.locked { color: var(--ok); } .stake .state.open { color: var(--warn); } .stake .state.none { color: var(--muted); }
-  .stake .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Wallets and the stake account: cards on the paper. */
+  .wallets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr); gap: 12px; padding: 16px 20px 12px; }
+  .card { min-width: 0; padding: 12px 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); transition: border-color 0.4s, box-shadow 0.4s; }
+  .card.role-thief { border-color: var(--color-danger-border); }
+  /* A balance that just moved: the role's frame and the site's hard shadow, for 2.5 s. */
+  .card.changed { border-color: var(--c); box-shadow: 0 0 0 1px var(--c), var(--shadow-md); }
+  .who { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 500; color: var(--c); }
+  .who .icon { width: 14px; height: 14px; }
+  .sol { margin-top: 6px; font-family: var(--font-display); font-size: var(--text-2xl); line-height: var(--text-2xl--line-height); letter-spacing: var(--text-2xl--letter-spacing); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sol small { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 400; letter-spacing: normal; color: var(--color-muted); }
+  .addr, .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); line-height: var(--text-xs--line-height); color: var(--color-muted); }
+  .addr { font-family: var(--font-mono); }
+  /* The stake account as a box of "Your stake, to scale" (VaultGrid.tsx): 2 px frame in its status tone. */
+  .stake { border-width: 2px; padding: 11px 13px; }
+  .stake.none { --c: var(--color-muted); }
+  .stake.open { --c: var(--color-neutral); border-style: dashed; border-color: var(--color-border-strong); }
+  .stake.locked { --c: var(--color-success); border-color: var(--color-success-border); background: var(--color-success-soft); }
+  .state { margin-top: 6px; font-family: var(--font-display); font-size: var(--text-lg); line-height: var(--text-lg--line-height); font-weight: 600; color: var(--c); }
 
-  .cols { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
-  .col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
-  .col:last-child { border-right: 0; }
-  .col h2 { margin: 0; padding: 10px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
-  .col h2 button { text-transform: none; letter-spacing: 0; font-size: 12px; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; color: var(--muted); cursor: pointer; }
-  .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px; scrollbar-width: thin; scrollbar-color: var(--subtle) transparent; }
+  /* Three columns: the scenario, what happened, the network. */
+  .cols { display: grid; grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1fr); gap: 20px; min-height: 0; padding: 4px 20px 16px; }
+  .col { display: flex; flex-direction: column; min-height: 0; }
+  .col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; margin-bottom: 8px; }
+  .col-head h2 { font-size: var(--text-lg); line-height: var(--text-lg--line-height); }
+  /* 4 px of room inside the scrolling box, so a focused step's ring is not cut off at its edge. */
+  .scroll { flex: 1; min-height: 0; margin: -4px; padding: 4px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--color-border-strong) transparent; }
+  .scroll:focus-visible { outline-offset: calc(var(--focus-ring-width) * -1); }
+  .empty { margin-top: 40px; text-align: center; color: var(--color-muted); }
+  .ghost { height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; font-weight: 500; cursor: pointer; transition: background-color var(--motion-duration-fast), transform var(--motion-duration-fast); }
+  .ghost:hover { background: var(--color-subtle); }
+  .ghost:active { transform: scale(0.96); }
 
-  .group { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 14px 0 6px; }
+  .group { margin: 16px 0 6px; font-family: var(--font-display); font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 500; color: var(--color-muted); }
   .group:first-child { margin-top: 0; }
-  .step { display: flex; gap: 10px; width: 100%; text-align: left; margin: 0 0 6px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer; transition: background .15s, border-color .15s; }
-  .step:hover:not(:disabled) { background: var(--raised); }
-  .step:focus-visible, .seg button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-  .step:disabled { cursor: progress; opacity: .55; }
-  .step.next { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); }
-  .n { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c); color: var(--c); display: grid; place-items: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
-  .step.done .n { background: var(--c); color: var(--bg); }
-  .step .who { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--c); }
-  .step .label { font-weight: 600; }
-  .step .expect { font-size: 12.5px; color: var(--muted); }
+  .step { display: flex; gap: 10px; width: 100%; margin: 0 0 6px; padding: 10px 12px; text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; transition: background-color var(--motion-duration-fast), border-color var(--motion-duration-fast), transform var(--motion-duration-fast); }
+  .step:hover:not(:disabled) { background: var(--color-subtle); }
+  .step:active:not(:disabled) { transform: scale(0.98); }
+  .step.next, .step.next:hover:not(:disabled) { border-color: var(--c); background: var(--c-soft); }
+  .step:disabled { opacity: 0.5; cursor: progress; }
+  .n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin-top: 1px; border: 1.5px solid var(--c); border-radius: var(--radius-sm); color: var(--c); font-family: var(--font-display); font-size: var(--text-xs); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .step.done .n { background: var(--c-fill); border-color: var(--c-fill); color: var(--c-on); }
+  .label { font-weight: 600; }
+  .expect { font-size: var(--text-xs); line-height: var(--text-xs--line-height); color: var(--color-muted); }
 
-  .story .entry { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
-  .entry .title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-  .chip { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--bg); background: var(--c); border-radius: 6px; padding: 2px 7px; }
-  .entry .banner { color: var(--muted); margin-top: 4px; }
-  .entry .banner b { color: var(--text); font-weight: 600; }
-  .entry .cmd { font: 12.5px/1.5 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; margin-top: 8px; white-space: pre-wrap; word-break: break-all; }
-  .entry .detail { font: 12.5px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; margin-top: 4px; }
-  .verdict { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-weight: 700; font-size: 17px; line-height: 1.35; }
-  .verdict.ok { background: var(--ok-soft); color: var(--ok); }
-  .verdict.bad { background: var(--bad-soft); color: var(--bad); }
-  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
-  .verdict.stolen { background: var(--bad-soft); color: var(--bad); font-size: 19px; border: 1px solid var(--bad); }
-  .entry a { display: inline-block; margin-top: 8px; color: var(--primary); font-size: 13px; text-decoration: none; }
-  .entry a:hover { text-decoration: underline; }
-  .waiting { color: var(--muted); margin-top: 10px; display: flex; align-items: center; gap: 8px; }
-  .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--subtle); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+  .entry { margin-bottom: 12px; padding: 12px 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); animation: fade-in var(--motion-duration-normal) ease-out; }
+  .title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; }
+  /* The role as a badge (badge.tsx): its soft ground and its colour, small corners. */
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: var(--text-xs); line-height: var(--text-xs--line-height); font-weight: 500; color: var(--c); background: var(--c-soft); border-radius: var(--radius-sm); }
+  .chip .icon { width: 14px; height: 14px; }
+  .banner { margin-top: 4px; color: var(--color-muted); }
+  .banner b { font-weight: 600; color: var(--color-foreground); }
+  /* A command as on the recovery card (command-block.tsx). */
+  .cmd { margin-top: 8px; padding: 8px 10px; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5; background: var(--color-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-md); white-space: pre-wrap; word-break: break-all; }
+  .detail { margin-top: 4px; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5; color: var(--color-muted); white-space: pre-wrap; word-break: break-word; }
+  /* The verdict as an alert (alert.tsx): a soft ground, framed only for danger; a theft is the large one. Its tone is
+     what the outcome means for the owner, as on the site (D150): a thief turned away is good news. */
+  .verdict { margin-top: 10px; padding: 12px 16px; border: 1px solid transparent; border-radius: var(--radius-lg); font-size: var(--text-base); line-height: var(--text-base--line-height); font-weight: 600; }
+  .verdict.success { background: var(--color-success-soft); color: var(--color-success); }
+  .verdict.warning { background: var(--color-warning-soft); color: var(--color-warning); }
+  .verdict.danger { background: var(--color-danger-soft); color: var(--color-danger); border-color: var(--color-danger-border); }
+  .verdict.stolen { padding: 16px 20px; border-width: 2px; font-size: var(--text-lg); line-height: var(--text-lg--line-height); }
+  .entry a { display: inline-block; margin-top: 8px; color: var(--color-primary); text-decoration: underline; text-underline-offset: 4px; border-radius: var(--radius-sm); }
+  .entry a:hover { color: var(--color-primary-hover); }
+  .waiting { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--color-muted); }
+  .spin { width: 14px; height: 14px; border: 2px solid var(--color-subtle); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .empty { color: var(--muted); text-align: center; margin-top: 40px; }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-  .net { font: 12.5px/1.55 var(--mono); color: var(--muted); white-space: pre-wrap; word-break: break-word; }
-  .net .sep { display: block; color: var(--text); font-weight: 600; margin: 14px 0 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  /* The network: a panel of plain output; role tags in their colours, results in their tones. */
+  .net { padding: 12px 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6; color: var(--color-muted); white-space: pre-wrap; word-break: break-word; }
+  .net.scroll { margin: 0; }
+  .net .sep { display: block; margin: 14px 0 4px; padding-top: 10px; border-top: 1px dashed var(--color-border-strong); font-weight: 500; color: var(--color-foreground); }
   .net .sep:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-  .net .role-owner { color: var(--owner); } .net .role-thief { color: var(--thief); } .net .role-second { color: var(--second); } .net .role-new { color: var(--new); }
-  .net .good { color: var(--ok); } .net .err { color: var(--bad); } .net .ins { color: var(--primary); }
+  .net .tag { font-weight: 500; color: var(--c); }
+  .net .good { color: var(--color-success); }
+  .net .err { color: var(--color-danger); }
+  .net .ins { font-weight: 500; color: var(--color-foreground); }
+  .net .empty { display: block; margin-top: 24px; font-family: var(--font-sans); font-size: var(--text-sm); }
+  .netstate { font-size: var(--text-xs); line-height: var(--text-xs--line-height); color: var(--color-muted); }
 
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; }
+  }
   @media (max-width: 1100px) {
     body { overflow: auto; } .page { height: auto; }
-    .wallets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .cols { grid-template-columns: 1fr; } .col { border-right: 0; border-bottom: 1px solid var(--line); } .scroll { max-height: 70vh; }
+    .wallets { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stake { grid-column: 1 / -1; }
+    .cols { grid-template-columns: minmax(0, 1fr); } .scroll { max-height: 70vh; }
   }
 </style>
 </head>
 <body>
 <div class="page">
   <header>
-    <div class="brand"><span class="logo" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-    </span>Stakeward</div>
-    <div class="seg" id="network" aria-label="Network">Network <span id="networks"></span></div>
+    <h1 class="brand">
+      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path class="l" d="M32 3 9 11v18c0 15 9.5 26.5 23 32Z"/><path class="r" d="M32 3l23 8v18c0 15-9.5 26.5-23 32Z"/><circle class="hole" cx="32" cy="26" r="6.5"/><path class="hole" d="M29 29.5h6l2.5 15.3a1.5 1.5 0 0 1-1.5 1.7h-8a1.5 1.5 0 0 1-1.5-1.7Z"/></svg>
+      Stakeward <span class="badge">Live demo</span>
+    </h1>
+    <div class="seg" role="group" aria-label="Network">Network <span class="seg-buttons" id="networks"></span></div>
     <span class="spacer"></span>
-    <div class="seg">Lock for <span id="durations"></span></div>
+    <div class="seg" role="group" aria-label="Lock for">Lock for <span class="seg-buttons" id="durations"></span></div>
+    <div class="seg" role="group" aria-label="Theme"><span class="seg-buttons" id="themes"></span></div>
     <span class="hint"><kbd>Enter</kbd> next step</span>
   </header>
 
   <section class="wallets" id="wallets" aria-label="Demo wallets"></section>
 
   <div class="cols">
-    <div class="col">
-      <h2>Scenario</h2>
+    <section class="col" aria-labelledby="steps-title">
+      <div class="col-head"><h2 id="steps-title">Scenario</h2></div>
       <div class="scroll" id="steps"></div>
-    </div>
-    <div class="col">
-      <h2>What happened <button id="clear" type="button">Clear</button></h2>
-      <div class="scroll story" id="story" aria-live="polite"><div class="empty">Press a step on the left, or Enter.</div></div>
-    </div>
-    <div class="col">
-      <h2>Solana network <span id="netstate"></span></h2>
-      <div class="scroll net" id="net"><span class="empty">Everything the CLI and the network answer shows up here.</span></div>
-    </div>
+    </section>
+    <section class="col" aria-labelledby="story-title">
+      <div class="col-head"><h2 id="story-title">What happened</h2><button class="ghost" id="clear" type="button">Clear</button></div>
+      <div class="scroll story" id="story" tabindex="0" aria-labelledby="story-title" aria-live="polite"><div class="empty">Press a step on the left, or Enter.</div></div>
+    </section>
+    <section class="col" aria-labelledby="net-title">
+      <div class="col-head"><h2 id="net-title">Solana network</h2><span class="netstate" id="netstate"></span></div>
+      <div class="scroll net" id="net" tabindex="0" aria-labelledby="net-title"><span class="empty">Everything the CLI and the network answer shows up here.</span></div>
+    </section>
   </div>
 </div>
 <script>
 const STEPS = /*STEPS*/[];
 const DURATIONS = ['10m', '1h', '6mo', '12mo'];
-const WHO = { owner: 'OWNER', thief: 'THIEF', second: 'SECOND KEY', new: 'NEW WALLET', setup: 'SETUP' };
-const WALLETS = [
-  ['MAIN KEY', 'owner', 'Owner · main key'], ['SECOND KEY', 'second', 'Second key'],
-  ['NEW WALLET', 'new', 'New wallet'], ['THIEF', 'thief', 'Thief'],
-];
+// The roles by the site's names (UX rule 4): Main key, Second key, New wallet.
+const WHO = { owner: 'Main key', thief: 'Thief', second: 'Second key', new: 'New wallet', setup: 'Setup' };
+const WALLETS = [['MAIN KEY', 'owner'], ['SECOND KEY', 'second'], ['NEW WALLET', 'new'], ['THIEF', 'thief']];
+// Lucide icons, as the site draws them (lucide-react).
+const ICONS = {
+  key: [['path', { d: 'M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z' }], ['circle', { cx: '16.5', cy: '7.5', r: '.5', fill: 'currentColor' }]],
+  skull: [['path', { d: 'm12.5 17-.5-1-.5 1h1z' }], ['path', { d: 'M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z' }], ['circle', { cx: '15', cy: '12', r: '1' }], ['circle', { cx: '9', cy: '12', r: '1' }]],
+  wallet: [['path', { d: 'M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1' }], ['path', { d: 'M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4' }]],
+  settings: [['path', { d: 'M14 17H5' }], ['path', { d: 'M19 7h-9' }], ['circle', { cx: '17', cy: '17', r: '3' }], ['circle', { cx: '7', cy: '7', r: '3' }]],
+  box: [['path', { d: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z' }], ['path', { d: 'm3.3 7 8.7 5 8.7-5' }], ['path', { d: 'M12 22V12' }]],
+  system: [['path', { d: 'M12 2v2' }], ['path', { d: 'M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715' }], ['path', { d: 'M16 12a4 4 0 0 0-4-4' }], ['path', { d: 'm19 5-1.256 1.256' }], ['path', { d: 'M20 12h2' }]],
+  light: [['circle', { cx: '12', cy: '12', r: '4' }], ['path', { d: 'M12 2v2' }], ['path', { d: 'M12 20v2' }], ['path', { d: 'm4.93 4.93 1.41 1.41' }], ['path', { d: 'm17.66 17.66 1.41 1.41' }], ['path', { d: 'M2 12h2' }], ['path', { d: 'M20 12h2' }], ['path', { d: 'm6.34 17.66-1.41 1.41' }], ['path', { d: 'm19.07 4.93-1.41 1.41' }]],
+  dark: [['path', { d: 'M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401' }]],
+};
+const ROLE_ICON = { owner: 'key', second: 'key', new: 'wallet', thief: 'skull', setup: 'settings' };
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+function icon(name) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const [tag, attrs] of ICONS[name]) {
+    const part = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) part.setAttribute(k, v);
+    svg.append(part);
+  }
+  return svg;
+}
+// A role's name with its icon, in its colour.
+function who(cls, role, text = WHO[role]) {
+  const e = el('span', `${cls} role-${role}`);
+  e.append(icon(ROLE_ICON[role]), text);
+  return e;
+}
 let duration = '6mo';
 let busy = false;
 let next = STEPS.findIndex((s) => s.group === 'Without a lock');
 
 for (const d of DURATIONS) {
-  const b = el('button', '', d);
+  const b = el('button', 'tab', d);
   b.type = 'button';
   b.setAttribute('aria-pressed', String(d === duration));
   b.onclick = () => { duration = d; for (const x of $('durations').children) x.setAttribute('aria-pressed', String(x.textContent === d)); };
   $('durations').append(b);
 }
 
+// Theme: the system's by default, as on the site; light or dark chosen here holds on this computer.
+const THEMES = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+function setTheme(theme) {
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  try { if (theme === 'system') localStorage.removeItem('stakeward:demo-theme'); else localStorage.setItem('stakeward:demo-theme', theme); } catch {}
+  for (const b of $('themes').children) b.setAttribute('aria-pressed', String(b.dataset.theme === theme));
+}
+for (const [theme, label] of Object.entries(THEMES)) {
+  const b = el('button', 'tab square');
+  b.type = 'button';
+  b.dataset.theme = theme;
+  b.title = label;
+  b.setAttribute('aria-label', label);
+  b.append(icon(theme));
+  b.onclick = () => setTheme(theme);
+  $('themes').append(b);
+}
+setTheme(document.documentElement.dataset.theme || 'system');
+
 // Wallet cards
 const cards = {};
 let last = {};
-for (const [name, role, title] of WALLETS) {
-  const c = el('div', 'card');
-  c.style.setProperty('--c', `var(--${role})`);
-  c.append(el('div', 'who', title), el('div', 'sol', '…'), el('div', 'addr', ''));
+for (const [name, role] of WALLETS) {
+  const c = el('div', `card role-${role}`);
+  c.append(who('who', role), el('div', 'sol', '…'), el('div', 'addr', ''));
   cards[name] = c;
   $('wallets').append(c);
 }
-const stakeCard = el('div', 'card stake');
-stakeCard.style.setProperty('--c', 'var(--primary)');
-stakeCard.append(el('div', 'who', 'Current stake account'), el('div', 'state none', '…'), el('div', 'meta', ''));
+const stakeCard = el('div', 'card stake none');
+const stakeWho = el('span', 'who');
+stakeWho.append(icon('box'), 'Current stake account');
+stakeCard.append(stakeWho, el('div', 'state', '…'), el('div', 'meta', ''));
 $('wallets').append(stakeCard);
 
 function setSol(node, sol) {
@@ -178,7 +300,7 @@ function showNetwork(n) {
   const box = $('networks');
   if (!box.children.length) {
     for (const name of ['devnet', 'rpc', 'local']) {
-      const b = el('button', '', labels[name]);
+      const b = el('button', 'tab', labels[name]);
       b.type = 'button';
       b.dataset.net = name;
       b.onclick = () => {
@@ -212,12 +334,12 @@ async function refresh() {
     const meta = stakeCard.querySelector('.meta');
     const sol = wallets.find((w) => w.name === 'STAKE')?.sol;
     if (!stake) {
-      state.className = 'state none';
+      stakeCard.className = 'card stake none';
       state.textContent = 'No live stake account';
       meta.textContent = 'Stake 0.1 SOL to start';
     } else {
       const locked = stake.plain.includes('PROTECTED');
-      state.className = `state ${locked ? 'locked' : 'open'}`;
+      stakeCard.className = `card stake ${locked ? 'locked' : 'open'}`;
       state.textContent = stake.plain.replace(/, second key:.*$/, '').replace(/^(🔓 NOT LOCKED):.*$/u, '$1');
       meta.textContent = `${sol ? Number(sol).toFixed(4) + ' SOL · ' : ''}owner: ${stake.owner} · ${stake.address.slice(0, 4)}…${stake.address.slice(-4)}`;
     }
@@ -231,11 +353,10 @@ let n = 0;
 STEPS.forEach((step, i) => {
   if (step.group !== group) { group = step.group; $('steps').append(el('div', 'group', group)); }
   n += 1;
-  const b = el('button', 'step');
+  const b = el('button', `step role-${step.role}`);
   b.type = 'button';
-  b.style.setProperty('--c', `var(--${step.role})`);
   const body = el('span');
-  body.append(el('div', 'who', WHO[step.role]), el('div', 'label', step.label), el('div', 'expect', step.expect));
+  body.append(who('who', step.role), el('div', 'label', step.label), el('div', 'expect', step.expect));
   b.append(el('span', 'n', String(n)), body);
   b.onclick = () => run(i);
   buttons.push(b);
@@ -246,8 +367,8 @@ mark();
 
 // Network pane: role names, program results and instructions get a colour.
 const NET = /(\[MAIN KEY\]|\[SECOND KEY\]|\[NEW WALLET\]|\[THIEF\]|Program log: ERROR[^\n]*|failed: [^\n]*|Status: Error[^\n]*|Error[^\n]*|Status: Ok|success|Program log: Instruction: \w+)/;
-const NET_CLASS = (t) => t.startsWith('[MAIN') ? 'role-owner' : t.startsWith('[SECOND') ? 'role-second' : t.startsWith('[NEW') ? 'role-new'
-  : t.startsWith('[THIEF') ? 'role-thief' : (t === 'success' || t === 'Status: Ok') ? 'good' : t.startsWith('Program log: Instruction') ? 'ins' : 'err';
+const NET_CLASS = (t) => t.startsWith('[MAIN') ? 'tag role-owner' : t.startsWith('[SECOND') ? 'tag role-second' : t.startsWith('[NEW') ? 'tag role-new'
+  : t.startsWith('[THIEF') ? 'tag role-thief' : (t === 'success' || t === 'Status: Ok') ? 'good' : t.startsWith('Program log: Instruction') ? 'ins' : 'err';
 function netAppend(text) {
   const pane = $('net');
   const follow = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 40;
@@ -258,19 +379,26 @@ function netAppend(text) {
   if (follow) pane.scrollTop = pane.scrollHeight;
 }
 
+// A verdict's tone is what it means for the owner: the thief turned away is good news, the thief let through is a
+// warning (or a theft), anyone else turned away is an error.
+function verdictTone(line, role) {
+  if (line.startsWith('🚨')) return 'danger stolen';
+  if (role === 'thief') return line.startsWith('⛔') ? 'success' : line.startsWith('⚠') ? 'danger' : 'warning';
+  return line.startsWith('✅') ? 'success' : line.startsWith('⚠') ? 'warning' : 'danger';
+}
+
 // Story pane: sw.sh lines by their first character.
-function storyLine(entry, line) {
+function storyLine(entry, line, role) {
   if (!line.trim()) return;
   if (line.startsWith('▶ ')) {
-    const [who, ...rest] = line.slice(2).split('  ');
+    const [whoText, ...rest] = line.slice(2).split('  ');
     const p = el('div', 'banner');
-    p.append(el('b', '', who), ' ', rest.join(' ').trim());
+    p.append(el('b', '', whoText), ' ', rest.join(' ').trim());
     entry.append(p);
   } else if (line.startsWith('$ ')) {
     entry.append(el('div', 'cmd', line));
   } else if (/^(✅|⛔|🚨|⚠)/u.test(line)) {
-    const cls = line.startsWith('✅') ? 'ok' : line.startsWith('🚨') ? 'stolen' : line.startsWith('⚠') ? 'warn' : 'bad';
-    entry.append(el('div', `verdict ${cls}`, line));
+    entry.append(el('div', `verdict ${verdictTone(line, role)}`, line));
   } else if (line.includes('https://explorer.solana.com/tx/')) {
     const a = el('a', '', 'View the transaction on Solana Explorer ↗');
     a.href = line.trim(); a.target = '_blank'; a.rel = 'noreferrer';
@@ -298,9 +426,8 @@ async function stream(url, step, after) {
   story.querySelector('.empty')?.remove();
   $('net').querySelector('.empty')?.remove();
   const entry = el('div', 'entry');
-  entry.style.setProperty('--c', `var(--${step.role})`);
   const title = el('div', 'title');
-  title.append(el('span', 'chip', WHO[step.role]), step.label);
+  title.append(who('chip', step.role), step.label);
   const wait = el('div', 'waiting');
   wait.append(el('span', 'spin'), 'Waiting for Solana…');
   entry.append(title, wait);
@@ -329,7 +456,7 @@ async function stream(url, step, after) {
           out += msg.s;
           let k;
           while ((k = out.indexOf('\n')) >= 0) {
-            storyLine(entry, out.slice(0, k));
+            storyLine(entry, out.slice(0, k), step.role);
             out = out.slice(k + 1);
             entry.append(wait); // the spinner stays last
           }
@@ -337,9 +464,9 @@ async function stream(url, step, after) {
       }
       story.scrollTop = story.scrollHeight;
     }
-    if (out) storyLine(entry, out);
+    if (out) storyLine(entry, out, step.role);
   } catch (e) {
-    entry.append(el('div', 'verdict bad', `The demo server did not answer (${e.message}). Is "sw ui" still running?`));
+    entry.append(el('div', 'verdict danger', `The demo server did not answer (${e.message}). Is "sw ui" still running?`));
   }
   wait.remove();
   story.scrollTop = story.scrollHeight;

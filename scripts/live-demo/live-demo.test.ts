@@ -1,13 +1,28 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commandFor, NETWORKS, parseBalances, parseNetwork, parseStatus, STEPS } from './ui.ts';
+import { commandFor, FONTS, NETWORKS, parseBalances, parseNetwork, parseStatus, STEPS, themeTokens, TOKENS, tokensCss, WEB_MODULES } from './ui.ts';
 
 const SW = new URL('sw.sh', import.meta.url).pathname;
 const ROLE = new URL('role.sh', import.meta.url).pathname;
 const source = readFileSync(SW, 'utf8');
+const page = readFileSync(new URL('ui.html', import.meta.url), 'utf8');
+const style = /<style>([\s\S]*?)<\/style>/.exec(page)?.[1] ?? '';
+
+// WCAG 2.1 contrast of two #rrggbb colours.
+function contrast(a: string, b: string): number {
+  const luminance = (hex: string) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (bl ?? 0);
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+}
 
 function sw(...args: string[]) {
   // No Solana CLI on PATH: help must still work, everything else must say how to install it.
@@ -201,6 +216,73 @@ describe('live demo scripts', () => {
     );
     expect(status).toEqual({ plain: '🔒 PROTECTED until 09 Apr 2027 13:49 UTC, second key: SECOND KEY', owner: 'NEW WALLET', address: '4qZZvnpc' });
     expect(parseStatus('No stake account yet. Run: sw stake 0.1')).toBeNull();
+  });
+
+  it('styles the page with the site tokens only, light and dark', () => {
+    const tokens = readFileSync(TOKENS, 'utf8');
+    const { light, dark } = themeTokens(tokens);
+    expect(light.get('--color-primary')).toMatch(/^#[0-9a-f]{6}$/);
+    expect(dark.get('--color-primary')).toMatch(/^#[0-9a-f]{6}$/);
+    expect(dark.get('--color-primary')).not.toBe(light.get('--color-primary'));
+    const css = tokensCss(tokens);
+    expect(css).toContain("@media screen and (prefers-color-scheme: dark) {\n:root:not([data-theme='light'])");
+    expect(css).toContain(":root[data-theme='dark']");
+    expect(page).toContain('/*TOKENS*/');
+    // No colour of its own: the page drifted from the site once (Geist and indigo after D145).
+    expect(style.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i);
+    const local = new Set([...style.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]));
+    for (const [, name] of style.matchAll(/var\((--[a-z0-9-]+)\)/g)) {
+      expect(light.has(name ?? '') || local.has(name ?? ''), `${name ?? ''} is not a token`).toBe(true);
+    }
+  });
+
+  it('keeps every colour pair of the page readable in both themes (WCAG AA)', () => {
+    const { light, dark } = themeTokens(readFileSync(TOKENS, 'utf8'));
+    const roles = [...style.matchAll(/^\s*\.role-([a-z]+) \{([^}]*)\}/gm)].map(([, role, body]) => ({
+      role: role ?? '',
+      vars: new Map([...(body ?? '').matchAll(/(--c[a-z-]*): var\(--color-([a-z0-9-]+)\)/g)].map((m) => [m[1] ?? '', m[2] ?? ''])),
+    }));
+    expect(roles.map((r) => r.role)).toEqual(['owner', 'second', 'new', 'thief', 'setup']);
+    // [text, ground, minimum]: the role pairs, then the stake card, the verdicts, links and the focus ring.
+    const pairs: [string, string, number][] = [
+      ...roles.flatMap(({ vars }): [string, string, number][] => {
+        const v = (name: string) => vars.get(name) ?? '';
+        return [
+          [v('--c'), 'surface', 4.5],
+          [v('--c'), v('--c-soft'), 4.5],
+          ['muted', v('--c-soft'), 4.5],
+          ['foreground', v('--c-soft'), 4.5],
+          [v('--c-on'), v('--c-fill'), 4.5],
+        ];
+      }),
+      ['success', 'success-soft', 4.5],
+      ['muted', 'success-soft', 4.5],
+      ['neutral', 'surface', 4.5],
+      ['warning', 'warning-soft', 4.5],
+      ['danger', 'danger-soft', 4.5],
+      ['muted', 'surface', 4.5],
+      ['muted', 'background', 4.5],
+      ['foreground', 'subtle', 4.5],
+      ['primary', 'surface', 4.5],
+      ['primary-hover', 'surface', 4.5],
+      ['on-primary', 'primary', 4.5],
+      ['foreground', 'primary-soft', 4.5],
+      ['ring', 'surface', 3],
+      ['ring', 'background', 3],
+      ['ring', 'primary-soft', 3],
+    ];
+    for (const [theme, values] of [['light', light], ['dark', new Map([...light, ...dark])]] as const) {
+      for (const [text, ground, min] of pairs) {
+        const fg = values.get(`--color-${text}`) ?? '';
+        const bg = values.get(`--color-${ground}`) ?? '';
+        expect(contrast(fg, bg), `${theme}: ${text} on ${ground}`).toBeGreaterThanOrEqual(min);
+      }
+    }
+  });
+
+  it('serves the fonts the site uses', () => {
+    for (const file of Object.values(FONTS)) expect(existsSync(join(WEB_MODULES, file)), file).toBe(true);
+    for (const name of Object.keys(FONTS)) expect(page).toContain(`url(/fonts/${name})`);
   });
 
   it('switches only between the networks sw net knows', () => {

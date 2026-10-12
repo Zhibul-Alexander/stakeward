@@ -91,14 +91,41 @@ export function parseStatus(text: string): { plain: string; owner: string; addre
   };
 }
 
+// The site's design tokens (apps/web/src/styles/tokens.css): every custom property before its dark theme (@theme and
+// :root) has the light value, the first run of them after `prefers-color-scheme: dark` the dark one.
+export function themeTokens(source: string): { light: Map<string, string>; dark: Map<string, string> } {
+  const props = (block: string) => new Map([...block.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gm)].map(([, name, value]) => [name ?? '', value ?? '']));
+  const darkAt = source.indexOf('prefers-color-scheme: dark');
+  const darkStart = source.indexOf('--color-background:', darkAt);
+  if (darkAt < 0 || darkStart < 0) throw new Error('tokens.css: no dark theme found');
+  return { light: props(source.slice(0, darkAt)), dark: props(source.slice(darkStart, source.indexOf('}', darkStart))) };
+}
+
+// The tokens as plain CSS for the page, read on every page load, so the demo wears whatever the site wears. The dark
+// values follow the system theme unless <html data-theme> says otherwise, as on the site (D151).
+export function tokensCss(source: string): string {
+  const { light, dark } = themeTokens(source);
+  const block = (props: Map<string, string>) => [...props].map(([name, value]) => `  ${name}: ${value};`).join('\n');
+  return [
+    `:root {\n${block(light)}\n}`,
+    `@media screen and (prefers-color-scheme: dark) {\n:root:not([data-theme='light']) {\n${block(dark)}\n}\n}`,
+    `:root[data-theme='dark'] {\n${block(dark)}\n}`,
+  ].join('\n');
+}
+
 const SW = fileURLToPath(new URL('sw.sh', import.meta.url));
 const PAGE = fileURLToPath(new URL('ui.html', import.meta.url));
-// The site's fonts, when the web app's dependencies are installed; the page falls back to system fonts.
-const FONTS: Record<string, string> = {
-  'geist.woff2': '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2',
-  'geist-mono.woff2': '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2',
+export const TOKENS = fileURLToPath(new URL('../../apps/web/src/styles/tokens.css', import.meta.url));
+// The site's fonts (D145) from the web app's dependencies; the page falls back to system fonts without them.
+export const FONTS: Record<string, string> = {
+  'space-grotesk.woff2': '@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2',
+  'ibm-plex-sans-400.woff2': '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2',
+  'ibm-plex-sans-500.woff2': '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-500-normal.woff2',
+  'ibm-plex-sans-600.woff2': '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff2',
+  'ibm-plex-mono-400.woff2': '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2',
+  'ibm-plex-mono-500.woff2': '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2',
 };
-const WEB_MODULES = fileURLToPath(new URL('../../apps/web/node_modules/', import.meta.url));
+export const WEB_MODULES = fileURLToPath(new URL('../../apps/web/node_modules/', import.meta.url));
 
 function sw(args: string[], env: NodeJS.ProcessEnv = {}) {
   return spawn('bash', [SW, ...args], { env: { ...process.env, NO_COLOR: '1', ...env } });
@@ -156,10 +183,14 @@ function serve(port: string) {
         'content-type': 'text/html; charset=utf-8',
         'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
       });
-      res.end(readFileSync(PAGE, 'utf8').replace('/*STEPS*/[]', JSON.stringify(STEPS)));
+      res.end(
+        readFileSync(PAGE, 'utf8')
+          .replace('/*TOKENS*/', tokensCss(readFileSync(TOKENS, 'utf8')))
+          .replace('/*STEPS*/[]', JSON.stringify(STEPS)),
+      );
       return;
     }
-    const font = /^\/fonts\/([a-z-]+\.woff2)$/.exec(url)?.[1];
+    const font = /^\/fonts\/([a-z0-9-]+\.woff2)$/.exec(url)?.[1];
     if (req.method === 'GET' && font && FONTS[font]) {
       const file = join(WEB_MODULES, FONTS[font]);
       if (!existsSync(file)) {
