@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/public-sans/wght.css';
+@import '@fontsource-variable/source-serif-4/opsz.css';
+@import '@fontsource-variable/martian-mono/wdth.css';
+@import './styles/tokens.css';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/*
+ * v11 "Specimen". Fallback faces with matched metrics, so the swap to the web fonts does not move the layout:
+ * Public Sans sets a little wider than Arial, Source Serif 4 a little narrower than Georgia.
+ */
+@font-face {
+  font-family: 'Public Sans fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 22%;
+}
+
+@font-face {
+  font-family: 'Source Serif fallback';
+  src: local('Georgia'), local('Times New Roman'), local('Liberation Serif');
+  size-adjust: 94%;
+  ascent-override: 98%;
+  descent-override: 32%;
+}
+
+/* The serif of a record's facts and of headings (DIRECTION.md). */
+@utility font-serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+}
+
+/* A record: label column and value column from 480 px, stacked below. */
+@utility grid-cols-record {
+  grid-template-columns: minmax(7.5rem, 11rem) minmax(0, 1fr);
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    font-feature-settings: 'kern', 'tnum' 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* Martian Mono, narrowed: addresses stay one line at 360 px and every 0/O and 1/l still reads apart. */
+  .font-mono,
+  code,
+  kbd,
+  pre {
+    font-stretch: 87.5%;
+    font-size-adjust: 0.5;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
