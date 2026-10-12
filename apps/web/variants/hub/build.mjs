@@ -19,7 +19,7 @@ writeFileSync(
   new URL('index.html', out),
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Stakeward UI previews</title><link rel="stylesheet" href="style.css"></head><body>
 <header><h1>Stakeward · design previews</h1><p>Fifteen directions for the same product, all on Solana devnet with the real dev API. Pick one; nothing here touches mainnet.</p></header>
-<main>${section('Colours', 'Picked: ui10 on the current app, four colour schemes')}${section('Restyle', 'Restyles: same structure, different design system')}${section('Rethink', 'Rethinks: new layout, elements and copy')}${section('Anti-slop', 'Anti-slop: built with the anti-slop skills, one design direction each')}</main>
+<main>${section('Colours', 'Picked: ui10 on the current app, colour schemes')}${section('Restyle', 'Restyles: same structure, different design system')}${section('Rethink', 'Rethinks: new layout, elements and copy')}${section('Anti-slop', 'Anti-slop: built with the anti-slop skills, one design direction each')}</main>
 <footer>Current production design: <a href="https://dev.stakeward.com">dev.stakeward.com</a></footer></body></html>`,
 );
 console.log('hub built');

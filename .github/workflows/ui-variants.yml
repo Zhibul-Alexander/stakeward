@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         # v1-v15 stay deployed from earlier runs; only the ui10 colour schemes on the current app are rebuilt.
-        n: ['10a', '10b', '10c', '10d']
+        n: ['10a', '10b', '10c', '10d', '10e', '10f']
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

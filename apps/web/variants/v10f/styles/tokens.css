@@ -1,0 +1,336 @@
+/*
+ * Stakeward design tokens: the only place with raw colours, font stacks, sizes, radii, shadows and durations
+ * (CLAUDE.md section 9). Components and pages use the Tailwind utilities generated from these variables
+ * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
+ * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
+ *
+ * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
+ * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
+ * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
+ * exist at all.
+ *
+ * Colour roles
+ *   background        page
+ *   surface           cards and panels
+ *   surface-raised    popovers and other elevated layers (lighter than surface in the dark theme)
+ *   subtle            muted fills: secondary buttons, skeletons, progress tracks, hover
+ *   subtle-hover      hover on a subtle fill
+ *   foreground        body text
+ *   muted             secondary text (AA on background, surface, surface-raised and subtle)
+ *   border            decorative lines
+ *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
+ *   ring              focus indicator (3:1 against background and surface)
+ *   primary           main actions and links; on-primary is text on it
+ *   primary-soft      selection and the current step (always with a second cue: checkbox, number or ring)
+ *   inverse           tooltip background and the landing's closing band; on-inverse is text on it
+ *   accent            the Second key, wherever it is drawn (key diagram, its key chips, the co-sign note); accent-ink
+ *                     is its text shade, accent-soft a note's ground, on-accent text on an accent fill
+ *   line              the strokes of a drawing (key diagram, step rail, ruled sheets)
+ *   grid              the drafting paper behind every page (bg-blueprint); grid-inverse on the inverse band
+ * Look (v10f "Navy and signal orange"): navy ink on cool grey paper for every line and word, signal orange only for
+ * the action of a screen, one teal part for the Second key; the dark theme is a night chart in pale ink and the same orange.
+ * Colour means state. primary is the one action of a screen; accent is a role (the Second key), never a state.
+ * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
+ * background, <tone>-border its outline.
+ *   success   Protected
+ *   warning   Expiring soon
+ *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
+ *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
+ * modules on a light ground, so the code must not invert with the theme.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Colours, light theme. Contrast ratios (WCAG 2.1) are asserted by test/design-tokens.test.ts. */
+  --color-background: #eef0f3;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e5e9ee;
+  --color-subtle-hover: #d8dee6;
+  --color-foreground: #0f1c33;
+  --color-muted: #46526a;
+  --color-border: #cfd5de;
+  --color-border-strong: #6c778b;
+  --color-ring: #0b6b63;
+  --color-primary: #b83c03;
+  --color-primary-hover: #922f02;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #e2e7f0;
+  --color-inverse: #0f1c33;
+  --color-on-inverse: #eef1f6;
+
+  /* The Second key's colour, wherever a drawing shows it (v10, D145): accent is a fill and a line (3:1 as a part of a
+     drawing), accent-ink its text-safe shade (AA on every surface), accent-soft a note's ground, on-accent text on accent. */
+  --color-accent: #2fb5a9;
+  --color-accent-ink: #0b6b63;
+  --color-accent-soft: #dcf2ef;
+  --color-on-accent: #00221f;
+  /* Drafting: line draws the parts of a drawing (the key diagram, the rails), grid the paper behind every page and
+     grid-inverse the same paper on the inverse band. */
+  --color-line: #98a1b0;
+  --color-grid: #e3e7ec;
+  --color-grid-inverse: #22314d;
+
+  --color-success: #1f6a2c;
+  --color-success-soft: #def1e1;
+  --color-success-border: #93cf9e;
+  --color-warning: #6b5a00;
+  --color-warning-soft: #f5efcf;
+  --color-warning-border: #d6c26a;
+  --color-neutral: #424b5c;
+  --color-neutral-soft: #e6e9ee;
+  --color-neutral-border: #c3c9d3;
+  --color-info: #2a4f7a;
+  --color-info-soft: #e0eaf5;
+  --color-info-border: #a3bede;
+  --color-danger: #a8113a;
+  --color-danger-soft: #fce2e9;
+  --color-danger-border: #f0a1b5;
+  --color-danger-solid: #a8113a;
+  --color-danger-solid-hover: #860c2d;
+  --color-on-danger: #ffffff;
+
+  /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
+  --color-qr-dark: #10131a;
+  --color-qr-light: #ffffff;
+
+  /*
+   * Typography (D145), bundled from @fontsource (no CDN). Space Grotesk draws headings and the labels of the drawings:
+   * squared, technical, a draughtsman's lettering. IBM Plex Sans is the text: plain and very legible at 14 px. IBM Plex
+   * Mono writes addresses, signatures and commands. The Fallback faces (index.css) are local fonts sized to their
+   * metrics, so the swap moves no line. Georgian letters, which none of them has, come from Noto Sans Georgian.
+   */
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk Fallback', 'Noto Sans Georgian Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Fallback', 'Noto Sans Georgian Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+   * Type scale: seven sizes, no others (test/design-tokens.test.ts rejects a size class that is not declared here;
+   * Tailwind would drop it silently). T-shirt names on purpose: the class merger (cn) recognises them as font sizes,
+   * not colours. Weights 400, 500 and 600 only; tabular-nums on every amount, count, fee and countdown; mono only for
+   * addresses, signatures and commands.
+   *   text-xs    12/16  meta, badges, captions, footer fine print
+   *   text-sm    14/20  UI text: rows, buttons, tables, receipt, labels
+   *   text-base  16/24  prose: landing, explanations, leads, inputs; h3 (font-semibold)
+   *   text-lg    18/28  h2 in the app (Section), receipt title, row amount from 640 px
+   *   text-2xl   24/32  h1 below 640 px (landing hero included), landing h2, the answer (SummaryBar headline, Done
+   *                     headline, /stats numbers)
+   *   text-3xl   36/40  h1 from 640 px (PageHeader), the landing hero below 640 px
+   *   text-4xl   56/58  the landing headline from 640 px only (D145)
+   */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.6rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.9rem;
+  --text-2xl--letter-spacing: -0.015em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.025em;
+  --text-3xl--font-weight: 600;
+  --text-4xl: 3.5rem;
+  --text-4xl--line-height: 3.625rem;
+  --text-4xl--letter-spacing: -0.035em;
+  --text-4xl--font-weight: 600;
+
+  /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
+  --spacing: 0.25rem;
+
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   * account-row-actions keeps the action and More columns in every list, used or not, so that the SOL of separate
+   * lists on one page (/app) stands in one column too: the action column fits the widest row action, Protect again
+   * (8.75rem, and its 0.75rem margin), and grows for a wider one; More is its 2rem button, its 0.5rem margin and the
+   * 1rem padding of the list item, which a subgrid adds to its edge columns.
+   */
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Radii: small and precise, drafted parts rather than pills (D145). */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.625rem;
+
+  /* Shadows: flat drawings, so a hard offset in the ink colour instead of a soft blur. lg lifts the one figure of the
+     landing (the key diagram) and popovers; md and sm mark small raised parts. */
+  --shadow-sm: 0 1px 0 0 rgb(15 28 51 / 0.08);
+  --shadow-md: 3px 3px 0 0 rgb(15 28 51 / 0.12);
+  --shadow-lg: 6px 6px 0 0 rgb(15 28 51 / 0.14);
+
+  /*
+   * Motion (DECISIONS.md D112, D142): it answers what a person did (opening, copying, confirming, pressing) and shows what
+   * changed; the one motion nobody triggers is the landing hero's arrival. Only opacity and transform, never height or
+   * layout. Every duration and the stagger drop to 0 under prefers-reduced-motion (below).
+   */
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  /* Fast out, long settle: things arrive and come to rest instead of bouncing in. */
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+  /* What an opened fold, the More list or a row's actions reveal: a short drop into place. */
+  --animate-reveal: reveal var(--motion-duration-normal) var(--ease-emphasized);
+  /* The landing hero's parts arriving in order (with --motion-stagger between them). */
+  --animate-rise-in: rise-in var(--motion-duration-slow) var(--ease-emphasized) both;
+  /* A tick that confirms an action (Copied). */
+  --animate-pop-in: pop-in var(--motion-duration-normal) var(--ease-emphasized);
+  /* The tick of a Done screen: it settles once, slightly past full size and back. */
+  --animate-seal: seal var(--motion-duration-slow) var(--ease-emphasized) both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes seal {
+    0% {
+      opacity: 0;
+      transform: scale(0.6) rotate(-12deg);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.08) rotate(0deg);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  --motion-duration-slow: 480ms;
+  --motion-stagger: 80ms;
+  /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  /* Drafting paper (bg-blueprint): one hairline every 24 px, both ways. */
+  --blueprint-cell: 24px;
+  --blueprint-line: 1px;
+  /* The dash of a path the lock blocks in the key diagram (SVG user units, drawn at 1:1). */
+  --dash-blocked: 4 4;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0b1424;
+    --color-surface: #111d31;
+    --color-surface-raised: #18263d;
+    --color-subtle: #1a2840;
+    --color-subtle-hover: #23334d;
+    --color-foreground: #e9eef6;
+    --color-muted: #a3afc3;
+    --color-border: #26354f;
+    --color-border-strong: #6f7f9b;
+    --color-ring: #5fd4c8;
+    --color-primary: #ff8c42;
+    --color-primary-hover: #ffa66b;
+    --color-on-primary: #1a0b00;
+    --color-primary-soft: #22324d;
+    --color-inverse: #e9eef6;
+    --color-on-inverse: #111d31;
+
+    --color-accent: #4fd1c5;
+    --color-accent-ink: #6fe0d5;
+    --color-accent-soft: #123634;
+    --color-on-accent: #00211e;
+    --color-line: #5d6c86;
+    --color-grid: #0f192b;
+    --color-grid-inverse: #c9d2e0;
+
+    --color-success: #8fdb9d;
+    --color-success-soft: #13301c;
+    --color-success-border: #2f7340;
+    --color-warning: #e3c85a;
+    --color-warning-soft: #302b14;
+    --color-warning-border: #85721f;
+    --color-neutral: #c3cad6;
+    --color-neutral-soft: #1e2a3e;
+    --color-neutral-border: #4f5d75;
+    --color-info: #9cc4f0;
+    --color-info-soft: #172a44;
+    --color-info-border: #3c6290;
+    --color-danger: #ff9fb5;
+    --color-danger-soft: #3d1527;
+    --color-danger-border: #a02a4b;
+    --color-danger-solid: #b3123f;
+    --color-danger-solid-hover: #d01f4f;
+    --color-on-danger: #ffffff;
+
+    /* QR code: the light theme's values on purpose (see the colour roles above). */
+    --color-qr-dark: #10131a;
+    --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 0 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 3px 3px 0 0 rgb(0 0 0 / 0.3);
+    --shadow-lg: 6px 6px 0 0 rgb(0 0 0 / 0.35);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+    --motion-duration-slow: 0ms;
+    --motion-stagger: 0ms;
+  }
+}

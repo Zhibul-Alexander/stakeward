@@ -3,6 +3,8 @@
   {"n":"10b","name":"Graphite and cadmium","wave":"Colours","text":"Pencil on grey drafting paper; every action graphite, the only colour is the cadmium-yellow second key."},
   {"n":"10c","name":"Survey green","wave":"Colours","text":"A survey sheet: bottle-green ink on green-grey paper, cobalt for the second key."},
   {"n":"10d","name":"Cyanotype and copper","wave":"Colours","text":"Prussian-teal ink on pale cyan paper, copper second key; the dark theme is a real cyanotype."},
+  {"n":"10e","name":"Safety orange","wave":"Colours","text":"Warm grey paper, every action in international orange like a safety rail, cobalt second key."},
+  {"n":"10f","name":"Navy and signal orange","wave":"Colours","text":"Navy ink with orange for actions and teal for the second key; the dark theme is a navy ground."},
   {"n":1,"name":"Vault","wave":"Restyle","text":"Private-bank statement: ivory paper, serif figures, the stake shown like a statement of holdings. For the cautious holder on a Ledger."},
   {"n":2,"name":"Terminal","wave":"Restyle","text":"Operator console: monospace, dense tables, a terminal session where the withdraw fails with LockupInForce. For validators."},
   {"n":3,"name":"Editorial","wave":"Restyle","text":"Magazine story in chapters: the thefts first, then the lock already inside every stake account, then how Stakeward turns it on."},
