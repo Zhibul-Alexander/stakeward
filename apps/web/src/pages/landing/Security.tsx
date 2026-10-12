@@ -34,7 +34,7 @@ function RecoverLink({ children, last = false }: { children: ReactNode; last?: b
 }
 
 /**
- * How Stakeward keeps you safe (CLAUDE.md sections 2 and 11), and what is left if Stakeward disappears
+ * Why Stakeward cannot take your SOL (CLAUDE.md sections 2 and 11), and what is left if Stakeward disappears
  * (`#recover`): the recovery cards, the guide, the source code and what changes on the network.
  */
 export function Security() {

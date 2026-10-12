@@ -126,13 +126,13 @@ Also from wallet documentation and source code:
 
 ## How Stakeward keeps you safe
 
-- **The lock lives on the Solana network,** inside your stake accounts, enforced by Solana's own stake program. It does not depend on Stakeward. If Stakeward disappears, the lock keeps working and ends on its date; only the alerts stop. See [Recover without Stakeward](#recover-without-stakeward).
+- **The lock lives on the Solana network,** inside your stake accounts, enforced by Solana's own stake program. It does not depend on Stakeward. If Stakeward disappears, the lock keeps working and ends on its date; only the alerts and one-tap rescue stop. See [Recover without Stakeward](#recover-without-stakeward).
 - **Non-custodial.** Your SOL stays in your own stake accounts. Stakeward never asks for, creates, stores or sends a seed phrase or a private key. If anyone asks for your seed phrase in Stakeward's name, it is a scam.
 - **No program of its own.** Transactions use only Solana's stake program, the system program (for the link-signing account and a new stake account) and the compute budget fee settings; Phantom may add its own safety checks at the end. There is no Stakeward program to upgrade or break into, and no token.
 - **Your browser builds, your wallets sign.** Every transaction is built in your browser and signed by your own wallets. Stakeward's server never builds or signs a transaction, and never sees a key. It stores a transaction only if you prepare a one-tap rescue: a rescue that your three keys already signed, which can only move the stake to your own new wallet.
 - **You see what you sign.** Before each signature, the screen shows what changes, who signs, what it costs and what the transaction cannot do. That summary is read from the exact bytes your wallet receives, not from what the page believes. After each signature, Stakeward checks that the wallet changed nothing it should not have.
 - **The network decides what happened.** After each action, Stakeward reads the stake accounts again. Nothing counts as done until the network shows it.
-- **The server passes on only Stakeward transactions.** It sends a transaction to the network only if the same check accepts it and every signature is valid, so nobody can use it to relay other transactions. If the server is down, you lose the site and the alerts, not SOL.
+- **The server passes on only Stakeward transactions.** It sends a transaction to the network only if the same check accepts it and every signature is valid, so nobody can use it to relay other transactions. If the server is down, you lose the site, the alerts and one-tap rescue, not SOL.
 - **Little data.** The server keeps public network data and, if you turn on alerts, your Telegram chat id. If you prepare a one-tap rescue, it also keeps that signed rescue. There are no accounts, logins, email, cookies, analytics or third-party scripts. Your browser remembers which wallet you used for each key, the addresses of your second keys, which stake accounts you protected and your language; that stays on your device.
 - **Open code, not audited.** The code is open source. It has not been audited. Every kind of transaction is tested against the real stake program, and the lock rules were checked on LiteSVM, devnet and mainnet: see [docs/gate.md](docs/gate.md) (in Russian, with explorer links). Read the code, or ask someone you trust to read it, before you lock a large stake.
 
@@ -157,7 +157,7 @@ A fake Stakeward site is the same danger. Type the address yourself or use a boo
 
 ## Recover without Stakeward
 
-The lock lives in the Solana stake program, not in Stakeward. If Stakeward is down or gone, nothing changes for your stake; only the Telegram alerts stop. The commands below talk to the network directly with the Solana command line. The stake commands were run with Solana CLI 4.3.0 against a local test validator and against devnet: [docs/recovery-cli.md](docs/recovery-cli.md) lists every run and its results. The recovery card that Stakeward prints for your stake accounts has the same commands.
+The lock lives in the Solana stake program, not in Stakeward. If Stakeward is down or gone, nothing changes for your stake; only the Telegram alerts and one-tap rescue stop. The commands below talk to the network directly with the Solana command line. The stake commands were run with Solana CLI 4.3.0 against a local test validator and against devnet: [docs/recovery-cli.md](docs/recovery-cli.md) lists every run and its results. The recovery card that Stakeward prints for your stake accounts has the same commands.
 
 The commands use `--url mainnet-beta`. On devnet, write `--url devnet` instead.
 

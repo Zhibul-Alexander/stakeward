@@ -118,7 +118,7 @@ rescue, already signed by all three keys, which can only move the stake to the u
 System instructions for the durable nonce, and Compute Budget. No address lookup tables. A transaction inspector
 decodes the exact bytes before every signature: the signing screen shows its summary, `/cosign` trusts only the
 bytes and the network, and the worker's RPC proxy sends only transactions the inspector accepts, with every
-signature verified. If the Stakeward server is down, users lose alerts, not SOL: the lock lives in the stake
+signature verified. If the Stakeward server is down, users lose alerts and one-tap rescue, not SOL: the lock lives in the stake
 program. A hacked server could send a stored one-tap rescue early; that moves the stake to the owner's new wallet,
 still locked. The same server delivers the website, so a hacked server is a hacked website that could ask for a harmful
 signature; the lock still needs the second key, and the site tells users to check the addresses their wallet or

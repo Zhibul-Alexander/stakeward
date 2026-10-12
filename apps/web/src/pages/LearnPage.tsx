@@ -35,8 +35,8 @@ export function learnPathForHash(hash: string): string | null {
 }
 
 /**
- * /learn/:tab: the details the landing page used to carry in one long scroll (alerts, costs, wallets, how Stakeward
- * keeps you safe, the FAQ), one tab at a time. The tabs are links, so each has its own address and a hash such as
+ * /learn/:tab: the details the landing page used to carry in one long scroll (alerts, costs, wallets, why Stakeward
+ * cannot take your SOL, the FAQ), one tab at a time. The tabs are links, so each has its own address and a hash such as
  * `/learn/faq#faq-ledger` opens its question. An unknown tab shows the FAQ.
  */
 export function LearnPage() {

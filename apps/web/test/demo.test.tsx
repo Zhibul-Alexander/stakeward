@@ -35,7 +35,7 @@ describe('/demo', () => {
     expect(holder()).toBe('main');
 
     await user.click(screen.getByRole('button', { name: 'Steal the stake' }));
-    await screen.findByRole('heading', { name: 'Gone. One stolen key, one signature.' });
+    await screen.findByRole('heading', { name: 'Gone after one signature with the stolen key' });
     expect(holder()).toBe('thief');
 
     await user.click(screen.getByRole('button', { name: 'Now add Stakeward' }));

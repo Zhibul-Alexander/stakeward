@@ -1,7 +1,6 @@
 {
   "common": {
     "appName": "Stakeward",
-    "tagline": "Lock your natively staked SOL with a second key you control, so a stolen wallet key cannot withdraw it.",
     "loading": "Loading",
     "backToAccounts": "Back to your accounts",
     "backHome": "Back to the start page",
@@ -210,11 +209,11 @@
       "phone": "In a phone wallet's browser: check, extend or remove a lock, and co-sign. Protect and rescue on a computer."
     },
     "security": {
-      "title": "How Stakeward keeps you safe",
+      "title": "Why Stakeward cannot take your SOL",
       "items": {
         "chain": "The lock lives in your stake accounts on Solana. It works without Stakeward.",
         "browser": "Your browser builds each transaction and your wallets sign it.",
-        "server": "Stakeward's server only relays Stakeward transactions. If it is down, you lose alerts, not SOL. The same server delivers this website.",
+        "server": "Stakeward's server relays only Stakeward transactions. If you prepare a one-tap rescue, it also keeps that signed rescue, which can only move the stake to your new wallet. If the server is down, you lose alerts and one-tap rescue, not SOL. The same server delivers this website.",
         "site": "If this site were hacked, it could ask for a harmful signature. Check in your wallet that the second key or new wallet address is yours.",
         "programs": "Stakeward uses only Solana's stake, system and fee programs. It owns no program or token.",
         "open": "Open source under MIT, no warranty. No accounts, cookies or analytics."
@@ -240,7 +239,7 @@
     "demoLink": "Watch a theft play out in the demo",
     "learnMore": {
       "title": "More details",
-      "faq": "Every question, from keys to costs.",
+      "faq": "Keys, signing, costs and what can go wrong.",
       "alerts": "What Telegram tells you, and when.",
       "costs": "Network fees and the deposit that comes back.",
       "wallets": "Which wallets were tested, and how.",
@@ -262,7 +261,7 @@
         "secondStolen": {
           "label": "A thief has your second key",
           "who": "The thief, with your second key",
-          "caption": "The honest limit: they cannot take your SOL, but they can keep it locked by moving the end date, even years ahead. Guard the second key like the main key."
+          "caption": "They cannot take your SOL, but they can keep it locked by moving the end date, even years ahead. Guard the second key like the main key."
         },
         "rescue": {
           "label": "Rescue: both keys and a new wallet",
@@ -1049,7 +1048,7 @@
       "loading": "Reading your stake accounts from the network",
       "loadError": "Could not load your stake accounts",
       "groupOpen": "Not protected ({count})",
-      "groupHint": "Anyone with your Main key can withdraw these.",
+      "groupHint": "Anyone with your main key can withdraw these.",
       "selectAll": "Select all ({count})",
       "clearAll": "Clear selection",
       "upTo": "Up to {max} at a time",
@@ -1351,7 +1350,7 @@
     "pasteHint": "Paste the vote account address of a validator you chose yourself. Stakeward checks it by the same rules.",
     "pasteLabel": "Vote account address",
     "pasteInvalid": "This is not a Solana address.",
-    "checking": "Checking this validator…",
+    "checking": "Checking this validator",
     "checkError": "Could not check this validator",
     "risky": "Stakeward will not delegate to this validator:",
     "risks": {
@@ -1361,7 +1360,7 @@
       "LOW_FEE_BALANCE": "It holds less than the Alpenglow admission fee.",
       "FULL_COMMISSION": "It keeps 100% of the rewards."
     },
-    "loading": "Finding validators…",
+    "loading": "Finding validators",
     "loadError": "Could not load validators",
     "empty": {
       "title": "No validator to offer right now",
@@ -1399,7 +1398,7 @@
     "amountLabel": "Amount to stake, in SOL",
     "max": "Max",
     "balance": "In your wallet:",
-    "balanceLoading": "Reading your balance…",
+    "balanceLoading": "Reading your balance",
     "balanceError": "Could not read your balance",
     "reserve": "A new stake account also holds {amount} SOL of rent reserve, which comes back when you withdraw.",
     "amountInvalid": "Enter an amount in SOL, such as 1.5.",
@@ -1792,15 +1791,15 @@
       "loading": "Reading the stake accounts of this main key",
       "loadError": "Could not load the stake accounts",
       "none": "No stake account has this main key now. If it was moved already, Stakeward cannot bring it back.",
-      "safeUntil": "{count} locked · {amount} — safe from your main key alone until {date}",
-      "safe": "{count} locked · {amount} — safe from your main key alone while the lock holds",
-      "notLockedOne": "1 not locked · {amount} — anyone with your main key can withdraw it now. It moves first.",
-      "notLockedOther": "{count} not locked · {amount} — anyone with your main key can withdraw them now. They move first.",
+      "safeUntil": "{count} locked · {amount}: safe from your main key alone until {date}",
+      "safe": "{count} locked · {amount}: safe from your main key alone while the lock holds",
+      "notLockedOne": "1 not locked · {amount}: anyone with your main key can withdraw it now. It moves first.",
+      "notLockedOther": "{count} not locked · {amount}: anyone with your main key can withdraw them now. They move first.",
       "endsSoon": "The lock on {address} ends on {date}. Finish the move before then.",
       "movesFirst": "Moves first",
-      "stakeKeyChanged": "Staking key changed — rescue fixes this",
+      "stakeKeyChanged": "Staking key changed. Rescue fixes this.",
       "notInRun": "Not in this run ({count})",
-      "otherKey": "Locked by another second key — rescue these in another run with that key",
+      "otherKey": "Locked by another second key. Rescue these in another run with that key.",
       "unsupportedTitle": "Stakeward cannot move these: the main key itself, or no key, holds the lock",
       "unsupported": "If the main key holds the lock, the Solana command line can move it. The main key must also sign as the lock's key: solana stake-authorize --help names that option.",
       "tooMany": "{count} stake accounts: the {max} most urgent move in this run, the rest in the next.",
@@ -2038,7 +2037,7 @@
       },
       "down": {
         "title": "Stakeward is down or gone",
-        "body": "Your stake does not change: the lock lives in the Solana stake program. Only the Telegram alerts stop.",
+        "body": "Your stake does not change: the lock lives in the Solana stake program. Only the Telegram alerts and one-tap rescue stop.",
         "source": "These commands work without Stakeward, and its code is public:",
         "browserOnly": "Keys only in browser or phone wallets? Wait until each lock ends; then the main key withdraws alone.",
         "check": "To see a stake account's keys and lock, run:"
@@ -2095,7 +2094,7 @@
     "submit": "Check",
     "local": "Checked in your browser. Nothing is sent.",
     "neverSeed": "Never paste a private key or a recovery phrase here or anywhere else. Stakeward never asks for them.",
-    "checking": "Reading the transaction…",
+    "checking": "Reading the transaction",
     "resultTitle": "What this transaction does",
     "emptyTitle": "Nothing checked yet",
     "emptyBody": "Paste a transaction above and press Check. Stakeward does not sign or send it.",
@@ -2289,7 +2288,7 @@
       },
       "check-explorer": {
         "q": "How can I check my lock without Stakeward?",
-        "a": "Stakeward reads the network through its own server, so a hacked server could show you a wrong state. To check without it, open Solana Explorer by typing explorer.solana.com yourself, and look up your stake account. At the top it must say \"Account is locked! Lockup expires on\" and the date you chose. If that line is missing, your stake account is not locked. Under Authorities, the Lockup Authority Address must be your second key and the Withdraw Authority Address must be your main key."
+        "a": "Stakeward reads the network through its own server, so a hacked server could show you a wrong state. To check without it, open Solana Explorer by typing explorer.solana.com yourself, and look up your stake account. At the top it must say “Account is locked! Lockup expires on” and the date you chose. If that line is missing, your stake account is not locked. Under Authorities, the Lockup Authority Address must be your second key and the Withdraw Authority Address must be your main key."
       },
       "ledger": {
         "q": "What will my Ledger show?",
@@ -2408,7 +2407,7 @@
           "meaning": "your link-signing account"
         }
       },
-      "authorizedBy": "Some screens also show \"Authorized by\": the key that approves the change.",
+      "authorizedBy": "Some screens also show “Authorized by”: the key that approves the change.",
       "withdrawNote": "When you withdraw, the Ledger does not show your second key. The Stakeward screen shows it in full.",
       "phantom": "Phantom may add its own safety checks to a transaction. A Ledger cannot read them and asks for blind signing: the emulator shows this. Whether Phantom adds them for a Ledger account is not known.",
       "termsLink": "What custodian, withdrawer and staker mean"
@@ -2462,7 +2461,7 @@
       "rescue": "Open Rescue",
       "restart": "Start over",
       "protectReal": "Protect my stake",
-      "working": "Signing…"
+      "working": "Signing"
     },
     "steps": {
       "intro": {
@@ -2470,11 +2469,11 @@
         "body": "You staked 100 SOL. A thief got a copy of your main key: a phished seed phrase, malware, or a hidden instruction in a transaction you signed."
       },
       "stolen": {
-        "title": "Gone. One stolen key, one signature.",
-        "body": "A native stake account obeys its main key, so whoever holds it can take the stake. SwissBorg lost 192,600 SOL this way in September 2025."
+        "title": "Gone after one signature with the stolen key",
+        "body": "A native stake account obeys its main key, so one signature hands it over. SwissBorg lost about 192,600 SOL this way in September 2025: a hidden instruction in a routine unstaking transaction that its own signers approved."
       },
       "setup": {
-        "title": "Same stake, same thief. Now add Stakeward.",
+        "title": "The same stake and thief, now with Stakeward",
         "body": "You add a Second key from a different seed phrase. It holds a lock that the stake program itself enforces. Your New wallet stays empty until a rescue.",
         "risk": "Whoever holds the Second key can freeze this stake, so keep it as safe as the main key."
       },
@@ -2554,7 +2553,7 @@
     },
     "now": {
       "lead": "Where the rescue you signed in advance stands. It is sent from the linked Telegram chat, or by itself when someone changes who manages staking.",
-      "loading": "Reading the rescue…",
+      "loading": "Reading the rescue",
       "loadError": "Could not read the rescue",
       "stakeAccount": "Stake account",
       "none": "There is no one-tap rescue for this stake account. You can still rescue it with your keys.",

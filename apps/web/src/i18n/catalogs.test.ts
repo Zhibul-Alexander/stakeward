@@ -50,6 +50,15 @@ const TRANSLATIONS = [
   },
 ] as const;
 
+// No em dash in any interface string (anti-slop/audit-001, finding 13): a colon, a comma or a full stop says the same.
+it.each([
+  { locale: 'en', messages: en },
+  { locale: 'es', messages: es },
+  { locale: 'ka', messages: ka },
+])('$locale.json has no em dash', ({ messages }) => {
+  expect(leaves(messages).filter(([, text]) => text.includes('—')).map(([key]) => key)).toEqual([]);
+});
+
 describe.each(TRANSLATIONS)('$locale.json', ({ messages, roles, synonyms, roleStems }) => {
   const entries = leaves(messages);
   const translated = new Map(entries);

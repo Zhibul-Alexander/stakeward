@@ -1,7 +1,6 @@
 {
   "common": {
     "appName": "Stakeward",
-    "tagline": "Bloquea tus SOL en staking nativo con una segunda clave que tú controlas, para que una clave robada de tu billetera no pueda retirarlos.",
     "loading": "Cargando",
     "backToAccounts": "Volver a tus cuentas",
     "backHome": "Volver a la página de inicio",
@@ -210,11 +209,11 @@
       "phone": "En el navegador de una billetera móvil puedes revisar, extender o quitar un bloqueo, y firmar una transacción recibida por enlace. Para proteger y rescatar, usa una computadora."
     },
     "security": {
-      "title": "Cómo te protege Stakeward",
+      "title": "Por qué Stakeward no puede llevarse tus SOL",
       "items": {
         "chain": "El bloqueo vive en tus cuentas de stake en Solana. Funciona sin Stakeward.",
         "browser": "Tu navegador crea cada transacción y tus billeteras la firman.",
-        "server": "El servidor de Stakeward solo retransmite transacciones de Stakeward. Si está caído, pierdes las alertas, no tus SOL. Ese mismo servidor sirve este sitio web.",
+        "server": "El servidor de Stakeward solo retransmite transacciones de Stakeward. Si preparas un rescate en un toque, también guarda ese rescate firmado, que solo puede mover el stake a tu billetera nueva. Si está caído, pierdes las alertas y el rescate en un toque, no tus SOL. Ese mismo servidor sirve este sitio web.",
         "site": "Si hackearan este sitio, podría pedirte una firma dañina. Comprueba en tu billetera que la dirección de la segunda clave o de la billetera nueva es tuya.",
         "programs": "Stakeward solo usa los programas de stake, de sistema y de comisiones de Solana. No es dueño de ningún programa ni token.",
         "open": "Código abierto con licencia MIT, sin garantía. Sin cuentas, cookies ni analíticas."
@@ -240,7 +239,7 @@
     "demoLink": "Mira un robo paso a paso en la demo",
     "learnMore": {
       "title": "Más detalles",
-      "faq": "Todas las preguntas, de las claves a los costos.",
+      "faq": "Claves, firmas, costos y qué puede salir mal.",
       "alerts": "Qué te dice Telegram y cuándo.",
       "costs": "Las comisiones de red y el depósito que se devuelve.",
       "wallets": "Qué billeteras se probaron y cómo.",
@@ -262,7 +261,7 @@
         "secondStolen": {
           "label": "Un ladrón tiene tu segunda clave",
           "who": "El ladrón, con tu segunda clave",
-          "caption": "El límite honesto: no puede llevarse tus SOL, pero puede mantenerlos bloqueados moviendo la fecha final, incluso años. Cuida la segunda clave como la clave principal."
+          "caption": "No puede llevarse tus SOL, pero puede mantenerlos bloqueados moviendo la fecha final, incluso años. Cuida la segunda clave como la clave principal."
         },
         "rescue": {
           "label": "Rescate: ambas claves y una billetera nueva",
@@ -1351,7 +1350,7 @@
     "pasteHint": "Pega la dirección de la cuenta de votación de un validador que hayas elegido tú. Stakeward lo comprueba con las mismas reglas.",
     "pasteLabel": "Dirección de la cuenta de votación",
     "pasteInvalid": "Esta no es una dirección de Solana.",
-    "checking": "Comprobando este validador…",
+    "checking": "Comprobando este validador",
     "checkError": "No se pudo comprobar este validador",
     "risky": "Stakeward no delegará a este validador:",
     "risks": {
@@ -1361,7 +1360,7 @@
       "LOW_FEE_BALANCE": "Tiene menos SOL que la tarifa de admisión de Alpenglow.",
       "FULL_COMMISSION": "Se queda con el 100% de las recompensas."
     },
-    "loading": "Buscando validadores…",
+    "loading": "Buscando validadores",
     "loadError": "No se pudieron cargar los validadores",
     "empty": {
       "title": "Ahora no hay ningún validador que ofrecer",
@@ -1399,7 +1398,7 @@
     "amountLabel": "Cantidad a poner en staking, en SOL",
     "max": "Máx.",
     "balance": "En tu billetera:",
-    "balanceLoading": "Leyendo tu saldo…",
+    "balanceLoading": "Leyendo tu saldo",
     "balanceError": "No se pudo leer tu saldo",
     "reserve": "Una cuenta de stake nueva también guarda {amount} SOL de depósito de renta, que recuperas al retirar.",
     "amountInvalid": "Escribe una cantidad en SOL, por ejemplo 1.5.",
@@ -1792,15 +1791,15 @@
       "loading": "Leyendo las cuentas de stake de esta clave principal",
       "loadError": "No se pudieron cargar las cuentas de stake",
       "none": "Ahora ninguna cuenta de stake tiene esta clave principal. Si el stake ya se movió, Stakeward no puede recuperarlo.",
-      "safeUntil": "{count} con bloqueo · {amount} — a salvo de quien tenga solo tu clave principal hasta el {date}",
-      "safe": "{count} con bloqueo · {amount} — a salvo de quien tenga solo tu clave principal mientras el bloqueo siga activo",
-      "notLockedOne": "1 sin bloqueo · {amount} — cualquiera con tu clave principal puede retirar sus SOL ahora. Se mueve primero.",
-      "notLockedOther": "{count} sin bloqueo · {amount} — cualquiera con tu clave principal puede retirar sus SOL ahora. Se mueven primero.",
+      "safeUntil": "{count} con bloqueo · {amount}: a salvo de quien tenga solo tu clave principal hasta el {date}",
+      "safe": "{count} con bloqueo · {amount}: a salvo de quien tenga solo tu clave principal mientras el bloqueo siga activo",
+      "notLockedOne": "1 sin bloqueo · {amount}: cualquiera con tu clave principal puede retirar sus SOL ahora. Se mueve primero.",
+      "notLockedOther": "{count} sin bloqueo · {amount}: cualquiera con tu clave principal puede retirar sus SOL ahora. Se mueven primero.",
       "endsSoon": "El bloqueo de {address} termina el {date}. Completa el traslado antes de esa fecha.",
       "movesFirst": "Se mueve primero",
-      "stakeKeyChanged": "Cambió la clave de staking — el rescate lo corrige",
+      "stakeKeyChanged": "Cambió la clave de staking. El rescate lo corrige.",
       "notInRun": "Fuera de esta ronda ({count})",
-      "otherKey": "Bloqueadas por otra segunda clave — rescátalas en otra ronda con esa clave",
+      "otherKey": "Bloqueadas por otra segunda clave. Rescátalas en otra ronda con esa clave.",
       "unsupportedTitle": "Stakeward no puede mover estas cuentas: el bloqueo lo tiene la propia clave principal, o ninguna clave",
       "unsupported": "Si la clave principal tiene el bloqueo, la línea de comandos de Solana puede mover el stake. La clave principal también debe firmar como clave del bloqueo: solana stake-authorize --help indica esa opción.",
       "tooMany": "{count} cuentas de stake: las {max} más urgentes se mueven en esta ronda y el resto en la siguiente.",
@@ -2038,7 +2037,7 @@
       },
       "down": {
         "title": "Stakeward no funciona o ya no existe",
-        "body": "Tu stake no cambia: el bloqueo lo aplica el programa de stake de Solana. Solo se detienen las alertas de Telegram.",
+        "body": "Tu stake no cambia: el bloqueo lo aplica el programa de stake de Solana. Solo se detienen las alertas de Telegram y el rescate en un toque.",
         "source": "Estos comandos funcionan sin Stakeward, y su código es público:",
         "browserOnly": "¿Tus claves solo están en billeteras de navegador o de teléfono? Espera a que termine cada bloqueo; luego la clave principal puede retirar sin otra firma.",
         "check": "Para ver las claves y el bloqueo de una cuenta de stake, ejecuta:"
@@ -2095,7 +2094,7 @@
     "submit": "Revisar",
     "local": "Se revisa en tu navegador. No se envía nada.",
     "neverSeed": "Nunca pegues una clave privada ni una frase de recuperación aquí ni en ningún otro sitio. Stakeward nunca te las pide.",
-    "checking": "Leyendo la transacción…",
+    "checking": "Leyendo la transacción",
     "resultTitle": "Qué hace esta transacción",
     "emptyTitle": "Aún no hay nada revisado",
     "emptyBody": "Pega una transacción arriba y pulsa Revisar. Stakeward no la firma ni la envía.",
@@ -2289,7 +2288,7 @@
       },
       "check-explorer": {
         "q": "¿Cómo puedo comprobar mi bloqueo sin Stakeward?",
-        "a": "Stakeward lee la red a través de su propio servidor, así que un servidor hackeado podría mostrarte un estado incorrecto. Para comprobarlo sin él, abre Solana Explorer escribiendo tú mismo explorer.solana.com y busca tu cuenta de stake. Arriba debe decir \"Account is locked! Lockup expires on\" (la cuenta está bloqueada; el bloqueo vence el) y la fecha que elegiste. Si falta esa línea, tu cuenta de stake no está bloqueada. En Authorities, la Lockup Authority Address debe ser tu segunda clave y la Withdraw Authority Address debe ser tu clave principal."
+        "a": "Stakeward lee la red a través de su propio servidor, así que un servidor hackeado podría mostrarte un estado incorrecto. Para comprobarlo sin él, abre Solana Explorer escribiendo tú mismo explorer.solana.com y busca tu cuenta de stake. Arriba debe decir “Account is locked! Lockup expires on” (la cuenta está bloqueada; el bloqueo vence el) y la fecha que elegiste. Si falta esa línea, tu cuenta de stake no está bloqueada. En Authorities, la Lockup Authority Address debe ser tu segunda clave y la Withdraw Authority Address debe ser tu clave principal."
       },
       "ledger": {
         "q": "¿Qué mostrará mi Ledger?",
@@ -2408,7 +2407,7 @@
           "meaning": "tu cuenta de firma por enlace"
         }
       },
-      "authorizedBy": "Algunas pantallas también muestran \"Authorized by\" (autorizado por): la clave que aprueba el cambio.",
+      "authorizedBy": "Algunas pantallas también muestran “Authorized by” (autorizado por): la clave que aprueba el cambio.",
       "withdrawNote": "Al retirar, el Ledger no muestra tu segunda clave. La pantalla de Stakeward la muestra completa.",
       "phantom": "Phantom puede añadir sus propias comprobaciones de seguridad a una transacción. Un Ledger no puede leerlas y pide firma a ciegas (blind signing): el emulador lo muestra. No se sabe si Phantom las añade en una cuenta de Ledger.",
       "termsLink": "Qué significan custodian, withdrawer y staker"
@@ -2462,7 +2461,7 @@
       "rescue": "Abrir Rescate",
       "restart": "Empezar de nuevo",
       "protectReal": "Proteger mi stake",
-      "working": "Firmando…"
+      "working": "Firmando"
     },
     "steps": {
       "intro": {
@@ -2470,11 +2469,11 @@
         "body": "Pusiste 100 SOL en staking. Un ladrón consiguió una copia de tu clave principal: una frase semilla robada con phishing, malware o una instrucción oculta en una transacción que firmaste."
       },
       "stolen": {
-        "title": "Perdido. Una clave robada, una firma.",
-        "body": "Una cuenta de stake nativa obedece a su clave principal, así que quien la tenga puede llevarse el stake. SwissBorg perdió 192,600 SOL de esta forma en septiembre de 2025."
+        "title": "Perdido con una sola firma de la clave robada",
+        "body": "Una cuenta de stake nativa obedece a su clave principal, así que una sola firma la entrega. SwissBorg perdió unos 192,600 SOL de esta forma en septiembre de 2025: una instrucción oculta en una transacción de desactivación rutinaria que aprobaron sus propios firmantes."
       },
       "setup": {
-        "title": "Mismo stake, mismo ladrón. Ahora añade Stakeward.",
+        "title": "El mismo stake y el mismo ladrón, ahora con Stakeward",
         "body": "Añades una segunda clave de una frase semilla distinta. Controla un bloqueo que aplica el propio programa de stake. Tu billetera nueva se queda vacía hasta un rescate.",
         "risk": "Quien tenga la segunda clave puede congelar este stake, así que guárdala tan bien como la clave principal."
       },
@@ -2554,7 +2553,7 @@
     },
     "now": {
       "lead": "Estado del rescate que firmaste por adelantado. Se envía desde el chat de Telegram vinculado, o automáticamente cuando alguien cambia quién gestiona el staking.",
-      "loading": "Leyendo el rescate…",
+      "loading": "Leyendo el rescate",
       "loadError": "No se pudo leer el rescate",
       "stakeAccount": "Cuenta de stake",
       "none": "No hay rescate en un toque para esta cuenta de stake. Aún puedes rescatarla con tus claves.",

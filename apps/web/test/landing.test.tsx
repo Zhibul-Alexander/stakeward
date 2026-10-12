@@ -479,14 +479,16 @@ describe('landing words and numbers', () => {
     expect(check.textContent).not.toMatch(/custodian/i);
   });
 
-  it('promises "alerts, not SOL" only for a server that is down: the same server delivers this website', async () => {
+  it('promises "not SOL" only for a server that is down: the same server delivers this website', async () => {
     renderLanding();
     const security = section('security');
     // A server taken over (Cloudflare account, deploy token) is a website taken over: it can ask for harmful
-    // signatures, as the next point says. Only a server that is down costs nothing but alerts.
+    // signatures, as the next point says. Only a server that is down costs nothing but alerts and the one-tap rescue it
+    // keeps (D118).
     expect(security.textContent).not.toMatch(/hacked or down|down or hacked/i);
-    const server = within(security).getByText(/you lose alerts, not SOL/);
-    expect(server.textContent).toMatch(/If it is down, you lose alerts, not SOL\./);
+    const server = within(security).getByText(/you lose alerts and one-tap rescue, not SOL/);
+    expect(server.textContent).toMatch(/If the server is down, you lose alerts and one-tap rescue, not SOL\./);
+    expect(server.textContent).toMatch(/it also keeps that signed rescue, which can only move the stake to your new wallet/);
     expect(server.textContent).toMatch(/The same server delivers this website/);
     // Each point stands alone: from md the list has two columns, so none may lean on the point before it.
     for (const point of security.querySelectorAll(':scope > ul > li')) expect(point.textContent).not.toMatch(/^(So|Then|This|That)\b/);

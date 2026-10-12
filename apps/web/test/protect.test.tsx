@@ -853,7 +853,7 @@ describe('/protect step gates', () => {
       const open = await screen.findByRole('region', { name: 'Not protected (2)' }, WAIT);
       // The connected main key shrinks to one line; the group says once what its rows have in common.
       expect(screen.getByRole('group', { name: 'Main key' })).toHaveAttribute('data-layout', 'inline');
-      expect(within(open).getByText('Anyone with your Main key can withdraw these.')).toBeInTheDocument();
+      expect(within(open).getByText('Anyone with your main key can withdraw these.')).toBeInTheDocument();
       expect(selectBox(S1)).not.toBeChecked();
       expect(continueButton()).toHaveAccessibleName('Continue with 0 accounts');
       expect(continueButton()).toHaveAccessibleDescription('Choose at least one stake account.');
