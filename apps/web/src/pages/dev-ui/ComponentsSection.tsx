@@ -1,4 +1,4 @@
-import { aiPrompt, cliUrl, formatSol, formatUtcDate, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
+import { aiPrompt, cliUrl, formatSol, LEDGER_PUBKEY_COMMAND, lockupEndForPeriod, recoveryCommands, shortAddress, U64_MAX } from '@stakeward/core';
 import { RotateCcwIcon, SendIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
@@ -36,12 +36,12 @@ import { WalletSlot } from '@/components/product/wallet-slot';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import type { HealthState } from '@/pages/app/hooks';
 import { MonitoringStatus } from '@/pages/app/MonitoringStatus';
 import { appLinks } from '@/pages/app/view';
 import { FaqAnswer } from '@/pages/landing/Faq.tsx';
-import { REMINDER_DAYS_TEXT } from '@/pages/landing/faq.ts';
+import { reminderDaysText } from '@/pages/landing/faq.ts';
 import { AlertExplanationDemos, ProtectionCheckDemos } from './CheckDemos.tsx';
 import { DarkPreview } from './DarkPreview.tsx';
 import { Demo, DemoGroup, DevSection } from './layout.tsx';
@@ -85,9 +85,6 @@ const VERDICTS: readonly SupportVerdict[] = ['not-verified', 'works', 'works-wit
 
 /** The recovery card's commands for the sample main key, on devnet as the card of a devnet build shows them. */
 const COMMANDS = recoveryCommands({ mainKeyAddress: SAMPLE.mainKey, url: cliUrl('devnet') });
-
-/** The FAQ's parameter in these answers, as the landing fills it: "30, 14, 7, 3, and 1". */
-const FAQ_PARAMS = { days: REMINDER_DAYS_TEXT };
 
 /** The actions a row would have on /app for its status: one visible, the others behind its More. */
 function rowActions(row: SampleRow): { action?: ReactNode; more?: ReactNode } {
@@ -283,7 +280,7 @@ export function ComponentsSection() {
   const periodOption = (months: (typeof PERIOD_MONTHS)[number]): RadioCardOption => ({
     value: String(months),
     title: t(PERIOD_TITLE[months]),
-    meta: t('components.status.until', { date: formatUtcDate(lockupEndForPeriod(clock.unixTimestamp, months)) ?? '' }),
+    meta: t('components.status.until', { date: formatDate(lockupEndForPeriod(clock.unixTimestamp, months)) ?? '' }),
     badge: months === 6 ? <Badge tone="success">{t('devUi.sample.recommended')}</Badge> : undefined,
   });
   const removeOption: RadioCardOption = {
@@ -694,10 +691,10 @@ export function ComponentsSection() {
             <CosignRequest
               kind="protect"
               from="main"
-              ask={t('cosign.ask.protect.title', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' })}
+              ask={t('cosign.ask.protect.title', { date: formatDate(SAMPLE_LOCK_END) ?? '' })}
               lines={[
                 t('cosign.ask.protect.needs'),
-                t('cosign.ask.protect.lose', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' }),
+                t('cosign.ask.protect.lose', { date: formatDate(SAMPLE_LOCK_END) ?? '' }),
                 t('cosign.ask.protect.cannot'),
               ]}
               meta={t('cosign.holds', { amount: formatSol(1_250_500_000_000n) })}
@@ -902,7 +899,7 @@ export function ComponentsSection() {
         <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
           <Demo label={t('devUi.states.closed')}>
             <FaqItem id="dev-ui-faq-lock-ends" question={t('faq.items.lock-ends.q')}>
-              <FaqAnswer text={t('faq.items.lock-ends.a', FAQ_PARAMS)} />
+              <FaqAnswer text={t('faq.items.lock-ends.a', { days: reminderDaysText() })} />
             </FaqItem>
           </Demo>
           <Demo label={t('devUi.states.open')}>
@@ -960,7 +957,7 @@ export function ComponentsSection() {
                 {
                   role: 'second',
                   address: SAMPLE.secondKey,
-                  note: t('withdraw.keys.second', { lock: t('status.lockedUntil', { date: formatUtcDate(SAMPLE_LOCK_END) ?? '' }) }),
+                  note: t('withdraw.keys.second', { lock: t('status.lockedUntil', { date: formatDate(SAMPLE_LOCK_END) ?? '' }) }),
                 },
               ]}
             />

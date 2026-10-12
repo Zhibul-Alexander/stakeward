@@ -1,3 +1,4 @@
+import { EraserIcon } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
@@ -16,15 +17,16 @@ export function ForgetKeys() {
   if (!anything) return null;
   return (
     <div className="flex flex-col items-start gap-1">
+      {/* Outlined, with an icon: as a ghost it read as a heading over its hint (D141). */}
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="-ml-3"
         onClick={() => {
           for (const role of WALLET_ROLES) slots.clear(role);
           for (const address of remembered) secondKeys.forget(address);
         }}
       >
+        <EraserIcon aria-hidden="true" />
         {t('app.forgetKeys.button')}
       </Button>
       <p className="max-w-prose text-sm text-muted">{t('app.forgetKeys.hint')}</p>

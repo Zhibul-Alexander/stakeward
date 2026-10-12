@@ -4,6 +4,21 @@
 @import './styles/tokens.css';
 
 /*
+ * Geist has no Georgian letters: the Georgian interface (src/i18n/ka.json, D140) takes them from Noto Sans Georgian,
+ * bundled like Geist. Only its Georgian face, copied from the package's wght.css: the package's other faces (Latin,
+ * symbols, maths) would take arrows and signs that Geist lacks away from the system fonts on English pages too. The
+ * unicode-range keeps the file from loading until Georgian text is on the page.
+ */
+@font-face {
+  font-family: 'Noto Sans Georgian Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('@fontsource-variable/noto-sans-georgian/files/noto-sans-georgian-georgian-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0589, U+10A0-10FF, U+1C90-1CBA, U+1CBD-1CBF, U+205A, U+2D00-2D2F, U+2E31;
+}
+
+/*
  * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
  * `data-[state=checked]:`, so component classes stay free of brackets.
  */
@@ -63,6 +78,28 @@
   }
 }
 
+/* The one motion nobody triggers (D142): the landing hero's parts arrive in reading order, once, on load. */
+@utility stagger-in {
+  & > * {
+    animation: var(--animate-rise-in);
+  }
+  & > :nth-child(2) {
+    animation-delay: var(--motion-stagger);
+  }
+  & > :nth-child(3) {
+    animation-delay: calc(var(--motion-stagger) * 2);
+  }
+  & > :nth-child(4) {
+    animation-delay: calc(var(--motion-stagger) * 3);
+  }
+}
+
+/* An opened fold drops its content into place (D142): the animation starts when [open] starts to match, on every
+   open. The direct child only, so a fold inside a fold reveals when it is opened itself. Closing is instant. */
+details[open] > [data-slot='disclosure-body'] {
+  animation: var(--animate-reveal);
+}
+
 /* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
 @page {
   margin: 14mm;
@@ -103,6 +140,11 @@
     background-color: var(--color-primary);
     color: var(--color-on-primary);
   }
+}
+
+/* Buttons answer a tap with their own press (D142), so the browser's grey tap flash on phones is not needed. */
+[data-slot='button'] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */

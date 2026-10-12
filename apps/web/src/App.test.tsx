@@ -1,8 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { App } from './App.tsx';
+import { loadLocale } from './i18n/index.ts';
+import ka from './i18n/ka.json';
 
 function renderAt(path: string) {
   const { hook, searchHook } = memoryLocation({ path, static: true });
@@ -70,12 +73,14 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Design system' }, { timeout: 20_000 })).toBeInTheDocument();
   }, 30_000);
 
-  it('marks devnet in the header, with what it means in words (not a tooltip)', () => {
+  // D143: the header marks devnet with its badge only; the landing page says in words what it means (not a tooltip).
+  it('marks devnet in the header with its badge, and says what it means on the landing page', () => {
     renderAt('/');
     const header = screen.getByRole('banner');
     expect(within(header).getByText('Devnet')).toBeInTheDocument();
-    expect(within(header).getByText('Test network: no real SOL.')).toBeInTheDocument();
+    expect(header).not.toHaveTextContent('no real SOL');
     expect(header.querySelector('[title]')).toBeNull();
+    expect(within(screen.getByRole('main')).getByText('Test network: no real SOL.')).toBeInTheDocument();
   });
 
   it('gives a page that does not exist a word for a broken signing link and a way on', () => {
@@ -89,5 +94,43 @@ describe('app shell', () => {
     const home = within(main).getByRole('link', { name: 'Go to the start page' });
     expect(home).toHaveAttribute('href', '/');
     expect(home).toHaveAttribute('data-variant', 'ghost');
+  });
+});
+
+describe('interface language (D140)', () => {
+  afterEach(async () => {
+    await loadLocale('en');
+    localStorage.clear();
+  });
+
+  it('is English by default and switches the whole site from the header, keeping what the page holds', async () => {
+    const user = userEvent.setup();
+    renderAt('/check');
+    const header = screen.getByRole('banner');
+    const footer = screen.getByRole('contentinfo');
+    const choose = async (current: string, next: string) => {
+      await user.click(within(header).getByRole('button', { name: current }));
+      const list = within(header).getByRole('list', { name: /Language|ენა/ });
+      // Each language is named in itself and marked with its language for screen readers.
+      expect(within(list).getByRole('button', { name: 'ქართული' })).toHaveAttribute('lang', 'ka');
+      await user.click(within(list).getByRole('button', { name: next }));
+    };
+    expect(within(header).getByRole('button', { name: 'Language: English' })).toHaveTextContent('EN');
+    expect(within(footer).queryByText(ka.footer.translated)).toBeNull();
+    await user.type(screen.getByLabelText('Transaction'), 'AQAB');
+
+    await choose('Language: English', 'ქართული');
+    expect(await screen.findByRole('heading', { level: 1, name: ka.check.title })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('ka');
+    expect(screen.getByRole('navigation', { name: ka.nav.label })).toBeInTheDocument();
+    expect(screen.getByLabelText(ka.check.inputLabel)).toHaveValue('AQAB');
+    expect(within(footer).getByText(ka.footer.translated)).toBeInTheDocument();
+    expect(within(header).getByRole('button', { name: `${ka.nav.language}: ქართული` })).toHaveTextContent('KA');
+    expect(localStorage.getItem('stakeward:locale:v1')).toBe('ka');
+
+    await choose(`${ka.nav.language}: ქართული`, 'English');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check a transaction' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('en');
+    expect(localStorage.getItem('stakeward:locale:v1')).toBeNull();
   });
 });

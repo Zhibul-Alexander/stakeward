@@ -23,3 +23,15 @@ export function text(key: MessageKey, params?: MessageParams): string {
     return value === undefined ? match : String(value);
   });
 }
+
+/** Every string of a translation (src/i18n/es.json, ka.json; D140): a page in that language shows only these. */
+export function catalogStrings(locale: 'es' | 'ka'): Set<string> {
+  const catalog: unknown = JSON.parse(readFileSync(new URL(`../src/i18n/${locale}.json`, import.meta.url), 'utf8'));
+  const strings = new Set<string>();
+  const walk = (node: unknown) => {
+    if (typeof node === 'string') strings.add(node);
+    else if (typeof node === 'object' && node !== null) for (const value of Object.values(node)) walk(value);
+  };
+  walk(catalog);
+  return strings;
+}

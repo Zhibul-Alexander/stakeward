@@ -1,9 +1,8 @@
-import { formatUtcDate, formatUtcDateTime } from '@stakeward/core';
 import { cn } from 'cn';
 import { ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, formatDateTime, t, type MessageKey } from '@/i18n';
 import { keepTogether } from './countdown.tsx';
 
 /**
@@ -55,7 +54,7 @@ type RiskNoteProps = {
 export function riskText(risk: RiskKind, date?: bigint, dateStyle: DateStyle = 'date', dateOnOneLine = false): string | null {
   const { key, needsDate } = TEXT[risk];
   if (!needsDate) return t(key);
-  const format = dateStyle === 'date-time' ? formatUtcDateTime : formatUtcDate;
+  const format = dateStyle === 'date-time' ? formatDateTime : formatDate;
   const formatted = date === undefined ? null : format(date);
   if (formatted === null) return null;
   return t(key, { date: dateOnOneLine ? keepTogether(formatted) : formatted });

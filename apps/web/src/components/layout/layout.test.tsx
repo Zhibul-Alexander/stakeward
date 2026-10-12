@@ -1,9 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
+import { MAINNET_SITE_URL } from '@/config';
 import { Page } from './Page.tsx';
 import { PageHeader } from './PageHeader.tsx';
 import { Section } from './Section.tsx';
+import { SiteHeader } from './SiteHeader.tsx';
 
 describe('Page', () => {
   it('is the app width by default and a centred column for flows', () => {
@@ -87,5 +90,81 @@ describe('Section', () => {
     );
     expect(screen.getByRole('region', { name: 'Before you pick a second key' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Before you pick a second key' })).toBeInTheDocument();
+  });
+});
+
+describe('SiteHeader', () => {
+  it('keeps Your accounts and Rescue in words, and opens the rest under More until a page change or Escape', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Your accounts' })).toHaveAttribute('href', '/app');
+    expect(within(nav).getByRole('link', { name: 'Rescue' })).toHaveAttribute('href', '/rescue');
+    // Every link has its words: no icon-only link in the header.
+    for (const link of within(screen.getByRole('banner')).getAllByRole('link')) expect(link.textContent.trim()).not.toBe('');
+
+    const more = within(nav).getByRole('button', { name: 'More' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await user.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    const list = document.getElementById(more.getAttribute('aria-controls') ?? '');
+    if (list === null) throw new Error('no list');
+    expect(within(list).getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
+
+    await user.keyboard('{Escape}');
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(more).toHaveFocus();
+
+    await user.click(more);
+    const opened = document.getElementById(more.getAttribute('aria-controls') ?? '');
+    if (opened === null) throw new Error('no list');
+    await user.click(within(opened).getByRole('link', { name: 'Demo' }));
+    expect(window.location.pathname).toBe('/demo');
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // D143: the other network's site is a button with an outline, the last link of the nav on both sites, so it stays in
+  // place when you switch networks; the header shows the Devnet badge but no sentence about it.
+  it('ends the nav with the other network as an outlined button, and says nothing more about devnet', () => {
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const links = within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link');
+    const network = links.at(-1);
+    expect(network).toHaveAttribute('href', MAINNET_SITE_URL);
+    expect(network).toHaveAttribute('data-variant', 'outline');
+    expect(network).toHaveTextContent('Go to mainnet');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('no real SOL');
+  });
+
+  it('opens the language list under its button and closes it on Escape, a click elsewhere and a choice', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const button = screen.getByRole('button', { name: 'Language: English' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('list', { name: 'Language' });
+    expect(within(list).getAllByRole('button').map((item) => [item.textContent, item.getAttribute('lang')])).toEqual([
+      ['English', 'en'],
+      ['ქართული', 'ka'],
+    ]);
+    // Spanish is translated but not offered for now (D144).
+    expect(within(list).queryByRole('button', { name: 'Español' })).toBeNull();
+    expect(within(list).getByRole('button', { name: 'English' })).toHaveAttribute('aria-current', 'true');
+
+    await user.keyboard('{Escape}');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveFocus();
+
+    await user.click(button);
+    await user.click(screen.getByRole('link', { name: 'Stakeward home' }));
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+    await user.click(within(screen.getByRole('list', { name: 'Language' })).getByRole('button', { name: 'English' }));
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveFocus();
   });
 });

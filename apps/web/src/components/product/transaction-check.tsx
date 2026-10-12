@@ -1,6 +1,5 @@
 import {
   formatSol,
-  formatUtcDate,
   type ScanEffect,
   type ScanErrorCode,
   type ScannedAddress,
@@ -23,7 +22,7 @@ import { useId } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { EmptyState } from './empty-state.tsx';
 import { ErrorState } from './error-state.tsx';
@@ -114,7 +113,7 @@ export function effectSentences(effect: ScanEffect): string[] {
     case 'set-lockup': {
       const out = [t('check.effect.setLockup')];
       if (effect.unixTimestamp !== null) {
-        const date = effect.unixTimestamp === 0n ? null : formatUtcDate(effect.unixTimestamp);
+        const date = effect.unixTimestamp === 0n ? null : formatDate(effect.unixTimestamp);
         out.push(date === null ? t('check.effect.lockRemoved') : t('check.effect.lockDate', { date }));
       }
       if (effect.epoch !== null && effect.epoch !== 0n) out.push(t('check.effect.lockEpoch', { epoch: effect.epoch.toString() }));

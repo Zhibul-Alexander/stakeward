@@ -338,6 +338,8 @@ curl -sS "$API/getWebhookInfo"
 
 Экраны:
 - [ ] Шапка и подвал: Source code, What Stakeward cannot do, Stats, No warranty.
+- [ ] Шапка (D141) на телефоне и на десктопе: на телефоне два ряда — Stakeward с Devnet, ниже Your accounts, Rescue и More; More открывает Demo, Try to steal it, Go to mainnet списком, Escape и переход на страницу его закрывают. С 1024 px всё в одну строку, More нет.
+- [ ] `/app` на телефоне (D141): «Protection check» — свёрнутые строки со значками Fix/Check/Pass, раскрываются по нажатию со ссылкой-исправлением; «Ask your AI» — одна строка, раскрывается к кнопкам ChatGPT и Claude.
 - [ ] `/`: заголовок, схема в три шага, What Stakeward cannot do, таблица кошельков, FAQ целиком (открыть каждый вопрос), особенно «What will my Ledger show?», «My main key was stolen», «What do custodian, withdrawer and staker mean?».
 - [ ] `/app` без адреса; загрузка, ошибка (DevTools → Network → Offline), пусто.
 - [ ] `/app?address=<Main key>`: статусы, красный баннер, «You are the second key for», Last checked, Get alerts in Telegram, Rescue, Recovery card.
@@ -389,6 +391,13 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [x] Actions → deploy → Run workflow → branch `main`, env `dev` или `prod` (10–11.10.2026: dev и prod на f802765, 86b3770/4383218, 8d2e6e9, 6e108d7, 07b1951, 43e24ec). Prod ждёт вашего Approve. Нужен зелёный `check` на этом коммите.
 - [x] Задание само применяет миграции D1 (0004 уже стояла; 0005 и 0006 применились на prod 11.10.2026): это закрывает 0004 в пунктах а) и б) выше. Запись для `docs/deploys.md` — в Summary запуска; пришлите ссылку на запуск, я закоммичу.
 - [x] `pnpm verify-deploy --env <env> --commit <sha>` — PASS (11.10.2026, 43e24ec, dev и prod).
+
+## Языки (D140, 12.10.2026)
+
+- [ ] На dev и prod: в шапке любой страницы нажать кнопку языка (🌐 EN) и выбрать ქართული, затем English (испанского в списке нет, D144). Страница сразу на выбранном языке, без перезагрузки; введённое в мастере защиты не пропало; после перезагрузки язык тот же; на English подпись «переведено с английского» исчезает.
+- [ ] Кнопка «Try on testnet» на prod и «Go to mainnet» на dev стоят на одном месте, справа в шапке (D143).
+- [ ] На телефоне (360 пикселей) открыть лендинг, /app и /protect на грузинском: буквы одним шрифтом (не системным с засечками), ничего не вылезает за край.
+- [ ] Носитель грузинского (по возможности, например из Superteam Georgia) читает лендинг, /learn, мастер защиты с экраном подписи и /rescue. Особенно: предупреждения о рисках и строки «чего эта транзакция сделать не может». Замечания — в `apps/web/src/i18n/ka.json`.
 
 ## Перед подачей: за владельцем
 

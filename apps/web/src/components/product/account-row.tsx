@@ -1,6 +1,5 @@
 import {
   EXPIRING_THRESHOLD_SECONDS,
-  formatUtcDate,
   shortAddress,
   type ActivationStatus,
   type ClockView,
@@ -26,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { ErrorDetails } from './error-state.tsx';
 import { SolAmount } from './sol-amount.tsx';
@@ -174,7 +173,7 @@ export function AccountRow({
   // last past its timestamp, so its date would be wrong or already past.
   const date =
     lockInForce && account.lockup.epoch === 0n && account.lockup.unixTimestamp > 0n
-      ? formatUtcDate(account.lockup.unixTimestamp)
+      ? formatDate(account.lockup.unixTimestamp)
       : null;
   const endsSoon =
     date !== null && (status === 'expiring' || account.lockup.unixTimestamp - clock.unixTimestamp < EXPIRING_THRESHOLD_SECONDS);

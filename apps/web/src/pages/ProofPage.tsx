@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { aiPrompt, buildProof, formatSol, formatUtcDate, type Cluster, type ProofView } from '@stakeward/core';
+import { aiPrompt, buildProof, formatSol, type Cluster, type ProofView } from '@stakeward/core';
 import { InfoIcon, LoaderCircleIcon, RefreshCwIcon, SearchXIcon, ShieldCheckIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'wouter';
@@ -15,7 +15,7 @@ import { ErrorState } from '@/components/product/error-state';
 import { SummaryBar } from '@/components/product/summary-bar';
 import { Button } from '@/components/ui/button';
 import { CLUSTER } from '@/config';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { usePorts } from '@/ports';
 import { isCheckableAddress } from './app/AddressForm.tsx';
@@ -163,7 +163,7 @@ function ProofResults({ wallet, loadHealth }: { wallet: Address; loadHealth: () 
 
 function SummaryDetail({ proof }: { proof: ProofView }) {
   const { count, lockedCount } = proof.totals;
-  const end = proof.earliestLockEnd === null ? null : formatUtcDate(proof.earliestLockEnd);
+  const end = proof.earliestLockEnd === null ? null : formatDate(proof.earliestLockEnd);
   return (
     <>
       <p>{count === 1 ? t('proof.accountsOne', { locked: lockedCount }) : t('proof.accounts', { locked: lockedCount, count })}</p>
@@ -175,7 +175,7 @@ function SummaryDetail({ proof }: { proof: ProofView }) {
 /** The "Ask your AI" question (D122): the totals and each account's lock, public chain data only. */
 export function proofPrompt(proof: ProofView, cluster: Cluster): string {
   const { totals } = proof;
-  const end = proof.earliestLockEnd === null ? null : formatUtcDate(proof.earliestLockEnd);
+  const end = proof.earliestLockEnd === null ? null : formatDate(proof.earliestLockEnd);
   const facts: [string, string][] = [
     [t('proof.ai.wallet'), proof.wallet],
     [t('proof.ai.network'), cluster],
@@ -186,7 +186,7 @@ export function proofPrompt(proof: ProofView, cluster: Cluster): string {
   for (const row of proof.rows) {
     const amount = formatSol(row.account.lamports);
     const key = row.account.lockup.custodian;
-    const date = row.lockEnd === null ? null : formatUtcDate(row.lockEnd);
+    const date = row.lockEnd === null ? null : formatDate(row.lockEnd);
     facts.push([
       t('proof.ai.account', { address: row.account.address }),
       !row.locked

@@ -27,7 +27,6 @@
     "cannotMoveSol": "This transaction cannot move your SOL.",
     "networkFee": "Network fee",
     "devnet": "Devnet",
-    "devnetNote": "Test network: no real SOL.",
     "roles": {
       "main": "Main key",
       "second": "Second key",
@@ -55,7 +54,9 @@
     "demo": "Demo",
     "challenge": "Try to steal it",
     "tryTestnet": "Try on testnet",
-    "tryMainnet": "Go to mainnet"
+    "tryMainnet": "Go to mainnet",
+    "more": "More",
+    "language": "Language"
   },
   "footer": {
     "label": "Footer",
@@ -64,7 +65,8 @@
     "cannotDo": "What Stakeward cannot do",
     "stats": "Stats",
     "license": "No warranty. MIT license.",
-    "learn": "Details and FAQ"
+    "learn": "Details and FAQ",
+    "translated": "Translated from English. If a sentence is unclear, the English version is the reference."
   },
   "landing": {
     "title": "Protect your staked SOL",
@@ -490,7 +492,7 @@
       },
       "expired": "This transaction expired before it reached the network. Nothing changed; try again.",
       "linkExpired": "The link stopped working: it was used, cancelled or failed. Nothing changed.",
-      "retryAfterLink": "A link is still open, so the rest waits for it. Once the other device sent it, or you cancelled it by closing your link-signing account, press Check again. Then try the rest.",
+      "retryAfterLink": "A link is still open, so the rest waits for it. Once the other device has sent it, or you have cancelled it by closing your link-signing account, press Check again. Then try the rest.",
       "transaction": "Transaction"
     },
     "qr": {
@@ -557,7 +559,7 @@
       "signature-changed": "The wallet removed or replaced another wallet's signature. Nothing was sent.",
       "invalid-signature": "The wallet's signature does not match the transaction. Nothing was sent.",
       "verification-unavailable": "This browser cannot check signatures. Open the page in a current browser.",
-      "tailBothWays": "{wallet} adds its own checks after another key signed, whichever key signs first. Use a different wallet app for one of your keys."
+      "tailBothWays": "{wallet} adds its own checks after another key has signed, whichever key signs first. Use a different wallet app for one of your keys."
     },
     "inspect": "The wallet returned a transaction Stakeward cannot read. Nothing was sent.",
     "verify": {
@@ -658,6 +660,9 @@
     },
     "radii": "Radii",
     "shadows": "Shadows",
+    "motion": "Motion",
+    "motionNote": "Motion answers what a person did (open, copy, press, confirm); only the landing hero moves on its own, once. Opacity and transform only. Every duration is 0 under prefers-reduced-motion:",
+    "motionPlay": "Play again",
     "primitives": "Primitives",
     "layout": "Layout",
     "layoutNote": "Page sets the width and the space between blocks. PageHeader holds the only h1. Section groups rows under one heading and one shared line. ActionBar ends every step.",
@@ -711,7 +716,7 @@
       "connected": "Connected",
       "wrongAccount": "Wrong account",
       "wrongAccountExpected": "Wrong account: this step needs another one",
-      "wrongAccountHeld": "Holds another account than this step needs",
+      "wrongAccountHeld": "Holds a different account than this step needs",
       "noWallets": "No wallets found",
       "running": "Running",
       "ended": "Ended",
@@ -865,8 +870,8 @@
       "nonceSetupRescue": "Link-signing account: set up for a rescue",
       "nonceClose": "Link-signing account: close",
       "nonceCancel": "Cancel a link",
-      "nonceBlocked": "Set up refused: the address is taken",
-      "nonceGateBlocked": "Address taken before set up: the page's way around it",
+      "nonceBlocked": "Setup refused: the address is taken",
+      "nonceGateBlocked": "Address taken before setup: the page's way around it",
       "recovery": "Recovery card",
       "landingWallets": "Landing: wallet table"
     },
@@ -1578,7 +1583,7 @@
     "custodian-signature-missing": "Your second key is part of this transaction but did not sign. Ask it to sign, then send again.",
     "already-deactivated": "This stake is already deactivated. Refresh to see its current state.",
     "too-soon-to-redelegate": "This stake is still deactivating. Delegate it again after the current epoch ends.",
-    "insufficient-delegation": "This stake holds less than the 1 SOL minimum the network allows to delegate.",
+    "insufficient-delegation": "This stake holds less than the 1 SOL minimum the network requires for delegation.",
     "merge-mismatch": "These stake accounts cannot be combined: their keys or locks differ.",
     "missing-signature": "A key that must sign did not, or it no longer controls this stake. Check the connected wallets and try again.",
     "invalid-signature": "A signature does not match this transaction. Start signing again from the first wallet.",
@@ -1780,7 +1785,7 @@
       "byLink": "By link: the other device opens a link or QR code and signs.",
       "notConnected": "Not connected yet",
       "needSecond": "Connect your second key, or choose to sign by link.",
-      "secondProblem": "Your second key must be another wallet than your main key and your new wallet.",
+      "secondProblem": "Your second key must be a different wallet from your main key and your new wallet.",
       "linkSame": "If both keys sign by link, open the link on one device where both are connected."
     },
     "move": {
@@ -1947,7 +1952,7 @@
       },
       "ending": {
         "title": "The lock is about to end",
-        "body": "Extend it with the second key before {date}; after that, only Stakeward can set a new lock.",
+        "body": "Extend it with the second key before {date}; after that, set a new lock in Stakeward: the command line cannot.",
         "stakeward": "In Stakeward, use Extend with the second key:",
         "cli": "Or, without Stakeward, run:",
         "date": "Replace <NEW_END_DATE> with a UTC date and time, like {example}. A past date removes the lock.",
@@ -2048,7 +2053,7 @@
       },
       "caution": {
         "title": "Check before you sign",
-        "body": "As far as Stakeward can read, this transaction cannot take your staked SOL or the control of it, but it unstakes, moves stake, or uses something Stakeward cannot check."
+        "body": "As far as Stakeward can read, this transaction cannot take your staked SOL or control of it, but it unstakes, moves stake, or uses something Stakeward cannot check."
       },
       "ok": {
         "title": "No stake accounts touched",
@@ -2274,7 +2279,7 @@
       },
       "terms": {
         "q": "What do custodian, withdrawer and staker mean?",
-        "a": "They are the stake program's own names, which your Ledger and the Solana command line use.\n\nMain key: the withdraw authority, or withdrawer. Usually it is also the stake authority, or staker.\n\nStake authority (staker): the key that manages staking, that is delegating, stopping and splitting. A staking service may hold it.\n\nSecond key: the lockup custodian.\n\nNew wallet: the key a rescue makes both the withdraw authority and the stake authority."
+        "a": "They are the stake program's own names, which your Ledger and the Solana command line use.\n\nMain key: the withdraw authority, or withdrawer. Usually it is also the stake authority, or staker.\n\nStake authority (staker): the key that manages staking, that is, delegating, stopping and splitting. A staking service may hold it.\n\nSecond key: the lockup custodian.\n\nNew wallet: the key a rescue makes both the withdraw authority and the stake authority."
       },
       "cli": {
         "q": "Can I do all of this with the Solana CLI?",
@@ -2386,7 +2391,7 @@
     },
     "log": {
       "title": "What the network saw",
-      "empty": "Nothing yet. Press the button below."
+      "empty": "Nothing yet. Press the button above."
     },
     "actions": {
       "steal": "Steal the stake",
@@ -2524,6 +2529,7 @@
   },
   "askAi": {
     "title": "Ask your AI",
+    "hint": "Have this page explained in your own ChatGPT or Claude.",
     "body": "Opens this question in your own ChatGPT or Claude account. Stakeward sends nothing, stores nothing and holds no AI key. The AI only explains; what this page shows is checked against the network.",
     "chatgpt": "Ask ChatGPT",
     "claude": "Ask Claude",
@@ -2631,7 +2637,7 @@
     "limits": "A lock stops withdrawals without the second key; it does not stop unstaking or redelegation.",
     "whoHolds": "The network does not say who holds a second key. Ask the owner of this wallet which second key is theirs and compare the address.",
     "loading": "Reading stake accounts from the network",
-    "announce": "Read {count} stake accounts",
+    "announce": "Stake accounts read: {count}",
     "errorTitle": "Could not read this wallet's stake",
     "emptyTitle": "No stake accounts",
     "emptyBody": "This wallet is not the main key of any native stake account, so there is no stake here to prove. Liquid staking tokens and stake held on exchanges do not show here.",
@@ -2765,7 +2771,7 @@
     "lockEnd": "Lock ends",
     "noLock": "No lock",
     "notWatched": "Not watched any more",
-    "recent": "Recent changes of this account",
+    "recent": "Recent changes to this account",
     "noRecent": "No other change is recorded.",
     "lock": {
       "in-force": "Locked",

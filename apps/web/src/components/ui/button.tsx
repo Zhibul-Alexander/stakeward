@@ -6,7 +6,8 @@ import type { ComponentProps } from 'react';
 // shadcn/ui button (radix base), classes rewritten to design tokens. Focus uses the global :focus-visible outline.
 //
 // Hierarchy (DECISIONS.md D112): at most one filled button (primary or danger) per screen; e2e/screen-metrics.ts
-// counts them.
+// counts them. Every variant but link answers a press by shrinking a little (D142): a tap shows it landed, also on a
+// phone, where there is no hover.
 //   variant   role                                                                     per screen
 //   primary   the one thing to do here                                                 at most 1 filled
 //   danger    replaces primary when the action removes protection or answers the F6    counts as the 1 filled
@@ -16,15 +17,16 @@ import type { ComponentProps } from 'react';
 //   ghost     Back, Refresh, copy, explorer, the row's More, "Stop waiting"            any
 //   link      inline in prose                                                          any
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-on-primary hover:bg-primary-hover',
-        outline: 'border-border bg-surface text-foreground hover:bg-subtle',
-        ghost: 'text-foreground hover:bg-subtle',
-        danger: 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover',
-        link: 'h-auto px-0 text-primary underline underline-offset-4 hover:text-primary-hover',
+        primary: 'bg-primary text-on-primary hover:bg-primary-hover active:scale-98',
+        outline: 'border-border bg-surface text-foreground hover:bg-subtle active:scale-98',
+        ghost: 'text-foreground hover:bg-subtle active:scale-96',
+        danger: 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover active:scale-98',
+        // Inline in prose, so it wraps like prose: a long label (a translation, D140) breaks into lines, not past the edge.
+        link: 'h-auto px-0 text-left whitespace-normal text-primary underline underline-offset-4 hover:text-primary-hover',
       },
       size: {
         sm: 'h-8 px-3 text-sm',
@@ -50,7 +52,9 @@ function Button({ className, variant = 'primary', size = 'md', asChild = false, 
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size }), className)}
+      // A link sits in text: no size, so no height or padding pulls it off the text's left edge (both would win over
+      // the link's own h-auto and px-0 in the stylesheet).
+      className={cn(buttonVariants({ variant, size: variant === 'link' ? null : size }), className)}
       {...props}
     />
   );

@@ -1,6 +1,5 @@
-import { formatUtcDateTime } from '@stakeward/core';
 import { ErrorState } from '@/components/product/error-state';
-import { t } from '@/i18n';
+import { formatDateTime, t } from '@/i18n';
 import { clockSkewDetail, type ClockSkew } from './clock.ts';
 
 /**
@@ -12,8 +11,8 @@ export function ClockSkewError({ skew, onRetry }: { skew: ClockSkew; onRetry: ()
     <ErrorState
       title={t('protect.clockSkew.title')}
       message={t('protect.clockSkew.body', {
-        network: formatUtcDateTime(skew.network) ?? skew.network.toString(),
-        device: formatUtcDateTime(skew.device) ?? skew.device.toString(),
+        network: formatDateTime(skew.network) ?? skew.network.toString(),
+        device: formatDateTime(skew.device) ?? skew.device.toString(),
       })}
       detail={clockSkewDetail(skew)}
       onRetry={onRetry}

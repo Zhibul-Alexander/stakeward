@@ -1,5 +1,4 @@
-import { formatUtcDateTime } from '@stakeward/core';
-import { t } from '@/i18n';
+import { formatDateTime, t } from '@/i18n';
 
 /**
  * Protect and extend compute the lock end from the cluster clock, which reaches the browser through the worker's RPC
@@ -22,9 +21,9 @@ export function clockSkew(network: bigint, device: bigint): ClockSkew | null {
 export function clockSkewDetail({ network, device }: ClockSkew): string {
   const difference = network > device ? network - device : device - network;
   return t('protect.clockSkew.detail', {
-    networkTime: formatUtcDateTime(network) ?? '-',
+    networkTime: formatDateTime(network) ?? '-',
     networkUnix: network.toString(),
-    deviceTime: formatUtcDateTime(device) ?? '-',
+    deviceTime: formatDateTime(device) ?? '-',
     deviceUnix: device.toString(),
     difference: difference.toString(),
     allowed: MAX_CLOCK_SKEW_SECONDS.toString(),

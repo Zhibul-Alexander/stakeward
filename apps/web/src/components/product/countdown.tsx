@@ -1,8 +1,7 @@
-import { formatUtcDate } from '@stakeward/core';
 import { cn } from 'cn';
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
@@ -69,7 +68,7 @@ function milestoneBucket(seconds: number): number {
 }
 
 function endsAtText(to: bigint): string | null {
-  const date = formatUtcDate(to);
+  const date = formatDate(to);
   if (date === null) return null;
   const at = new Date(Number(to) * 1000);
   const time = `${String(at.getUTCHours()).padStart(2, '0')}:${String(at.getUTCMinutes()).padStart(2, '0')}`;
@@ -144,7 +143,7 @@ export function Countdown({ to, label, onEnd, clock = Date.now, className }: Cou
 
   const left = remainingSeconds(to, nowMs);
   const endsAt = endsAtText(to);
-  // formatUtcDate returns null outside the range of a Date; toISOString would throw there.
+  // formatDate returns null outside the range of a Date; toISOString would throw there.
   const dateTime = endsAt === null ? undefined : new Date(Number(to) * 1000).toISOString();
   return (
     <div data-slot="countdown" className={cn('flex flex-col gap-1', className)}>

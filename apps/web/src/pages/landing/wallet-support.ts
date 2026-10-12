@@ -1,6 +1,5 @@
-import { formatUtcDate } from '@stakeward/core';
 import type { SupportVerdict } from '@/components/product/support-badge';
-import type { Messages } from '@/i18n';
+import { formatDate, type Messages } from '@/i18n';
 
 /**
  * What the landing page says about wallets and the Ledger (DECISIONS.md D80). Data, not copy: the wallet matrix (TESTPLAN
@@ -80,7 +79,7 @@ export const LEDGER_CHECKED_ON: string | null = null;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /**
- * '2026-10-06' -> '6 October 2026' (core formatUtcDate, as every other date on the site); null for null or anything
+ * '2026-10-06' -> '6 October 2026' in the current language (formatDate, as every other date on the site); null for null or anything
  * that is not a real calendar date in that form.
  */
 export function matrixDateText(date: string | null): string | null {
@@ -91,5 +90,5 @@ export function matrixDateText(date: string | null): string | null {
   const value = new Date(Date.UTC(year, month - 1, day));
   // Date.UTC rolls 2026-13-01 over into 2027; a real date reads back the same.
   if (value.getUTCFullYear() !== year || value.getUTCMonth() !== month - 1 || value.getUTCDate() !== day) return null;
-  return formatUtcDate(BigInt(value.getTime() / 1000));
+  return formatDate(BigInt(value.getTime() / 1000));
 }

@@ -1,12 +1,11 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate } from '@stakeward/core';
 import { CircleCheckIcon, FileTextIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
 import { AddressText } from '@/components/product/address-text';
 import { RiskNote } from '@/components/product/risk-note';
 import { Button } from '@/components/ui/button';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import { isLanded } from '@/pages/account/check';
 import { JobOutcome } from '@/pages/account/JobOutcome';
 import { appLinks } from '@/pages/app/view';
@@ -62,10 +61,10 @@ export function ExtendDone({ headingRef, account, mainKey, lockUntil, job, check
     <section aria-labelledby={headingId} data-slot="extend-done" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl">
-          <CircleCheckIcon aria-hidden="true" className="mt-1 size-6 shrink-0 text-success" />
+          <CircleCheckIcon aria-hidden="true" className="animate-seal mt-1 size-6 shrink-0 text-success" />
           {lockUntil === 0n
             ? t('extend.done.removed')
-            : t('extend.done.extended', { date: formatUtcDate(lockUntil) ?? lockUntil.toString() })}
+            : t('extend.done.extended', { date: formatDate(lockUntil) ?? lockUntil.toString() })}
         </h2>
         {transaction}
       </div>

@@ -50,13 +50,14 @@ export function LearnPage() {
   return (
     <Page>
       <PageHeader title={t('learn.title')} lead={t('learn.lead')} />
-      <nav aria-label={t('learn.tabs.label')} className="-mt-4 flex flex-wrap gap-2 border-b border-border pb-3">
+      {/* All five tabs in one row at 360 px too: closer and narrower there (D141). */}
+      <nav aria-label={t('learn.tabs.label')} className="-mt-4 flex flex-wrap gap-1 border-b border-border pb-3 sm:gap-2">
         {LEARN_TABS.map((id) => (
           <Link
             key={id}
             href={`/learn/${id}`}
             aria-current={id === tab ? 'page' : undefined}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-muted hover:bg-subtle hover:text-foreground aria-[current=page]:bg-subtle aria-[current=page]:text-foreground"
+            className="rounded-md px-2.5 py-1.5 text-sm font-medium sm:px-3 text-muted hover:bg-subtle hover:text-foreground aria-[current=page]:bg-subtle aria-[current=page]:text-foreground"
           >
             {t(TAB_LABEL[id])}
           </Link>

@@ -2,8 +2,6 @@ import {
   customLockBounds,
   customLockEnd,
   DEFAULT_LOCK_PERIOD,
-  formatUtcDate,
-  formatUtcDateTime,
   lockPeriodsFor,
   lockupEnd,
   type LockPeriod,
@@ -18,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLUSTER } from '@/config';
-import { t } from '@/i18n';
+import { formatDate, formatDateTime, t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { useChain, useDeviceClock } from '@/ports';
 import { ClockSkewError } from './ClockSkewError.tsx';
@@ -65,7 +63,7 @@ export function PeriodStep({ headingRef, period, customDate, blockerInput, onPer
   const now = clock.status === 'ready' ? clock.clock.unixTimestamp : null;
   const custom = now === null ? null : customLockEnd(customDate, now);
   const bounds = now === null ? null : customLockBounds(now);
-  const boundDate = (date: string) => (now === null ? date : (formatUtcDate(okEnd(customLockEnd(date, now))) ?? date));
+  const boundDate = (date: string) => (now === null ? date : (formatDate(okEnd(customLockEnd(date, now))) ?? date));
   const endOf = (option: PeriodChoice) =>
     now === null ? null : option === 'custom' ? (custom?.ok === true ? custom.lockUntil : null) : lockupEnd(now, option, CLUSTER);
   const lockUntil = endOf(period);
@@ -89,7 +87,7 @@ export function PeriodStep({ headingRef, period, customDate, blockerInput, onPer
         options={choices.map((option) => {
           const end = endOf(option);
           const date =
-            end === null ? null : option !== 'custom' && SHORT_PERIODS.includes(option) ? formatUtcDateTime(end) : formatUtcDate(end);
+            end === null ? null : option !== 'custom' && SHORT_PERIODS.includes(option) ? formatDateTime(end) : formatDate(end);
           return {
             value: option,
             title: t(`protect.period.options.${option}`),

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { t } from '@/i18n';
+import { formatList, t } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { QrCode } from './qr-code.tsx';
 import { roleLabel } from './wallet-slot.tsx';
@@ -38,9 +38,9 @@ export type LinkCardProps = {
   className?: string | undefined;
 };
 
-/** "Main key and Second key" (English list format; en.json is the only language for now). */
+/** "Main key and Second key", in the current language. */
 export function joinRoles(roles: readonly WalletRole[]): string {
-  return new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(roles.map(roleLabel));
+  return formatList(roles.map(roleLabel));
 }
 
 /** Where the wait stands, as a badge: watching (with a spinner), the network unreachable, or stopped. */

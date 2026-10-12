@@ -18,6 +18,10 @@ export type Tokens = {
   spacing: string;
   /** Grid column templates (`--grid-template-columns-<name>`, the class `grid-cols-<name>`). */
   gridColumns: SizeToken[];
+  /** Animations (`--animate-<name>`, the class `animate-<name>`), D142. */
+  animations: SizeToken[];
+  /** Durations and the stagger (`--motion-<name>` in :root); all 0 under prefers-reduced-motion. */
+  motion: SizeToken[];
 };
 
 function block(css: string, start: number, end: number): string {
@@ -39,7 +43,9 @@ export function parseTokens(css: string): Tokens {
   const themeStart = css.indexOf('@theme');
   const darkStart = css.indexOf('@media screen and (prefers-color-scheme: dark)');
   const darkEnd = css.indexOf('@media', darkStart + 1);
-  if (themeStart < 0 || darkStart < 0) return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '', gridColumns: [] };
+  if (themeStart < 0 || darkStart < 0) {
+    return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '', gridColumns: [], animations: [], motion: [] };
+  }
   const light = block(css, themeStart, darkStart);
   const dark = new Map(declarations(block(css, darkStart, darkEnd), 'color-'));
   const isValue = ([, value]: [string, string]) => value !== 'initial';
@@ -61,6 +67,11 @@ export function parseTokens(css: string): Tokens {
     gridColumns: declarations(light, 'grid-template-columns-')
       .filter(isValue)
       .map(([name, value]) => ({ name, value })),
+    animations: declarations(light, 'animate-')
+      .filter(isValue)
+      .map(([name, value]) => ({ name, value })),
+    // From the :root block after @theme: the values for screens without reduced motion.
+    motion: declarations(light, 'motion-').map(([name, value]) => ({ name, value })),
   };
 }
 
@@ -154,3 +165,12 @@ export const SPACING_STEPS: readonly [number, string][] = [
   [16, 'w-16'],
   [24, 'w-24'],
 ];
+
+/** Animation class per --animate-* token (written out for Tailwind). */
+export const ANIMATE_CLASS: Record<string, string> = {
+  'fade-in': 'animate-fade-in',
+  reveal: 'animate-reveal',
+  'rise-in': 'animate-rise-in',
+  'pop-in': 'animate-pop-in',
+  seal: 'animate-seal',
+};

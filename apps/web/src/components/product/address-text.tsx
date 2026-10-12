@@ -67,7 +67,7 @@ export function AddressText({
             void copyText(address);
           }}
         >
-          {copyState === 'copied' ? <CheckIcon aria-hidden="true" className="text-success" /> : <CopyIcon aria-hidden="true" />}
+          {copyState === 'copied' ? <CheckIcon aria-hidden="true" className="animate-pop-in text-success" /> : <CopyIcon aria-hidden="true" />}
         </Button>
       ) : null}
       {explorer ? (

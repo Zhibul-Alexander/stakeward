@@ -41,7 +41,7 @@ export function CommandBlock({ argv, label, className, feedback }: CommandBlockP
             void copier.copy(commandLine(argv));
           }}
         >
-          {state === 'copied' ? <CheckIcon aria-hidden="true" className="text-success" /> : <CopyIcon aria-hidden="true" />}
+          {state === 'copied' ? <CheckIcon aria-hidden="true" className="animate-pop-in text-success" /> : <CopyIcon aria-hidden="true" />}
         </Button>
       </div>
       {/* Announces the result politely; the visible feedback is the check icon or the short failure text. */}

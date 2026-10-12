@@ -2,6 +2,10 @@
 
 Stakeward puts a lock on the Solana stake accounts you already have. The lock is built into Solana's own stake program, and it answers to your **second key**: a wallet of yours made from a different seed phrase. While the lock holds, a thief who gets your **main key**, the wallet you stake from, cannot withdraw your stake or make it theirs. You can still move the stake to a new wallet with both keys.
 
+[![Stakeward in 51 seconds: watch the video](docs/media/stakeward-promo.gif)](docs/media/stakeward-promo.mp4)
+
+▶ [Watch with sound (51 seconds)](docs/media/stakeward-promo.mp4)
+
 Stakeward never holds your SOL or your keys. Your browser builds every transaction, your own wallets sign it, and Stakeward has no program of its own on the network. It is free: you pay only Solana network fees.
 
 > **Status: early version, not audited.** Protecting, alerts, withdrawing, extending the lock, rescue, signing by link and the recovery card are built and pass automated tests against the real stake program. The mainnet version runs at https://stakeward.com. On 10 and 11 October 2026 we protected, unlocked, protected again and rescued a real 1.05 SOL stake on mainnet with Phantom; withdrawing with both keys was tested on devnet. A devnet demo runs at https://dev.stakeward.com (devnet SOL has no value). Start with a small stake.
@@ -85,6 +89,10 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 **The link-signing account is a deposit, not a fee.** To sign on another device, Stakeward opens a small helper account on the network (a durable nonce account) that keeps the transaction valid until the last signature, even hours later. The network asks for a deposit to keep it open. Stakeward reads the amount from the network; today it is about 0.00106 SOL. When you close the account, the deposit comes back to your wallet.
 
 For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a key signs by link, owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
+
+## Languages
+
+The site is in English and Georgian. English is the default; pick Georgian in the header of any page, and this browser remembers it. The translations were made with an AI model and have not yet been read by a native speaker: where a sentence is unclear, the English text is the reference. Telegram alerts, command lines and the labels a Ledger shows stay in English.
 
 ## Which wallets work
 

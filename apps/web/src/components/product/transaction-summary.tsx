@@ -1,7 +1,6 @@
 import {
   actionRoles,
   formatSol,
-  formatUtcDate,
   isLockupInForce,
   ZERO_ADDRESS,
   type ClockView,
@@ -28,7 +27,7 @@ import { useId, type ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { keepTogether } from './countdown.tsx';
 import { Disclosure } from './disclosure.tsx';
@@ -108,7 +107,7 @@ function localClock(): ClockView {
 }
 
 function dateText(unixSeconds: bigint): string {
-  return formatUtcDate(unixSeconds) ?? unixSeconds.toString();
+  return formatDate(unixSeconds) ?? unixSeconds.toString();
 }
 
 /** The current lock in words: "No lock", "Locked until 12 April 2027", "Lock ended on ...", "Locked until epoch N". */
