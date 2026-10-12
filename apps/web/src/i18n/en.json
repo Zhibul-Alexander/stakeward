@@ -55,7 +55,8 @@
     "demo": "Demo",
     "challenge": "Try to steal it",
     "tryTestnet": "Try on testnet",
-    "tryMainnet": "Go to mainnet"
+    "tryMainnet": "Go to mainnet",
+    "more": "More"
   },
   "footer": {
     "label": "Footer",
@@ -2386,7 +2387,7 @@
     },
     "log": {
       "title": "What the network saw",
-      "empty": "Nothing yet. Press the button below."
+      "empty": "Nothing yet. Press the button above."
     },
     "actions": {
       "steal": "Steal the stake",
@@ -2524,6 +2525,7 @@
   },
   "askAi": {
     "title": "Ask your AI",
+    "hint": "Have this page explained in your own ChatGPT or Claude.",
     "body": "Opens this question in your own ChatGPT or Claude account. Stakeward sends nothing, stores nothing and holds no AI key. The AI only explains; what this page shows is checked against the network.",
     "chatgpt": "Ask ChatGPT",
     "claude": "Ask Claude",

@@ -338,6 +338,8 @@ curl -sS "$API/getWebhookInfo"
 
 Экраны:
 - [ ] Шапка и подвал: Source code, What Stakeward cannot do, Stats, No warranty.
+- [ ] Шапка (D141) на телефоне и на десктопе: на телефоне два ряда — Stakeward с Devnet, ниже Your accounts, Rescue и More; More открывает Demo, Try to steal it, Go to mainnet списком, Escape и переход на страницу его закрывают. С 1024 px всё в одну строку, More нет.
+- [ ] `/app` на телефоне (D141): «Protection check» — свёрнутые строки со значками Fix/Check/Pass, раскрываются по нажатию со ссылкой-исправлением; «Ask your AI» — одна строка, раскрывается к кнопкам ChatGPT и Claude.
 - [ ] `/`: заголовок, схема в три шага, What Stakeward cannot do, таблица кошельков, FAQ целиком (открыть каждый вопрос), особенно «What will my Ledger show?», «My main key was stolen», «What do custodian, withdrawer and staker mean?».
 - [ ] `/app` без адреса; загрузка, ошибка (DevTools → Network → Offline), пусто.
 - [ ] `/app?address=<Main key>`: статусы, красный баннер, «You are the second key for», Last checked, Get alerts in Telegram, Rescue, Recovery card.

@@ -1,9 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
 import { Page } from './Page.tsx';
 import { PageHeader } from './PageHeader.tsx';
 import { Section } from './Section.tsx';
+import { SiteHeader } from './SiteHeader.tsx';
 
 describe('Page', () => {
   it('is the app width by default and a centred column for flows', () => {
@@ -87,5 +89,37 @@ describe('Section', () => {
     );
     expect(screen.getByRole('region', { name: 'Before you pick a second key' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Before you pick a second key' })).toBeInTheDocument();
+  });
+});
+
+describe('SiteHeader', () => {
+  it('keeps Your accounts and Rescue in words, and opens the rest under More until a page change or Escape', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Your accounts' })).toHaveAttribute('href', '/app');
+    expect(within(nav).getByRole('link', { name: 'Rescue' })).toHaveAttribute('href', '/rescue');
+    // Every link has its words: no icon-only link in the header.
+    for (const link of within(screen.getByRole('banner')).getAllByRole('link')) expect(link.textContent.trim()).not.toBe('');
+
+    const more = within(nav).getByRole('button', { name: 'More' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    await user.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    const list = document.getElementById(more.getAttribute('aria-controls') ?? '');
+    if (list === null) throw new Error('no list');
+    expect(within(list).getByRole('link', { name: 'Demo' })).toHaveAttribute('href', '/demo');
+
+    await user.keyboard('{Escape}');
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(more).toHaveFocus();
+
+    await user.click(more);
+    const opened = document.getElementById(more.getAttribute('aria-controls') ?? '');
+    if (opened === null) throw new Error('no list');
+    await user.click(within(opened).getByRole('link', { name: 'Demo' }));
+    expect(window.location.pathname).toBe('/demo');
+    expect(more).toHaveAttribute('aria-expanded', 'false');
   });
 });

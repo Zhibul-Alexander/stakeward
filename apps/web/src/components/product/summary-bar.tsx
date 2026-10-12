@@ -14,6 +14,8 @@ type SummaryBarProps = {
   monitoring: ReactNode;
   /** Telegram (outline sm) and Refresh (ghost icon-sm, named "Refresh"): one group that wraps as a whole. */
   tools?: ReactNode;
+  /** A small secondary link after the tools, in the same row (e.g. "Share proof page"); it wraps on its own. */
+  links?: ReactNode;
   /** At most one outline button, e.g. "Connect second key". */
   action?: ReactNode;
   /** One line at the bottom, e.g. "Main key stolen or seen by someone else? Rescue your stake". */
@@ -27,7 +29,7 @@ type SummaryBarProps = {
  * be down (UX rule 12). Loading draws the headline and detail as skeletons; an error draws neither, and the page puts
  * its ErrorState with Try again right under the bar. The F6 banner is not part of it.
  */
-export function SummaryBar({ label, state, headline, detail, monitoring, tools, action, footer, className }: SummaryBarProps) {
+export function SummaryBar({ label, state, headline, detail, monitoring, tools, links, action, footer, className }: SummaryBarProps) {
   const answer =
     state === 'loading' ? (
       <div aria-hidden="true" className="flex flex-col gap-2">
@@ -60,6 +62,7 @@ export function SummaryBar({ label, state, headline, detail, monitoring, tools, 
             {tools}
           </div>
         )}
+        {links}
       </div>
       {footer === undefined ? null : <div className="text-sm">{footer}</div>}
     </section>

@@ -103,7 +103,7 @@ describe('/app protection check on LiteSvmChain', () => {
     stake.service = await testChain.createStakeAccount({ staker: serviceStaker, withdrawer: A, lamports: 4n * LAMPORTS_PER_SOL });
   });
 
-  it('scores the checks, opens the failing ones with their fix, and asks the AI with the result', async () => {
+  it('scores the checks, folds every one with its fix inside, and asks the AI with the result', async () => {
     const asked: Address[] = [];
     renderApp(chain, `/app?address=${main.address}`, { secondKeys: [K.address], rescueKits: kitPort([stake.locked], asked) });
     const region = await checkSection();
@@ -114,7 +114,8 @@ describe('/app protection check on LiteSvmChain', () => {
 
     const locked = checkRow(region, 'locked');
     expect(locked).toHaveAttribute('data-status', 'fail');
-    expect(isOpen(locked)).toBe(true);
+    // Folded like the others (D141): the account lists above show each account at fault with its own action.
+    expect(isOpen(locked)).toBe(false);
     expect(within(locked).getByText('Fix')).toBeInTheDocument();
     const protect = within(locked).getByRole('link', { name: 'Protect these accounts' });
     const href = protect.getAttribute('href') ?? '';

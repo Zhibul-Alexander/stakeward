@@ -275,13 +275,13 @@ function Summary({
           <RefreshButton onRefresh={onRefresh} />
         </>
       }
-      // The public proof page of this stake (D124): small and secondary, for a fund or a validator to share. A footer
-      // line, not a tool: the tools row keeps Telegram and Refresh together on one line at 360 px.
-      footer={
+      // The public proof page of this stake (D124): small and secondary, for a fund or a validator to share. In the tools
+      // row after Telegram and Refresh (D141), which keep their own group, so at 360 px it wraps onto a line of its own.
+      links={
         owned === 0 ? undefined : (
           <Link
             href={appLinks.proof(address)}
-            className="inline-flex items-center gap-1 rounded-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
+            className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover"
           >
             <Share2Icon aria-hidden="true" className="size-4" />
             {t("app.results.shareProof")}

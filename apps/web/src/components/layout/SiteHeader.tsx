@@ -1,5 +1,6 @@
-import { FlaskConicalIcon, GlobeIcon, LifeBuoyIcon, PlayIcon, SwordsIcon, type LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { cn } from 'cn';
+import { ChevronDownIcon, FlaskConicalIcon, GlobeIcon, LifeBuoyIcon, type LucideIcon } from 'lucide-react';
+import { useId, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,11 +8,11 @@ import { IS_DEVNET, MAINNET_SITE_URL, TESTNET_SITE_URL } from '@/config';
 import { t } from '@/i18n';
 
 /** A ghost link of the header's nav; the page it opens is marked as the current one (`aria-current`). */
-function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIcon | undefined; children: ReactNode }) {
+function NavLink({ href, icon: Icon, className, children }: { href: string; icon?: LucideIcon | undefined; className?: string | undefined; children: ReactNode }) {
   const [location] = useLocation();
   const current = location === href;
   return (
-    <Button asChild variant="ghost" size="sm" className="aria-[current=page]:bg-subtle">
+    <Button asChild variant="ghost" size="sm" className={cn('aria-[current=page]:bg-subtle', className)}>
       <Link href={href} aria-current={current ? 'page' : undefined}>
         {Icon === undefined ? null : <Icon aria-hidden="true" />}
         {children}
@@ -20,17 +21,60 @@ function NavLink({ href, icon: Icon, children }: { href: string; icon?: LucideIc
   );
 }
 
+/** The link to the other network's copy of the site (D136): mainnet from devnet, devnet from mainnet. It leaves this site. */
+function NetworkLink({ className }: { className?: string | undefined }) {
+  const Icon = IS_DEVNET ? GlobeIcon : FlaskConicalIcon;
+  return (
+    <Button asChild variant="ghost" size="sm" className={className}>
+      <a href={IS_DEVNET ? MAINNET_SITE_URL : TESTNET_SITE_URL}>
+        <Icon aria-hidden="true" />
+        {IS_DEVNET ? t('nav.tryMainnet') : t('nav.tryTestnet')}
+      </a>
+    </Button>
+  );
+}
+
+/** The links that are not for an emergency or the stake itself: the demo, the devnet challenge (D133), the other network. */
+function SecondaryLinks({ className }: { className?: string | undefined }) {
+  return (
+    <>
+      <NavLink href="/demo" className={className}>
+        {t('nav.demo')}
+      </NavLink>
+      {IS_DEVNET ? (
+        <NavLink href="/challenge" className={className}>
+          {t('nav.challenge')}
+        </NavLink>
+      ) : null}
+      <NetworkLink className={className} />
+    </>
+  );
+}
+
 /**
- * The site header (DECISIONS.md D112): the mark and name, the network on devnet (a badge and, from 768 px, what it
- * means), and links: Rescue, for someone whose main key was just stolen, the demo and the accounts page; on devnet also
- * the public "Try to steal it" challenge (D133); on mainnet the outlined "Try on testnet" instead, to the devnet copy
- * of the site (D136). Below 640 px the
- * links take a second row rather than hiding their words. Their boxes (the current page's pill, the focus ring) stay
- * inside the content column, clear of the 16 px gutter.
+ * The site header (DECISIONS.md D112, D141): the mark and name, the network on devnet (a badge and, from 1024 px, what
+ * it means), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
+ * every width. The rest (the demo, the devnet challenge, the other network's site) stands in the row from 1024 px;
+ * below that a More button opens it as a list under the header, so a phone sees no icon-only links and one row of nav.
+ * Below 640 px the nav takes the second row. Boxes (the current page's pill, the focus ring) stay inside the content
+ * column, clear of the 16 px gutter.
  */
 export function SiteHeader() {
+  const moreId = useId();
+  const [location] = useLocation();
+  // The page the list was opened on: a page change (a link in the list, Back) closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null);
+  const moreOpen = openOn === location;
   return (
-    <header className="border-b border-border bg-background print:hidden">
+    <header
+      className="border-b border-border bg-background print:hidden"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && moreOpen) {
+          setOpenOn(null);
+          document.getElementById(`${moreId}-button`)?.focus();
+        }
+      }}
+    >
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link href="/" className="flex items-center gap-2 rounded-sm text-base font-semibold" aria-label={t('nav.home')}>
@@ -43,43 +87,39 @@ export function SiteHeader() {
                 <FlaskConicalIcon aria-hidden="true" />
                 {t('common.devnet')}
               </Badge>
-              <span className="hidden text-xs text-muted md:inline">{t('common.devnetNote')}</span>
-              {/* The way back to the real site. Icon only below 640 px, where the nav has its own row; hidden from 640 to 768 px,
-                  where one row has no room for it (the landing hero still links there); named from 768 px. */}
-              <Button asChild variant="outline" size="sm" className="sm:max-md:hidden">
-                <a href={MAINNET_SITE_URL}>
-                  <GlobeIcon aria-hidden="true" />
-                  <span className="sr-only md:not-sr-only">{t('nav.tryMainnet')}</span>
-                </a>
-              </Button>
+              <span className="hidden text-xs text-muted lg:inline">{t('common.devnetNote')}</span>
             </>
           ) : null}
         </div>
-        <nav aria-label={t('nav.label')} className="flex w-full items-center gap-2 sm:w-auto">
+        <nav aria-label={t('nav.label')} className="flex w-full items-center gap-1 sm:w-auto">
+          <NavLink href="/app">{t('nav.app')}</NavLink>
           <NavLink href="/rescue" icon={LifeBuoyIcon}>
             {t('nav.rescue')}
           </NavLink>
-          <NavLink href="/demo" icon={PlayIcon}>
-            {/* The 360 px row also holds the challenge or testnet link: the demo is then an icon, named for screen readers. */}
-            <span className="sr-only sm:not-sr-only">{t('nav.demo')}</span>
-          </NavLink>
-          {IS_DEVNET ? (
-            <NavLink href="/challenge" icon={SwordsIcon}>
-              {/* Icon only below 768 px, where the four links share one row; the name stays for screen readers. */}
-              <span className="sr-only md:not-sr-only">{t('nav.challenge')}</span>
-            </NavLink>
-          ) : (
-            <Button asChild variant="outline" size="sm">
-              <a href={TESTNET_SITE_URL}>
-                <FlaskConicalIcon aria-hidden="true" />
-                {/* Icon only below 768 px, like the challenge link; there the landing page says it in words. */}
-                <span className="sr-only md:not-sr-only">{t('nav.tryTestnet')}</span>
-              </a>
-            </Button>
-          )}
-          <NavLink href="/app">{t('nav.app')}</NavLink>
+          <SecondaryLinks className="hidden lg:inline-flex" />
+          <Button
+            id={`${moreId}-button`}
+            variant="ghost"
+            size="sm"
+            aria-expanded={moreOpen}
+            aria-controls={moreOpen ? moreId : undefined}
+            className="ml-auto sm:ml-0 lg:hidden"
+            onClick={() => {
+              setOpenOn(moreOpen ? null : location);
+            }}
+          >
+            {t('nav.more')}
+            <ChevronDownIcon aria-hidden="true" className={moreOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+          </Button>
         </nav>
       </div>
+      {moreOpen ? (
+        <div id={moreId} className="border-t border-border lg:hidden">
+          <div className="mx-auto flex w-full max-w-5xl flex-col items-start gap-1 px-4 py-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <SecondaryLinks />
+          </div>
+        </div>
+      ) : null}
     </header>
   );
 }

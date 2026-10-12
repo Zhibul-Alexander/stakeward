@@ -151,8 +151,9 @@ export function setupCheckReason(finding: SetupCheckFinding, lockUntil?: bigint)
 
 /**
  * "Protection check" (DECISIONS.md D125): a fixed checklist with a one-line score, one row per check. Each row says
- * its result by word, colour and icon (UX rule 5); a failing row opens by itself and links the action that fixes it,
- * the others fold away (Disclosure). Deterministic: core `setupCheck` decides, nothing here guesses.
+ * its result by word, colour and icon (UX rule 5) and folds away (Disclosure); opened, a failing row links the action
+ * that fixes it. Every row starts folded (D141): the lists above already show each account at fault with its own
+ * action, so open rows only repeated them. Deterministic: core `setupCheck` decides, nothing here guesses.
  */
 export function ProtectionCheck(props: ProtectionCheckProps) {
   const score =
@@ -205,9 +206,9 @@ function CheckRow({ item, links, lockEnds }: { item: SetupCheckItem; links: Prot
   return (
     <Disclosure
       variant="row"
-      defaultOpen={item.status === 'fail'}
       summary={
-        <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        // Below 640 px the title is text-sm and closer to its badge, so most checks keep one line (D141).
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3 sm:text-base">
           <Badge tone={look.tone} data-status={item.status}>
             <Icon aria-hidden="true" />
             {t(look.label)}
