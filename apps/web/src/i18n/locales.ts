@@ -2,8 +2,8 @@ import { browserStorage, type StorageLike } from '../ports/slots.ts';
 
 /**
  * The interface languages (DECISIONS.md D140). English is the default for everyone: the site never guesses from the
- * browser's language, a viewer picks another one in the footer. The choice is kept in localStorage as a per-viewer
- * convenience (wrapped in try/catch; without storage the site is English).
+ * browser's language, a viewer picks another one in the header menu (D143). The choice is kept in localStorage as a
+ * per-viewer convenience (wrapped in try/catch; without storage the site is English).
  */
 export const LOCALES = ['en', 'es', 'ka'] as const;
 

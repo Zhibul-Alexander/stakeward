@@ -5,8 +5,11 @@ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { changeLocale, LOCALE_NAMES, SELECTABLE_LOCALES, t, useLocale, type Locale } from '@/i18n';
 
-/** The short form on the closed button: the language's ISO 639-1 code. */
-const CODES: Readonly<Record<Locale, string>> = { en: 'EN', es: 'ES', ka: 'KA' };
+/**
+ * The short form on the closed button. Georgian shows GE, the form people in Georgia know (D148); its ISO 639-1 code
+ * 'ka' stays the locale and the `lang` attribute.
+ */
+const CODES: Readonly<Record<Locale, string>> = { en: 'EN', es: 'ES', ka: 'GE' };
 
 /**
  * The interface language in the site header (D140, D143): a small button with the language icon and the current

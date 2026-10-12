@@ -125,7 +125,7 @@ describe('interface language (D140)', () => {
     expect(screen.getByRole('navigation', { name: ka.nav.label })).toBeInTheDocument();
     expect(screen.getByLabelText(ka.check.inputLabel)).toHaveValue('AQAB');
     expect(within(footer).getByText(ka.footer.translated)).toBeInTheDocument();
-    expect(within(header).getByRole('button', { name: `${ka.nav.language}: ქართული` })).toHaveTextContent('KA');
+    expect(within(header).getByRole('button', { name: `${ka.nav.language}: ქართული` })).toHaveTextContent('GE');
     expect(localStorage.getItem('stakeward:locale:v1')).toBe('ka');
 
     await choose(`${ka.nav.language}: ქართული`, 'English');
