@@ -58,6 +58,23 @@ describe('KeyDiagram', () => {
     expect(screen.getByText(en.landing.diagram.scenarios[id].caption)).toBeInTheDocument();
   });
 
+  // The colour of an answer is what it means for the owner of the stake (anti-slop/audit-001, finding 4): what a thief
+  // can do is a warning and what a thief cannot do is good news, never a green tick next to the thief's powers.
+  it.each(Object.keys(EXPECTED) as (keyof typeof EXPECTED)[])('%s: each answer is coloured by what it means for the owner', async (id) => {
+    const user = userEvent.setup();
+    const { container } = render(<KeyDiagram />);
+    await user.click(screen.getByRole('radio', { name: en.landing.diagram.scenarios[id].label }));
+    const thief = id === 'thief' || id === 'secondStolen';
+    const COLOUR = { good: 'text-success', bad: 'text-warning', wait: 'text-accent-ink' } as const;
+    for (const action of ACTIONS) {
+      const result = EXPECTED[id][action];
+      const outcome = result === 'later' ? 'wait' : (result === 'yes') === thief ? 'bad' : 'good';
+      const row = container.querySelector(`[data-action="${action}"]`);
+      expect(row, action).toHaveAttribute('data-outcome', outcome);
+      expect(row?.querySelector('[data-slot="answer"]'), action).toHaveClass(COLOUR[outcome]);
+    }
+  });
+
   it('opens on the thief with the main key, and the drawing itself has no words', () => {
     const { container } = render(<KeyDiagram />);
     expect(screen.getByRole('radio', { name: en.landing.diagram.scenarios.thief.label })).toBeChecked();

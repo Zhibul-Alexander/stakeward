@@ -83,7 +83,7 @@ export function LanguageMenu({ className }: { className?: string | undefined }) 
                 type="button"
                 lang={option}
                 aria-current={option === locale ? 'true' : undefined}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-subtle aria-[current=true]:font-medium"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm hover:bg-subtle aria-[current=true]:font-medium max-sm:min-h-11 pointer-coarse:min-h-11"
                 onClick={() => {
                   // A catalog that fails to load (network) leaves the page as it was; choosing again retries.
                   changeLocale(option).catch(() => undefined);

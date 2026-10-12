@@ -37,10 +37,11 @@ function shareOf(part: bigint, total: bigint): number {
 
 /**
  * /app (D145): every stake account of this main key drawn as a box, sized by its SOL, so the unlocked share of the
- * stake is visible before any row is read. Status is a word, a colour and an icon (StatusBadge) plus the box's shackle,
- * shut or open. A largest account of about half the stake or more stands as the lead box, spanning the rows of the
- * others; otherwise the boxes flow, each about as wide as its share. Details and actions stay in the rows below. One
- * account draws nothing: its row already says it all.
+ * stake shows at a glance. It stands after the lists (D150), so the screen's one action comes before it.
+ * Status is a word, a colour and an icon (StatusBadge) plus the box's shackle, shut or open. A largest account of about
+ * half the stake or more stands as the lead box, spanning the rows of the others; otherwise the boxes flow, each about
+ * as wide as its share. Details and actions stay in the rows above. One account draws nothing: its row already says it
+ * all.
  */
 export function VaultGrid({ rows, clock }: { rows: readonly AccountView[]; clock: ClockView }) {
   if (rows.length < 2) return null;

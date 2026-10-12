@@ -68,5 +68,5 @@ export function StatusBadge({ status, secondKeyKnown = false, size = 'sm', class
 
 /** Loading state: the badge's footprint, decorative (the surrounding region announces loading). */
 export function StatusBadgeSkeleton({ className }: { className?: string | undefined }) {
-  return <Skeleton className={cn('h-5 w-24 rounded-full', className)} />;
+  return <Skeleton className={cn('h-5 w-24 rounded-sm', className)} />;
 }

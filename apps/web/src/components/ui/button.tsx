@@ -6,6 +6,10 @@ import type { ComponentProps } from 'react';
 // shadcn/ui button (radix base), classes rewritten to design tokens. Focus uses the global :focus-visible outline.
 // The pointer cursor like a link's (D149): Tailwind 4 gives a <button> the default arrow.
 //
+// Touch (D150, antislop R-03): below 640 px and on a coarse pointer every size is at least 44 px tall; an icon-sm
+// button keeps its 32 px box and takes taps on an invisible 44 px layer around it (::after), so the rows it sits in keep
+// their look.
+//
 // Hierarchy (DECISIONS.md D112): at most one filled button (primary or danger) per screen; e2e/screen-metrics.ts
 // counts them. Every variant but link answers a press by shrinking a little (D142): a tap shows it landed, also on a
 // phone, where there is no hover.
@@ -30,11 +34,11 @@ const buttonVariants = cva(
         link: 'h-auto px-0 text-left whitespace-normal text-primary underline underline-offset-4 hover:text-primary-hover',
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-sm',
+        sm: 'h-8 px-3 text-sm max-sm:min-h-11 pointer-coarse:min-h-11',
+        md: 'h-10 px-4 text-sm max-sm:min-h-11 pointer-coarse:min-h-11',
         lg: 'h-12 px-6 text-base',
-        icon: 'size-10',
-        'icon-sm': 'size-8',
+        icon: 'size-10 max-sm:min-h-11 max-sm:min-w-11 pointer-coarse:min-h-11 pointer-coarse:min-w-11',
+        'icon-sm': 'relative size-8 max-sm:after:absolute max-sm:after:-inset-1.5 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5',
       },
     },
     defaultVariants: {

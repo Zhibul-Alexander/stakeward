@@ -8,7 +8,7 @@ import type { ComponentProps } from 'react';
 // text and no frame; `outline` keeps its frame (Unknown, Waiting, Not connected, Devnet). Sizes: `sm` (text-xs) in rows
 // and lists, `md` (text-sm) where the badge stands on its own.
 const badgeVariants = cva(
-  'inline-flex w-fit shrink-0 items-center gap-1 rounded-full border font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
+  'inline-flex w-fit shrink-0 items-center gap-1 rounded-sm border font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:shrink-0',
   {
     variants: {
       tone: {

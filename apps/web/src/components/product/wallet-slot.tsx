@@ -142,7 +142,7 @@ export function WalletSlot(props: WalletSlotProps) {
           {role}
         </span>
         {chip === null ? (
-          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-24 rounded-sm" />
         ) : (
           <Badge tone={chip.tone}>
             <chip.icon aria-hidden="true" />

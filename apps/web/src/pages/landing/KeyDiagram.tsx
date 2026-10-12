@@ -1,6 +1,6 @@
 import { lockupEndForPeriod } from '@stakeward/core';
 import { cn } from 'cn';
-import { BanIcon, CalendarClockIcon, CheckIcon, ClockIcon, KeyRoundIcon, WalletIcon, type LucideIcon } from 'lucide-react';
+import { BanIcon, CalendarClockIcon, CheckIcon, ClockIcon, KeyRoundIcon, ShieldCheckIcon, TriangleAlertIcon, WalletIcon, type LucideIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { formatDate, formatList, t, type MessageKey } from '@/i18n';
 
@@ -58,11 +58,36 @@ const ACTIONS: readonly Action[] = [
   { id: 'rescue', label: 'landing.diagram.rescueAction', needs: ['main', 'second', 'new'], afterDate: true },
 ];
 
-const RESULT: Record<Result, { word: MessageKey; icon: LucideIcon; className: string }> = {
-  yes: { word: 'landing.diagram.result.yes', icon: CheckIcon, className: 'text-success' },
-  no: { word: 'landing.diagram.result.no', icon: BanIcon, className: 'text-danger' },
-  later: { word: 'landing.diagram.result.later', icon: ClockIcon, className: 'text-accent-ink' },
+const WORD: Record<Result, MessageKey> = {
+  yes: 'landing.diagram.result.yes',
+  no: 'landing.diagram.result.no',
+  later: 'landing.diagram.result.later',
 };
+
+/**
+ * What an answer means for the owner of the stake, and so its colour and icon: what a thief can do is a warning, what
+ * a thief cannot do is good news (the lock at work), and what you can do is good news. A green tick never stands next
+ * to a thief's power. The word (Can, Cannot, After the date) stays the same.
+ */
+type Outcome = 'good' | 'bad' | 'wait';
+
+const OUTCOME: Record<Outcome, { className: string }> = {
+  good: { className: 'text-success' },
+  bad: { className: 'text-warning' },
+  wait: { className: 'text-accent-ink' },
+};
+
+function outcomeOf(scenario: Scenario, result: Result): Outcome {
+  if (result === 'later') return 'wait';
+  const thief = scenario.holder.main === 'thief' || scenario.holder.second === 'thief';
+  return (result === 'yes') === thief ? 'bad' : 'good';
+}
+
+function iconOf(result: Result, outcome: Outcome): LucideIcon {
+  if (result === 'later') return ClockIcon;
+  if (result === 'yes') return outcome === 'good' ? CheckIcon : TriangleAlertIcon;
+  return outcome === 'good' ? ShieldCheckIcon : BanIcon;
+}
 
 const HOLDER_TEXT: Record<Holder, string> = { you: 'text-foreground', thief: 'text-danger', lost: 'text-muted' };
 
@@ -99,7 +124,7 @@ export function KeyDiagram() {
               className={cn(
                 'flex min-h-11 cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-center font-display text-sm font-medium text-balance transition-colors',
                 'has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring',
-                item.id === scenario.id ? 'border-primary bg-primary text-on-primary' : 'border-border-strong bg-surface text-foreground hover:bg-subtle',
+                item.id === scenario.id ? 'border-primary bg-primary-soft text-foreground' : 'border-border-strong bg-surface text-foreground hover:bg-subtle',
               )}
             >
               <input
@@ -133,10 +158,10 @@ export function KeyDiagram() {
             {ACTIONS.map((action) => {
               const result = resultOf(scenario, action);
               const changed = previous !== undefined && resultOf(previous, action) !== result;
-              const look = RESULT[result];
-              const Icon = look.icon;
+              const outcome = outcomeOf(scenario, result);
+              const Icon = iconOf(result, outcome);
               return (
-                <li key={action.id} data-action={action.id} data-result={result} className="flex items-start justify-between gap-3 px-3 py-2.5">
+                <li key={action.id} data-action={action.id} data-result={result} data-outcome={outcome} className="flex items-start justify-between gap-3 px-3 py-2.5">
                   {/* The action, and under it the keys it needs: the rule that decides the answer, shown with it. */}
                   <span className="flex min-w-0 flex-col gap-1.5">
                     <span className="text-sm font-medium text-pretty">{t(action.label)}</span>
@@ -146,11 +171,12 @@ export function KeyDiagram() {
                   </span>
                   {/* Remounted when its answer changes, so only a changed answer moves (D142: motion answers the click). */}
                   <span
-                    key={changed ? `${scenario.id}-${result}` : result}
-                    className={cn('flex max-w-32 shrink-0 items-start justify-end gap-1 text-right text-sm font-semibold sm:max-w-none', look.className, changed && 'animate-pop-in')}
+                    key={changed ? `${scenario.id}-${result}` : `${result}-${outcome}`}
+                    data-slot="answer"
+                    className={cn('flex max-w-32 shrink-0 items-start justify-end gap-1 text-right text-sm font-semibold sm:max-w-none', OUTCOME[outcome].className, changed && 'animate-pop-in')}
                   >
                     <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                    {t(look.word)}
+                    {t(WORD[result])}
                   </span>
                 </li>
               );
@@ -166,7 +192,7 @@ export function KeyDiagram() {
   );
 }
 
-/** The keys an action needs: filled when whoever acts holds that key, dashed when not. */
+/** The keys an action needs: a solid frame on its tint when whoever acts holds that key, dashed when not. */
 function Needs({ needs, holds }: { needs: readonly KeyId[]; holds: readonly KeyId[] }) {
   return (
     <>
@@ -180,9 +206,9 @@ function Needs({ needs, holds }: { needs: readonly KeyId[]; holds: readonly KeyI
             aria-hidden="true"
             className={cn(
               'inline-flex items-center gap-1 rounded-sm border px-1.5 py-px font-display text-xs font-medium whitespace-nowrap',
-              key === 'main' && (held ? 'border-primary bg-primary text-on-primary' : 'border-dashed border-primary text-primary'),
-              key === 'second' && (held ? 'border-accent bg-accent text-on-accent' : 'border-dashed border-accent-ink text-accent-ink'),
-              key === 'new' && (held ? 'border-foreground bg-foreground text-background' : 'border-dashed border-muted text-muted'),
+              key === 'main' && (held ? 'border-primary bg-primary-soft text-foreground' : 'border-dashed border-primary text-primary'),
+              key === 'second' && (held ? 'border-accent-ink bg-accent-soft text-foreground' : 'border-dashed border-accent-ink text-accent-ink'),
+              key === 'new' && (held ? 'border-foreground bg-subtle text-foreground' : 'border-dashed border-muted text-muted'),
             )}
           >
             <Icon className="size-3" />

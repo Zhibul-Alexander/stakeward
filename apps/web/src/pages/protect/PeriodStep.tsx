@@ -101,7 +101,7 @@ export function PeriodStep({ headingRef, period, customDate, blockerInput, onPer
               ) : undefined,
             badge:
               option === DEFAULT_LOCK_PERIOD ? (
-                <Badge tone="success">{t('protect.period.recommended')}</Badge>
+                <Badge tone="outline">{t('protect.period.recommended')}</Badge>
               ) : undefined,
           };
         })}

@@ -239,6 +239,36 @@ async function headerLayout(page: Page) {
   });
 }
 
+/**
+ * Touch targets below 640 px (D150, antislop R-03): every visible button (Button, except links in prose), text field and
+ * the home link is at least 44 px tall; an icon-sm button and a checkbox keep their small box and take taps on a 44 px
+ * ::after layer around it. Returns what falls short, as "<height>px <name>".
+ */
+async function smallTouchTargets(page: Page) {
+  return page.evaluate(() => {
+    const MIN = 44;
+    const name = (element: Element) =>
+      (element.getAttribute('aria-label') ?? element.textContent).trim().replace(/\s+/g, ' ').slice(0, 40);
+    const layer = (element: Element) => {
+      const after = getComputedStyle(element, '::after');
+      if (after.position !== 'absolute') return 0;
+      const box = element.getBoundingClientRect();
+      return box.height - Number.parseFloat(after.top) - Number.parseFloat(after.bottom);
+    };
+    const targets = [
+      ...document.querySelectorAll('[data-slot="button"]:not([data-variant="link"]), input[data-slot="input"], [data-slot="checkbox"]'),
+      ...document.querySelectorAll('header a[href="/"]'),
+    ];
+    return targets
+      .filter((element) => {
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && getComputedStyle(element).visibility !== 'hidden';
+      })
+      .filter((element) => Math.max(element.getBoundingClientRect().height, layer(element)) < MIN - 0.5)
+      .map((element) => `${String(Math.round(element.getBoundingClientRect().height))}px ${name(element)}`);
+  });
+}
+
 const NOT_FOUND = { heading: text('common.notFoundTitle'), shows: notFoundShows };
 
 const ROUTES: readonly SmokeRoute[] = [
@@ -485,6 +515,8 @@ test('every route renders under the production headers, without console errors o
       // Works at 360 px: nothing wider than the viewport.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBe(0);
+      // A finger hits every control at 360 px (D150).
+      if (width < 640) expect(await smallTouchTargets(page), 'touch targets under 44 px').toEqual([]);
       // The header: at 360 px two rows at most and 104 px tall at most; one row from 640 px. At every width nothing,
       // not even a link's box (the current page's pill, the focus ring), leaves the content column: at 360 px that is
       // the 16 px gutter on each side.

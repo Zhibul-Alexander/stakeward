@@ -6,12 +6,12 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   FileTextIcon,
+  LifeBuoyIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
   SearchIcon,
   SendIcon,
   TriangleAlertIcon,
-  ZapIcon,
 } from 'lucide-react';
 import { useId, type ReactNode, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -256,7 +256,7 @@ export function ProtectDoneView({
             <div>
               <Button asChild variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal">
                 <Link href={`/rescue-kit?${new URLSearchParams({ address: mainKey }).toString()}`}>
-                  <ZapIcon aria-hidden="true" />
+                  <LifeBuoyIcon aria-hidden="true" />
                   {t('protect.done.rescueKit.open')}
                 </Link>
               </Button>

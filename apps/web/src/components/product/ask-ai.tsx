@@ -1,6 +1,6 @@
 import { aiPromptUrl, type AiProvider } from '@stakeward/core';
 import { cn } from 'cn';
-import { CopyIcon, ExternalLinkIcon, SparklesIcon } from 'lucide-react';
+import { CopyIcon, ExternalLinkIcon, MessageSquareTextIcon } from 'lucide-react';
 import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { t } from '@/i18n';
@@ -39,7 +39,7 @@ export function AskAi({ prompt, body, className }: AskAiProps) {
         summary={
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <h3 id={titleId} className="flex items-center gap-2 font-semibold">
-              <SparklesIcon aria-hidden="true" className="size-4 text-muted" />
+              <MessageSquareTextIcon aria-hidden="true" className="size-4 text-muted" />
               {t('askAi.title')}
             </h3>
             <span className="text-sm font-normal text-muted">{t('askAi.hint')}</span>

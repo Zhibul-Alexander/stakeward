@@ -170,7 +170,7 @@ export function SignerListSkeleton({ variant = 'full', className }: { variant?: 
           <div key={key} className="flex items-center gap-2">
             <Skeleton className="size-6 rounded-full" />
             <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-sm" />
           </div>
         ))}
       </div>
@@ -182,7 +182,7 @@ export function SignerListSkeleton({ variant = 'full', className }: { variant?: 
         <div key={key} className="flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Skeleton className="h-5 w-48" />
-            <Skeleton className="h-6 w-24 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-sm" />
           </div>
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-4 w-40" />

@@ -379,8 +379,6 @@ function Loaded({
       {view.noLongerProtected.length === 0 ? null : (
         <NoLongerProtectedBanner accounts={view.noLongerProtected} />
       )}
-      {/* The stake drawn to scale (D145); the grouped rows below carry the details and actions. */}
-      <VaultGrid rows={view.owned} clock={clock} />
       {attention.length === 0 ? null : (
         <Section
           title={t("app.groups.attention")}
@@ -468,6 +466,9 @@ function Loaded({
           />
         </Section>
       )}
+      {/* The stake drawn to scale (D145), after the lists (D150): the screen's one action, in the first group's
+          header, comes before it, and the drawing sums up the rows above it. */}
+      <VaultGrid rows={view.owned} clock={clock} />
       {/* After the lists it checks (D125): a checklist with a score, then Ask your AI. */}
       <ProtectionCheckSection
         address={address}

@@ -349,7 +349,7 @@ export function AccountRowSkeleton({ className }: { className?: string | undefin
   return (
     <div aria-hidden="true" data-slot="account-row-skeleton" className={cn('flex flex-col gap-2', className)}>
       <div className="flex items-center gap-2">
-        <Skeleton className="h-5 w-24 rounded-full" />
+        <Skeleton className="h-5 w-24 rounded-sm" />
         <Skeleton className="h-5 w-28" />
         <Skeleton className="ml-auto h-6 w-20" />
       </div>

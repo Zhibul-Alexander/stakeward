@@ -27,17 +27,18 @@ export function HowItWorks({ cluster }: { cluster: Cluster }) {
                 className={cn('absolute top-12 -bottom-6 left-6 w-0.5 bg-line', 'md:top-6 md:-right-8 md:bottom-auto md:left-12 md:h-0.5 md:w-auto')}
               />
             ) : null}
-            {/* The list numbers the steps for assistive technology; the tile repeats it for the eye. */}
             <span
               aria-hidden="true"
               className="relative flex size-12 shrink-0 items-center justify-center rounded-md border-2 border-primary bg-surface text-primary"
             >
               <Icon className="size-5" />
-              <span className="absolute -top-2.5 -right-2.5 flex size-6 items-center justify-center rounded-full bg-primary font-display text-xs font-semibold text-on-primary tabular-nums">
-                {index + 1}
-              </span>
             </span>
             <div className="flex min-w-0 flex-col gap-1 pt-1 md:pt-0">
+              {/* The list numbers the steps for assistive technology; the label repeats it for the eye, like the
+                  number of a part on a drawing (not a badge on the tile: D150). */}
+              <span aria-hidden="true" className="font-display text-xs font-medium text-muted tabular-nums">
+                {String(index + 1).padStart(2, '0')}
+              </span>
               <h3 className="text-lg font-semibold">{t(`landing.how.${step}.title`)}</h3>
               <p className="max-w-xs text-sm text-pretty text-muted">{t(`landing.how.${step}.body`)}</p>
             </div>

@@ -96,9 +96,10 @@ export function SiteHeader() {
         }
       }}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
+      {/* Below 640 px the links are 44 px tall for touch (D150); the rows then sit closer, so the header keeps its height. */}
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 max-sm:gap-y-0 max-sm:py-1">
         <div className="flex min-w-0 items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 rounded-sm font-display text-lg font-semibold tracking-tight text-primary" aria-label={t('nav.home')}>
+          <Link href="/" className="flex items-center gap-2 rounded-sm font-display text-lg font-semibold tracking-tight text-primary max-sm:min-h-11 pointer-coarse:min-h-11" aria-label={t('nav.home')}>
             <BrandMark />
             {t('common.appName')}
           </Link>

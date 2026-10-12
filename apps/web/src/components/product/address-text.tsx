@@ -71,7 +71,13 @@ export function AddressText({
         </Button>
       ) : null}
       {explorer ? (
-        <Button asChild variant="ghost" size="icon-sm" className="text-muted hover:text-foreground print:hidden">
+        // Next to Copy, 8 px more on touch: the two 44 px tap layers (Button icon-sm) meet instead of overlapping (D150).
+        <Button
+          asChild
+          variant="ghost"
+          size="icon-sm"
+          className={cn('text-muted hover:text-foreground print:hidden', copy && 'max-sm:ml-2 pointer-coarse:ml-2')}
+        >
           <a
             href={explorerUrl(kind, address, cluster)}
             target="_blank"

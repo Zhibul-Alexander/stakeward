@@ -4,15 +4,15 @@ import { HashLink } from './Section.tsx';
 
 /**
  * For whoever was sent a link to co-sign and knows nothing else yet: /cosign's "What is Stakeward?" lands here
- * (`/#for-second-key`), and the link leads on to what to check (`#faq-co-sign`). A dashed note in the Second key's
- * colour (D145): the reader is someone's second key.
+ * (`/#for-second-key`), and the link leads on to what to check (`#faq-co-sign`). A note in the Second key's colour
+ * (D145): the reader is someone's second key. Its frame is solid: a dash means a key someone does not hold (D150).
  */
 export function CoSignCallout() {
   return (
     <section
       id="for-second-key"
       aria-labelledby="for-second-key-title"
-      className="grid scroll-mt-4 gap-3 rounded-lg border-2 border-dashed border-accent bg-accent-soft p-4 sm:grid-cols-icon sm:gap-5 sm:p-6"
+      className="grid scroll-mt-4 gap-3 rounded-lg border-2 border-accent bg-accent-soft p-4 sm:grid-cols-icon sm:gap-5 sm:p-6"
     >
       <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-md bg-accent text-on-accent">
         <LinkIcon className="size-5" />
