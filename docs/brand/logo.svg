@@ -2,13 +2,14 @@
   <title id="title">Stakeward</title>
   <desc id="desc">A shield in two halves with a keyhole: a lock on staked SOL that answers to two keys.</desc>
   <!--
-    Stakeward mark. Original artwork, no third-party assets. Colours are tokens from apps/web/src/styles/tokens.css:
-    primary #4338ca (left half), primary-hover #3730a3 (right half), on-primary #ffffff (keyhole).
-    The two halves stand for the main key and the second key; the keyhole is the lockup built into the stake account.
-    apps/web/public/favicon.svg uses the same geometry.
+    Stakeward mark. Original artwork, no third-party assets. Colours are the Second key's tokens of the dark theme in
+    apps/web/src/styles/tokens.css (D147): accent-ink #9fbcff (left half), accent #7fa6ff (right half), on-accent #06132e
+    (keyhole), the blue of the padlock in the key diagram. On the site the header draws the same geometry inline from the
+    tokens, so it follows the theme. The two halves stand for the main key and the second key; the keyhole is the lockup
+    built into the stake account. apps/web/public/favicon.svg uses the same geometry and colours.
   -->
-  <path fill="#4338ca" d="M32 3 9 11v18c0 15 9.5 26.5 23 32Z"/>
-  <path fill="#3730a3" d="M32 3l23 8v18c0 15-9.5 26.5-23 32Z"/>
-  <circle cx="32" cy="26" r="6.5" fill="#ffffff"/>
-  <path fill="#ffffff" d="M29 29.5h6l2.5 15.3a1.5 1.5 0 0 1-1.5 1.7h-8a1.5 1.5 0 0 1-1.5-1.7Z"/>
+  <path fill="#9fbcff" d="M32 3 9 11v18c0 15 9.5 26.5 23 32Z"/>
+  <path fill="#7fa6ff" d="M32 3l23 8v18c0 15-9.5 26.5-23 32Z"/>
+  <circle cx="32" cy="26" r="6.5" fill="#06132e"/>
+  <path fill="#06132e" d="M29 29.5h6l2.5 15.3a1.5 1.5 0 0 1-1.5 1.7h-8a1.5 1.5 0 0 1-1.5-1.7Z"/>
 </svg>

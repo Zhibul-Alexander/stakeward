@@ -163,8 +163,8 @@ on 10-11 October 2026. [TODO owner: N stake accounts and X SOL under lock from `
 - `apps/web/public/favicon.svg`: the same geometry, used as the site's icon.
 - The mark is a shield split into two halves with a keyhole: one lock that answers to two keys. Original artwork,
   no third-party assets.
-- Colours are the site's tokens from `apps/web/src/styles/tokens.css`: primary `#4338ca` (left half), primary-hover
-  `#3730a3` (right half), on-primary `#ffffff` (keyhole).
+- Colours are the Second key's tokens of the site's dark theme (`apps/web/src/styles/tokens.css`): accent-ink `#9fbcff`
+  (left half), accent `#7fa6ff` (right half), on-accent `#06132e` (keyhole), the blue of the padlock in the key diagram.
 
 ## 5. Style for every text
 

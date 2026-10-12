@@ -39,6 +39,22 @@ function NetworkLink({ className }: { className?: string | undefined }) {
   );
 }
 
+/**
+ * The Stakeward mark: a shield in two halves with a keyhole, the geometry of public/favicon.svg and docs/brand/logo.svg.
+ * Drawn inline so it takes the Second key's blue from the tokens (accent-ink and accent, like the padlock of the key
+ * diagram) in both themes; the keyhole is the header's own surface, cut out of the shield.
+ */
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden="true" className="size-6 shrink-0">
+      <path className="fill-accent-ink" d="M32 3 9 11v18c0 15 9.5 26.5 23 32Z" />
+      <path className="fill-accent" d="M32 3l23 8v18c0 15-9.5 26.5-23 32Z" />
+      <circle className="fill-surface" cx="32" cy="26" r="6.5" />
+      <path className="fill-surface" d="M29 29.5h6l2.5 15.3a1.5 1.5 0 0 1-1.5 1.7h-8a1.5 1.5 0 0 1-1.5-1.7Z" />
+    </svg>
+  );
+}
+
 /** The links that are not for an emergency or the stake itself: the demo, the devnet challenge (D133), the other network. */
 function SecondaryLinks({ className }: { className?: string | undefined }) {
   return (
@@ -83,7 +99,7 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link href="/" className="flex items-center gap-2 rounded-sm font-display text-lg font-semibold tracking-tight text-primary" aria-label={t('nav.home')}>
-            <img src="/favicon.svg" alt="" className="size-6" />
+            <BrandMark />
             {t('common.appName')}
           </Link>
           {IS_DEVNET ? (
