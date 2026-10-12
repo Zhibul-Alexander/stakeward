@@ -4,7 +4,7 @@ from PIL import Image
 here = pathlib.Path(__file__).parent
 shots = here.parent.parent / 'variants-shots'
 (here / 'shots').mkdir(exist_ok=True)
-for n in range(1, 11):
+for n in range(1, 16):
     src = shots / f'v{n}' / 'landing-desktop.png'
     if not src.exists():
         print('missing', src); continue

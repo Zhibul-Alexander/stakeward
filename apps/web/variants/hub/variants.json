@@ -8,5 +8,10 @@
   {"n":7,"name":"Two futures","wave":"Rethink","text":"A key leak played out side by side: without the lock the SOL is gone, with Stakeward the withdraw is rejected and you rescue."},
   {"n":8,"name":"Safety checklist","wave":"Rethink","text":"A pre-flight checklist with a score: each item says what it protects against; the accounts page leads with your checks."},
   {"n":9,"name":"Conversation","wave":"Rethink","text":"A calm chat with a security expert: reply chips reveal the next answer, results arrive as messages with account cards."},
-  {"n":10,"name":"Mechanism, drawn","wave":"Rethink","text":"A blueprint strongbox with two keyholes shows what each key can and cannot do; accounts become tiles sized by SOL."}
+  {"n":10,"name":"Mechanism, drawn","wave":"Rethink","text":"A blueprint strongbox with two keyholes shows what each key can and cannot do; accounts become tiles sized by SOL."},
+  {"n":11,"name":"Specimen","wave":"Anti-slop","text":"Data first: the stake account's real lockup record (who can withdraw, who must co-sign, until when) is the identity; every screen reads like the account itself."},
+  {"n":12,"name":"Field manual","wave":"Anti-slop","text":"The recovery card leads: a lock plus a printed card with the real Solana CLI commands that work without Stakeward."},
+  {"n":13,"name":"Tbilisi","wave":"Anti-slop","text":"An identity of its own for the Georgian track: Tbilisi palette and a carved-balcony motif used once, calm and warm."},
+  {"n":14,"name":"Evidence","wave":"Anti-slop","text":"Only proof: live numbers from the network, monitor health and the gate checks run on devnet and mainnet, each with its result."},
+  {"n":15,"name":"Plain utility","wave":"Anti-slop","text":"Public-service plain: task first, large readable type, no decoration; every page answers one question."}
 ]
