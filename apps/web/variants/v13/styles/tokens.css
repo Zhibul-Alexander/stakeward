@@ -1,0 +1,248 @@
+/*
+ * Stakeward design tokens: the only place with raw colours, font stacks, sizes, radii, shadows and durations
+ * (CLAUDE.md section 9). Components and pages use the Tailwind utilities generated from these variables
+ * (bg-surface, text-muted, border-border, rounded-md, shadow-sm, text-sm, p-4, ...); test/design-tokens.test.ts
+ * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
+ *
+ * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
+ * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
+ * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
+ * exist at all.
+ *
+ * Colour roles
+ *   background        page
+ *   surface           cards and panels
+ *   surface-raised    popovers and other elevated layers (lighter than surface in the dark theme)
+ *   subtle            muted fills: secondary buttons, skeletons, progress tracks, hover
+ *   subtle-hover      hover on a subtle fill
+ *   foreground        body text
+ *   muted             secondary text (AA on background, surface, surface-raised and subtle)
+ *   border            decorative lines
+ *   border-strong     outlines of inputs, checkboxes and radios (3:1 against surfaces, WCAG 1.4.11)
+ *   ring              focus indicator (3:1 against background and surface)
+ *   primary           main actions and links; on-primary is text on it
+ *   primary-soft      selection and the current step (always with a second cue: checkbox, number or ring)
+ *   inverse           tooltip background; on-inverse is text on it
+ * Colour means state. primary is the only non-state colour: the one action of a screen.
+ * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
+ * background, <tone>-border its outline.
+ *   success   Protected
+ *   warning   Expiring soon
+ *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
+ *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
+ * modules on a light ground, so the code must not invert with the theme.
+ */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Colours, light theme: v13 "Tbilisi" (variants/v13/DIRECTION.md). Bath-house stone, balcony walnut, Kura green. */
+  --color-background: #e5e3dd;
+  --color-surface: #f4f3ef;
+  --color-surface-raised: #fbfaf8;
+  --color-subtle: #d9d6cf;
+  --color-subtle-hover: #cdc9c0;
+  --color-foreground: #221a14;
+  --color-muted: #534b43;
+  --color-border: #c9c4ba;
+  --color-border-strong: #776d62;
+  --color-ring: #8c3a22;
+  --color-primary: #4b3122;
+  --color-primary-hover: #36231a;
+  --color-on-primary: #f6f2ec;
+  --color-primary-soft: #e8ddd2;
+  --color-inverse: #2a211b;
+  --color-on-inverse: #efece6;
+
+  /* Signature colours: only the balcony drawing and the focus ring use them. */
+  --color-brick: #8c3a22;
+  --color-wood: #5c3d2a;
+  --color-wood-soft: #d6c6b4;
+
+  --color-success: #2a5a4c;
+  --color-success-soft: #d3e2da;
+  --color-success-border: #86ad9e;
+  --color-warning: #7a4e00;
+  --color-warning-soft: #efe0bd;
+  --color-warning-border: #c9a45c;
+  --color-neutral: #4a443e;
+  --color-neutral-soft: #dcd9d2;
+  --color-neutral-border: #b5aea3;
+  --color-info: #2d5266;
+  --color-info-soft: #d4e0e6;
+  --color-info-border: #93b1c1;
+  --color-danger: #9b2316;
+  --color-danger-soft: #f3d9d2;
+  --color-danger-border: #d4968a;
+  --color-danger-solid: #9b2316;
+  --color-danger-solid-hover: #7c1b10;
+  --color-on-danger: #ffffff;
+
+  /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
+  --color-qr-dark: #10131a;
+  --color-qr-light: #ffffff;
+
+  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
+  --font-sans: 'Atkinson Hyperlegible', 'Atkinson Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Plex Mono Fallback', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /*
+   * Type scale: six sizes, no others (test/design-tokens.test.ts rejects a size class that is not declared here;
+   * Tailwind would drop it silently). T-shirt names on purpose: the class merger (cn) recognises them as font sizes,
+   * not colours. Weights 400, 500 and 600 only; tabular-nums on every amount, count, fee and countdown; mono only for
+   * addresses, signatures and commands.
+   *   text-xs    12/16  meta, badges, captions, footer fine print
+   *   text-sm    14/20  UI text: rows, buttons, tables, receipt, labels
+   *   text-base  16/24  prose: landing, explanations, leads, inputs; h3 (font-semibold)
+   *   text-lg    18/28  h2 in the app (Section), receipt title, row amount from 640 px
+   *   text-2xl   24/32  h1 below 640 px (landing hero included), landing h2, the answer (SummaryBar headline, Done
+   *                     headline, /stats numbers)
+   *   text-3xl   36/40  h1 from 640 px (PageHeader and the landing hero)
+   */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-3xl--letter-spacing: -0.02em;
+  --text-3xl--font-weight: 600;
+  /* The landing hero only. */
+  --text-4xl: 3.25rem;
+  --text-4xl--line-height: 1.05;
+  --text-4xl--letter-spacing: -0.025em;
+  --text-4xl--font-weight: 650;
+
+  /* Spacing: every p-*, m-*, gap-*, size-* step is a multiple of this unit (p-4 = 1rem). */
+  --spacing: 0.25rem;
+
+  /*
+   * Layout: the columns of an account row from 640 px (grid-cols-account-row): status and address, SOL, the action,
+   * More. An AccountList shares them with its rows (subgrid), so the SOL of every row stands in one column.
+   * account-row-actions keeps the action and More columns in every list, used or not, so that the SOL of separate
+   * lists on one page (/app) stands in one column too: the action column fits the widest row action, Protect again
+   * (8.75rem, and its 0.75rem margin), and grows for a wider one; More is its 2rem button, its 0.5rem margin and the
+   * 1rem padding of the list item, which a subgrid adds to its edge columns.
+   */
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Radii */
+  /* Small radii: cut wood, not pills. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+
+  /* Shadows (elevation in the light theme; the dark theme also lightens surfaces) */
+  --shadow-sm: 0 1px 2px 0 rgb(34 26 20 / 0.06), 0 1px 3px 0 rgb(34 26 20 / 0.08);
+  --shadow-md: 0 4px 8px -2px rgb(34 26 20 / 0.08), 0 2px 4px -2px rgb(34 26 20 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(34 26 20 / 0.12), 0 4px 8px -4px rgb(34 26 20 / 0.08);
+
+  /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    /* The same city at night: dark walnut rooms, lit wood, the river under lamps. */
+    --color-background: #191512;
+    --color-surface: #221d19;
+    --color-surface-raised: #2b2520;
+    --color-subtle: #332c26;
+    --color-subtle-hover: #3e362f;
+    --color-foreground: #efe9e1;
+    --color-muted: #b9afa3;
+    --color-border: #3d352e;
+    --color-border-strong: #8d8276;
+    --color-ring: #e39472;
+    --color-primary: #dcbd9c;
+    --color-primary-hover: #e9d1b6;
+    --color-on-primary: #21170f;
+    --color-primary-soft: #3b2d21;
+    --color-inverse: #efe9e1;
+    --color-on-inverse: #221d19;
+
+    --color-brick: #d9805f;
+    --color-wood: #b8936f;
+    --color-wood-soft: #4a3a2c;
+
+    --color-success: #93ccb7;
+    --color-success-soft: #18302a;
+    --color-success-border: #3a7363;
+    --color-warning: #e7c47c;
+    --color-warning-soft: #352811;
+    --color-warning-border: #846121;
+    --color-neutral: #d0c8bd;
+    --color-neutral-soft: #2f2924;
+    --color-neutral-border: #5e554b;
+    --color-info: #a2c6d9;
+    --color-info-soft: #162a34;
+    --color-info-border: #366479;
+    --color-danger: #f1a597;
+    --color-danger-soft: #3a1813;
+    --color-danger-border: #8e3226;
+    --color-danger-solid: #a8321f;
+    --color-danger-solid-hover: #c23e29;
+    --color-on-danger: #ffffff;
+
+    /* QR code: the light theme's values on purpose (see the colour roles above). */
+    --color-qr-dark: #10131a;
+    --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
