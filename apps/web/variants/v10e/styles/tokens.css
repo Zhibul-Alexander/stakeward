@@ -29,6 +29,7 @@
  *   grid              the drafting paper behind every page (bg-blueprint); grid-inverse on the inverse band
  * Look (v10e "Safety orange"): a site drawing on warm grey paper, every action in international orange like the
  * paint on a hazard rail, one cobalt part for the Second key; the dark theme is a charcoal board with the same orange.
+ * Danger is signal red, the red of the same safety signs: a warm red next to the orange, never a pink or crimson one.
  * Colour means state. primary is the one action of a screen; accent is a role (the Second key), never a state.
  * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
  * background, <tone>-border its outline.
@@ -36,7 +37,9 @@
  *   warning   Expiring soon
  *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
  *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
- *   danger    errors and the red banner (F6); danger-solid + on-danger for the solid variant
+ *   danger    errors and the red banner (F6). danger-solid + on-danger fill the solid button variant (Steal the stake,
+ *             Protect again, Remove the lock): a button is an action, so here it wears the action orange of primary,
+ *             and the danger stays in the words, the icon and the red banner around it.
  * QR codes (qr-dark modules on a qr-light ground) keep the same values in both themes: phone cameras read dark
  * modules on a light ground, so the code must not invert with the theme.
  */
@@ -92,11 +95,11 @@
   --color-info: #2a4f7a;
   --color-info-soft: #e0eaf5;
   --color-info-border: #a3bede;
-  --color-danger: #a8113a;
-  --color-danger-soft: #fce2e9;
-  --color-danger-border: #f0a1b5;
-  --color-danger-solid: #a8113a;
-  --color-danger-solid-hover: #860c2d;
+  --color-danger: #a52019;
+  --color-danger-soft: #f7ddd5;
+  --color-danger-border: #e3a096;
+  --color-danger-solid: #b33a04;
+  --color-danger-solid-hover: #8f2e03;
   --color-on-danger: #ffffff;
 
   /* QR code: the same pair in the dark theme (scanners need dark modules on a light ground). */
@@ -302,12 +305,12 @@
     --color-info: #9cc4f0;
     --color-info-soft: #182a40;
     --color-info-border: #3c6290;
-    --color-danger: #ff9fb5;
-    --color-danger-soft: #401524;
-    --color-danger-border: #a02a4b;
-    --color-danger-solid: #b3123f;
-    --color-danger-solid-hover: #d01f4f;
-    --color-on-danger: #ffffff;
+    --color-danger: #ff6b5e;
+    --color-danger-soft: #3d1b16;
+    --color-danger-border: #8c2e22;
+    --color-danger-solid: #ff8a3d;
+    --color-danger-solid-hover: #ffa466;
+    --color-on-danger: #1c0b00;
 
     /* QR code: the light theme's values on purpose (see the colour roles above). */
     --color-qr-dark: #10131a;
