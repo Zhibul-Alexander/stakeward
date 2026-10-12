@@ -1,0 +1,210 @@
+/*
+ * v15 "Plain utility" tokens. Same token names as src/styles/tokens.css, so every component keeps working; the values
+ * follow DIRECTION.md: a white page, near-black text, one blue for actions and links, status colours only for status,
+ * yellow only for keyboard focus. Contrast pairs are listed in DIRECTION.md (checked with antislop-human's script).
+ */
+
+/* Fallback with roughly Atkinson Hyperlegible's width, so the first paint does not jump when the font arrives. */
+@font-face {
+  font-family: 'Atkinson Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #f3f2f1;
+  --color-subtle-hover: #e8e6e3;
+  --color-foreground: #101418;
+  --color-muted: #4d5560;
+  --color-border: #c4c7ca;
+  --color-border-strong: #5b636c;
+  --color-ring: #ffdd00;
+  --color-focus-edge: #101418;
+  --color-focus-text: #101418;
+  --color-primary: #1b4f8a;
+  --color-primary-hover: #143c6a;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #e8f0f9;
+  --color-primary-edge: #0e2c4e;
+  --color-inverse: #101418;
+  --color-on-inverse: #ffffff;
+
+  /* The masthead: the black band at the top of every page. */
+  --color-masthead: #101418;
+  --color-on-masthead: #ffffff;
+  --color-masthead-muted: #c8ccd0;
+
+  --color-success: #00703c;
+  --color-success-soft: #dbefe3;
+  --color-success-border: #85c7a0;
+  --color-warning: #8a4b00;
+  --color-warning-soft: #fff1d6;
+  --color-warning-border: #e2a64b;
+  --color-neutral: #3f4650;
+  --color-neutral-soft: #eceef0;
+  --color-neutral-border: #b9bec4;
+  --color-info: #005a68;
+  --color-info-soft: #dff1f3;
+  --color-info-border: #7fbcc5;
+  --color-danger: #b0201a;
+  --color-danger-soft: #fbe4e2;
+  --color-danger-border: #d9827c;
+  --color-danger-solid: #b0201a;
+  --color-danger-solid-hover: #8e1a15;
+  --color-danger-edge: #5e0f0b;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #101418;
+  --color-qr-light: #ffffff;
+
+  --font-sans: 'Atkinson Hyperlegible', 'Atkinson Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Atkinson ships 400 and 700 only: medium and semibold map to bold, so emphasis never disappears. */
+  --font-weight-normal: 400;
+  --font-weight-medium: 700;
+  --font-weight-semibold: 700;
+  --font-weight-bold: 700;
+
+  /*
+   * Fluid scale: phone value first, desktop value last (19 px body, 48 px h1 on a wide screen).
+   *   xs    14       meta, badges
+   *   sm    16       UI text
+   *   base  16 -> 19 prose
+   *   lg    19 -> 24 h2 in the app
+   *   2xl   24 -> 36 landing h2, the answer on /app
+   *   3xl   32 -> 48 h1
+   */
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5rem;
+  --text-base: clamp(1rem, 0.9rem + 0.4vw, 1.1875rem);
+  --text-base--line-height: 1.5;
+  --text-lg: clamp(1.1875rem, 1rem + 0.6vw, 1.5rem);
+  --text-lg--line-height: 1.3;
+  --text-2xl: clamp(1.5rem, 1.1rem + 1.4vw, 2.25rem);
+  --text-2xl--line-height: 1.2;
+  --text-2xl--font-weight: 700;
+  --text-3xl: clamp(2rem, 1.4rem + 2vw, 3rem);
+  --text-3xl--line-height: 1.1;
+  --text-3xl--font-weight: 700;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+
+  /* Square-ish on purpose: records and forms. */
+  --radius-sm: 0.125rem;
+  --radius-md: 0.1875rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.25rem;
+
+  /* Shadows: the tooltip only. Buttons draw their own bottom edge (index.css). */
+  --shadow-sm: none;
+  --shadow-md: 0 2px 0 0 rgb(16 20 24 / 0.25);
+  --shadow-lg: 0 2px 0 0 rgb(16 20 24 / 0.25);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: linear;
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 150ms;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 0px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #121417;
+    --color-surface: #1a1d21;
+    --color-surface-raised: #22262b;
+    --color-subtle: #262a30;
+    --color-subtle-hover: #30353c;
+    --color-foreground: #f2f2f0;
+    --color-muted: #b6bcc3;
+    --color-border: #3a4048;
+    --color-border-strong: #8a929b;
+    --color-ring: #ffdd00;
+    --color-focus-edge: #000000;
+    --color-focus-text: #101418;
+    --color-primary: #9cc2f2;
+    --color-primary-hover: #bdd6f6;
+    --color-on-primary: #0d1f33;
+    --color-primary-soft: #1b2b40;
+    --color-primary-edge: #4f7fb8;
+    --color-inverse: #f2f2f0;
+    --color-on-inverse: #121417;
+
+    --color-masthead: #000000;
+    --color-on-masthead: #ffffff;
+    --color-masthead-muted: #c8ccd0;
+
+    --color-success: #7fd3a3;
+    --color-success-soft: #10291b;
+    --color-success-border: #2a6b46;
+    --color-warning: #f3c06b;
+    --color-warning-soft: #2e2108;
+    --color-warning-border: #7a5312;
+    --color-neutral: #c7ccd2;
+    --color-neutral-soft: #262a30;
+    --color-neutral-border: #4d545c;
+    --color-info: #84d0da;
+    --color-info-soft: #0b2a2f;
+    --color-info-border: #23626b;
+    --color-danger: #f4a19b;
+    --color-danger-soft: #3a1414;
+    --color-danger-border: #8e2a24;
+    --color-danger-solid: #c0261f;
+    --color-danger-solid-hover: #d63a32;
+    --color-danger-edge: #6a130f;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #101418;
+    --color-qr-light: #ffffff;
+
+    --shadow-md: 0 2px 0 0 rgb(0 0 0 / 0.6);
+    --shadow-lg: 0 2px 0 0 rgb(0 0 0 / 0.6);
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}

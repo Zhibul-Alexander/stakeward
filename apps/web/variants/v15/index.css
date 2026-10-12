@@ -1,0 +1,187 @@
+@import 'tailwindcss';
+@import '@fontsource/atkinson-hyperlegible/400.css';
+@import '@fontsource/atkinson-hyperlegible/700.css';
+@import '@fontsource/atkinson-hyperlegible/400-italic.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import './styles/tokens.css';
+
+/*
+ * Short variants for Radix data attributes (copied from shadcn's tailwind.css): `data-checked:` instead of
+ * `data-[state=checked]:`, so component classes stay free of brackets.
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-state='delayed-open']),
+  &:where([data-state='instant-open']) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+  &:where([data-state='closed']) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+  &:where([data-state='checked']) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/* Radix positions tooltips with this variable; a named utility keeps the arbitrary value out of components. */
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* Icon column + text column (Alert with a leading icon). */
+@utility grid-cols-icon {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
+@utility summary-plain {
+  list-style: none;
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+/* v15: the 2 px bottom edge of a button, darker than its fill, so it reads as something to press. */
+@utility edge-primary {
+  box-shadow: 0 2px 0 0 var(--color-primary-edge);
+}
+@utility edge-secondary {
+  box-shadow: 0 2px 0 0 var(--color-border-strong);
+}
+@utility edge-danger {
+  box-shadow: 0 2px 0 0 var(--color-danger-edge);
+}
+
+/* v15: the reading measure of the start page, about 70 characters at 19 px. */
+@utility measure {
+  max-width: 41rem;
+}
+
+/* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
+@page {
+  margin: 14mm;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Links in prose: always underlined, a thicker line on hover (the cue does not rely on colour). */
+  a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+  }
+  a:hover {
+    text-decoration-thickness: 3px;
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
+  ::selection {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+}
+
+/* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Focus (v15 identity motif, UX rule 11). Unlayered on purpose: it must win over any text or background utility on
+ * the focused element. Every element: a yellow band against the element and a dark line outside it, so one of the two
+ * always has 3:1 against whatever is behind (yellow on dark, the dark line on white).
+ */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-edge);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--color-ring);
+}
+
+/*
+ * Text links (not buttons drawn as links): the road-sign treatment. Yellow fill, dark text, a thick dark underline.
+ * The transparent outline stays for Windows high-contrast mode, which draws it in the system colour.
+ */
+a:not([data-slot='button']):focus-visible,
+[data-slot='button'][data-variant='link']:focus-visible {
+  outline: 3px solid transparent;
+  outline-offset: 0;
+  background-color: var(--color-ring);
+  color: var(--color-focus-text);
+  box-shadow:
+    0 -2px var(--color-ring),
+    0 4px var(--color-focus-edge);
+  text-decoration: none;
+  border-radius: 0;
+}
+a:not([data-slot='button']):focus-visible *,
+[data-slot='button'][data-variant='link']:focus-visible * {
+  color: var(--color-focus-text);
+}
+
+/* Inputs: the yellow band plus a thick dark inner edge, as on a paper form. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-ring);
+  outline-offset: 0;
+  box-shadow: inset 0 0 0 2px var(--color-focus-edge);
+}
