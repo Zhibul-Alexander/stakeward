@@ -38,7 +38,9 @@
  *   success   Protected
  *   warning   Expiring soon
  *   neutral   Not protected: the normal state of every stake account, so calm rather than alarming
- *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's)
+ *   info      Locked by a second key or Locked by another key (a lock this browser cannot call the viewer's), work in
+ *             progress (Signing, Sending, Confirming, Your turn) and notes. Here an amber shade of the action orange, not
+ *             blue: blue is the Second key's colour only.
  *   danger    errors and the red banner (F6). danger-solid + on-danger fill the solid button variant (Steal the stake,
  *             Protect again, Remove the lock): a button is an action, so here it wears the action orange of primary,
  *             and the danger stays in the words, the icon and the red banner around it.
@@ -94,9 +96,9 @@
   --color-neutral: #47433e;
   --color-neutral-soft: #e9e7e3;
   --color-neutral-border: #c8c3bc;
-  --color-info: #2a4f7a;
-  --color-info-soft: #e0eaf5;
-  --color-info-border: #a3bede;
+  --color-info: #94480a;
+  --color-info-soft: #f8e8d6;
+  --color-info-border: #e0b48a;
   --color-danger: #a52019;
   --color-danger-soft: #f7ddd5;
   --color-danger-border: #e3a096;
@@ -304,9 +306,9 @@
     --color-neutral: #c9c3bb;
     --color-neutral-soft: #2c2925;
     --color-neutral-border: #5c5650;
-    --color-info: #9cc4f0;
-    --color-info-soft: #182a40;
-    --color-info-border: #3c6290;
+    --color-info: #ffb070;
+    --color-info-soft: #382819;
+    --color-info-border: #7a5330;
     --color-danger: #ff6b5e;
     --color-danger-soft: #3d1b16;
     --color-danger-border: #8c2e22;
