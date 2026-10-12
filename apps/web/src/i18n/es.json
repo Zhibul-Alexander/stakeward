@@ -54,7 +54,13 @@
     "tryTestnet": "Probar en la red de pruebas",
     "tryMainnet": "Ir a mainnet",
     "more": "Más",
-    "language": "Idioma"
+    "language": "Idioma",
+    "theme": "Tema",
+    "themes": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    }
   },
   "footer": {
     "label": "Pie de página",

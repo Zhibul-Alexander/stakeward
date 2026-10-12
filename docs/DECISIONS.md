@@ -1243,6 +1243,16 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - Оставлено по слову владельца: оранжевый на линейках, контуре коробки и слове Stakeward (находка 2), тёмная полоса в конце лендинга (находка 9).
 - Вернуть: классы размеров в `button.tsx`, `input.tsx`, `checkbox.tsx`, `LanguageMenu.tsx`, `SiteHeader.tsx`, `address-text.tsx` и проверку `smallTouchTargets` в smoke; `RESULT` вместо `OUTCOME` в `KeyDiagram.tsx`; `VaultGrid` перед группами в `AccountsResults.tsx`; остальное — по одной строке в файлах из списка выше.
 
+## D151. Переключатель темы в шапке (12.10.2026, по слову владельца; дополнение к D145, D150)
+
+- Владелец увидел prod в тёмной теме (система тёмная) и попросил переключатель темы в шапке рядом с языком. Варианты: System (по умолчанию, как было), Light, Dark.
+- Кнопка темы — значок текущей темы (солнце с луной, солнце, луна), название в подписи кнопки («Theme: Dark»); список под ней, как у языка. Механика списка вынесена из `LanguageMenu` в общий `HeaderMenu` (разметка меню языка не изменилась). Строки `nav.theme`, `nav.themes.*` в en, es и ka (es и ka переведены моделью, TESTPLAN «Языки»).
+- Выбор ставит `<html data-theme="light|dark">` (`src/theme.ts`, при старте в `main.tsx` до первой отрисовки React) и хранится в localStorage (`stakeward:theme:v1`, в try/catch, удобство одного зрителя). System убирает атрибут и запись.
+- `tokens.css`: тёмные значения по-прежнему одним блоком; он применяется через два варианта Tailwind (`@variant theme-dark-auto, theme-dark-chosen`): система тёмная и светлая не выбрана, или выбрана тёмная. Оба только для экрана, печать светлая. `color-scheme` следует выбранной теме (формы, полосы прокрутки). Разбор блока в `test/design-tokens.test.ts` и `pages/dev-ui/tokens.ts` обновлён.
+- Без выбора ничего не меняется: до загрузки скрипта и без него тема по системе, как раньше. С выбором, отличным от системы, до запуска скрипта может мелькнуть фон системной темы: страница в этот момент пустая.
+- Проверено: `src/theme.test.ts`, тест меню в `layout.test.tsx`, `test/design-tokens.test.ts`, e2e `e2e/theme.spec.ts` (по умолчанию система, Light на тёмной системе и после перезагрузки, Dark на светлой, печать светлая, axe в обеих). Шапка проходит проверки smoke: одна строка с 640 px, две и не выше 104 px на 360.
+- Вернуть: убрать `ThemeMenu` из `SiteHeader.tsx`, `src/theme.ts` и вызов в `main.tsx`; в `tokens.css` вернуть `@media screen and (prefers-color-scheme: dark) { :root { … } }` и убрать правила `[data-theme]`.
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.

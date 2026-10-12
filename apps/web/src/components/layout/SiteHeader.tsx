@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { IS_DEVNET, MAINNET_SITE_URL, TESTNET_SITE_URL } from '@/config';
 import { t } from '@/i18n';
 import { LanguageMenu } from './LanguageMenu.tsx';
+import { ThemeMenu } from './ThemeMenu.tsx';
 
 /** A ghost link of the header's nav; the page it opens is marked as the current one (`aria-current`). */
 function NavLink({ href, icon: Icon, className, children }: { href: string; icon?: LucideIcon | undefined; className?: string | undefined; children: ReactNode }) {
@@ -73,8 +74,8 @@ function SecondaryLinks({ className }: { className?: string | undefined }) {
 }
 
 /**
- * The site header (DECISIONS.md D112, D141, D143): the mark and name, the Devnet badge on devnet, the interface
- * language (D140), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
+ * The site header (DECISIONS.md D112, D141, D143): the mark and name, the Devnet badge on devnet, the theme (D151) and
+ * the interface language (D140), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
  * every width. The rest (the demo, the devnet challenge, the other network's site) stands in the row from 1024 px;
  * below that a More button opens it as a list under the header, so a phone sees no icon-only links and one row of nav.
  * Below 640 px the nav takes the second row. Boxes (the current page's pill, the focus ring) stay inside the content
@@ -110,9 +111,13 @@ export function SiteHeader() {
             </Badge>
           ) : null}
         </div>
-        {/* Right of the mark on the first row below 640 px; from 640 px left of the nav, so the order you see is the
-            order you tab through and the other network's button stays the last item. */}
-        <LanguageMenu className="ml-auto" />
+        {/* The theme (D151) and the language, side by side: right of the mark on the first row below 640 px; from
+            640 px left of the nav, so the order you see is the order you tab through and the other network's button
+            stays the last item. */}
+        <div className="ml-auto flex items-center gap-1">
+          <ThemeMenu />
+          <LanguageMenu />
+        </div>
         <nav aria-label={t('nav.label')} className="flex w-full items-center gap-1 sm:w-auto">
           {/* Below 1024 px the three items of the nav sit closer (8 px padding, not 12): longer words of a translation
               (D140) still fit the 328 px of a 360 px screen, and the one row from 640 px with the language (D143). */}

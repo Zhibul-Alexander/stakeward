@@ -54,7 +54,13 @@
     "tryTestnet": "სცადეთ სატესტო ქსელში",
     "tryMainnet": "mainnet-ზე",
     "more": "მეტი",
-    "language": "ენა"
+    "language": "ენა",
+    "theme": "თემა",
+    "themes": {
+      "system": "სისტემური",
+      "light": "ღია",
+      "dark": "მუქი"
+    }
   },
   "footer": {
     "label": "ქვედა მენიუ",

@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { App } from '@/App';
 import { loadLocale, readStoredLocale } from '@/i18n';
 import { createBrowserPorts } from '@/ports';
+import { applyTheme, readStoredTheme } from '@/theme';
 import './index.css';
+
+// The theme this viewer chose (D151), before anything is drawn; without a choice tokens.css follows the system theme.
+applyTheme(readStoredTheme());
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');

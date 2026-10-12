@@ -164,11 +164,17 @@ type Theme = Map<string, string>;
  */
 const DARK_QUERY = '@media screen and (prefers-color-scheme: dark)';
 
+/**
+ * The one block of dark values (D151). It applies through two variants: the system theme is dark and the viewer has
+ * not chosen light, or the viewer chose dark (the header's theme menu marks <html data-theme>). Both on screens only.
+ */
+const DARK_BLOCK = '@variant theme-dark-auto, theme-dark-chosen';
+
 const COLOUR_DECLARATION = /--color-([\w-]+):\s*(#[0-9a-f]{6});/gi;
 
-/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (DARK_QUERY); `rest` is what follows. */
+/** `--color-<name>: #rrggbb` from the light block (@theme) and the dark block (DARK_BLOCK); `rest` is what follows. */
 function readThemes(css: string): { light: Theme; dark: Theme; rest: string } {
-  const darkStart = css.indexOf(DARK_QUERY);
+  const darkStart = css.indexOf(DARK_BLOCK);
   const darkEnd = css.indexOf('@media', darkStart + 1);
   if (darkStart < 0 || darkEnd < 0) throw new Error('tokens.css: dark theme block not found');
   const read = (part: string): Theme =>
@@ -292,6 +298,14 @@ describe('tokens.css colours', () => {
 
   it('print is always light: the dark theme applies to screens only, and no other block overrides a colour', () => {
     expect(css).toContain(DARK_QUERY);
+    // The dark values apply by the system theme unless light was chosen, or when dark was chosen (D151); screen only.
+    const flat = css.replace(/\s+/g, ' ');
+    expect(flat).toContain(`@custom-variant theme-dark-auto { ${DARK_QUERY} { &:not([data-theme='light']) { @slot; } } }`);
+    expect(flat).toContain("@custom-variant theme-dark-chosen { @media screen { &[data-theme='dark'] { @slot; } } }");
+    expect(flat).toContain(`:root { ${DARK_BLOCK} {`);
+    // Browser-drawn parts (form controls, scrollbars) follow a chosen theme too.
+    expect(flat).toContain(":root[data-theme='light'] { color-scheme: light; }");
+    expect(flat).toContain("@media screen { :root[data-theme='dark'] { color-scheme: dark; } }");
     // Exactly one dark block, and the only colour overrides are the light theme and that block.
     expect([...css.matchAll(/@media[^{]*prefers-color-scheme[^{]*/g)].map((m) => m[0].trim())).toEqual([DARK_QUERY]);
     expect([...themes.rest.matchAll(/--color-[\w-]+\s*:/g)].map((m) => m[0])).toEqual([]);

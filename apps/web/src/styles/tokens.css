@@ -5,7 +5,7 @@
  * rejects raw colours and arbitrary values anywhere else and checks the contrast pairs below.
  *
  * Light theme values live in @theme; the dark theme overrides the same variables on screens whose system theme is
- * dark. Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
+ * dark, unless the viewer chose light in the header, and wherever the viewer chose dark (D151). Paper is always light: a printed recovery card is dark text on a light page whatever the reader's theme (D77).
  * Tailwind's default palette, type scale, radii and shadows are reset, so palette classes such as bg-red-500 do not
  * exist at all.
  *
@@ -270,8 +270,29 @@
   --dash-blocked: 4 4;
 }
 
-@media screen and (prefers-color-scheme: dark) {
-  :root {
+/*
+ * The dark theme (D151): the system theme when it is dark and the viewer has not chosen light in the header, or the
+ * viewer's choice of dark (the theme menu marks <html data-theme>). Screens only, so paper stays light. One block of
+ * values, applied through both variants.
+ */
+@custom-variant theme-dark-auto {
+  @media screen and (prefers-color-scheme: dark) {
+    &:not([data-theme='light']) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant theme-dark-chosen {
+  @media screen {
+    &[data-theme='dark'] {
+      @slot;
+    }
+  }
+}
+
+:root {
+  @variant theme-dark-auto, theme-dark-chosen {
     --color-background: #181614;
     --color-surface: #201e1b;
     --color-surface-raised: #292622;
@@ -323,6 +344,17 @@
     --shadow-sm: 0 1px 0 0 rgb(0 0 0 / 0.3);
     --shadow-md: 3px 3px 0 0 rgb(0 0 0 / 0.3);
     --shadow-lg: 6px 6px 0 0 rgb(0 0 0 / 0.35);
+  }
+}
+
+/* A chosen theme draws the browser's own parts (form controls, scrollbars) in it too. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+@media screen {
+  :root[data-theme='dark'] {
+    color-scheme: dark;
   }
 }
 

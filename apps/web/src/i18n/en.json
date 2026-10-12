@@ -54,7 +54,13 @@
     "tryTestnet": "Try on testnet",
     "tryMainnet": "Go to mainnet",
     "more": "More",
-    "language": "Language"
+    "language": "Language",
+    "theme": "Theme",
+    "themes": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
   },
   "footer": {
     "label": "Footer",

@@ -41,7 +41,8 @@ function declarations(text: string, prefix: string): [string, string][] {
  */
 export function parseTokens(css: string): Tokens {
   const themeStart = css.indexOf('@theme');
-  const darkStart = css.indexOf('@media screen and (prefers-color-scheme: dark)');
+  // The one block of dark values (D151): by the system theme, or chosen in the header.
+  const darkStart = css.indexOf('@variant theme-dark-auto, theme-dark-chosen');
   const darkEnd = css.indexOf('@media', darkStart + 1);
   if (themeStart < 0 || darkStart < 0) {
     return { colours: [], textSizes: [], radii: [], shadows: [], spacing: '', gridColumns: [], animations: [], motion: [] };

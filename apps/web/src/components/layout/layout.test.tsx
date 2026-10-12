@@ -168,6 +168,40 @@ describe('SiteHeader', () => {
     expect(button).toHaveFocus();
   });
 
+  it('switches the theme next to the language: light, dark or the system one, kept for the next visit (D151)', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    localStorage.removeItem('stakeward:theme:v1');
+    delete document.documentElement.dataset['theme'];
+    render(<SiteHeader />);
+    const button = screen.getByRole('button', { name: 'Theme: System' });
+    // Next to the language: the theme comes first, so the language stays where it was, by the nav.
+    const language = screen.getByRole('button', { name: 'Language: English' });
+    expect(button.compareDocumentPosition(language) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+    const list = screen.getByRole('list', { name: 'Theme' });
+    expect(within(list).getAllByRole('button').map((item) => item.textContent)).toEqual(['System', 'Light', 'Dark']);
+    expect(within(list).getByRole('button', { name: 'System' })).toHaveAttribute('aria-current', 'true');
+
+    await user.click(within(list).getByRole('button', { name: 'Dark' }));
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    expect(localStorage.getItem('stakeward:theme:v1')).toBe('dark');
+    expect(screen.getByRole('button', { name: 'Theme: Dark' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Theme: Dark' })).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(screen.getByRole('button', { name: 'Theme: Dark' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Theme: Dark' })).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(screen.getByRole('button', { name: 'Theme: Dark' }));
+    await user.click(within(screen.getByRole('list', { name: 'Theme' })).getByRole('button', { name: 'System' }));
+    expect(document.documentElement).not.toHaveAttribute('data-theme');
+    expect(localStorage.getItem('stakeward:theme:v1')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Theme: System' })).toBeInTheDocument();
+  });
+
   // D149: a button of the header shows the pointer like its links; Tailwind 4 leaves a <button> the default arrow.
   it('shows the pointer over every button of the header, the language list included', async () => {
     const user = userEvent.setup();
