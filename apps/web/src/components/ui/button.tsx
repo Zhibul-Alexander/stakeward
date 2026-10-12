@@ -4,6 +4,7 @@ import { Slot } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 // shadcn/ui button (radix base), classes rewritten to design tokens. Focus uses the global :focus-visible outline.
+// The pointer cursor like a link's (D149): Tailwind 4 gives a <button> the default arrow.
 //
 // Hierarchy (DECISIONS.md D112): at most one filled button (primary or danger) per screen; e2e/screen-metrics.ts
 // counts them. Every variant but link answers a press by shrinking a little (D142): a tap shows it landed, also on a
@@ -17,7 +18,7 @@ import type { ComponentProps } from 'react';
 //   ghost     Back, Refresh, copy, explorer, the row's More, "Stop waiting"            any
 //   link      inline in prose                                                          any
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition select-none disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

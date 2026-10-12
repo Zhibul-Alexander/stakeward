@@ -167,4 +167,15 @@ describe('SiteHeader', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(button).toHaveFocus();
   });
+
+  // D149: a button of the header shows the pointer like its links; Tailwind 4 leaves a <button> the default arrow.
+  it('shows the pointer over every button of the header, the language list included', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    const buttons = within(screen.getByRole('banner')).getAllByRole('button');
+    expect(buttons.map((item) => item.textContent)).toEqual(expect.arrayContaining(['EN', 'More', 'English', 'ქართული']));
+    for (const item of buttons) expect(item).toHaveClass('cursor-pointer');
+  });
 });
