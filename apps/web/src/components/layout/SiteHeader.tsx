@@ -114,7 +114,7 @@ export function SiteHeader() {
         </nav>
       </div>
       {moreOpen ? (
-        <div id={moreId} className="border-t border-border lg:hidden">
+        <div id={moreId} className="animate-reveal border-t border-border lg:hidden">
           <div className="mx-auto flex w-full max-w-5xl flex-col items-start gap-1 px-4 py-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <SecondaryLinks />
           </div>

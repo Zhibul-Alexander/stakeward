@@ -11,12 +11,13 @@ const TRUST: readonly MessageKey[] = ['landing.points.free', 'landing.points.noC
 /**
  * The top of the landing page: which network this site works on, what Stakeward does in one sentence, and the two
  * ways in. "Check my stake" is the page's one primary button: look first, connect later (UX rule 1). "Protect my
- * stake" is the outline alternative for whoever came to act.
+ * stake" is the outline alternative for whoever came to act. Its three parts arrive in reading order on load: the site's
+ * one motion nobody triggers (D142).
  */
 export function Hero({ cluster }: { cluster: Cluster }) {
   const devnet = cluster === 'devnet';
   return (
-    <section aria-labelledby="landing-title" className="flex flex-col gap-4 sm:gap-6">
+    <section aria-labelledby="landing-title" className="stagger-in flex flex-col gap-4 sm:gap-6">
       <div className="flex max-w-prose flex-col gap-3 sm:gap-4">
         <p data-slot="network" className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:text-sm">
           <Badge tone="outline">

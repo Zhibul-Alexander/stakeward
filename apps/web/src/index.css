@@ -63,6 +63,28 @@
   }
 }
 
+/* The one motion nobody triggers (D142): the landing hero's parts arrive in reading order, once, on load. */
+@utility stagger-in {
+  & > * {
+    animation: var(--animate-rise-in);
+  }
+  & > :nth-child(2) {
+    animation-delay: var(--motion-stagger);
+  }
+  & > :nth-child(3) {
+    animation-delay: calc(var(--motion-stagger) * 2);
+  }
+  & > :nth-child(4) {
+    animation-delay: calc(var(--motion-stagger) * 3);
+  }
+}
+
+/* An opened fold drops its content into place (D142): the animation starts when [open] starts to match, on every
+   open. The direct child only, so a fold inside a fold reveals when it is opened itself. Closing is instant. */
+details[open] > [data-slot='disclosure-body'] {
+  animation: var(--animate-reveal);
+}
+
 /* Printed pages (the recovery card): the same margin on every sheet, whatever the browser's default. */
 @page {
   margin: 14mm;
@@ -103,6 +125,11 @@
     background-color: var(--color-primary);
     color: var(--color-on-primary);
   }
+}
+
+/* Buttons answer a tap with their own press (D142), so the browser's grey tap flash on phones is not needed. */
+[data-slot='button'] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Safety net for animations that do not use the motion tokens (e.g. animate-spin, animate-pulse). */

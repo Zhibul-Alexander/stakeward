@@ -155,7 +155,7 @@ export function ProtectDoneView({
     <section aria-labelledby={headingId} data-slot="protect-done" className="flex flex-col gap-6 text-pretty sm:gap-8">
       <div data-slot="done-header" className="flex flex-col gap-2">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-3 text-2xl text-balance">
-          <HeadIcon aria-hidden="true" className={cn('mt-1 size-6 shrink-0', allDone ? 'text-success' : 'text-warning')} />
+          <HeadIcon aria-hidden="true" className={cn('mt-1 size-6 shrink-0', allDone ? 'animate-seal text-success' : 'text-warning')} />
           <span>{title}</span>
         </h2>
         {done === 0 || lockDate === null || secondKey === null ? null : (

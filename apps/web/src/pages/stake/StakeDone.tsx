@@ -51,7 +51,7 @@ export function StakeDone({ headingRef, mainKey, stakeAccount, lamports, voteAcc
     <section aria-labelledby={headingId} data-slot="stake-done" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl">
-          <CircleCheckIcon aria-hidden="true" className="mt-1 size-6 shrink-0 text-success" />
+          <CircleCheckIcon aria-hidden="true" className="animate-seal mt-1 size-6 shrink-0 text-success" />
           {t('stake.done.title')}
         </h2>
         <p className="flex flex-wrap items-center gap-x-2 text-sm">

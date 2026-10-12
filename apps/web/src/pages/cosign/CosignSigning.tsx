@@ -407,7 +407,7 @@ function CosignDone({ headingRef, job, clock }: { headingRef: Ref<HTMLHeadingEle
       className="flex flex-col gap-4"
     >
       <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-center gap-2 text-2xl outline-none">
-        <CircleCheckIcon aria-hidden="true" className="size-6 shrink-0 text-success" />
+        <CircleCheckIcon aria-hidden="true" className="animate-seal size-6 shrink-0 text-success" />
         {already ? t('cosign.already.title') : t('cosign.done.title')}
       </h2>
       <p className="max-w-prose">{already ? t('cosign.already.body') : t('cosign.done.body')}</p>

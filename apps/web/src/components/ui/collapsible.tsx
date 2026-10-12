@@ -19,7 +19,7 @@ function CollapsibleContent({ className, ...props }: ComponentProps<typeof Colla
   return (
     <CollapsiblePrimitive.CollapsibleContent
       data-slot="collapsible-content"
-      className={cn('data-open:animate-fade-in', className)}
+      className={cn('data-open:animate-reveal', className)}
       {...props}
     />
   );

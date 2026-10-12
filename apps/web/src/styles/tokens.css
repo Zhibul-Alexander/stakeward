@@ -144,10 +144,24 @@
   --shadow-md: 0 4px 8px -2px rgb(16 19 26 / 0.08), 0 2px 4px -2px rgb(16 19 26 / 0.06);
   --shadow-lg: 0 12px 24px -6px rgb(16 19 26 / 0.12), 0 4px 8px -4px rgb(16 19 26 / 0.08);
 
-  /* Motion: transitions use the default duration; both drop to 0 under prefers-reduced-motion (below). */
+  /*
+   * Motion (DECISIONS.md D112, D142): it answers what a person did (opening, copying, confirming, pressing) and shows what
+   * changed; the one motion nobody triggers is the landing hero's arrival. Only opacity and transform, never height or
+   * layout. Every duration and the stagger drop to 0 under prefers-reduced-motion (below).
+   */
   --default-transition-duration: var(--motion-duration-fast);
   --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  /* Fast out, long settle: things arrive and come to rest instead of bouncing in. */
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+  /* What an opened fold, the More list or a row's actions reveal: a short drop into place. */
+  --animate-reveal: reveal var(--motion-duration-normal) var(--ease-emphasized);
+  /* The landing hero's parts arriving in order (with --motion-stagger between them). */
+  --animate-rise-in: rise-in var(--motion-duration-slow) var(--ease-emphasized) both;
+  /* A tick that confirms an action (Copied). */
+  --animate-pop-in: pop-in var(--motion-duration-normal) var(--ease-emphasized);
+  /* The tick of a Done screen: it settles once, slightly past full size and back. */
+  --animate-seal: seal var(--motion-duration-slow) var(--ease-emphasized) both;
 
   @keyframes fade-in {
     from {
@@ -157,12 +171,58 @@
       opacity: 1;
     }
   }
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes seal {
+    0% {
+      opacity: 0;
+      transform: scale(0.6) rotate(-12deg);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.08) rotate(0deg);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 :root {
   color-scheme: light dark;
   --motion-duration-fast: 150ms;
   --motion-duration-normal: 200ms;
+  --motion-duration-slow: 480ms;
+  --motion-stagger: 80ms;
   /* Focus indicator (UX rule 11): outline in the ring colour, offset from the element. */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
@@ -227,5 +287,7 @@
   :root {
     --motion-duration-fast: 0ms;
     --motion-duration-normal: 0ms;
+    --motion-duration-slow: 0ms;
+    --motion-stagger: 0ms;
   }
 }

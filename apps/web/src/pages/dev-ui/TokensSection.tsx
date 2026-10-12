@@ -1,8 +1,10 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { Button } from '@/components/ui/button';
 import { t, type MessageKey } from '@/i18n';
 import tokensCss from '@/styles/tokens.css?raw';
 import { DemoGroup, DevSection } from './layout.tsx';
 import {
+  ANIMATE_CLASS,
   GRID_COLUMNS_CLASS,
   parseTokens,
   RADIUS_CLASS,
@@ -133,6 +135,13 @@ export function TokensSection() {
         </ul>
       </DemoGroup>
 
+      <DemoGroup
+        title={t('devUi.motion')}
+        note={`${t('devUi.motionNote')} ${TOKENS.motion.map((token) => `--motion-${token.name}: ${token.value}`).join(', ')}.`}
+      >
+        <MotionSamples />
+      </DemoGroup>
+
       <DemoGroup title={t('devUi.shadows')}>
         <ul className="flex flex-wrap gap-6">
           {TOKENS.shadows.map((shadow) => (
@@ -144,5 +153,31 @@ export function TokensSection() {
         </ul>
       </DemoGroup>
     </DevSection>
+  );
+}
+
+/** Each animation on a sample tile; Play mounts the tiles again, so they run once more (D142). */
+function MotionSamples() {
+  const [run, setRun] = useState(0);
+  return (
+    <div className="flex flex-col items-start gap-4">
+      <ul key={run} className="flex flex-wrap gap-6">
+        {TOKENS.animations.map((animation) => (
+          <li key={animation.name} data-slot="motion-token" className="flex flex-col items-center gap-2">
+            <span aria-hidden="true" data-animation={animation.name} className={`size-16 rounded-lg bg-primary-soft ${ANIMATE_CLASS[animation.name] ?? ''}`} />
+            <span className="font-mono text-xs text-muted">{ANIMATE_CLASS[animation.name] ?? animation.name}</span>
+          </li>
+        ))}
+      </ul>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setRun((value) => value + 1);
+        }}
+      >
+        {t('devUi.motionPlay')}
+      </Button>
+    </div>
   );
 }

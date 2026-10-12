@@ -101,7 +101,7 @@ export function DoneStep({ headingRef, outcomes, clock, newWallet, secondKey, ch
           ? t('rescue.done.titleOne')
           : t('rescue.done.titleOther', { count: done });
   const TitleIcon = done === 0 ? CircleAlertIcon : done < total ? TriangleAlertIcon : CircleCheckIcon;
-  const titleTone = done === 0 ? 'text-danger' : done < total ? 'text-warning' : 'text-success';
+  const titleTone = done === 0 ? 'text-danger' : done < total ? 'text-warning' : 'animate-seal text-success';
   const retryable = retryableOutcomes(others);
   // A link still open holds back Try again for the rest (retryableOutcomes): say why.
   const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);

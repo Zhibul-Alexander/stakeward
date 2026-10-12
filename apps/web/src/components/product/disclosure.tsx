@@ -47,7 +47,10 @@ export function Disclosure({ summary, id, defaultOpen, variant = 'inline', class
           <ChevronRightIcon aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-90" />
         )}
       </summary>
-      <div className={row ? 'flex flex-col gap-2 pb-4' : 'mt-2'}>{children}</div>
+      {/* index.css drops it into place on every open (D142). */}
+      <div data-slot="disclosure-body" className={row ? 'flex flex-col gap-2 pb-4' : 'mt-2'}>
+        {children}
+      </div>
     </details>
   );
 }

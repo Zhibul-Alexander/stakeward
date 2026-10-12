@@ -98,6 +98,18 @@ test('/dev/ui shows every token and component without console errors, axe violat
     .locator('#tokens [data-slot="grid-columns-token"] [data-grid-columns]')
     .evaluateAll((grids) => grids.map((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length));
   expect(gridColumns).toEqual([4, 4]);
+  // Motion (D142): each animation token runs its own keyframes (the build has every animate-* class), and under
+  // prefers-reduced-motion every one of them takes no time (UX rule 11).
+  const motion = () =>
+    page
+      .locator('#tokens [data-slot="motion-token"] [data-animation]')
+      .evaluateAll((tiles) => tiles.map((tile) => ({ name: getComputedStyle(tile).animationName, duration: getComputedStyle(tile).animationDuration })));
+  const moving = await motion();
+  expect(moving.map((tile) => tile.name)).toEqual(['fade-in', 'reveal', 'rise-in', 'pop-in', 'seal']);
+  expect(moving.filter((tile) => tile.duration === '0s')).toEqual([]);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect((await motion()).map((tile) => tile.duration)).toEqual(['0s', '0s', '0s', '0s', '0s']);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   // The recovery card's pieces: three command blocks (idle, copied, copy failed), every support verdict, and a
   // FAQ item that the browser opens and closes from the keyboard (a native <details>, DECISIONS.md D3; jsdom cannot
