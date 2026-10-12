@@ -148,9 +148,10 @@ describe('SiteHeader', () => {
     const list = screen.getByRole('list', { name: 'Language' });
     expect(within(list).getAllByRole('button').map((item) => [item.textContent, item.getAttribute('lang')])).toEqual([
       ['English', 'en'],
-      ['Español', 'es'],
       ['ქართული', 'ka'],
     ]);
+    // Spanish is translated but not offered for now (D144).
+    expect(within(list).queryByRole('button', { name: 'Español' })).toBeNull();
     expect(within(list).getByRole('button', { name: 'English' })).toHaveAttribute('aria-current', 'true');
 
     await user.keyboard('{Escape}');

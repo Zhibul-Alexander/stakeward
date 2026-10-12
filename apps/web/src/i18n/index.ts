@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 import en from './en.json';
 import { DEFAULT_LOCALE, storeLocale, type Locale } from './locales.ts';
 
-export { DEFAULT_LOCALE, LOCALE_NAMES, LOCALES, isLocale, readStoredLocale, type Locale } from './locales.ts';
+export { DEFAULT_LOCALE, LOCALE_NAMES, LOCALES, SELECTABLE_LOCALES, isLocale, readStoredLocale, type Locale } from './locales.ts';
 
 /**
  * UI strings (CLAUDE.md section 9). en.json is the source and the default; es.json and ka.json hold the same keys

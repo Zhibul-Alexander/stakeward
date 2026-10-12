@@ -427,7 +427,7 @@ test('every route renders under the production headers, without console errors o
 }) => {
   // Each page is checked by axe in two themes; the landing page with every FAQ answer open is the longest. Then every
   // route again in each translation, axe in one theme.
-  test.setTimeout(20_000 * ROUTES.length + 2 * 8_000 * ROUTES.length);
+  test.setTimeout(20_000 * ROUTES.length + 8_000 * ROUTES.length);
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
   const width = viewport.width;
   const apiRequests: string[] = [];
@@ -524,11 +524,13 @@ test('every route renders under the production headers, without console errors o
     });
   }
 
-  // The same routes in Spanish and Georgian (D140), chosen as a viewer would have chosen them before: the page says it
+  // The same routes in Georgian (D140), chosen as a viewer would have chosen it before: the page says it
   // in that language (its h1 is a string of the catalog), marks the language for screen readers, and holds at 360 px
   // with the header in its rows, though the words are longer than in English. Georgian letters come from the bundled
   // Noto Sans Georgian.
-  for (const locale of ['es', 'ka'] as const) {
+  // Georgian only: Spanish is translated but not offered for now (D144), and a stored 'es' reads as English.
+  const translated: readonly ('es' | 'ka')[] = ['ka'];
+  for (const locale of translated) {
     const strings = catalogStrings(locale);
     await page.evaluate((value) => {
       localStorage.setItem('stakeward:locale:v1', value);

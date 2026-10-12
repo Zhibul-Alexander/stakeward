@@ -11,6 +11,12 @@ export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = 'en';
 
+/**
+ * The languages a viewer can pick (D144). Spanish stays translated and tested (es.json, catalogs.test.ts) but is not
+ * offered for now; adding 'es' back here offers it again.
+ */
+export const SELECTABLE_LOCALES: readonly Locale[] = ['en', 'ka'];
+
 /** Each language named in itself, the way a reader looks for it in a list (not translated). */
 export const LOCALE_NAMES: Readonly<Record<Locale, string>> = { en: 'English', es: 'Español', ka: 'ქართული' };
 
@@ -20,11 +26,11 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
 }
 
-/** The language this viewer chose before, or English. */
+/** The language this viewer chose before, or English (also for a language that is no longer offered). */
 export function readStoredLocale(storage: StorageLike | null = browserStorage()): Locale {
   try {
     const value = storage?.getItem(LOCALE_STORAGE_KEY);
-    return isLocale(value) ? value : DEFAULT_LOCALE;
+    return isLocale(value) && SELECTABLE_LOCALES.includes(value) ? value : DEFAULT_LOCALE;
   } catch {
     return DEFAULT_LOCALE;
   }

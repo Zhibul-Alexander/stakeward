@@ -92,7 +92,7 @@ For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a 
 
 ## Languages
 
-The site is in English, Spanish and Georgian. English is the default; pick another language in the header of any page, and this browser remembers it. The translations were made with an AI model and have not yet been read by a native speaker: where a sentence is unclear, the English text is the reference. Telegram alerts, command lines and the labels a Ledger shows stay in English.
+The site is in English and Georgian. English is the default; pick Georgian in the header of any page, and this browser remembers it. The translations were made with an AI model and have not yet been read by a native speaker: where a sentence is unclear, the English text is the reference. Telegram alerts, command lines and the labels a Ledger shows stay in English.
 
 ## Which wallets work
 

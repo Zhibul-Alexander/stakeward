@@ -5,7 +5,6 @@ import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { App } from './App.tsx';
 import { loadLocale } from './i18n/index.ts';
-import es from './i18n/es.json';
 import ka from './i18n/ka.json';
 
 function renderAt(path: string) {
@@ -111,27 +110,23 @@ describe('interface language (D140)', () => {
     const footer = screen.getByRole('contentinfo');
     const choose = async (current: string, next: string) => {
       await user.click(within(header).getByRole('button', { name: current }));
-      const list = within(header).getByRole('list', { name: /Language|Idioma|ენა/ });
+      const list = within(header).getByRole('list', { name: /Language|ენა/ });
       // Each language is named in itself and marked with its language for screen readers.
       expect(within(list).getByRole('button', { name: 'ქართული' })).toHaveAttribute('lang', 'ka');
       await user.click(within(list).getByRole('button', { name: next }));
     };
     expect(within(header).getByRole('button', { name: 'Language: English' })).toHaveTextContent('EN');
-    expect(within(footer).queryByText(es.footer.translated)).toBeNull();
+    expect(within(footer).queryByText(ka.footer.translated)).toBeNull();
     await user.type(screen.getByLabelText('Transaction'), 'AQAB');
 
-    await choose('Language: English', 'Español');
-    expect(await screen.findByRole('heading', { level: 1, name: es.check.title })).toBeInTheDocument();
-    expect(document.documentElement.lang).toBe('es');
-    expect(screen.getByRole('navigation', { name: es.nav.label })).toBeInTheDocument();
-    expect(screen.getByLabelText(es.check.inputLabel)).toHaveValue('AQAB');
-    expect(within(footer).getByText(es.footer.translated)).toBeInTheDocument();
-    expect(within(header).getByRole('button', { name: `${es.nav.language}: Español` })).toHaveTextContent('ES');
-    expect(localStorage.getItem('stakeward:locale:v1')).toBe('es');
-
-    await choose(`${es.nav.language}: Español`, 'ქართული');
+    await choose('Language: English', 'ქართული');
     expect(await screen.findByRole('heading', { level: 1, name: ka.check.title })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('ka');
+    expect(screen.getByRole('navigation', { name: ka.nav.label })).toBeInTheDocument();
     expect(screen.getByLabelText(ka.check.inputLabel)).toHaveValue('AQAB');
+    expect(within(footer).getByText(ka.footer.translated)).toBeInTheDocument();
+    expect(within(header).getByRole('button', { name: `${ka.nav.language}: ქართული` })).toHaveTextContent('KA');
+    expect(localStorage.getItem('stakeward:locale:v1')).toBe('ka');
 
     await choose(`${ka.nav.language}: ქართული`, 'English');
     expect(await screen.findByRole('heading', { level: 1, name: 'Check a transaction' })).toBeInTheDocument();

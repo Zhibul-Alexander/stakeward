@@ -3,7 +3,7 @@ import { CheckIcon, LanguagesIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { changeLocale, LOCALE_NAMES, LOCALES, t, useLocale, type Locale } from '@/i18n';
+import { changeLocale, LOCALE_NAMES, SELECTABLE_LOCALES, t, useLocale, type Locale } from '@/i18n';
 
 /** The short form on the closed button: the language's ISO 639-1 code. */
 const CODES: Readonly<Record<Locale, string>> = { en: 'EN', es: 'ES', ka: 'KA' };
@@ -11,7 +11,7 @@ const CODES: Readonly<Record<Locale, string>> = { en: 'EN', es: 'ES', ka: 'KA' }
 /**
  * The interface language in the site header (D140, D143): a small button with the language icon and the current
  * language's code (no chevron: the header has no room for one at 640 px; `aria-expanded` says it opens), opening a list
- * under it with each language named in itself and marked with its own `lang` (a screen reader reads "ქართული" in
+ * under it with each language it offers (D144) named in itself and marked with its own `lang` (a screen reader reads "ქართული" in
  * Georgian). Not Radix DropdownMenu, which the CSP rules out (D3): a disclosure with a list of buttons. Choosing,
  * Escape, a click elsewhere and a page change close it; switching keeps the page and what it holds.
  */
@@ -74,7 +74,7 @@ export function LanguageMenu({ className }: { className?: string | undefined }) 
           aria-label={t('nav.language')}
           className="animate-reveal absolute top-full right-0 z-50 mt-1 flex min-w-40 flex-col gap-0.5 rounded-md border border-border bg-surface p-1 shadow-md"
         >
-          {LOCALES.map((option) => (
+          {SELECTABLE_LOCALES.map((option) => (
             <li key={option}>
               <button
                 type="button"

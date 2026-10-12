@@ -60,6 +60,9 @@ describe('the interface language (D140)', () => {
   it('reads anything else, or a storage that throws, as English', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'fr');
     expect(readStoredLocale()).toBe('en');
+    // Spanish is not offered for now (D144): a viewer who chose it before gets English.
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'es');
+    expect(readStoredLocale()).toBe('en');
     const blocked = {
       getItem: () => {
         throw new Error('blocked');
