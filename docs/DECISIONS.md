@@ -1189,6 +1189,27 @@ lean-qr 2.7.4: только матрица модулей из `lean-qr/nano` и
 - Smoke e2e обходит маршруты после английского только на грузинском.
 - Вернуть испанский: добавить `'es'` в `SELECTABLE_LOCALES`, вернуть `'es'` в цикл языков smoke-теста и строку про испанский в README.
 
+## D145. Дизайн «The mechanism, drawn» (превью v10) в коде продукта; новая схема на лендинге (12.10.2026, по слову владельца; поправка к D112, D141)
+
+- Владелец выбрал превью v10 и попросил раскатать его на текущий продукт с учётом последних изменений и сделать графику «коробки» приятнее и точнее. Превью собиралось на ветке `claude/project-thread-oshmst` (поддомены ui1…ui15, ui10a…ui10f); в main перенесён только код продукта, без слоя превью и других вариантов. Поведение D140–D144 (меню языка, More, кнопка другой сети, пояснение devnet на лендинге, движение, свёрнутые проверки, Ask your AI) сохранено; от v10 взят вид.
+- Токены (`tokens.css`): бумага с сеткой, жёсткие тени со смещением, маленькие радиусы; новые цвета `accent`, `accent-ink`, `accent-soft`, `on-accent` (роль «Second key», не состояние), `line`, `grid`, `grid-inverse`; седьмой размер текста `text-4xl` (56 px) только для заголовка лендинга от 640 px; `--blueprint-cell`, `--blueprint-line`, `--dash-blocked`. QR остаётся `#10131a` на белом. Новые пары контраста в `test/design-tokens.test.ts`. Фон `bg-blueprint` (сетка) при печати снимается. Палитра — D146.
+- Шрифты: Space Grotesk (`@fontsource-variable/space-grotesk`, заголовки и подписи чертежей), IBM Plex Sans 400/500/600 и IBM Plex Mono 400/500 (`@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-mono`); Noto Sans Georgian остаётся для грузинских букв. Geist больше не подключается, пакеты `@fontsource-variable/geist` и `geist-mono` удалены. Локальные запасные грани с подогнанными метриками: строки не сдвигаются при загрузке.
+- Лендинг: заголовок и две кнопки, под ними фигура `KeyDiagram` (`#protects`), затем «Three moves» с рельсом, карточка второго ключа (`#second-key`), лист ограничений, заметка для co-sign, индекс /learn, тёмная полоса в конце. `/app`: `VaultGrid` — аккаунты коробками по доле SOL (от двух аккаунтов).
+- Схема `KeyDiagram` по §4: коробка — один стейк-аккаунт; основной ключ открывает дверцу, второй — навесной замок на ней, бирка на замке — дата окончания. Вывод и смена владельца — оба ключа; замок (дата, хранитель) — только второй ключ; снять с делегирования, переделегировать, разделить, сменить ключ стейкинга — только основной; спасение — основной + второй + новый кошелёк. В случае «потерян второй ключ» вывод, смена владельца, замок и спасение — «после даты». При спасении замок, дата и второй ключ не меняются. В SVG нет слов: подписи — HTML-легенда под рисунком, поэтому ничего не налезает на 360 px и на любом языке. Тест `test/key-diagram.test.tsx` сверяет каждую строку каждого случая с правилами §4.
+- Тесты, привязанные к старому виду, обновлены: smoke ждёт загрузки IBM Plex Sans и Space Grotesk вместо Geist и разрешает заголовку лендинга на 360 px две строки `text-3xl` (80 px) вместо одной `text-2xl`; кнопка Check my stake по-прежнему в первом экране. es.json и ka.json для новых строк переведены моделью, носитель языка не читал (TESTPLAN «Языки»).
+- Отменить: вернуть `tokens.css`, `index.css`, `components/layout/*`, `pages/landing/*`, `AccountsResults.tsx` из коммита до D145, удалить `KeyDiagram.tsx`, `VaultGrid.tsx` и их строки, вернуть Geist в package.json.
+
+## D146. Палитра «Safety orange» (превью ui10e) с правками владельца (12.10.2026, по слову владельца; дополнение к D145)
+
+- Из шести палитр дизайна D145 (ui10a…ui10f) владелец выбрал ui10e «Safety orange»: тёплая серая бумага и угольная доска в тёмной теме, каждое действие — оранжевым, второй ключ — кобальтом.
+- Правки владельца после просмотра ui10e:
+  - опасность (`danger`: ошибки, красный баннер F6, вор в демо и на схеме) — не малиново-розовая, а сигнальная красная: светлая тема `#a52019`, тёмная `#ff6b5e`;
+  - сплошная кнопка `danger` (Steal the stake, Protect again, Remove the lock) — оранжевая, как основная: `danger-solid` = `primary`. Опасность остаётся в словах, значке и красном баннере вокруг кнопки;
+  - индикатор фокуса (`ring`) — оттенок оранжевого вместо синего: ярче `primary` на бумаге (`#d4520a`), светлее на доске (`#ffb070`), чтобы рамка вокруг оранжевой кнопки читалась как рамка;
+  - тон `info` (Signing, Sending, Confirming, Your turn, Connecting, Locked by another key, заметки на экранах подписи) — янтарный оттенок оранжевого вместо синего. Синий остаётся только у второго ключа (`accent`).
+- Все пары контраста `design-tokens.test.ts` проходят в обеих темах.
+- Отменить: значения цветов в `tokens.css` из превью `apps/web/variants/v10e/styles/tokens.css` до коммита 42329cf (ветка `claude/project-thread-oshmst`).
+
 ## Проверка RPC (02.10.2026)
 
 Команда: `pnpm check-rpc <url> [withdrawer]` (или `RPC_URL=<url> pnpm check-rpc`). Скрипт определяет кластер по genesis hash, делает три раза getProgramAccounts по стейк-программе с фильтрами `dataSize 200` + `memcmp` по смещению 44 (withdrawer), `encoding base64`, `dataSlice {0,0}`, затем тот же запрос с полными данными и getMultipleAccounts по найденным адресам, декодирует аккаунты и сверяет withdrawer. Query-строку URL (там ключ Helius) не печатает.
@@ -1261,8 +1282,9 @@ Helius, бесплатный план, 05.10.2026, тот же VPS: все за�
 | class-variance-authority | 0.7.1 | web | варианты компонентов shadcn (`tone`, размер) |
 | cn | 0.4.0 | web | склейка классов Tailwind от shadcn, замена clsx + tailwind-merge |
 | lucide-react | 1.49.0 | web | иконки (§9) |
-| @fontsource-variable/geist, @fontsource-variable/geist-mono | 5.3.0 | web | шрифты в бандле, без CDN |
-| @fontsource-variable/noto-sans-georgian | 5.3.0 | web | грузинские буквы для ka.json (в Geist их нет); подключена одна грузинская грань, D140 |
+| @fontsource-variable/space-grotesk | 5.3.0 | web | заголовки и подписи чертежей, в бандле, без CDN (D145; заменил Geist) |
+| @fontsource/ibm-plex-sans, @fontsource/ibm-plex-mono | 5.3.0 | web | текст и адреса, в бандле, без CDN (D145; заменили Geist и Geist Mono) |
+| @fontsource-variable/noto-sans-georgian | 5.3.0 | web | грузинские буквы для ka.json (в Space Grotesk и IBM Plex их нет); подключена одна грузинская грань, D140 |
 | @wallet-standard/app | 1.1.1 | web | реестр кошельков в браузере (`getWallets`) |
 | @wallet-standard/base, @wallet-standard/features | 1.1.1 | web | типы кошелька, `standard:connect` и `standard:events` |
 | @solana/wallet-standard-features | 1.5.0 | web | `solana:signTransaction` |

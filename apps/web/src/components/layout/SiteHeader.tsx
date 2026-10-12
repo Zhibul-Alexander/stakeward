@@ -13,7 +13,7 @@ function NavLink({ href, icon: Icon, className, children }: { href: string; icon
   const [location] = useLocation();
   const current = location === href;
   return (
-    <Button asChild variant="ghost" size="sm" className={cn('aria-[current=page]:bg-subtle', className)}>
+    <Button asChild variant="ghost" size="sm" className={cn('aria-[current=page]:bg-primary-soft aria-[current=page]:text-primary', className)}>
       <Link href={href} aria-current={current ? 'page' : undefined}>
         {Icon === undefined ? null : <Icon aria-hidden="true" />}
         {children}
@@ -72,7 +72,7 @@ export function SiteHeader() {
   const moreOpen = openOn === location;
   return (
     <header
-      className="border-b border-border bg-background print:hidden"
+      className="border-b-2 border-primary bg-surface print:hidden"
       onKeyDown={(event) => {
         if (event.key === 'Escape' && moreOpen) {
           setOpenOn(null);
@@ -82,7 +82,7 @@ export function SiteHeader() {
     >
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 rounded-sm text-base font-semibold" aria-label={t('nav.home')}>
+          <Link href="/" className="flex items-center gap-2 rounded-sm font-display text-lg font-semibold tracking-tight text-primary" aria-label={t('nav.home')}>
             <img src="/favicon.svg" alt="" className="size-6" />
             {t('common.appName')}
           </Link>

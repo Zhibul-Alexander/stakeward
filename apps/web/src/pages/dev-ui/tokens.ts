@@ -93,6 +93,13 @@ export const SWATCH_CLASS: Record<string, string> = {
   'primary-soft': 'bg-primary-soft',
   inverse: 'bg-inverse',
   'on-inverse': 'bg-on-inverse',
+  accent: 'bg-accent',
+  'accent-ink': 'bg-accent-ink',
+  'accent-soft': 'bg-accent-soft',
+  'on-accent': 'bg-on-accent',
+  line: 'bg-line',
+  grid: 'bg-grid',
+  'grid-inverse': 'bg-grid-inverse',
   success: 'bg-success',
   'success-soft': 'bg-success-soft',
   'success-border': 'bg-success-border',
@@ -122,6 +129,7 @@ export const TEXT_CLASS: Record<string, string> = {
   lg: 'text-lg',
   '2xl': 'text-2xl',
   '3xl': 'text-3xl',
+  '4xl': 'text-4xl',
 };
 
 /** The role of each size (the table in tokens.css, DECISIONS.md D112). */
@@ -132,6 +140,7 @@ export const TEXT_ROLE: Record<string, MessageKey> = {
   lg: 'devUi.typeRoles.lg',
   '2xl': 'devUi.typeRoles.2xl',
   '3xl': 'devUi.typeRoles.3xl',
+  '4xl': 'devUi.typeRoles.4xl',
 };
 
 export const RADIUS_CLASS: Record<string, string> = {

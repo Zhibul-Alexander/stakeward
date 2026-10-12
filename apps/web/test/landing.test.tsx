@@ -99,13 +99,13 @@ const ROLE_SYNONYMS = /\b(second wallet|main wallet|backup key|primary key|recov
 describe('landing page structure', () => {
   it('has the hero, the three-step scheme, the ten limits, every section once and one primary button', async () => {
     renderLanding();
-    expect(screen.getByRole('heading', { level: 1, name: 'Protect your staked SOL' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'A second keyhole for your staked SOL' })).toBeInTheDocument();
 
     const steps = [...document.querySelectorAll('#how-it-works ol > li')];
     expect(steps.map((step) => step.querySelector('h3')?.textContent)).toEqual([
-      'Lock it with a second key',
-      'Get alerts',
-      'Rescue or withdraw',
+      'Lock',
+      'Watch',
+      'Withdraw or rescue',
     ]);
     // Never folded: the footer of every page links here (UX rule 12).
     expect(section('cannot-do').querySelectorAll('li')).toHaveLength(10);
@@ -166,7 +166,7 @@ describe('landing page structure', () => {
     expect(recover).toHaveTextContent('Its Solana CLI steps need a Ledger or keypair files.');
     // Whoever was sent a link to co-sign: a word for them, and what to check first.
     const coSign = section('for-second-key');
-    expect(within(coSign).getByRole('heading', { level: 2, name: 'Got a link to co-sign?' })).toBeInTheDocument();
+    expect(within(coSign).getByRole('heading', { level: 2, name: 'Sent a link to co-sign?' })).toBeInTheDocument();
     expect(within(coSign).getByRole('link', { name: 'What to check before you co-sign' })).toHaveAttribute('href', '/learn/faq#faq-co-sign');
 
     const external = [
@@ -446,12 +446,12 @@ describe('landing words and numbers', () => {
     renderLanding();
     await depositShown();
     const steps = [...section('how-it-works').querySelectorAll('ol > li')];
-    // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Rescue or withdraw": withdrawing
+    // F1.4: protecting has no path without the second key's signature. Step 3 is titled "Withdraw or rescue": withdrawing
     // takes both keys (F3), and a rescue needs a new wallet as well (F4: main key, second key and new wallet sign).
-    expect(steps[0]).toHaveTextContent('Both keys sign.');
-    expect(steps[2]).toHaveTextContent('Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet.');
+    expect(steps[0]).toHaveTextContent('Both keys sign once.');
+    expect(steps[2]).toHaveTextContent('Both keys withdraw together. Main key stolen? Main key, second key and a new wallet move the stake out.');
     // UX rule 6: the lock stops a thief only until it ends.
-    expect(within(section('protects')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
+    expect(within(section('second-key')).getByText(/gets no SOL while the lock holds\.$/)).toBeVisible();
     // CLAUDE.md 2.3: Phantom may append Lighthouse, so the claim is what Stakeward uses, and it names the programs.
     expect(within(section('security')).getByText(/^Stakeward uses only Solana's stake, system and fee programs\. It owns no program or token\.$/)).toBeVisible();
     // UX rule 10: only a phone wallet's own browser has a wallet to sign with; there is no Mobile Wallet Adapter.

@@ -72,7 +72,7 @@ async function landingShows(page: Page) {
   await expect(network).toContainText(text(DEVNET ? 'landing.network.devnet' : 'landing.network.mainnet'));
   await expect(network).not.toContainText(text(DEVNET ? 'landing.network.mainnet' : 'landing.network.devnet'));
   // The first screen answers what this is and offers the one main button without scrolling (D112: at 360 px its
-  // bottom stands above 740 px). Below 640 px the title is one line of text-2xl (32 px).
+  // bottom stands above 740 px). Below 640 px the title is at most two lines of text-3xl (2 x 40 px, D145).
   const checkStake = page.getByRole('main').getByRole('link', { name: text('landing.checkStake') }).first();
   await expect(checkStake).toHaveAttribute('data-variant', 'primary');
   await expect(checkStake).toBeInViewport();
@@ -82,7 +82,7 @@ async function landingShows(page: Page) {
   if (viewport !== null && viewport.width < 640) {
     expect((buttonBox?.y ?? Infinity) + (buttonBox?.height ?? 0)).toBeLessThan(740);
     const titleBox = await page.getByRole('heading', { level: 1, name: text('landing.title') }).boundingBox();
-    expect(titleBox?.height ?? Infinity).toBeLessThanOrEqual(32);
+    expect(titleBox?.height ?? Infinity).toBeLessThanOrEqual(80);
   }
   if (DEVNET) await recordScreenMetrics(page, 'landing-initial');
   const layout = await page.evaluate(() => {
@@ -503,12 +503,15 @@ test('every route renders under the production headers, without console errors o
         await page.setViewportSize(viewport);
       }
 
-      // Geist comes from the site itself (no CDN) and actually loads under the CSP.
-      const geistLoaded = await page.evaluate(async () => {
+      // The text and heading faces (D145) come from the site itself (no CDN) and actually load under the CSP.
+      const fontsLoaded = await page.evaluate(async () => {
         await document.fonts.ready;
-        return [...document.fonts].some((face) => face.family.includes('Geist') && face.status === 'loaded');
+        // Exact names: the local Fallback faces share the prefix and do not count.
+        const loaded = (family: string) =>
+          [...document.fonts].some((face) => face.family.replace(/["']/g, '') === family && face.status === 'loaded');
+        return { plex: loaded('IBM Plex Sans'), grotesk: loaded('Space Grotesk Variable') };
       });
-      expect(geistLoaded).toBe(true);
+      expect(fontsLoaded).toEqual({ plex: true, grotesk: true });
 
       // WCAG AA in both themes (tokens.css switches on prefers-color-scheme).
       await page.emulateMedia({ colorScheme: 'light' });

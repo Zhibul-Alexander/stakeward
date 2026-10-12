@@ -18,14 +18,13 @@ type SectionProps = {
 /**
  * One section of the landing page: the anchor the footer and the FAQ link to (`#<id>`), named by its h2
  * (`<id>-title`; `cannot-do-title` predates this page and stays). From 640 px the landing's h2 is `text-2xl`
- * (DECISIONS.md D112, type roles); below, where the hero's h1 is `text-2xl` too, it is the app's `text-lg`, so the h1
- * still leads.
+ * (DECISIONS.md D112, type roles), and below 640 px too since the hero's h1 is `text-3xl` there (D145). A drafting rule runs across the top and the title hangs under it, like the heading of a sheet (D145).
  */
 export function Section({ id, title, intro, children, className }: SectionProps) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-3 sm:gap-4', className)}>
+    <section id={id} aria-labelledby={`${id}-title`} className={cn('flex scroll-mt-4 flex-col gap-4 border-t-2 border-primary pt-5 sm:gap-6', className)}>
       <div className="flex max-w-prose flex-col gap-1 sm:gap-2">
-        <h2 id={`${id}-title`} className="text-lg font-semibold text-balance sm:text-2xl">
+        <h2 id={`${id}-title`} className="text-2xl text-balance">
           {title}
         </h2>
         {intro === undefined ? null : <p className="text-sm text-pretty text-muted sm:text-base">{intro}</p>}

@@ -226,6 +226,16 @@ const TEXT_PAIRS: [string, string][] = [
   ]),
   // QR modules on their ground (the same in both themes): scanners need strong contrast.
   ['qr-dark', 'qr-light'],
+  // The Second key's colour (D145): its text shade on every surface and on its note, text on its fill and its note,
+  // and the closing band's words over its paper lines.
+  ...SURFACES.map((bg): [string, string] => ['accent-ink', bg]),
+  ['accent-ink', 'accent-soft'],
+  ['foreground', 'accent-soft'],
+  ['primary', 'accent-soft'],
+  ['on-accent', 'accent'],
+  ['on-inverse', 'grid-inverse'],
+  // Key chips of the drawing: an unheld main key is primary text, an unheld new wallet muted text, on the figure.
+  ['background', 'foreground'],
 ];
 
 /** Control outlines, focus indicator and the checked fill need 3:1 against what surrounds them (WCAG 1.4.11). */
@@ -240,6 +250,14 @@ const UI_PAIRS: [string, string][] = [
   ['border-strong', 'subtle'],
   ['primary', 'primary-soft'],
   ['ring', 'primary-soft'],
+  // The drawing's parts that carry meaning (D145) against the figure's surface: the padlock, the date tag and the
+  // outline of a held second key (accent-ink), the dashed outline of a lost key (muted), a thief's key (danger) and
+  // the keyhole cut into a held second key (on-accent on accent).
+  ['accent-ink', 'surface'],
+  ['muted', 'surface'],
+  ['danger', 'surface'],
+  ['on-accent', 'accent'],
+  ['danger', 'danger-soft'],
 ];
 
 describe('tokens.css colours', () => {
@@ -305,8 +323,8 @@ describe('tokens.css colours', () => {
 
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The type scale (DECISIONS.md D112): six sizes, each with a role written in tokens.css. */
-const TYPE_SCALE = ['xs', 'sm', 'base', 'lg', '2xl', '3xl'];
+/** The type scale (DECISIONS.md D112, D145): seven sizes, each with a role written in tokens.css. */
+const TYPE_SCALE = ['xs', 'sm', 'base', 'lg', '2xl', '3xl', '4xl'];
 
 /** Sizes declared in tokens.css: `--text-<name>:`, not the sub-properties `--text-<name>--line-height:`. */
 function declaredTextSizes(css: string): string[] {
@@ -324,7 +342,7 @@ function textSizeClasses(code: string): string[] {
 describe('type scale', () => {
   const css = readFileSync(TOKENS_FILE, 'utf8');
 
-  it('tokens.css declares exactly six sizes', () => {
+  it('tokens.css declares exactly seven sizes', () => {
     expect(declaredTextSizes(css)).toEqual(TYPE_SCALE);
   });
 
@@ -335,7 +353,7 @@ describe('type scale', () => {
     expect(textSizeClasses(`const d = 'text-muted text-on-primary text-balance text-pretty var(--text-xl) text-xl-foo';`)).toEqual([]);
   });
 
-  it('every size class in src/ is one of the six', () => {
+  it('every size class in src/ is one of the seven', () => {
     const files = sourceFiles(SRC).filter((file) => file.endsWith('.ts') || file.endsWith('.tsx'));
     expect(files.length).toBeGreaterThan(10);
     const report = files.flatMap((file) =>

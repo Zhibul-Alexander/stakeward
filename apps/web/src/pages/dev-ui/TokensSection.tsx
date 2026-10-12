@@ -84,6 +84,7 @@ export function TokensSection() {
       </DemoGroup>
 
       <DemoGroup title={t('devUi.fonts')}>
+        <p className="font-display text-lg font-semibold">{t('devUi.displaySample')}</p>
         <p className="font-sans">{t('devUi.sansSample')}</p>
         <p className="font-mono text-sm break-all">{t('devUi.monoSample')}</p>
       </DemoGroup>
@@ -117,6 +118,13 @@ export function TokensSection() {
             </li>
           ))}
         </ul>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.paper')} note={t('devUi.paperNote')}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div aria-hidden="true" className="h-24 rounded-md border border-border bg-background bg-blueprint" />
+          <div aria-hidden="true" className="h-24 rounded-md bg-inverse bg-blueprint-inverse" />
+        </div>
       </DemoGroup>
 
       <DemoGroup title={t('devUi.radii')}>
