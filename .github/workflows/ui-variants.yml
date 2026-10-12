@@ -71,7 +71,12 @@ jobs:
             "observability": { "enabled": false }
           }
           JSON
-          ../../../worker/node_modules/.bin/wrangler deploy --config wrangler.json
+          # Cloudflare's API sometimes answers 504 while a new Worker is created; retry a few times.
+          for i in 1 2 3 4; do
+            ../../../worker/node_modules/.bin/wrangler deploy --config wrangler.json && exit 0
+            sleep $((i * 20))
+          done
+          exit 1
       - if: steps.has.outputs.ok == 'true'
         name: smoke check the live preview
         env:
