@@ -33,8 +33,9 @@ export function Hero({ cluster }: { cluster: Cluster }) {
         <p className="text-pretty text-muted sm:text-lg">{t('landing.lead')}</p>
       </div>
       <div className="flex flex-col gap-3">
-        {/* Side by side at every width: below 640 px the two share the row equally, so both stand in the first screen. */}
-        <div className="flex gap-3 *:flex-1 *:px-3 sm:*:flex-none sm:*:px-6">
+        {/* Side by side: below 640 px the two share the row equally, so both stand in the first screen. A translation too
+            long for one row (D140) puts the second under the first instead of past the screen's edge. */}
+        <div className="flex flex-wrap gap-3 *:flex-1 *:px-3 sm:*:flex-none sm:*:px-6">
           <Button asChild size="lg">
             <Link href="/app">{t('landing.checkStake')}</Link>
           </Button>

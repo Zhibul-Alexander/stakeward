@@ -1,4 +1,3 @@
-import { formatUtcDate } from '@stakeward/core';
 import { cn } from 'cn';
 import { CheckIcon, InfoIcon, KeyRoundIcon, LockKeyholeIcon, ShieldCheckIcon, TerminalIcon, XIcon, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -15,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { explorerUrl } from '@/config';
 import { useLoad, type Load } from '@/hooks/use-load';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 import { fetchChallengeKey } from './challenge-key.ts';
 import { challengeCommands, type ChallengeCommandId } from './commands.ts';
 import { CHALLENGE } from './wallet.ts';
@@ -151,7 +150,7 @@ function Commands({ secret }: { secret: string }) {
 export default function ChallengePage({ load = () => fetchChallengeKey() }: { load?: () => Promise<string> }) {
   const [attempt, setAttempt] = useState(0);
   const secret = useLoad(`challenge#${String(attempt)}`, load);
-  const until = formatUtcDate(CHALLENGE.lockUntil) ?? '';
+  const until = formatDate(CHALLENGE.lockUntil) ?? '';
   const retry = () => {
     setAttempt((value) => value + 1);
   };

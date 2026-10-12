@@ -1,11 +1,10 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate, formatUtcDateTime } from '@stakeward/core';
 import { BellRingIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { WatchedAccount, WatchedEvent } from '@/api/accounts';
 import { Section } from '@/components/layout/Section';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, formatDateTime, t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { ErrorState } from './error-state.tsx';
 
@@ -52,13 +51,13 @@ export function alertStatusText(current: WatchedAccount | null): string {
 /** The lock end as a date, or "No lock". */
 export function alertLockEndText(current: WatchedAccount | null): string {
   if (current === null || current.lock === 'ended') return t('alertExplain.noLock');
-  return formatUtcDate(current.lockUntil) ?? t('alertExplain.unknown');
+  return formatDate(current.lockUntil) ?? t('alertExplain.unknown');
 }
 
 /** A time as "12 April 2027, 10:30 UTC". */
 export function alertTimeText(date: Date | null): string {
   if (date === null) return t('alertExplain.unknown');
-  return formatUtcDateTime(BigInt(Math.floor(date.getTime() / 1000))) ?? t('alertExplain.unknown');
+  return formatDateTime(BigInt(Math.floor(date.getTime() / 1000))) ?? t('alertExplain.unknown');
 }
 
 /**

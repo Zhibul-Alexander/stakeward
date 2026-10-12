@@ -1,4 +1,4 @@
-import { formatUtcDate, isLockupInForce } from '@stakeward/core';
+import { isLockupInForce } from '@stakeward/core';
 import { TriangleAlertIcon } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { Link } from 'wouter';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CLUSTER } from '@/config';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import type { LoadedAccount } from '@/pages/account/AccountView';
 import { appLinks } from '@/pages/app/view';
 import { clockSkew } from '@/pages/protect/clock';
@@ -29,7 +29,7 @@ import {
 
 /** A date in the page's words; a lock end out of a Date's range shows its seconds rather than nothing. */
 function dateText(seconds: bigint): string {
-  return formatUtcDate(seconds) ?? seconds.toString();
+  return formatDate(seconds) ?? seconds.toString();
 }
 
 /** The words of a choice: its period and end date, or removing the lock. */

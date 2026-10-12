@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate, shortAddress, type SetupCheck, type SetupCheckFinding, type SetupCheckItem } from '@stakeward/core';
+import { shortAddress, type SetupCheck, type SetupCheckFinding, type SetupCheckItem } from '@stakeward/core';
 import {
   BellIcon,
   CalendarPlusIcon,
@@ -20,7 +20,7 @@ import { Link } from 'wouter';
 import { Section } from '@/components/layout/Section';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 import { AddressText } from './address-text.tsx';
 import { Disclosure } from './disclosure.tsx';
 import { EmptyState } from './empty-state.tsx';
@@ -144,7 +144,7 @@ export function setupCheckStatusLabel(item: SetupCheckItem): string {
 /** Why one account is listed, in plain words; `lockUntil` for a lock that ends soon. */
 export function setupCheckReason(finding: SetupCheckFinding, lockUntil?: bigint): string {
   if (finding.reason === 'ends-soon') {
-    return t('setupCheck.reasons.ends-soon', { date: lockUntil === undefined ? '' : (formatUtcDate(lockUntil) ?? '') });
+    return t('setupCheck.reasons.ends-soon', { date: lockUntil === undefined ? '' : (formatDate(lockUntil) ?? '') });
   }
   return t(`setupCheck.reasons.${finding.reason}`);
 }

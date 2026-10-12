@@ -90,6 +90,10 @@ The network charges 0.000005 SOL for each signature. Every Stakeward transaction
 
 For a rescue, put about 0.01 SOL on the new wallet: it pays every fee and, if a key signs by link, owns the link-signing account. The main key pays nothing in a rescue, because a thief's bot may empty a stolen wallet at any moment.
 
+## Languages
+
+The site is in English, Spanish and Georgian. English is the default; pick another language at the bottom of any page, and this browser remembers it. The translations were made with an AI model and have not yet been read by a native speaker: where a sentence is unclear, the English text is the reference. Telegram alerts, command lines and the labels a Ledger shows stay in English.
+
 ## Which wallets work
 
 **Tested: Phantom with Phantom.** Two Phantom accounts, the second one imported from a different seed phrase, on devnet (8 October 2026) and on mainnet (10 and 11 October 2026). Every step works after Phantom's warnings. Phantom may block the rescue as a possible theft ("Request blocked"), because a thief's transaction looks the same; you can go on with "Proceed anyway" after you check every address on Stakeward's screen. Signing by link does not work when Phantom on mainnet signs first: Phantom reorders a transaction on a link-signing account, and Stakeward refuses to send it. The same is true for preparing a one-tap rescue. Solflare and Backpack have not been tested. A Ledger was checked on the official emulator (Speculos): it shows all 25 kinds of Stakeward transactions as readable fields. It has not been tested on a device yet.

@@ -1,8 +1,7 @@
-import { formatUtcDate } from '@stakeward/core';
 import { CheckIcon, CopyIcon } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 
 /** One numbered step of the page (h2). */
 export function Section({ id, title, intro, children }: { id: string; title: string; intro?: string; children: ReactNode }) {
@@ -21,7 +20,7 @@ export function Section({ id, title, intro, children }: { id: string; title: str
 
 /** `14:13:05 UTC on 2 October 2026`: dev locks last minutes, so the time matters. */
 export function formatUtcDateTime(unixSeconds: bigint): string {
-  const date = formatUtcDate(unixSeconds);
+  const date = formatDate(unixSeconds);
   if (date === null) return unixSeconds.toString();
   const at = new Date(Number(unixSeconds) * 1000);
   const pad = (n: number) => String(n).padStart(2, '0');

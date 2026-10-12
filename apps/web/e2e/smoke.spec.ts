@@ -5,7 +5,7 @@ import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
 import { MAIN, mockApi, NOW, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
 import { recordScreenMetrics } from './screen-metrics.ts';
-import { text } from './texts.ts';
+import { catalogStrings, text } from './texts.ts';
 
 /**
  * Every route of the site under the production headers (CLAUDE.md sections 9, 11 and 13; step 8 spec 12.3), with the
@@ -18,6 +18,8 @@ const CLUSTER = process.env['E2E_CLUSTER'] === 'mainnet' ? 'mainnet' : 'devnet';
 const DEVNET = CLUSTER === 'devnet';
 const SCREENS_DIR = fileURLToPath(new URL('../../../docs/screens/', import.meta.url));
 const UPDATE_SCREENS = process.env['UPDATE_SCREENS'] === '1';
+/** With LOCALE_SHOTS=<dir>, the translated routes are also written there for a reader of the language to look over. */
+const SHOTS_DIR = process.env['LOCALE_SHOTS'] === '' ? undefined : process.env['LOCALE_SHOTS'];
 const STATIC_HEADERS = readStaticHeaders();
 const SOURCE_CODE_URL = 'https://github.com/Zhibul-Alexander/stakeward';
 
@@ -423,8 +425,9 @@ test('every route renders under the production headers, without console errors o
   page,
   expectNoA11yViolations,
 }) => {
-  // Each page is checked by axe in two themes; the landing page with every FAQ answer open is the longest.
-  test.setTimeout(20_000 * ROUTES.length);
+  // Each page is checked by axe in two themes; the landing page with every FAQ answer open is the longest. Then every
+  // route again in each translation, axe in one theme.
+  test.setTimeout(20_000 * ROUTES.length + 2 * 8_000 * ROUTES.length);
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
   const width = viewport.width;
   const apiRequests: string[] = [];
@@ -521,4 +524,54 @@ test('every route renders under the production headers, without console errors o
       await route.after?.(page);
     });
   }
+
+  // The same routes in Spanish and Georgian (D140), chosen as a viewer would have chosen them before: the page says it
+  // in that language (its h1 is a string of the catalog), marks the language for screen readers, and holds at 360 px
+  // with the header in its rows, though the words are longer than in English. Georgian letters come from the bundled
+  // Noto Sans Georgian.
+  for (const locale of ['es', 'ka'] as const) {
+    const strings = catalogStrings(locale);
+    await page.evaluate((value) => {
+      localStorage.setItem('stakeward:locale:v1', value);
+    }, locale);
+    for (const route of ROUTES) {
+      await test.step(`${locale} ${route.path}`, async () => {
+        await page.emulateMedia({ media: 'screen', colorScheme: 'light' });
+        const response = await page.goto(route.path);
+        expect(response?.status()).toBe(200);
+        await expect(page.locator('html')).toHaveAttribute('lang', locale);
+        const heading = page.getByRole('heading', { level: 1 });
+        await expect(heading).toBeVisible();
+        expect(strings.has((await heading.innerText()).trim()), 'h1 from the catalog').toBe(true);
+        if (route.ready !== undefined) await expect(page.locator('article[data-slot="account-row"]')).toBeVisible();
+        await page.waitForLoadState('networkidle');
+
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+        expect(overflow).toBe(0);
+        const header = await headerLayout(page);
+        if (width < 640) {
+          expect(header.rows).toBeLessThanOrEqual(2);
+          expect(header.height).toBeLessThanOrEqual(104);
+        } else {
+          expect(header.rows).toBe(1);
+        }
+        expect(header.pastLeft).toBeLessThanOrEqual(0.5);
+        expect(header.pastRight).toBeLessThanOrEqual(0.5);
+        if (locale === 'ka') {
+          const georgianLoaded = await page.evaluate(async () => {
+            await document.fonts.ready;
+            return [...document.fonts].some((face) => face.family.includes('Noto Sans Georgian') && face.status === 'loaded');
+          });
+          expect(georgianLoaded).toBe(true);
+        }
+        await expectNoA11yViolations();
+        if (SHOTS_DIR !== undefined && route.screen !== undefined) {
+          await page.screenshot({ path: `${SHOTS_DIR}/${route.screen}-${locale}-${String(width)}.png`, fullPage: true, animations: 'disabled' });
+        }
+      });
+    }
+  }
+  await page.evaluate(() => {
+    localStorage.removeItem('stakeward:locale:v1');
+  });
 });

@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDate, scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
+import { scannerStatus, stakeActivationStatus, type ClockView, type StakeAccount } from '@stakeward/core';
 import { cn } from 'cn';
 import {
   CircleAlertIcon,
@@ -23,7 +23,7 @@ import { RiskNote } from '@/components/product/risk-note';
 import { Button } from '@/components/ui/button';
 import { telegramLinkPath } from '@/api/telegram';
 import type { WatchState } from '@/api/watch';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import type { SigningTestOptions } from '@/signing/create';
 import { isLinkOpen, isRetryable, retryableOutcomes } from '@/pages/account/check';
 import { appLinks } from '@/pages/app/view';
@@ -148,7 +148,7 @@ export function ProtectDoneView({
   const waitsForLink = others.some(isLinkOpen) && others.some(isRetryable);
   const uncertain = others.filter((job) => job.state.kind === 'unknown');
   const lockEndPassed = others.some((job) => job.state.kind === 'refused' && job.state.reason === 'lock-end-passed');
-  const lockDate = lockUntil === null ? null : formatUtcDate(lockUntil);
+  const lockDate = lockUntil === null ? null : formatDate(lockUntil);
   const HeadIcon = allDone ? CircleCheckIcon : TriangleAlertIcon;
 
   return (

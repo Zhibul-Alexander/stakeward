@@ -1,7 +1,6 @@
 import type { Address } from '@solana/kit';
 import {
   formatSol,
-  formatUtcDate,
   isLockupInForce,
   scannerStatus,
   shortAddress,
@@ -30,7 +29,7 @@ import { ErrorState } from '@/components/product/error-state';
 import { roleLabel } from '@/components/product/wallet-slot';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { KeySlot } from '@/pages/app/KeySlot';
 import type { MainKeyAccountsState } from '@/pages/protect/load';
@@ -277,7 +276,7 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
                 : t('rescue.stake.safeUntil', {
                     count: locked.length,
                     amount: formatSol(sumLamports(locked)),
-                    date: formatUtcDate(earliest) ?? '',
+                    date: formatDate(earliest) ?? '',
                   })}
             </StatusLine>
           )}
@@ -290,7 +289,7 @@ function Accounts({ groups, clock, knownSecondKeys }: { groups: RescueGroups; cl
           )}
           {endsSoon.map(({ account, end }) => (
             <StatusLine key={account.address} icon={ClockIcon} tone="warning">
-              {t('rescue.stake.endsSoon', { address: shortAddress(account.address), date: formatUtcDate(end) ?? '' })}
+              {t('rescue.stake.endsSoon', { address: shortAddress(account.address), date: formatDate(end) ?? '' })}
             </StatusLine>
           ))}
         </div>

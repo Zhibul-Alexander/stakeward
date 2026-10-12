@@ -1,6 +1,6 @@
 import { formatSol, RECOVERY_CLI_VERSION, REMINDER_DAYS } from '@stakeward/core';
 import type { Load } from '@/hooks/use-load';
-import type { Messages } from '@/i18n';
+import { formatList, type Messages } from '@/i18n';
 import { MAX_RESCUE_ACCOUNTS, SUGGESTED_RESCUE_LAMPORTS } from '@/pages/rescue/wizard';
 import { depositText } from './deposit.ts';
 
@@ -48,8 +48,13 @@ export const FAQ_EXTRAS: Partial<Record<FaqId, 'ledger' | 'gate-link' | 'rescue-
   'check-tx': 'check-link',
 };
 
-/** The reminder days as a sentence fragment: "30, 14, 7, 3, and 1" (core REMINDER_DAYS, the worker's thresholds). */
-export const REMINDER_DAYS_TEXT = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(REMINDER_DAYS.map(String));
+/**
+ * The reminder days as a sentence fragment in the current language: "30, 14, 7, 3, and 1" (core REMINDER_DAYS, the
+ * worker's thresholds).
+ */
+export function reminderDaysText(): string {
+  return formatList(REMINDER_DAYS.map(String));
+}
 
 /**
  * One params object for every FAQ answer and for landing.alerts.events.reminders. Numbers come from code and the
@@ -59,7 +64,7 @@ export const REMINDER_DAYS_TEXT = new Intl.ListFormat('en', { style: 'long', typ
  */
 export function useFaqParams(deposit: Load<bigint>): Record<string, string> {
   return {
-    days: REMINDER_DAYS_TEXT,
+    days: reminderDaysText(),
     deposit: depositText(deposit),
     rescueAmount: formatSol(SUGGESTED_RESCUE_LAMPORTS),
     rescueMax: String(MAX_RESCUE_ACCOUNTS),

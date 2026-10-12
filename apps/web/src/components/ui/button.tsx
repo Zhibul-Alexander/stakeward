@@ -25,7 +25,8 @@ const buttonVariants = cva(
         outline: 'border-border bg-surface text-foreground hover:bg-subtle active:scale-98',
         ghost: 'text-foreground hover:bg-subtle active:scale-96',
         danger: 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover active:scale-98',
-        link: 'h-auto px-0 text-primary underline underline-offset-4 hover:text-primary-hover',
+        // Inline in prose, so it wraps like prose: a long label (a translation, D140) breaks into lines, not past the edge.
+        link: 'h-auto px-0 text-left whitespace-normal text-primary underline underline-offset-4 hover:text-primary-hover',
       },
       size: {
         sm: 'h-8 px-3 text-sm',

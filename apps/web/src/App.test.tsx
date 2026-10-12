@@ -1,8 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { App } from './App.tsx';
+import { loadLocale } from './i18n/index.ts';
+import es from './i18n/es.json';
+import ka from './i18n/ka.json';
 
 function renderAt(path: string) {
   const { hook, searchHook } = memoryLocation({ path, static: true });
@@ -89,5 +93,42 @@ describe('app shell', () => {
     const home = within(main).getByRole('link', { name: 'Go to the start page' });
     expect(home).toHaveAttribute('href', '/');
     expect(home).toHaveAttribute('data-variant', 'ghost');
+  });
+});
+
+describe('interface language (D140)', () => {
+  afterEach(async () => {
+    await loadLocale('en');
+    localStorage.clear();
+  });
+
+  it('is English by default and switches the whole site from the footer, keeping what the page holds', async () => {
+    const user = userEvent.setup();
+    renderAt('/check');
+    const footer = screen.getByRole('contentinfo');
+    const languages = within(footer).getByRole('group', { name: 'Language' });
+    expect(within(languages).getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
+    // Each language is named in itself and marked with its language for screen readers.
+    expect(within(languages).getByRole('button', { name: 'ქართული' })).toHaveAttribute('lang', 'ka');
+    expect(within(footer).queryByText(es.footer.translated)).toBeNull();
+    await user.type(screen.getByLabelText('Transaction'), 'AQAB');
+
+    await user.click(within(languages).getByRole('button', { name: 'Español' }));
+    expect(await screen.findByRole('heading', { level: 1, name: es.check.title })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('es');
+    expect(screen.getByRole('navigation', { name: es.nav.label })).toBeInTheDocument();
+    expect(screen.getByLabelText(es.check.inputLabel)).toHaveValue('AQAB');
+    expect(within(footer).getByText(es.footer.translated)).toBeInTheDocument();
+    expect(within(footer).getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem('stakeward:locale:v1')).toBe('es');
+
+    await user.click(within(footer).getByRole('button', { name: 'ქართული' }));
+    expect(await screen.findByRole('heading', { level: 1, name: ka.check.title })).toBeInTheDocument();
+    expect(screen.getByLabelText(ka.check.inputLabel)).toHaveValue('AQAB');
+
+    await user.click(within(footer).getByRole('button', { name: 'English' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check a transaction' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('en');
+    expect(localStorage.getItem('stakeward:locale:v1')).toBeNull();
   });
 });

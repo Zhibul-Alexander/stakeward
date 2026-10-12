@@ -138,7 +138,7 @@ const TITLES = {
   'custodian-signature-missing': 'Your second key is part of this transaction but did not sign. Ask it to sign, then send again.',
   'already-deactivated': 'This stake is already deactivated. Refresh to see its current state.',
   'too-soon-to-redelegate': 'This stake is still deactivating. Delegate it again after the current epoch ends.',
-  'insufficient-delegation': 'This stake holds less than the 1 SOL minimum the network allows to delegate.',
+  'insufficient-delegation': 'This stake holds less than the 1 SOL minimum the network requires for delegation.',
   'merge-mismatch': 'These stake accounts cannot be combined: their keys or locks differ.',
   'missing-signature':
     'A key that must sign did not, or it no longer controls this stake. Check the connected wallets and try again.',

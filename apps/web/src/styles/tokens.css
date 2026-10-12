@@ -85,8 +85,9 @@
   --color-qr-dark: #10131a;
   --color-qr-light: #ffffff;
 
-  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. */
-  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Typography. Geist is bundled from @fontsource-variable (no CDN); the fallbacks cover the first paint. Georgian
+     letters, which Geist lacks, come from Noto Sans Georgian (bundled the same way). */
+  --font-sans: 'Geist Variable', 'Noto Sans Georgian Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*

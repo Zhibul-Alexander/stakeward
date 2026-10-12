@@ -92,8 +92,12 @@ export function SiteHeader() {
           ) : null}
         </div>
         <nav aria-label={t('nav.label')} className="flex w-full items-center gap-1 sm:w-auto">
-          <NavLink href="/app">{t('nav.app')}</NavLink>
-          <NavLink href="/rescue" icon={LifeBuoyIcon}>
+          {/* Below 640 px the three items of the nav row sit closer (8 px padding, not 12): longer words of a translation
+              (D140) still fit the 328 px of a 360 px screen. */}
+          <NavLink href="/app" className="max-sm:px-2">
+            {t('nav.app')}
+          </NavLink>
+          <NavLink href="/rescue" icon={LifeBuoyIcon} className="max-sm:px-2">
             {t('nav.rescue')}
           </NavLink>
           <SecondaryLinks className="hidden lg:inline-flex" />
@@ -103,7 +107,7 @@ export function SiteHeader() {
             size="sm"
             aria-expanded={moreOpen}
             aria-controls={moreOpen ? moreId : undefined}
-            className="ml-auto sm:ml-0 lg:hidden"
+            className="ml-auto max-sm:px-2 sm:ml-0 lg:hidden"
             onClick={() => {
               setOpenOn(moreOpen ? null : location);
             }}

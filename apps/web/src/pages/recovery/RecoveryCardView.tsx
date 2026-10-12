@@ -2,7 +2,6 @@ import {
   CLI_ERROR_MESSAGES,
   cliUrl,
   formatSol,
-  formatUtcDateTime,
   INSTALL_CLI_COMMAND,
   LAMPORTS_PER_SIGNATURE,
   LEDGER_PUBKEY_COMMAND,
@@ -27,7 +26,7 @@ import { RiskNote } from '@/components/product/risk-note';
 import { SolAmount } from '@/components/product/sol-amount';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CLUSTER, SOURCE_CODE_URL } from '@/config';
-import { t, type MessageKey } from '@/i18n';
+import { formatDateTime, t, type MessageKey } from '@/i18n';
 import { appLinks } from '@/pages/app/view';
 import { SUGGESTED_RESCUE_LAMPORTS } from '@/pages/rescue/wizard';
 import { absoluteUrl, PrintedLink } from './PrintedLink.tsx';
@@ -63,7 +62,7 @@ const BEFORE_CLI_ANCHOR = 'recovery-before-cli';
 
 /** A lock end as the card says it: date and time in UTC (the reader may live in any time zone, DECISIONS.md D74). */
 function dateTime(unixSeconds: bigint): string {
-  return formatUtcDateTime(unixSeconds) ?? String(unixSeconds);
+  return formatDateTime(unixSeconds) ?? String(unixSeconds);
 }
 
 /** The same inside a sentence, on one line: a narrow screen must not split "before 29" / "October 2026". */

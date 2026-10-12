@@ -1,5 +1,5 @@
 import { address, type Address } from '@solana/kit';
-import { formatAlert, formatUtcDate, lockupEndForPeriod, shortAddress } from '@stakeward/core';
+import { formatAlert, lockupEndForPeriod, shortAddress } from '@stakeward/core';
 import { cn } from 'cn';
 import { BellRingIcon, LifeBuoyIcon, RotateCcwIcon, ShieldCheckIcon, SkullIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { t, type MessageKey } from '@/i18n';
+import { formatDate, t, type MessageKey } from '@/i18n';
 
 /**
  * /demo: an interactive story for the pitch. Part 1, without Stakeward: a thief with a copy of the main key takes the
@@ -217,7 +217,7 @@ export function DemoPage({ stepMs = 900, now = () => new Date() }: { stepMs?: nu
   const [signer, setSigner] = useState<Actor | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [lockEnd] = useState(() => lockupEndForPeriod(now(), 6));
-  const lockDate = formatUtcDate(lockEnd) ?? '';
+  const lockDate = formatDate(lockEnd) ?? '';
 
   useEffect(
     () => () => {

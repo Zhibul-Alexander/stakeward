@@ -1,5 +1,5 @@
 import type { Address } from '@solana/kit';
-import { formatUtcDateTime, shortAddress } from '@stakeward/core';
+import { shortAddress } from '@stakeward/core';
 import { CircleAlertIcon, FlaskConicalIcon, LoaderCircleIcon, PrinterIcon, ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'wouter';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CLUSTER } from '@/config';
 import type { Load } from '@/hooks/use-load';
-import { t } from '@/i18n';
+import { formatDateTime, t, useLocale } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { parseAccountParam } from '@/pages/account/load';
 import { appLinks } from '@/pages/app/view';
@@ -60,7 +60,7 @@ function CardMeta({ card }: { card: RecoveryCard }) {
   return (
     <>
       {/* Non-breaking spaces keep the date and its time together: "UTC." never stands alone on a line. */}
-      <p>{t('recovery.readAt', { date: (formatUtcDateTime(card.readAt) ?? String(card.readAt)).replaceAll(' ', '\u00a0') })}</p>
+      <p>{t('recovery.readAt', { date: (formatDateTime(card.readAt) ?? String(card.readAt)).replaceAll(' ', '\u00a0') })}</p>
       {CLUSTER === 'devnet' ? (
         <p>
           <Badge tone="outline" className="mr-2 align-middle">
@@ -176,8 +176,10 @@ export function RecoveryPage() {
   const [attempt, setAttempt] = useState(0);
   const load = useRecovery(chain, route, attempt);
   const card = load.status === 'ready' && load.value.kind === 'card' ? load.value.card : null;
+  const locale = useLocale();
 
-  // The tab title, and so the file name a browser suggests for Save as PDF: one per stake account, not "Stakeward".
+  // The tab title, and so the file name a browser suggests for Save as PDF: one per stake account, not "Stakeward". In
+  // the current language, so it follows a switch in the footer.
   useEffect(() => {
     if (route === null) return undefined;
     const previous = document.title;
@@ -185,7 +187,7 @@ export function RecoveryPage() {
     return () => {
       document.title = previous;
     };
-  }, [route]);
+  }, [route, locale]);
 
   // The header and the card share one max-w-3xl column (the card's print layout, DECISIONS.md D77), so Print ends where
   // the card ends. Back to the main key's accounts stands above the title and is not printed.

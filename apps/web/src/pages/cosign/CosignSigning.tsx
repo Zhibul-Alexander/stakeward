@@ -3,7 +3,6 @@ import {
   actionRoles,
   actionTarget,
   formatSol,
-  formatUtcDate,
   missingSignatures,
   scannerStatus,
   stakeActivationStatus,
@@ -21,7 +20,7 @@ import { StopPanel } from '@/components/product/stop-panel';
 import { roleLabel } from '@/components/product/wallet-slot';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { t } from '@/i18n';
+import { formatDate, t } from '@/i18n';
 import { checkJobAgain, isLanded } from '@/pages/account/check';
 import { JobOutcome } from '@/pages/account/JobOutcome';
 import { KeySlot } from '@/pages/app/KeySlot';
@@ -279,7 +278,7 @@ function Request({ summary, lamports }: { summary: TransactionSummary; lamports:
   switch (action.kind) {
     case 'protect': {
       // The holder of the second key learns, with the date, what they take on: the owner then needs their signature.
-      const date = formatUtcDate(action.lockUntil) ?? action.lockUntil.toString();
+      const date = formatDate(action.lockUntil) ?? action.lockUntil.toString();
       return (
         <CosignRequest
           {...common}
