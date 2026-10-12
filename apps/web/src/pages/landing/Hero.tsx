@@ -24,8 +24,8 @@ export function Hero({ cluster }: { cluster: Cluster }) {
             <GlobeIcon aria-hidden="true" />
             {t(devnet ? 'landing.network.devnet' : 'landing.network.mainnet')}
           </Badge>
-          {/* From 1024 px the header says the devnet note in the same words, so the hero does not repeat it there. */}
-          <span className={devnet ? 'lg:hidden' : undefined}>{t(devnet ? 'landing.network.devnetNote' : 'landing.network.mainnetNote')}</span>
+          {/* The header shows only the Devnet badge (D143): what devnet means is said here, at every width. */}
+          <span>{t(devnet ? 'landing.network.devnetNote' : 'landing.network.mainnetNote')}</span>
         </p>
         <h1 id="landing-title" className="text-2xl text-balance sm:text-3xl">
           {t('landing.title')}

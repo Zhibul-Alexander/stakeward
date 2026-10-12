@@ -469,10 +469,9 @@ test('every route renders under the production headers, without console errors o
       const devnetBadge = page.getByRole('banner').getByText(text('common.devnet'), { exact: true });
       if (DEVNET) await expect(devnetBadge).toBeVisible();
       else await expect(devnetBadge).toHaveCount(0);
-      // What devnet means, in words where there is room for them (768 px and up), never in a tooltip.
-      const devnetNote = page.getByRole('banner').getByText(text('common.devnetNote'), { exact: true });
-      if (DEVNET && width >= 768) await expect(devnetNote).toBeVisible();
-      else await expect(devnetNote).toBeHidden();
+      // The language in the header, on every page and at every width (D143); what devnet means is said on the landing
+      // page, not in the header.
+      await expect(page.getByRole('banner').getByRole('button', { name: `${text('nav.language')}: English` })).toBeVisible();
 
       await route.shows?.(page);
       if (route.noApi === true) expect(apiRequests).toEqual([]);

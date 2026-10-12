@@ -74,12 +74,14 @@ describe('app shell', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Design system' }, { timeout: 20_000 })).toBeInTheDocument();
   }, 30_000);
 
-  it('marks devnet in the header, with what it means in words (not a tooltip)', () => {
+  // D143: the header marks devnet with its badge only; the landing page says in words what it means (not a tooltip).
+  it('marks devnet in the header with its badge, and says what it means on the landing page', () => {
     renderAt('/');
     const header = screen.getByRole('banner');
     expect(within(header).getByText('Devnet')).toBeInTheDocument();
-    expect(within(header).getByText('Test network: no real SOL.')).toBeInTheDocument();
+    expect(header).not.toHaveTextContent('no real SOL');
     expect(header.querySelector('[title]')).toBeNull();
+    expect(within(screen.getByRole('main')).getByText('Test network: no real SOL.')).toBeInTheDocument();
   });
 
   it('gives a page that does not exist a word for a broken signing link and a way on', () => {
@@ -102,31 +104,36 @@ describe('interface language (D140)', () => {
     localStorage.clear();
   });
 
-  it('is English by default and switches the whole site from the footer, keeping what the page holds', async () => {
+  it('is English by default and switches the whole site from the header, keeping what the page holds', async () => {
     const user = userEvent.setup();
     renderAt('/check');
+    const header = screen.getByRole('banner');
     const footer = screen.getByRole('contentinfo');
-    const languages = within(footer).getByRole('group', { name: 'Language' });
-    expect(within(languages).getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true');
-    // Each language is named in itself and marked with its language for screen readers.
-    expect(within(languages).getByRole('button', { name: 'ქართული' })).toHaveAttribute('lang', 'ka');
+    const choose = async (current: string, next: string) => {
+      await user.click(within(header).getByRole('button', { name: current }));
+      const list = within(header).getByRole('list', { name: /Language|Idioma|ენა/ });
+      // Each language is named in itself and marked with its language for screen readers.
+      expect(within(list).getByRole('button', { name: 'ქართული' })).toHaveAttribute('lang', 'ka');
+      await user.click(within(list).getByRole('button', { name: next }));
+    };
+    expect(within(header).getByRole('button', { name: 'Language: English' })).toHaveTextContent('EN');
     expect(within(footer).queryByText(es.footer.translated)).toBeNull();
     await user.type(screen.getByLabelText('Transaction'), 'AQAB');
 
-    await user.click(within(languages).getByRole('button', { name: 'Español' }));
+    await choose('Language: English', 'Español');
     expect(await screen.findByRole('heading', { level: 1, name: es.check.title })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('es');
     expect(screen.getByRole('navigation', { name: es.nav.label })).toBeInTheDocument();
     expect(screen.getByLabelText(es.check.inputLabel)).toHaveValue('AQAB');
     expect(within(footer).getByText(es.footer.translated)).toBeInTheDocument();
-    expect(within(footer).getByRole('button', { name: 'Español' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(header).getByRole('button', { name: `${es.nav.language}: Español` })).toHaveTextContent('ES');
     expect(localStorage.getItem('stakeward:locale:v1')).toBe('es');
 
-    await user.click(within(footer).getByRole('button', { name: 'ქართული' }));
+    await choose(`${es.nav.language}: Español`, 'ქართული');
     expect(await screen.findByRole('heading', { level: 1, name: ka.check.title })).toBeInTheDocument();
     expect(screen.getByLabelText(ka.check.inputLabel)).toHaveValue('AQAB');
 
-    await user.click(within(footer).getByRole('button', { name: 'English' }));
+    await choose(`${ka.nav.language}: ქართული`, 'English');
     expect(await screen.findByRole('heading', { level: 1, name: 'Check a transaction' })).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
     expect(localStorage.getItem('stakeward:locale:v1')).toBeNull();

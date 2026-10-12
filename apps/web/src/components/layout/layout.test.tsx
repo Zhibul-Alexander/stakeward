@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it } from 'vitest';
+import { MAINNET_SITE_URL } from '@/config';
 import { Page } from './Page.tsx';
 import { PageHeader } from './PageHeader.tsx';
 import { Section } from './Section.tsx';
@@ -121,5 +122,48 @@ describe('SiteHeader', () => {
     await user.click(within(opened).getByRole('link', { name: 'Demo' }));
     expect(window.location.pathname).toBe('/demo');
     expect(more).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // D143: the other network's site is a button with an outline, the last link of the nav on both sites, so it stays in
+  // place when you switch networks; the header shows the Devnet badge but no sentence about it.
+  it('ends the nav with the other network as an outlined button, and says nothing more about devnet', () => {
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const links = within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link');
+    const network = links.at(-1);
+    expect(network).toHaveAttribute('href', MAINNET_SITE_URL);
+    expect(network).toHaveAttribute('data-variant', 'outline');
+    expect(network).toHaveTextContent('Go to mainnet');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('no real SOL');
+  });
+
+  it('opens the language list under its button and closes it on Escape, a click elsewhere and a choice', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/');
+    render(<SiteHeader />);
+    const button = screen.getByRole('button', { name: 'Language: English' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await user.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('list', { name: 'Language' });
+    expect(within(list).getAllByRole('button').map((item) => [item.textContent, item.getAttribute('lang')])).toEqual([
+      ['English', 'en'],
+      ['Español', 'es'],
+      ['ქართული', 'ka'],
+    ]);
+    expect(within(list).getByRole('button', { name: 'English' })).toHaveAttribute('aria-current', 'true');
+
+    await user.keyboard('{Escape}');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveFocus();
+
+    await user.click(button);
+    await user.click(screen.getByRole('link', { name: 'Stakeward home' }));
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(button);
+    await user.click(within(screen.getByRole('list', { name: 'Language' })).getByRole('button', { name: 'English' }));
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveFocus();
   });
 });

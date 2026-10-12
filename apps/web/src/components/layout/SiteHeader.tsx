@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { IS_DEVNET, MAINNET_SITE_URL, TESTNET_SITE_URL } from '@/config';
 import { t } from '@/i18n';
+import { LanguageMenu } from './LanguageMenu.tsx';
 
 /** A ghost link of the header's nav; the page it opens is marked as the current one (`aria-current`). */
 function NavLink({ href, icon: Icon, className, children }: { href: string; icon?: LucideIcon | undefined; className?: string | undefined; children: ReactNode }) {
@@ -21,11 +22,15 @@ function NavLink({ href, icon: Icon, className, children }: { href: string; icon
   );
 }
 
-/** The link to the other network's copy of the site (D136): mainnet from devnet, devnet from mainnet. It leaves this site. */
+/**
+ * The link to the other network's copy of the site (D136): mainnet from devnet, devnet from mainnet. It leaves this
+ * site, so it is a button with an outline, not a ghost link like the pages of this one; and it stands last, at the
+ * right end of the header on both sites, so switching networks does not move it (D143).
+ */
 function NetworkLink({ className }: { className?: string | undefined }) {
   const Icon = IS_DEVNET ? GlobeIcon : FlaskConicalIcon;
   return (
-    <Button asChild variant="ghost" size="sm" className={className}>
+    <Button asChild variant="outline" size="sm" className={className}>
       <a href={IS_DEVNET ? MAINNET_SITE_URL : TESTNET_SITE_URL}>
         <Icon aria-hidden="true" />
         {IS_DEVNET ? t('nav.tryMainnet') : t('nav.tryTestnet')}
@@ -52,8 +57,8 @@ function SecondaryLinks({ className }: { className?: string | undefined }) {
 }
 
 /**
- * The site header (DECISIONS.md D112, D141): the mark and name, the network on devnet (a badge and, from 1024 px, what
- * it means), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
+ * The site header (DECISIONS.md D112, D141, D143): the mark and name, the Devnet badge on devnet, the interface
+ * language (D140), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
  * every width. The rest (the demo, the devnet challenge, the other network's site) stands in the row from 1024 px;
  * below that a More button opens it as a list under the header, so a phone sees no icon-only links and one row of nav.
  * Below 640 px the nav takes the second row. Boxes (the current page's pill, the focus ring) stay inside the content
@@ -75,29 +80,29 @@ export function SiteHeader() {
         }
       }}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link href="/" className="flex items-center gap-2 rounded-sm text-base font-semibold" aria-label={t('nav.home')}>
             <img src="/favicon.svg" alt="" className="size-6" />
             {t('common.appName')}
           </Link>
           {IS_DEVNET ? (
-            <>
-              <Badge tone="outline">
-                <FlaskConicalIcon aria-hidden="true" />
-                {t('common.devnet')}
-              </Badge>
-              <span className="hidden text-xs text-muted lg:inline">{t('common.devnetNote')}</span>
-            </>
+            <Badge tone="outline">
+              <FlaskConicalIcon aria-hidden="true" />
+              {t('common.devnet')}
+            </Badge>
           ) : null}
         </div>
+        {/* Right of the mark on the first row below 640 px; from 640 px left of the nav, so the order you see is the
+            order you tab through and the other network's button stays the last item. */}
+        <LanguageMenu className="ml-auto" />
         <nav aria-label={t('nav.label')} className="flex w-full items-center gap-1 sm:w-auto">
-          {/* Below 640 px the three items of the nav row sit closer (8 px padding, not 12): longer words of a translation
-              (D140) still fit the 328 px of a 360 px screen. */}
-          <NavLink href="/app" className="max-sm:px-2">
+          {/* Below 1024 px the three items of the nav sit closer (8 px padding, not 12): longer words of a translation
+              (D140) still fit the 328 px of a 360 px screen, and the one row from 640 px with the language (D143). */}
+          <NavLink href="/app" className="max-lg:px-2">
             {t('nav.app')}
           </NavLink>
-          <NavLink href="/rescue" icon={LifeBuoyIcon} className="max-sm:px-2">
+          <NavLink href="/rescue" icon={LifeBuoyIcon} className="max-lg:px-2">
             {t('nav.rescue')}
           </NavLink>
           <SecondaryLinks className="hidden lg:inline-flex" />
@@ -107,7 +112,7 @@ export function SiteHeader() {
             size="sm"
             aria-expanded={moreOpen}
             aria-controls={moreOpen ? moreId : undefined}
-            className="ml-auto max-sm:px-2 sm:ml-0 lg:hidden"
+            className="ml-auto max-lg:px-2 sm:ml-0 lg:hidden"
             onClick={() => {
               setOpenOn(moreOpen ? null : location);
             }}

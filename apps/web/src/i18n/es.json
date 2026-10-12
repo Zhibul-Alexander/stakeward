@@ -27,7 +27,6 @@
     "cannotMoveSol": "Esta transacción no puede mover tus SOL.",
     "networkFee": "Comisión de red",
     "devnet": "Devnet",
-    "devnetNote": "Red de pruebas: sin SOL reales.",
     "roles": {
       "main": "Clave principal",
       "second": "Segunda clave",
@@ -56,7 +55,8 @@
     "challenge": "Intenta robarlo",
     "tryTestnet": "Probar en la red de pruebas",
     "tryMainnet": "Ir a mainnet",
-    "more": "Más"
+    "more": "Más",
+    "language": "Idioma"
   },
   "footer": {
     "label": "Pie de página",
@@ -66,7 +66,6 @@
     "stats": "Estadísticas",
     "license": "Sin garantía. Licencia MIT.",
     "learn": "Detalles y preguntas frecuentes",
-    "language": "Idioma",
     "translated": "Traducido del inglés. Si una frase no queda clara, la versión en inglés es la de referencia."
   },
   "landing": {

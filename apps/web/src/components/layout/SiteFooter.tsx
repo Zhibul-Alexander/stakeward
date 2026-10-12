@@ -1,8 +1,7 @@
 import { ExternalLinkIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { CANNOT_DO_PATH, SOURCE_CODE_URL } from '@/config';
-import { t } from '@/i18n';
-import { LanguageSwitch } from './LanguageSwitch.tsx';
+import { t, useLocale } from '@/i18n';
 
 const LINK_CLASS = 'rounded-sm underline underline-offset-4 hover:text-foreground';
 
@@ -12,14 +11,16 @@ const LINK_CLASS = 'rounded-sm underline underline-offset-4 hover:text-foregroun
  * and says so (step 8 spec L14). From 640 px the license stands left and the links right; the license is plain text
  * after the links in the DOM, so no link changes its place in the tab order. Below 640 px the links sit closer, so all
  * three fit the 328 px of a 360 px screen (about 306 px of words) and "Stats" does not wrap onto a row of its own.
- * Under the trust line, the interface language (D140).
+ * Under the trust line, on a translated page, that English is the reference (D140).
  */
 export function SiteFooter() {
+  const locale = useLocale();
   return (
     <footer className="border-t border-border print:hidden">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-6 text-sm text-muted">
         <p>{t('footer.trust')}</p>
-        <LanguageSwitch />
+        {/* A translated page says that English is the reference (D140); the language itself is chosen in the header. */}
+        {locale === 'en' ? null : <p>{t('footer.translated')}</p>}
         <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between sm:gap-6">
           <nav aria-label={t('footer.label')}>
             <ul role="list" className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-6">
