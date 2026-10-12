@@ -1,0 +1,184 @@
+/* v14 "Evidence" design tokens: same names as src/styles/tokens.css, values for this variant. */
+
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /*
+   * v14 "Evidence". Light theme: a cool grey record sheet (not cream), white panels, near-black ink, one petrol
+   * primary for the screen's one action and for links. Status tones as in the base system (word + colour + icon).
+   */
+  --color-background: #f2f4f3;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-subtle: #e7eae8;
+  --color-subtle-hover: #dce0de;
+  --color-foreground: #14191b;
+  --color-muted: #4a5458;
+  --color-border: #d3d8d6;
+  --color-border-strong: #6c7679;
+  --color-ring: #0b6a7a;
+  --color-primary: #0b5462;
+  --color-primary-hover: #083f4a;
+  --color-on-primary: #ffffff;
+  --color-primary-soft: #e1eef0;
+  --color-inverse: #1b2225;
+  --color-on-inverse: #f2f4f3;
+
+  --color-success: #17643a;
+  --color-success-soft: #dcf3e4;
+  --color-success-border: #8fd3a8;
+  --color-warning: #8a3f0b;
+  --color-warning-soft: #fbefd6;
+  --color-warning-border: #e9b866;
+  --color-neutral: #3e474b;
+  --color-neutral-soft: #e4e8e7;
+  --color-neutral-border: #c3cac8;
+  --color-info: #0b5470;
+  --color-info-soft: #e0eff6;
+  --color-info-border: #9cc9de;
+  --color-danger: #b0201c;
+  --color-danger-soft: #fbe3e1;
+  --color-danger-border: #eea19c;
+  --color-danger-solid: #b0201c;
+  --color-danger-solid-hover: #8f1915;
+  --color-on-danger: #ffffff;
+
+  --color-qr-dark: #14191b;
+  --color-qr-light: #ffffff;
+
+  /*
+   * Type roles. Claims and page titles: Source Serif 4 (a reading serif with the voice of a written report).
+   * Interface and record text: Public Sans (plain, neutral, built for public-service forms where clarity beats style).
+   * Signatures, addresses and program error names only: IBM Plex Mono (these are values to compare character by character).
+   */
+  --font-serif: 'Source Serif 4 Variable', 'Source Serif Fallback', ui-serif, Georgia, serif;
+  --font-sans: 'Public Sans Variable', 'Public Sans Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.05rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.3rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: 1.75rem;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 2.1rem;
+  --text-2xl--letter-spacing: -0.01em;
+  --text-2xl--font-weight: 600;
+  --text-3xl: 2.5rem;
+  --text-3xl--line-height: 2.9rem;
+  --text-3xl--letter-spacing: -0.015em;
+  --text-3xl--font-weight: 600;
+  --text-4xl: 3.25rem;
+  --text-4xl--line-height: 3.6rem;
+  --text-4xl--letter-spacing: -0.02em;
+  --text-4xl--font-weight: 600;
+
+  --spacing: 0.25rem;
+
+  --grid-template-columns-account-row: minmax(0, 1fr) auto auto auto;
+  --grid-template-columns-account-row-actions: minmax(0, 1fr) auto minmax(9.5rem, max-content) minmax(3.5rem, max-content);
+  /* The record: claim on the left, the checks behind it on the right (from 1024 px). */
+  --grid-template-columns-record: minmax(0, 5fr) minmax(0, 7fr);
+
+  /* Radii: small and square-ish. A record is a document; only status badges stay round. */
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.3125rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* One elevation only: popovers. Panels sit flat on the sheet, separated by hairlines. */
+  --shadow-sm: 0 1px 2px 0 rgb(20 25 27 / 0.06);
+  --shadow-md: 0 4px 10px -2px rgb(20 25 27 / 0.1), 0 2px 4px -2px rgb(20 25 27 / 0.06);
+  --shadow-lg: 0 12px 24px -6px rgb(20 25 27 / 0.14), 0 4px 8px -4px rgb(20 25 27 / 0.08);
+
+  --default-transition-duration: var(--motion-duration-fast);
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  --animate-fade-in: fade-in var(--motion-duration-normal) ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --motion-duration-fast: 150ms;
+  --motion-duration-normal: 200ms;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0e1315;
+    --color-surface: #151c1f;
+    --color-surface-raised: #1d2629;
+    --color-subtle: #222b2f;
+    --color-subtle-hover: #2c373b;
+    --color-foreground: #e7ecec;
+    --color-muted: #a4afb2;
+    --color-border: #2a3539;
+    --color-border-strong: #7b878b;
+    --color-ring: #7cc6d3;
+    --color-primary: #7cc6d3;
+    --color-primary-hover: #a3dbe4;
+    --color-on-primary: #06282e;
+    --color-primary-soft: #133338;
+    --color-inverse: #e7ecec;
+    --color-on-inverse: #151c1f;
+
+    --color-success: #8fdcaa;
+    --color-success-soft: #10301f;
+    --color-success-border: #1f6b42;
+    --color-warning: #f2c36b;
+    --color-warning-soft: #36270a;
+    --color-warning-border: #8a5a12;
+    --color-neutral: #c3cac8;
+    --color-neutral-soft: #253033;
+    --color-neutral-border: #4a5458;
+    --color-info: #8ccde6;
+    --color-info-soft: #0d2733;
+    --color-info-border: #1f5e78;
+    --color-danger: #f5a29c;
+    --color-danger-soft: #3a1513;
+    --color-danger-border: #8f1915;
+    --color-danger-solid: #b0201c;
+    --color-danger-solid-hover: #cf2b25;
+    --color-on-danger: #ffffff;
+
+    --color-qr-dark: #14191b;
+    --color-qr-light: #ffffff;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 12px 24px -6px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Print: the light values above (the dark block is screen only), and light browser-drawn parts. */
+@media print {
+  :root {
+    color-scheme: light;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-fast: 0ms;
+    --motion-duration-normal: 0ms;
+  }
+}
