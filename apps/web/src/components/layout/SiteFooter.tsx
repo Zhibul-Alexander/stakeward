@@ -16,9 +16,9 @@ const LINK_CLASS = 'rounded-sm underline underline-offset-4 hover:text-foregroun
 export function SiteFooter() {
   const locale = useLocale();
   return (
-    <footer className="border-t border-border print:hidden">
+    <footer className="mt-8 border-t-2 border-primary bg-surface print:hidden">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-6 text-sm text-muted">
-        <p>{t('footer.trust')}</p>
+        <p className="font-display text-base font-medium text-foreground">{t('footer.trust')}</p>
         {/* A translated page says that English is the reference (D140); the language itself is chosen in the header. */}
         {locale === 'en' ? null : <p>{t('footer.translated')}</p>}
         <div className="flex flex-col gap-3 sm:flex-row-reverse sm:items-center sm:justify-between sm:gap-6">

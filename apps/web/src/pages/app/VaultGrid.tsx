@@ -1,6 +1,7 @@
-import { formatSol, formatUtcDate, shortAddress, type ClockView } from '@stakeward/core';
+import { formatSol, shortAddress, type ClockView } from '@stakeward/core';
 import { cn } from 'cn';
 import { StatusBadge, type StatusBadgeStatus } from '@/components/product/status-badge';
+import { formatDate, t } from '@/i18n';
 import type { AccountView } from './view.ts';
 
 /** The classes written out in full: Tailwind only generates utilities it finds in the source. */
@@ -35,26 +36,29 @@ function shareOf(part: bigint, total: bigint): number {
 }
 
 /**
- * v10 /app: every stake account of this main key drawn as a strongbox tile, sized by its SOL, so the unlocked share of
- * the stake is visible before any row is read. Status is a word, a colour and an icon (StatusBadge) plus the box's
- * shackle, shut or open. A largest account of about half the stake or more stands as the lead box, spanning the rows
- * of the others; otherwise the boxes flow, each about as wide as its share. Details and actions stay in the rows below.
+ * /app (D145): every stake account of this main key drawn as a box, sized by its SOL, so the unlocked share of the
+ * stake is visible before any row is read. Status is a word, a colour and an icon (StatusBadge) plus the box's shackle,
+ * shut or open. A largest account of about half the stake or more stands as the lead box, spanning the rows of the
+ * others; otherwise the boxes flow, each about as wide as its share. Details and actions stay in the rows below. One
+ * account draws nothing: its row already says it all.
  */
 export function VaultGrid({ rows, clock }: { rows: readonly AccountView[]; clock: ClockView }) {
-  if (rows.length === 0) return null;
+  if (rows.length < 2) return null;
   const total = rows.reduce((sum, row) => sum + row.account.lamports, 0n);
   const sorted = [...rows].sort((a, b) => (a.account.lamports === b.account.lamports ? 0 : a.account.lamports > b.account.lamports ? -1 : 1));
-  const leadShare = shareOf(sorted[0]!.account.lamports, total);
+  const [lead] = sorted;
+  if (lead === undefined) return null;
+  const leadShare = shareOf(lead.account.lamports, total);
   const leadMode = sorted.length >= 2 && sorted.length <= 5 && leadShare >= 0.45;
   const leadSpan = clamp(Math.round(leadShare * 12), 6, 8);
 
   return (
     <section aria-labelledby="vault-grid-title" data-slot="vault-grid" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 id="vault-grid-title" className="font-display text-lg font-semibold">
-          Your stake, to scale
+        <h2 id="vault-grid-title" className="text-lg font-semibold">
+          {t('app.vault.title')}
         </h2>
-        <p className="text-sm text-muted">Each box is one stake account, sized by its SOL.</p>
+        <p className="text-sm text-muted">{t('app.vault.note')}</p>
       </div>
       <ul role="list" className="grid grid-flow-dense auto-rows-fr grid-cols-6 gap-2 sm:grid-cols-12 sm:gap-3">
         {sorted.map((row, index) => {
@@ -82,7 +86,7 @@ function Tile({ row, clock, lead, share }: { row: AccountView; clock: ClockView;
   const locked = protection !== 'unprotected';
   const date =
     locked && account.lockup.epoch === 0n && account.lockup.unixTimestamp > 0n && account.lockup.unixTimestamp > clock.unixTimestamp
-      ? formatUtcDate(account.lockup.unixTimestamp)
+      ? formatDate(account.lockup.unixTimestamp)
       : null;
   const percent = Math.max(1, Math.round(share * 100));
   return (
@@ -99,7 +103,7 @@ function Tile({ row, clock, lead, share }: { row: AccountView; clock: ClockView;
           <span className="font-mono">{shortAddress(account.address)}</span>
           <span className="tabular-nums">{percent}%</span>
         </p>
-        <p className="text-xs text-pretty">{date === null ? (locked ? 'Locked' : 'No lock: the main key withdraws alone') : `Locked until ${date}`}</p>
+        <p className="text-xs text-pretty">{date === null ? t(locked ? 'app.vault.locked' : 'app.vault.noLock') : t('app.vault.until', { date })}</p>
       </div>
     </div>
   );

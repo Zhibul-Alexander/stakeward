@@ -69,11 +69,11 @@
     "translated": "Traducido del inglés. Si una frase no queda clara, la versión en inglés es la de referencia."
   },
   "landing": {
-    "title": "Protege tus SOL en staking",
-    "lead": "Bloquea tus cuentas de stake existentes con una segunda clave, para que un ladrón con tu clave principal no pueda retirar los SOL que contienen.",
+    "title": "Una segunda clave para tus SOL en staking",
+    "lead": "Cada cuenta de stake de Solana trae un bloqueo integrado. Stakeward lo activa, así que tu clave principal sola ya no puede retirar.",
     "checkStake": "Revisar mi stake",
     "protectStake": "Proteger mi stake",
-    "checkStakeHint": "Para revisar no necesitas billetera ni firmas nada.",
+    "checkStakeHint": "Para revisar no necesitas billetera. No hay nada que firmar.",
     "tryTestnet": "Pruébalo primero en la red de pruebas, con SOL de prueba gratis",
     "tryMainnet": "¿Listo para usar SOL reales? Ve al sitio de mainnet",
     "points": {
@@ -87,32 +87,28 @@
       "devnetNote": "Red de pruebas: sin SOL reales."
     },
     "how": {
-      "title": "Cómo funciona",
-      "intro": "Cada cuenta de stake de Solana trae un bloqueo integrado. Stakeward lo activa.",
+      "title": "Tres pasos",
       "step1": {
-        "title": "Bloquéalo con una segunda clave",
-        "body": "Elige una billetera de otra frase semilla. Firman las dos claves. Tu stake sigue generando recompensas."
+        "title": "Bloquea",
+        "body": "Elige una segunda clave de otra frase semilla. Las dos claves firman una vez. El stake sigue generando recompensas."
       },
       "step2": {
-        "title": "Recibe alertas",
+        "title": "Vigila",
         "body": "Telegram te avisa cuando algo cambia y antes de que termine el bloqueo."
       },
       "step3": {
-        "title": "Rescata o retira",
-        "body": "Para retirar, firman las dos claves juntas. ¿Te robaron la clave principal? Tu clave principal, tu segunda clave y una billetera nueva firman juntas, y el stake pasa a la billetera nueva."
+        "title": "Retira o rescata",
+        "body": "Las dos claves retiran juntas. ¿Te robaron la clave principal? La clave principal, la segunda clave y una billetera nueva sacan el stake."
       },
       "period": "Un bloqueo dura 1, 3, 6 o 12 meses, o hasta la fecha que elijas, con un máximo de 10 años.",
       "periodDevnet": "En devnet también puedes probar 10 minutos o 1 hora."
     },
     "protects": {
-      "title": "Lo que el bloqueo impide",
-      "needsSecondTitle": "Requiere tu segunda clave",
       "needsSecond": {
         "withdraw": "Retirar SOL",
         "owner": "Pasar el stake a otra billetera",
         "lock": "Extender, acortar o quitar el bloqueo"
       },
-      "mainAloneTitle": "Tu clave principal, por sí sola, aún puede",
       "mainAlone": {
         "deactivate": "Dejar de hacer staking",
         "redelegate": "Mover el stake a otro validador",
@@ -123,14 +119,17 @@
     },
     "secondKey": {
       "title": "Antes de elegir una segunda clave",
-      "freeze": "No puede llevarse tus SOL, pero sí puede mantenerlos bloqueados, incluso durante años.",
       "differentSeed": "Créala a partir de una frase semilla distinta.",
       "apart": "Guárdala lejos de tu clave principal: en una billetera de hardware, en otro dispositivo o con una persona de confianza.",
-      "more": "Qué hace buena a una segunda clave"
+      "more": "Qué hace buena a una segunda clave",
+      "alone": "Tu segunda clave, sola",
+      "can": "Mantener el stake bloqueado: mover la fecha final, incluso años, o pasar el bloqueo a otra clave.",
+      "cannot": "Retirar tus SOL o pasar el stake a otra billetera.",
+      "keepSafe": "Guárdala tan bien como tu clave principal."
     },
     "cannotDo": {
       "title": "Lo que Stakeward no puede hacer",
-      "intro": "Lee esto antes de proteger tu stake.",
+      "intro": "Léelo antes de bloquear nada.",
       "items": {
         "scope": "Proteger tokens de staking líquido, stake en exchanges, SOL en una billetera o cuentas de voto.",
         "mainKeyActions": "Impedir que un ladrón con tu clave principal desactive o mueva tu stake.",
@@ -231,13 +230,13 @@
       "onChain": "Qué cambia en la red"
     },
     "coSign": {
-      "title": "¿Recibiste un enlace para firmar?",
+      "title": "¿Te enviaron un enlace para firmar?",
       "body": "Alguien hizo de tu billetera su segunda clave. Firma solo si te lo pidió por voz o en persona. Firmar como su segunda clave nunca mueve tus propios SOL.",
       "more": "Qué revisar antes de firmar"
     },
     "cta": {
-      "title": "Empieza por mirar",
-      "body": "Pega una dirección de billetera y mira qué cuentas de stake están protegidas. No hay nada que firmar."
+      "title": "Mira antes de bloquear",
+      "body": "Pega una dirección de billetera. Mira cada cuenta de stake y su bloqueo. No hay nada que firmar."
     },
     "demoLink": "Mira un robo paso a paso en la demo",
     "learnMore": {
@@ -247,6 +246,55 @@
       "costs": "Las comisiones de red y el depósito que se devuelve.",
       "wallets": "Qué billeteras se probaron y cómo.",
       "safety": "Por qué Stakeward no puede llevarse tus SOL."
+    },
+    "diagram": {
+      "pick": "¿Quién tiene cada clave?",
+      "scenarios": {
+        "thief": {
+          "label": "Un ladrón tiene tu clave principal",
+          "who": "El ladrón, con una copia de tu clave principal",
+          "caption": "Puede detener, mover o dividir tu staking y quedarse con su gestión, pero ningún SOL sale de la cuenta mientras el bloqueo esté activo. Tú también conservas la clave principal, así que puedes rescatar el stake."
+        },
+        "lost": {
+          "label": "Perdiste la segunda clave",
+          "who": "Tú, solo con tu clave principal",
+          "caption": "Nadie puede retirar antes de la fecha final. Después, tu clave principal vuelve a funcionar sola."
+        },
+        "secondStolen": {
+          "label": "Un ladrón tiene tu segunda clave",
+          "who": "El ladrón, con tu segunda clave",
+          "caption": "El límite honesto: no puede llevarse tus SOL, pero puede mantenerlos bloqueados moviendo la fecha final, incluso años. Cuida la segunda clave como la clave principal."
+        },
+        "rescue": {
+          "label": "Rescate: ambas claves y una billetera nueva",
+          "who": "Tú, con ambas claves y una billetera nueva",
+          "caption": "Las tres firman una vez. La cuenta de stake pasa a la billetera nueva, fuera del alcance del ladrón; el bloqueo, su fecha y tu segunda clave quedan como estaban."
+        }
+      },
+      "rescueAction": "Rescatarlo a una billetera nueva",
+      "canCount": "Posible: {can} de {total}.",
+      "needs": "Requiere: {keys}.",
+      "result": {
+        "yes": "Posible",
+        "no": "Imposible",
+        "later": "Tras la fecha final"
+      },
+      "holder": {
+        "you": "Tú",
+        "thief": "Ladrón",
+        "lost": "Perdida"
+      },
+      "lock": {
+        "label": "Bloqueo",
+        "holds": "Hasta el {date}",
+        "wait": "Hasta el {date}: esperas a esa fecha",
+        "anyDate": "Hasta la fecha que elija el ladrón",
+        "unchanged": "Sin cambios: hasta el {date}"
+      },
+      "newWallet": {
+        "idle": "No hace falta",
+        "rescue": "Se queda con la cuenta de stake"
+      }
     }
   },
   "status": {
@@ -635,18 +683,19 @@
     "darkTheme": "Tema oscuro",
     "typeScale": "Escala tipográfica",
     "typeSample": "Protege tus SOL en staking",
-    "typeScaleNote": "Seis tamaños, ninguno más. Pesos 400, 500 y 600. Importes, conteos, comisiones y cuentas regresivas usan cifras tabulares.",
+    "typeScaleNote": "Siete tamaños, ninguno más. Pesos 400, 500 y 600. Importes, conteos, comisiones y cuentas regresivas usan cifras tabulares.",
     "typeRoles": {
       "xs": "Metadatos, insignias, leyendas, letra pequeña del pie",
       "sm": "Texto de interfaz: filas, botones, tablas, el recibo, etiquetas",
       "base": "Prosa: página de inicio, explicaciones, introducciones, campos; h3 en semibold",
       "lg": "h2 en la app (Section), título del recibo, importe de la fila desde 640 px",
       "2xl": "h1 por debajo de 640 px, h2 de la página de inicio, la respuesta (titular del resumen, titular de Listo, estadísticas)",
-      "3xl": "h1 desde 640 px (PageHeader y la portada de la página de inicio)"
+      "3xl": "h1 desde 640 px (PageHeader), el titular de la portada por debajo de 640 px",
+      "4xl": "El titular de la portada, solo desde 640 px"
     },
     "fonts": "Fuentes",
-    "sansSample": "Geist: Stakeward nunca te pide tu frase semilla.",
-    "monoSample": "Geist Mono: 7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ",
+    "sansSample": "IBM Plex Sans: Stakeward nunca te pide tu frase semilla.",
+    "monoSample": "IBM Plex Mono: 7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ",
     "spacing": "Espaciado",
     "spacingNote": "Una unidad es {unit}. Clases como p-4 y gap-2 son múltiplos de ella.",
     "spacingRule": "Las páginas ponen gap-8 entre bloques (gap-12 desde 640 px). Una sección pone gap-4 entre sus filas. Los paneles usan p-4 de relleno (p-6 desde 640 px).",
@@ -837,7 +886,9 @@
       "askAi": "AskAi",
       "transactionCheck": "TransactionCheck",
       "protectionCheck": "ProtectionCheck",
-      "alertExplanation": "AlertExplanation"
+      "alertExplanation": "AlertExplanation",
+      "keyDiagram": "KeyDiagram",
+      "vaultGrid": "VaultGrid"
     },
     "signing": "Firma",
     "link": "Firma por enlace",
@@ -876,7 +927,12 @@
       "landingWallets": "Página de inicio: tabla de billeteras"
     },
     "textareaLabel": "Transacción",
-    "textareaPlaceholder": "Base64 o base58"
+    "textareaPlaceholder": "Base64 o base58",
+    "displaySample": "Space Grotesk: títulos y rótulos de los dibujos",
+    "paper": "Papel de dibujo técnico",
+    "paperNote": "bg-blueprint detrás de cada página y bg-blueprint-inverse en la franja invertida: una línea de cuadrícula en cada celda, con los colores de la cuadrícula.",
+    "keyDiagramNote": "La figura de la portada: una cuenta de stake, sus dos claves y la fecha final. Elige un caso: cambian las cerraduras, la etiqueta de la fecha y la billetera nueva, y solo se mueven las respuestas que cambian.",
+    "vaultGridNote": "/app: cada cuenta de stake como una caja del tamaño de sus SOL, a partir de dos cuentas (con una no se dibuja nada). Normal: una caja principal junto a las demás. Completo: todos los estados, cajas repartidas según su parte."
   },
   "app": {
     "title": "Tus cuentas de stake",
@@ -969,6 +1025,13 @@
     "forgetKeys": {
       "button": "Olvidar las claves en este dispositivo",
       "hint": "Este navegador olvidará las billeteras que conectaste como Clave principal, Segunda clave y Billetera nueva, y las segundas claves que recuerda. No cambia nada en la red; puedes volver a conectarlas cuando quieras."
+    },
+    "vault": {
+      "title": "Tu stake, a escala",
+      "note": "Cada caja es una cuenta de stake, del tamaño de sus SOL.",
+      "locked": "Bloqueada",
+      "noLock": "Sin bloqueo: la clave principal retira sola",
+      "until": "Bloqueada hasta el {date}"
     }
   },
   "protect": {

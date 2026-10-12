@@ -39,8 +39,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, t } from '@/i18n';
 import type { HealthState } from '@/pages/app/hooks';
 import { MonitoringStatus } from '@/pages/app/MonitoringStatus';
+import { VaultGrid } from '@/pages/app/VaultGrid';
 import { appLinks } from '@/pages/app/view';
 import { FaqAnswer } from '@/pages/landing/Faq.tsx';
+import { KeyDiagram } from '@/pages/landing/KeyDiagram.tsx';
 import { reminderDaysText } from '@/pages/landing/faq.ts';
 import { AlertExplanationDemos, ProtectionCheckDemos } from './CheckDemos.tsx';
 import { DarkPreview } from './DarkPreview.tsx';
@@ -946,6 +948,21 @@ export function ComponentsSection() {
           />
           <NoStakeAccounts headingLevel={3} />
         </DarkPreview>
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.keyDiagram')} note={t('devUi.keyDiagramNote')}>
+        <KeyDiagram />
+      </DemoGroup>
+
+      <DemoGroup title={t('devUi.names.vaultGrid')} note={t('devUi.vaultGridNote')}>
+        <div className="flex flex-col gap-6">
+          <Demo label={t('devUi.states.normal')}>
+            <VaultGrid rows={[...byKey('protected'), ...byKey('unprotected'), ...byKey('expiring')]} clock={clock} />
+          </Demo>
+          <Demo label={t('devUi.states.full')}>
+            <VaultGrid rows={rows} clock={clock} />
+          </Demo>
+        </div>
       </DemoGroup>
 
       <DemoGroup title={t('devUi.names.keyList')}>

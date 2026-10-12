@@ -69,11 +69,11 @@
     "translated": "Translated from English. If a sentence is unclear, the English version is the reference."
   },
   "landing": {
-    "title": "Protect your staked SOL",
-    "lead": "Lock your existing stake accounts with a second key, so a thief with your main key cannot withdraw them.",
+    "title": "A second keyhole for your staked SOL",
+    "lead": "Every Solana stake account has a lock built in. Stakeward turns it on, so your main key alone can no longer withdraw.",
     "checkStake": "Check my stake",
     "protectStake": "Protect my stake",
-    "checkStakeHint": "Checking needs no wallet and signs nothing.",
+    "checkStakeHint": "Checking needs no wallet. Nothing to sign.",
     "tryTestnet": "Try it first on testnet, with free test SOL",
     "tryMainnet": "Ready for real SOL? Go to the mainnet site",
     "points": {
@@ -87,32 +87,28 @@
       "devnetNote": "Test network: no real SOL."
     },
     "how": {
-      "title": "How it works",
-      "intro": "Every Solana stake account has a lock built in. Stakeward turns it on.",
+      "title": "Three moves",
       "step1": {
-        "title": "Lock it with a second key",
-        "body": "Pick a wallet from a different seed phrase. Both keys sign. Your stake keeps earning."
+        "title": "Lock",
+        "body": "Pick a second key from a different seed phrase. Both keys sign once. The stake keeps earning."
       },
       "step2": {
-        "title": "Get alerts",
-        "body": "Telegram tells you when anything changes, and before the lock ends."
+        "title": "Watch",
+        "body": "Telegram pings you when anything changes, and before the lock ends."
       },
       "step3": {
-        "title": "Rescue or withdraw",
-        "body": "Withdraw with both keys signing together. Main key stolen? Your main key, second key and a new wallet sign together, and the stake moves to the new wallet."
+        "title": "Withdraw or rescue",
+        "body": "Both keys withdraw together. Main key stolen? Main key, second key and a new wallet move the stake out."
       },
       "period": "A lock lasts 1, 3, 6 or 12 months, or until a date you pick, up to 10 years ahead.",
       "periodDevnet": "On devnet you can also try 10 minutes or 1 hour."
     },
     "protects": {
-      "title": "What the lock stops",
-      "needsSecondTitle": "Needs your second key",
       "needsSecond": {
         "withdraw": "Withdraw SOL",
         "owner": "Hand the stake to another wallet",
         "lock": "Extend, shorten or remove the lock"
       },
-      "mainAloneTitle": "Your main key alone can still",
       "mainAlone": {
         "deactivate": "Stop staking",
         "redelegate": "Move the stake to another validator",
@@ -123,14 +119,17 @@
     },
     "secondKey": {
       "title": "Before you pick a second key",
-      "freeze": "It cannot take your SOL, but it can keep it locked, even for years.",
       "differentSeed": "Make it from a different seed phrase.",
       "apart": "Keep it apart from your main key: a hardware wallet, another device or a person you trust.",
-      "more": "What makes a good second key"
+      "more": "What makes a good second key",
+      "alone": "Your second key, alone",
+      "can": "Keep the stake locked: move the end date, even years ahead, or hand the lock to another key.",
+      "cannot": "Withdraw your SOL, or hand the stake to another wallet.",
+      "keepSafe": "Keep it as safe as your main key."
     },
     "cannotDo": {
       "title": "What Stakeward cannot do",
-      "intro": "Read this before you protect your stake.",
+      "intro": "Read before you lock anything.",
       "items": {
         "scope": "Protect liquid staking tokens, exchange stake, SOL in a wallet or vote accounts.",
         "mainKeyActions": "Stop a thief with your main key from unstaking or moving your stake.",
@@ -231,13 +230,13 @@
       "onChain": "What changes on the network"
     },
     "coSign": {
-      "title": "Got a link to co-sign?",
+      "title": "Sent a link to co-sign?",
       "body": "Someone made your wallet their second key. Sign only if they asked you by voice or in person. Co-signing never moves your own SOL.",
       "more": "What to check before you co-sign"
     },
     "cta": {
-      "title": "Start by looking",
-      "body": "Paste a wallet address and see which stake accounts are protected. Nothing to sign."
+      "title": "Look before you lock",
+      "body": "Paste a wallet address. See every stake account and its lock. Nothing to sign."
     },
     "demoLink": "Watch a theft play out in the demo",
     "learnMore": {
@@ -247,6 +246,55 @@
       "costs": "Network fees and the deposit that comes back.",
       "wallets": "Which wallets were tested, and how.",
       "safety": "Why Stakeward cannot take your SOL."
+    },
+    "diagram": {
+      "pick": "Who holds which key?",
+      "scenarios": {
+        "thief": {
+          "label": "A thief has your main key",
+          "who": "The thief, with a copy of your main key",
+          "caption": "They can stop, move or split your staking and take over managing it, but no SOL leaves the account while the lock holds. You still hold the main key too, so you can rescue the stake."
+        },
+        "lost": {
+          "label": "You lost the second key",
+          "who": "You, with only your main key",
+          "caption": "Nobody can withdraw before the end date. After it, your main key works alone again."
+        },
+        "secondStolen": {
+          "label": "A thief has your second key",
+          "who": "The thief, with your second key",
+          "caption": "The honest limit: they cannot take your SOL, but they can keep it locked by moving the end date, even years ahead. Guard the second key like the main key."
+        },
+        "rescue": {
+          "label": "Rescue: both keys and a new wallet",
+          "who": "You, with both keys and a new wallet",
+          "caption": "All three sign once. The stake account moves to the new wallet, out of the thief's reach; the lock, its date and your second key stay as they were."
+        }
+      },
+      "rescueAction": "Rescue it to a new wallet",
+      "canCount": "Possible: {can} of {total}.",
+      "needs": "Needs: {keys}.",
+      "result": {
+        "yes": "Can",
+        "no": "Cannot",
+        "later": "After the end date"
+      },
+      "holder": {
+        "you": "You",
+        "thief": "Thief",
+        "lost": "Lost"
+      },
+      "lock": {
+        "label": "Lock",
+        "holds": "Until {date}",
+        "wait": "Until {date}: you wait for it",
+        "anyDate": "Until any date the thief picks",
+        "unchanged": "Unchanged: until {date}"
+      },
+      "newWallet": {
+        "idle": "Not needed",
+        "rescue": "Takes over the stake account"
+      }
     }
   },
   "status": {
@@ -635,18 +683,19 @@
     "darkTheme": "Dark theme",
     "typeScale": "Type scale",
     "typeSample": "Protect your staked SOL",
-    "typeScaleNote": "Six sizes, no others. Weights 400, 500 and 600. Amounts, counts, fees and countdowns use tabular figures.",
+    "typeScaleNote": "Seven sizes, no others. Weights 400, 500 and 600. Amounts, counts, fees and countdowns use tabular figures.",
     "typeRoles": {
       "xs": "Meta, badges, captions, footer fine print",
       "sm": "Interface text: rows, buttons, tables, the receipt, labels",
       "base": "Prose: landing, explanations, leads, inputs; h3 in semibold",
       "lg": "h2 in the app (Section), receipt title, row amount from 640 px",
       "2xl": "h1 below 640 px, landing h2, the answer (summary headline, Done headline, stats)",
-      "3xl": "h1 from 640 px (PageHeader and the landing hero)"
+      "3xl": "h1 from 640 px (PageHeader), the landing headline below 640 px",
+      "4xl": "The landing headline from 640 px only"
     },
     "fonts": "Fonts",
-    "sansSample": "Geist: Stakeward never asks for your seed phrase.",
-    "monoSample": "Geist Mono: 7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ",
+    "sansSample": "IBM Plex Sans: Stakeward never asks for your seed phrase.",
+    "monoSample": "IBM Plex Mono: 7xKTg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgA9fQ",
     "spacing": "Spacing",
     "spacingNote": "One unit is {unit}. Classes such as p-4 and gap-2 are multiples of it.",
     "spacingRule": "Pages put gap-8 between blocks (gap-12 from 640 px). A section puts gap-4 between its rows. Panels pad p-4 (p-6 from 640 px).",
@@ -837,7 +886,9 @@
       "askAi": "AskAi",
       "transactionCheck": "TransactionCheck",
       "protectionCheck": "ProtectionCheck",
-      "alertExplanation": "AlertExplanation"
+      "alertExplanation": "AlertExplanation",
+      "keyDiagram": "KeyDiagram",
+      "vaultGrid": "VaultGrid"
     },
     "signing": "Signing",
     "link": "Signing by link",
@@ -876,7 +927,12 @@
       "landingWallets": "Landing: wallet table"
     },
     "textareaLabel": "Transaction",
-    "textareaPlaceholder": "Base64 or base58"
+    "textareaPlaceholder": "Base64 or base58",
+    "displaySample": "Space Grotesk: headings and the labels of drawings",
+    "paper": "Drafting paper",
+    "paperNote": "bg-blueprint behind every page and bg-blueprint-inverse on the inverse band: one grid line every cell, in the grid colours.",
+    "keyDiagramNote": "The landing figure: one stake account, its two keys and the end date. Pick a case: the keyholes, the date tag and the new wallet change, and only the answers that change move.",
+    "vaultGridNote": "/app: each stake account as a box sized by its SOL, from two accounts up (one account draws nothing). Normal: a lead box beside the others. Full: every status, boxes flowing by share."
   },
   "app": {
     "title": "Your stake accounts",
@@ -969,6 +1025,13 @@
     "forgetKeys": {
       "button": "Forget keys on this device",
       "hint": "This browser forgets the wallets you connected as Main key, Second key and New wallet, and the second keys it remembers. Nothing changes on the network; connect again any time."
+    },
+    "vault": {
+      "title": "Your stake, to scale",
+      "note": "Each box is one stake account, sized by its SOL.",
+      "locked": "Locked",
+      "noLock": "No lock: the main key withdraws alone",
+      "until": "Locked until {date}"
     }
   },
   "protect": {

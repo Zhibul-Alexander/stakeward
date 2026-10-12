@@ -1,12 +1,36 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
+/* D145: Space Grotesk for headings and the drawings' labels, IBM Plex Sans for text, IBM Plex Mono for addresses. */
+@import '@fontsource-variable/space-grotesk';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
 @import './styles/tokens.css';
 
+/* Local fallbacks sized to the web fonts' metrics, so the swap moves no line (no layout shift while fonts load). */
+@font-face {
+  font-family: 'IBM Plex Sans Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 101%;
+  ascent-override: 101%;
+  descent-override: 27%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Space Grotesk Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 103%;
+  ascent-override: 95%;
+  descent-override: 28%;
+  line-gap-override: 0%;
+}
+
 /*
- * Geist has no Georgian letters: the Georgian interface (src/i18n/ka.json, D140) takes them from Noto Sans Georgian,
- * bundled like Geist. Only its Georgian face, copied from the package's wght.css: the package's other faces (Latin,
- * symbols, maths) would take arrows and signs that Geist lacks away from the system fonts on English pages too. The
+ * None of the three faces has Georgian letters: the Georgian interface (src/i18n/ka.json, D140) takes them from Noto Sans Georgian,
+ * bundled like them. Only its Georgian face, copied from the package's wght.css: the package's other faces (Latin,
+ * symbols, maths) would take arrows and signs that the Latin faces lack away from the system fonts on English pages too. The
  * unicode-range keeps the file from loading until Georgian text is on the page.
  */
 @font-face {
@@ -70,6 +94,32 @@
   grid-template-columns: auto minmax(0, 1fr);
 }
 
+/*
+ * Drafting paper behind every page (D145): one hairline of the grid colour every cell, both ways. It is the identity of
+ * the v10 look (the mechanism, drawn on a blueprint), not texture for its own sake; print drops it (print:bg-none).
+ */
+@utility bg-blueprint {
+  background-image:
+    linear-gradient(var(--color-grid) var(--blueprint-line), transparent var(--blueprint-line)),
+    linear-gradient(90deg, var(--color-grid) var(--blueprint-line), transparent var(--blueprint-line));
+  background-size: var(--blueprint-cell) var(--blueprint-cell);
+  background-position: calc(var(--blueprint-line) * -1) calc(var(--blueprint-line) * -1);
+}
+
+/* The same paper on the inverse band (the landing's closing call). */
+@utility bg-blueprint-inverse {
+  background-image:
+    linear-gradient(var(--color-grid-inverse) var(--blueprint-line), transparent var(--blueprint-line)),
+    linear-gradient(90deg, var(--color-grid-inverse) var(--blueprint-line), transparent var(--blueprint-line));
+  background-size: var(--blueprint-cell) var(--blueprint-cell);
+  background-position: calc(var(--blueprint-line) * -1) calc(var(--blueprint-line) * -1);
+}
+
+/* A path the lock blocks, in the key diagram: dashed, so it reads as shut without its colour. */
+@utility dash-path {
+  stroke-dasharray: var(--dash-blocked);
+}
+
 /* <summary> without the browser's disclosure triangle (FaqItem draws its own chevron). */
 @utility summary-plain {
   list-style: none;
@@ -123,6 +173,14 @@ details[open] > [data-slot='disclosure-body'] {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Headings in the drafting face (D145). */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
   }
 
   /* One visible focus style for every interactive element (UX rule 11); components do not remove it. */

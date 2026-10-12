@@ -48,6 +48,7 @@ import {
   useWalletSlots,
 } from "@/ports";
 import { useHealth, useNow, useStakeAccounts } from "./hooks.ts";
+import { VaultGrid } from "./VaultGrid.tsx";
 import { KeySlot } from "./KeySlot.tsx";
 import { MonitoringStatus } from "./MonitoringStatus.tsx";
 import { ProtectionCheckSection } from "./ProtectionCheckSection.tsx";
@@ -378,6 +379,8 @@ function Loaded({
       {view.noLongerProtected.length === 0 ? null : (
         <NoLongerProtectedBanner accounts={view.noLongerProtected} />
       )}
+      {/* The stake drawn to scale (D145); the grouped rows below carry the details and actions. */}
+      <VaultGrid rows={view.owned} clock={clock} />
       {attention.length === 0 ? null : (
         <Section
           title={t("app.groups.attention")}

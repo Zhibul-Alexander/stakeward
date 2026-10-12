@@ -18,7 +18,7 @@ function renderAt(path: string) {
 
 describe('app shell', () => {
   it.each([
-    ['/', 'Protect your staked SOL'],
+    ['/', 'A second keyhole for your staked SOL'],
     ['/app', 'Your stake accounts'],
     ['/protect', 'Protect your stake'],
     ['/withdraw/Stake11111111111111111111111111111111111111', 'Withdraw'],

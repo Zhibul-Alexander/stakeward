@@ -1,72 +1,47 @@
-import { cn } from 'cn';
-import { KeyRoundIcon, LockIcon, type LucideIcon } from 'lucide-react';
-import { RiskNote } from '@/components/product/risk-note';
-import { t, type MessageKey } from '@/i18n';
-import { HashLink, Section, SubSection } from './Section.tsx';
-
-const NEEDS_SECOND: readonly MessageKey[] = ['landing.protects.needsSecond.withdraw', 'landing.protects.needsSecond.owner', 'landing.protects.needsSecond.lock'];
-
-const MAIN_ALONE: readonly MessageKey[] = [
-  'landing.protects.mainAlone.deactivate',
-  'landing.protects.mainAlone.redelegate',
-  'landing.protects.mainAlone.split',
-  'landing.protects.mainAlone.manager',
-];
-
-/** The classes written out in full: Tailwind only generates utilities it finds in the source. */
-const TILE: Record<'success' | 'neutral', string> = {
-  success: 'bg-success-soft text-success',
-  neutral: 'bg-neutral-soft text-neutral',
-};
-
-/** One half of the panel: what the lock guards (success) or what the main key can still do alone (neutral). */
-function LockColumn({ icon: Icon, tone, title, keys }: { icon: LucideIcon; tone: keyof typeof TILE; title: string; keys: readonly MessageKey[] }) {
-  return (
-    <div className="flex flex-col gap-2 px-4 py-3 sm:gap-3 sm:p-5">
-      <h3 className="flex items-center gap-3 text-base font-semibold">
-        <span aria-hidden="true" className={cn('flex size-6 shrink-0 items-center justify-center rounded-md sm:size-8', TILE[tone])}>
-          <Icon className="size-4" />
-        </span>
-        {title}
-      </h3>
-      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm marker:text-muted">
-        {keys.map((key) => (
-          <li key={key}>{t(key)}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+import { BanIcon, CheckIcon, KeyRoundIcon } from 'lucide-react';
+import { t } from '@/i18n';
+import { HashLink, Section } from './Section.tsx';
 
 /**
- * What the lock stops while it holds, and what it does not (CLAUDE.md sections 1 and 4), then the honest limit of the
- * second key, said before anyone picks one (`#second-key`): the risk note's inline form (its icon and words, no fill),
- * since nothing here is about to be signed.
+ * The honest limit of the second key, said before anyone picks one (`#second-key`, CLAUDE.md section 1): what it can
+ * do alone (keep the stake locked), what it cannot (take it), and how to choose it. The figure above already shows
+ * what the lock stops, so this is the second key's own spec sheet (D145), framed in its colour.
  */
 export function Protects() {
   return (
-    <Section id="protects" title={t('landing.protects.title')}>
-      <div className="grid divide-y divide-border rounded-lg border border-border bg-surface md:grid-cols-2 md:divide-x md:divide-y-0">
-        <LockColumn icon={LockIcon} tone="success" title={t('landing.protects.needsSecondTitle')} keys={NEEDS_SECOND} />
-        <LockColumn icon={KeyRoundIcon} tone="neutral" title={t('landing.protects.mainAloneTitle')} keys={MAIN_ALONE} />
-      </div>
-      <p className="max-w-prose text-sm font-medium text-pretty sm:text-base">{t('landing.protects.thief')}</p>
-      <SubSection id="second-key" title={t('landing.secondKey.title')} className="sm:mt-2">
-        <div className="grid items-start gap-3 md:grid-cols-2 md:gap-8">
-          <RiskNote risk="second-key-can-freeze" variant="inline">
-            <p>{t('landing.secondKey.freeze')}</p>
-          </RiskNote>
-          <div className="flex flex-col gap-2 text-sm">
-            <ul className="flex list-disc flex-col gap-1 pl-5 marker:text-muted">
-              <li className="text-pretty">{t('landing.secondKey.differentSeed')}</li>
-              <li className="text-pretty">{t('landing.secondKey.apart')}</li>
-            </ul>
-            <p>
-              <HashLink href="/learn/faq#faq-good-second-key">{t('landing.secondKey.more')}</HashLink>
-            </p>
+    <Section id="second-key" title={t('landing.secondKey.title')} intro={t('landing.protects.thief')}>
+      <div className="grid gap-6 md:grid-cols-2 md:gap-10">
+        <div className="flex flex-col overflow-hidden rounded-lg border-2 border-accent bg-surface">
+          <div className="flex items-center gap-3 border-b border-accent bg-accent-soft px-4 py-3">
+            <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-on-accent">
+              <KeyRoundIcon className="size-5" />
+            </span>
+            <h3 className="text-lg font-semibold">{t('landing.secondKey.alone')}</h3>
           </div>
+          <dl className="grid grid-cols-icon gap-x-4 gap-y-3 px-4 py-4 text-sm">
+            <dt className="flex items-center gap-1.5 font-semibold text-accent-ink">
+              <CheckIcon aria-hidden="true" className="size-4" />
+              {t('landing.diagram.result.yes')}
+            </dt>
+            <dd className="text-pretty">{t('landing.secondKey.can')}</dd>
+            <dt className="flex items-center gap-1.5 font-semibold text-danger">
+              <BanIcon aria-hidden="true" className="size-4" />
+              {t('landing.diagram.result.no')}
+            </dt>
+            <dd className="text-pretty">{t('landing.secondKey.cannot')}</dd>
+          </dl>
+          <p className="mt-auto border-t border-border px-4 py-3 text-sm font-medium text-pretty">{t('landing.secondKey.keepSafe')}</p>
         </div>
-      </SubSection>
+        <div className="flex flex-col gap-4">
+          <ul className="flex list-disc flex-col gap-2 pl-5 text-base marker:text-primary">
+            <li className="text-pretty">{t('landing.secondKey.differentSeed')}</li>
+            <li className="text-pretty">{t('landing.secondKey.apart')}</li>
+          </ul>
+          <p className="text-sm">
+            <HashLink href="/learn/faq#faq-good-second-key">{t('landing.secondKey.more')}</HashLink>
+          </p>
+        </div>
+      </div>
     </Section>
   );
 }
