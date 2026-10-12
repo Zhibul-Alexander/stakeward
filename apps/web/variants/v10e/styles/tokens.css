@@ -30,6 +30,8 @@
  * Look (v10e "Safety orange"): a site drawing on warm grey paper, every action in international orange like the
  * paint on a hazard rail, one cobalt part for the Second key; the dark theme is a charcoal board with the same orange.
  * Danger is signal red, the red of the same safety signs: a warm red next to the orange, never a pink or crimson one.
+ * The focus ring is the orange too, one shade off primary (brighter on paper, lighter on the board), so the ring round
+ * a focused orange button still reads as a ring.
  * Colour means state. primary is the one action of a screen; accent is a role (the Second key), never a state.
  * Status tones (word + colour + icon, never colour alone): <tone> is text and icons, <tone>-soft the badge or banner
  * background, <tone>-border its outline.
@@ -63,7 +65,7 @@
   --color-muted: #4f4943;
   --color-border: #d5d0c8;
   --color-border-strong: #78716a;
-  --color-ring: #1f55c2;
+  --color-ring: #d4520a;
   --color-primary: #b33a04;
   --color-primary-hover: #8f2e03;
   --color-on-primary: #ffffff;
@@ -277,7 +279,7 @@
     --color-muted: #b0a9a0;
     --color-border: #3a3631;
     --color-border-strong: #857d73;
-    --color-ring: #8fb3ff;
+    --color-ring: #ffb070;
     --color-primary: #ff8a3d;
     --color-primary-hover: #ffa466;
     --color-on-primary: #1c0b00;
