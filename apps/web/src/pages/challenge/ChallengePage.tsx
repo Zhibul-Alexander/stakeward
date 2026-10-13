@@ -314,6 +314,10 @@ export default function ChallengePage({ load = () => fetchChallengeKey() }: { lo
           <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           {t('challenge.neverSend')}
         </p>
+        {/* Why no one has to fund the key to try: a wallet would ask for it, the simulation and the CLI do not (D154). */}
+        <p data-slot="fee-hint" className="-mt-2 pl-6 text-sm text-pretty text-muted">
+          {t('challenge.feeHint')}
+        </p>
         <div className="flex flex-col gap-2">
           <h3 className="text-base font-semibold">{t('challenge.import.title')}</h3>
           <ol className="flex list-decimal flex-col gap-1 pl-5 text-base text-pretty">

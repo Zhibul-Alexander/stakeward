@@ -2681,7 +2681,8 @@
       "paste": "Paste the key, open the stake and try to withdraw it.",
       "devnet": "Switch the wallet to devnet."
     },
-    "neverSend": "Never send SOL to this address. A wallet pays its fees from it, but everyone can see this key, so anyone can take what you send.",
+    "neverSend": "Never send SOL or any other token to this address. Everyone can see this key, so anyone can take what you send.",
+    "feeHint": "You do not need any SOL here to try. A wallet pays the fee from the imported address and will ask you to add SOL: do not. The simulation at the top costs nothing, and in the command line below a wallet of your own pays the fee.",
     "qr": {
       "title": "Open it on your phone",
       "hint": "Scan to open this page on your phone, then copy the key into your wallet app.",
@@ -2719,7 +2720,7 @@
         "devnet": "Make a devnet wallet to pay the fees"
       },
       "setupHint": {
-        "mainnet": "The attempts are paid from your own wallet file, so the published key never needs SOL. Send it about 0.001 SOL from your wallet: the least a new account can hold, and more than the fees. Needs the Solana CLI.",
+        "mainnet": "Each attempt names your own wallet file with --keypair, so it pays the fee and the published key never needs SOL. Send it about 0.001 SOL from your wallet: the least a new account can hold, and more than the fees. Needs the Solana CLI.",
         "devnet": "The attempts are paid from your own throwaway wallet, so the stolen key never needs SOL. Needs the Solana CLI."
       },
       "walletLabel": "Create me.json",

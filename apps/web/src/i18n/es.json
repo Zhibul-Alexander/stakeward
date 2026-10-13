@@ -2681,7 +2681,8 @@
       "paste": "Pega la clave, abre el stake e intenta retirarlo.",
       "devnet": "Cambia la billetera a devnet."
     },
-    "neverSend": "Nunca envíes SOL a esta dirección. Una billetera paga sus comisiones desde ella, pero todos ven esta clave, así que cualquiera puede llevarse lo que envíes.",
+    "neverSend": "Nunca envíes SOL ni ningún otro token a esta dirección. Todos ven esta clave, así que cualquiera puede llevarse lo que envíes.",
+    "feeHint": "Para intentarlo no necesitas SOL aquí. Una billetera paga la comisión desde la dirección importada y te pedirá añadir SOL: no lo hagas. La simulación de arriba no cuesta nada, y en la línea de comandos de abajo la comisión la paga una billetera tuya.",
     "qr": {
       "title": "Ábrela en tu teléfono",
       "hint": "Escanea para abrir esta página en tu teléfono y luego copia la clave en la app de tu billetera.",
@@ -2719,7 +2720,7 @@
         "devnet": "Crea una billetera de devnet para pagar las comisiones"
       },
       "setupHint": {
-        "mainnet": "Los intentos se pagan desde tu propio archivo de billetera, así que la clave publicada nunca necesita SOL. Envíale unos 0.001 SOL desde tu billetera: lo mínimo que puede tener una cuenta nueva, y más que las comisiones. Necesitas la CLI de Solana.",
+        "mainnet": "Cada intento indica tu propio archivo de billetera con --keypair, así que paga la comisión y la clave publicada nunca necesita SOL. Envíale unos 0.001 SOL desde tu billetera: lo mínimo que puede tener una cuenta nueva, y más que las comisiones. Necesitas la CLI de Solana.",
         "devnet": "Los intentos se pagan desde tu propia billetera desechable, así que la clave robada nunca necesita SOL. Necesitas la CLI de Solana."
       },
       "walletLabel": "Crear me.json",

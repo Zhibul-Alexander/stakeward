@@ -80,7 +80,9 @@ describe('/challenge on LiteSvmChain', () => {
     expect(within(hero()).getByRole('link', { name: 'Try to steal it here' })).toHaveAttribute('href', `/try-steal/${CHALLENGE.stakeAccount}`);
 
     expect(await screen.findByText(SECRET)).toBeInTheDocument();
-    expect(screen.getByText(/^Never send SOL to this address/)).toBeInTheDocument();
+    expect(screen.getByText(/^Never send SOL or any other token to this address/)).toBeInTheDocument();
+    // No one has to fund the key to try: the simulation costs nothing and in the CLI the visitor's own wallet pays.
+    expect(screen.getByText(/^You do not need any SOL here to try\./)).toHaveTextContent('a wallet of your own pays the fee');
     expect(screen.getByText('In Phantom, Solflare or Backpack, choose Add account, then Import private key.')).toBeInTheDocument();
     expect(screen.getByText('Switch the wallet to devnet.')).toBeInTheDocument();
     // The QR code opens this page on a phone, not the key: wallets do not import a key from a QR code.
