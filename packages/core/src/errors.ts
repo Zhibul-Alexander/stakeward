@@ -329,6 +329,32 @@ function translation(code: keyof typeof TITLES): Translation {
   return { code, title: TITLES[code] };
 }
 
+/** Kit's codes for an InstructionError (`SOLANA_ERROR__INSTRUCTION_ERROR__*`); each carries the instruction's index. */
+const INSTRUCTION_ERROR_CODES = { from: 4_615_000, to: 4_615_999 } as const;
+
+export type FailedInstruction = {
+  /** The instruction's index as the error gives it, counted from 0. */
+  index: number;
+  /** How many instructions the transaction has. */
+  count: number;
+  programAddress: Address;
+};
+
+/**
+ * The instruction a transaction error names (`{ InstructionError: [index, ...] }`, raw from RPC or a SolanaError), read
+ * against the transaction's own bytes. Null for an error of the whole transaction (the fee, the blockhash) or bytes
+ * that cannot be read.
+ */
+export function failedInstruction(error: unknown, transaction: ReadonlyUint8Array): FailedInstruction | null {
+  const solanaError = isSolanaError(error) ? error : fromRawTransactionError(error);
+  if (solanaError === null) return null;
+  const { __code: code, index } = solanaError.context as { __code: number; index?: unknown };
+  if (code < INSTRUCTION_ERROR_CODES.from || code > INSTRUCTION_ERROR_CODES.to || typeof index !== 'number') return null;
+  const info = new TransactionInfo(transaction);
+  const programAddress = info.programAt(index);
+  return programAddress === undefined ? null : { index, count: info.count(), programAddress };
+}
+
 /** Program addresses and lifetime of the transaction from the context, decoded once and only when needed. */
 class TransactionInfo {
   private decoded: { instructions: readonly { programAddress: Address }[]; usesNonce: boolean } | null | undefined;
@@ -345,6 +371,10 @@ class TransactionInfo {
 
   programAt(index: number): Address | undefined {
     return this.decode()?.instructions[index]?.programAddress;
+  }
+
+  count(): number {
+    return this.decode()?.instructions.length ?? 0;
   }
 
   usesNonce(): boolean {

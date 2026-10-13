@@ -1,4 +1,16 @@
-import { aiPrompt, formatSol, formatUtcDate, isLockupInForce, runTheftTest, type ChainClock, type ChainPort, type StakeAccount, type TheftResult, type TheftVerdict } from '@stakeward/core';
+import {
+  aiPrompt,
+  formatSol,
+  formatUtcDate,
+  isLockupInForce,
+  runTheftTest,
+  type ChainClock,
+  type ChainPort,
+  type ErrorCode,
+  type StakeAccount,
+  type TheftResult,
+  type TheftVerdict,
+} from '@stakeward/core';
 import { CircleQuestionMarkIcon, ClockIcon, ShieldCheckIcon, ShieldXIcon, type LucideIcon } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
@@ -7,7 +19,7 @@ import { Disclosure } from '@/components/product/disclosure';
 import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { t } from '@/i18n';
+import { t, type MessageKey } from '@/i18n';
 import { errorMessage } from '@/i18n/errors';
 import { appLinks } from '@/pages/app/view';
 
@@ -22,6 +34,27 @@ const LOOKS: Record<TheftVerdict, { tone: NonNullable<BadgeProps['tone']>; icon:
 export function theftSummary(results: readonly TheftResult[]): 'safe' | 'exposed' | 'partial' {
   if (results.some((result) => result.verdict === 'would-succeed' || result.verdict === 'after-unstaking')) return 'exposed';
   return results.every((result) => result.verdict === 'blocked') ? 'safe' : 'partial';
+}
+
+/** The errors a blocked or delayed attempt ends with, in plain words for Details. */
+const ANSWER_ERRORS: Partial<Record<ErrorCode, MessageKey>> = {
+  'lockup-in-force': 'steal.answer.error.lockup-in-force',
+  'missing-signature': 'steal.answer.error.missing-signature',
+  'insufficient-funds': 'steal.answer.error.insufficient-funds',
+};
+
+/** The network's raw answer read part by part: which step it refused and what its error means. */
+export function answerParts(result: TheftResult): string[] {
+  const parts: string[] = [];
+  if (result.refused !== null) {
+    const { index, steps, stakeInstruction } = result.refused;
+    const params = { index: String(index), step: String(index + 1), steps: String(steps) };
+    parts.push(t(stakeInstruction ? `steal.answer.step.${result.attempt}` : 'steal.answer.step.other', params));
+  }
+  // A fee the main key cannot pay is also insufficient-funds, but it refuses no step: only a verdict reads the error.
+  const error = result.verdict === 'unknown' || result.code === null ? undefined : ANSWER_ERRORS[result.code];
+  if (error !== undefined) parts.push(t(error));
+  return parts;
 }
 
 function reason(result: TheftResult, lockUntil: bigint): string {
@@ -115,11 +148,7 @@ export function TheftTest({ chain, account, clock }: TheftTestProps) {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted">{reason(result, account.lockup.unixTimestamp)}</p>
-                  {result.detail === '' ? null : (
-                    <Disclosure summary={t('steal.details')}>
-                      <pre className="mt-2 overflow-auto rounded-md bg-subtle p-3 font-mono text-xs whitespace-pre-wrap break-words">{result.detail}</pre>
-                    </Disclosure>
-                  )}
+                  {result.detail === '' ? null : <AnswerDetails result={result} />}
                 </li>
               );
             })}
@@ -139,5 +168,23 @@ export function TheftTest({ chain, account, clock }: TheftTestProps) {
         </div>
       )}
     </section>
+  );
+}
+
+function AnswerDetails({ result }: { result: TheftResult }) {
+  const parts = answerParts(result);
+  return (
+    <Disclosure summary={t('steal.details')}>
+      <div className="flex flex-col gap-2">
+        <pre className="overflow-auto rounded-md bg-subtle p-3 font-mono text-xs whitespace-pre-wrap break-words">{result.detail}</pre>
+        {parts.length === 0 ? null : (
+          <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted">
+            {parts.map((part) => (
+              <li key={part}>{part}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Disclosure>
   );
 }

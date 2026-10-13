@@ -10,6 +10,7 @@ import { StrictMode } from 'react';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Route, Router, Switch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
+import { t } from '@/i18n';
 import en from '@/i18n/en.json';
 import { StealPage } from '@/pages/StealPage';
 import { PortsProvider } from '@/ports';
@@ -54,6 +55,11 @@ function renderSteal(account: Address) {
   return userEvent.setup();
 }
 
+function attemptOf(attempt: string): HTMLElement {
+  const item = document.querySelector<HTMLElement>(`[data-attempt="${attempt}"]`);
+  if (item === null) throw new Error(`no attempt ${attempt}`);
+  return item;
+}
 const verdictOf = (attempt: string) => document.querySelector(`[data-attempt="${attempt}"] [data-verdict]`)?.getAttribute('data-verdict');
 
 describe('/try-steal/:account on LiteSvmChain', () => {
@@ -68,6 +74,14 @@ describe('/try-steal/:account on LiteSvmChain', () => {
       expect(verdictOf('remove-lock')).toBe('blocked');
       expect(screen.getAllByText(en.steal.verdicts.blocked)).toHaveLength(2);
       expect(screen.queryByRole('link', { name: en.steal.protect })).toBeNull();
+      // Details read the network's raw answer: "2" is the stake instruction, step 3, and "Custom": "1" is LockupInForce.
+      const step = { index: '2', step: '3', steps: '3' };
+      const withdraw = within(attemptOf('withdraw'));
+      expect(withdraw.getByText(t('steal.answer.step.withdraw', step))).toBeInTheDocument();
+      expect(withdraw.getByText(en.steal.answer.error['lockup-in-force'])).toBeInTheDocument();
+      const removeLock = within(attemptOf('remove-lock'));
+      expect(removeLock.getByText(t('steal.answer.step.remove-lock', step))).toBeInTheDocument();
+      expect(removeLock.getByText(en.steal.answer.error['missing-signature'])).toBeInTheDocument();
       const ai = screen.getByRole('region', { name: en.askAi.title });
       expect(within(ai).getByText(/Stakeward says: Your SOL stays put/)).toBeInTheDocument();
       expect(world.testChain.balance(world.S1)).toBe(before);

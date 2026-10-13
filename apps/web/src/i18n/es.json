@@ -2644,6 +2644,18 @@
     "still": "Un ladrón con tu clave principal aún puede desactivar el stake, redelegarlo, dividir la cuenta o cambiar quién lo gestiona. Las alertas te avisan, y Rescate mueve el stake a una billetera nueva.",
     "protect": "Proteger este stake",
     "details": "Detalles",
+    "answer": {
+      "step": {
+        "withdraw": "\"{index}\" es el paso {step} de {steps}, contando desde 0: Withdraw, la instrucción del programa de stake que saca los SOL. Los pasos anteriores solo fijan la comisión de red.",
+        "remove-lock": "\"{index}\" es el paso {step} de {steps}, contando desde 0: SetLockup, la instrucción del programa de stake que cambia el bloqueo. Los pasos anteriores solo fijan la comisión de red.",
+        "other": "\"{index}\" es el paso {step} de {steps}, contando desde 0."
+      },
+      "error": {
+        "lockup-in-force": "\"Custom\": \"1\" es el error 1 del programa de stake, LockupInForce: el bloqueo está activo y la segunda clave no firmó.",
+        "missing-signature": "\"MissingRequiredSignature\": no firmó una clave que este paso necesita. Mientras el bloqueo está activo, solo la segunda clave puede cambiarlo.",
+        "insufficient-funds": "\"InsufficientFunds\": el stake sigue delegado, así que sus SOL solo pueden salir después de desactivarlo, cuando termina la época."
+      }
+    },
     "aiTask": "Explica qué muestra esta prueba sobre mi stake y qué debo hacer."
   },
   "challenge": {

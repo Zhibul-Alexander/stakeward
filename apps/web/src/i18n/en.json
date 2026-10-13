@@ -2644,6 +2644,18 @@
     "still": "A thief with your main key can still unstake, redelegate, split the account or change who stakes it. Alerts tell you, and Rescue moves the stake to a new wallet.",
     "protect": "Protect this stake",
     "details": "Details",
+    "answer": {
+      "step": {
+        "withdraw": "\"{index}\" is step {step} of {steps}, counted from 0: Withdraw, the stake program's instruction that moves SOL out. The steps before it only set the network fee.",
+        "remove-lock": "\"{index}\" is step {step} of {steps}, counted from 0: SetLockup, the stake program's instruction that changes the lock. The steps before it only set the network fee.",
+        "other": "\"{index}\" is step {step} of {steps}, counted from 0."
+      },
+      "error": {
+        "lockup-in-force": "\"Custom\": \"1\" is error 1 of the stake program, LockupInForce: the lock is in force and the second key did not sign.",
+        "missing-signature": "\"MissingRequiredSignature\": a key this step needs did not sign. While the lock is in force, only the second key can change the lock.",
+        "insufficient-funds": "\"InsufficientFunds\": the stake is still delegated, so its SOL can leave only after unstaking, when the epoch ends."
+      }
+    },
     "aiTask": "Explain what this test shows about my stake and what I should do."
   },
   "challenge": {

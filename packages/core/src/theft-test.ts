@@ -1,6 +1,7 @@
 import type { Address } from '@solana/kit';
 import { buildTransaction, type BuiltTransaction } from './builders.ts';
-import { INSUFFICIENT_STAKE_BALANCE, translateError, type ErrorCode } from './errors.ts';
+import { STAKE_PROGRAM_ADDRESS } from './constants.ts';
+import { failedInstruction, INSUFFICIENT_STAKE_BALANCE, translateError, type ErrorCode } from './errors.ts';
 import type { StakeAccount } from './decode.ts';
 import type { ChainPort, LatestBlockhash, SimulationResult } from './ports.ts';
 
@@ -37,6 +38,12 @@ export type TheftResult = {
   code: ErrorCode | null;
   /** The original error text, for Details; empty on success. */
   detail: string;
+  /**
+   * The step the network refused, for Details: its index as the answer gives it (from 0), how many steps the
+   * transaction has, and whether it is the stake program's instruction, the attempt itself (the steps before it only
+   * set the fee). Null on success and when no single step was refused (the fee, the network).
+   */
+  refused: { index: number; steps: number; stakeInstruction: boolean } | null;
 };
 
 const BLOCKED_CODES: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
@@ -64,12 +71,15 @@ export function buildTheftAttempt(
 
 /** Reads a simulation of `bytes` as a verdict. */
 export function theftVerdict(attempt: TheftAttempt, simulation: SimulationResult, bytes: Uint8Array, lockUntil?: bigint): TheftResult {
-  if (simulation.ok) return { attempt, verdict: 'would-succeed', code: null, detail: '' };
+  if (simulation.ok) return { attempt, verdict: 'would-succeed', code: null, detail: '', refused: null };
   const friendly = translateError(simulation.error, { transaction: bytes, ...(lockUntil === undefined ? {} : { lockUntil }) });
   let verdict: TheftVerdict = 'unknown';
   if (BLOCKED_CODES.has(friendly.code)) verdict = 'blocked';
   else if (friendly.code === 'insufficient-funds' && friendly.title === INSUFFICIENT_STAKE_BALANCE) verdict = 'after-unstaking';
-  return { attempt, verdict, code: friendly.code, detail: friendly.detail };
+  const failed = failedInstruction(simulation.error, bytes);
+  const refused =
+    failed === null ? null : { index: failed.index, steps: failed.count, stakeInstruction: failed.programAddress === STAKE_PROGRAM_ADDRESS };
+  return { attempt, verdict, code: friendly.code, detail: friendly.detail, refused };
 }
 
 /**
@@ -82,7 +92,7 @@ export async function runTheftTest(chain: ChainPort, account: StakeAccount): Pro
     lifetime = await chain.getLatestBlockhash();
   } catch (error) {
     const { code, detail } = translateError(error);
-    return THEFT_ATTEMPTS.map((attempt) => ({ attempt, verdict: 'unknown' as const, code, detail }));
+    return THEFT_ATTEMPTS.map((attempt) => ({ attempt, verdict: 'unknown' as const, code, detail, refused: null }));
   }
   const lockUntil = account.lockup.unixTimestamp > 0n ? account.lockup.unixTimestamp : undefined;
   return Promise.all(
@@ -92,7 +102,7 @@ export async function runTheftTest(chain: ChainPort, account: StakeAccount): Pro
         return theftVerdict(attempt, await chain.simulate(bytes), bytes, lockUntil);
       } catch (error) {
         const { code, detail } = translateError(error);
-        return { attempt, verdict: 'unknown', code, detail };
+        return { attempt, verdict: 'unknown', code, detail, refused: null };
       }
     }),
   );

@@ -36,6 +36,11 @@ describe('runTheftTest', () => {
       ['withdraw', 'blocked', 'lockup-in-force'],
       ['remove-lock', 'blocked', 'missing-signature'],
     ]);
+    // Details: the stake instruction, after the two Compute Budget steps, is the one refused.
+    expect(results.map((result) => result.refused)).toEqual([
+      { index: 2, steps: 3, stakeInstruction: true },
+      { index: 2, steps: 3, stakeInstruction: true },
+    ]);
   });
 
   it('an unlocked, undelegated account: both would succeed', async () => {
@@ -68,9 +73,9 @@ describe('runTheftTest', () => {
       lockup: { unixTimestamp: START_UNIX_TIMESTAMP + HOUR, epoch: 0n, custodian: K.address },
     });
     const results = await runTheftTest(chain, read(stake));
-    expect(results.map((result) => [result.verdict, result.code])).toEqual([
-      ['unknown', 'insufficient-funds'],
-      ['unknown', 'insufficient-funds'],
+    expect(results.map((result) => [result.verdict, result.code, result.refused])).toEqual([
+      ['unknown', 'insufficient-funds', null],
+      ['unknown', 'insufficient-funds', null],
     ]);
   });
 });
