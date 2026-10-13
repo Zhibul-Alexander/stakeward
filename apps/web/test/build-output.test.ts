@@ -5,11 +5,12 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getBase58Decoder } from '@solana/kit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEV_COSIGN_MARKER } from '@/pages/dev/DevCosignPage';
 import { DEV_UI_MARKER } from '@/pages/dev/DevUiPage';
-import { CHALLENGE_MARKER } from '@/pages/challenge/ChallengePage';
-import { CHALLENGE } from '@/pages/challenge/wallet';
+import { SAMPLE_SIGNATURE } from '@/pages/dev-ui/samples';
+import { DEVNET_CHALLENGE, MAINNET_CHALLENGE } from '@/pages/challenge/wallet';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
 import { prebuiltDist } from './support/prebuilt.ts';
@@ -28,12 +29,21 @@ import { prebuiltDist } from './support/prebuilt.ts';
  */
 const DEV_ONLY_PREFIX = 'stakeward-dev-only:';
 const TEST_ONLY_PREFIX = 'stakeward-test-only:';
-const DEV_MARKERS = [DEV_UI_MARKER, DEV_COSIGN_MARKER, CHALLENGE_MARKER];
+const DEV_MARKERS = [DEV_UI_MARKER, DEV_COSIGN_MARKER];
 /**
  * Literals that only devnet-only modules use (not markers): they show that the code behind a page is gone too, not
- * just the page component. /dev/cosign's storage keys live in src/pages/dev-cosign.
+ * just the page component. /dev/cosign's storage keys live in src/pages/dev-cosign. The devnet challenge wallet
+ * (D133) is devnet content too: /challenge is in both builds, each with its own cluster's wallet (D154).
  */
-const DEV_ONLY_CODE = [DEV_SLOTS_STORAGE_KEY, REPORTS_STORAGE_KEY, CHALLENGE.stakeAccount];
+const DEV_ONLY_CODE = [DEV_SLOTS_STORAGE_KEY, REPORTS_STORAGE_KEY, DEVNET_CHALLENGE.mainKey, DEVNET_CHALLENGE.stakeAccount, DEVNET_CHALLENGE.secondKey];
+/** The mainnet challenge wallet (D154): in the mainnet build, which shows it on /challenge, and in no devnet build. */
+const MAINNET_ONLY_CODE = [MAINNET_CHALLENGE.mainKey, MAINNET_CHALLENGE.stakeAccount, MAINNET_CHALLENGE.secondKey];
+/**
+ * A 64-byte secret as wallets import it: 87 or 88 base58 characters in a row. The challenge's main keys come from GET
+ * /api/challenge and the second keys exist only in .keys/ (D133, D154), so no build has one. A 64-byte signature
+ * matches too: the one /dev/ui shows (devnet build only) is the single exception.
+ */
+const BASE58_SECRET = /(?<![1-9A-HJ-NP-Za-km-z])[1-9A-HJ-NP-Za-km-z]{87,88}(?![1-9A-HJ-NP-Za-km-z])/;
 
 const WEB_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -105,6 +115,24 @@ describe('production builds', () => {
     expect(filesContaining(mainnet, '/dev/cosign')).toEqual([]);
     for (const literal of DEV_ONLY_CODE) expect(filesContaining(mainnet, literal), literal).toEqual([]);
     expect([...mainnet.files.keys()].filter((name) => /dev/i.test(name))).toEqual([]);
+  });
+
+  it("each build shows its own cluster's challenge wallet and no other (D154)", () => {
+    for (const literal of MAINNET_ONLY_CODE) {
+      expect(filesContaining(mainnet, literal), literal).not.toEqual([]);
+      expect(filesContaining(devnet, literal), literal).toEqual([]);
+    }
+  });
+
+  it('no build contains a key: nothing shaped like a 64-byte base58 secret', () => {
+    // Positive control: a keypair file's 64 bytes, as /api/challenge serves them.
+    expect(BASE58_SECRET.test(`"${getBase58Decoder().decode(Uint8Array.from({ length: 64 }, (_, i) => i + 1))}"`)).toBe(true);
+    for (const output of [devnet, mainnet]) {
+      const found = [...output.files].flatMap(([name, content]) =>
+        [...content.matchAll(new RegExp(BASE58_SECRET, 'g'))].map((match) => match[0]).filter((text) => text !== SAMPLE_SIGNATURE).map((text) => `${name}: ${text}`),
+      );
+      expect(found).toEqual([]);
+    }
   });
 
   it('no build contains test-only code', () => {

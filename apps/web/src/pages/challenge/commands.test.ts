@@ -8,25 +8,35 @@ import { CHALLENGE } from './wallet.ts';
 const BYTES = Array.from({ length: 64 }, (_, i) => i + 1);
 const SECRET = getBase58Decoder().decode(Uint8Array.from(BYTES));
 
-describe('challengeCommands (D133)', () => {
-  const commands = challengeCommands(SECRET);
-
+describe('challengeCommands (D133, D154)', () => {
   it('saves the key as a solana-keygen keypair file: the JSON array of its 64 bytes', () => {
-    expect(commandLine(commands.keyFile)).toBe(`echo '${JSON.stringify(BYTES)}' > thief.json`);
+    expect(commandLine(challengeCommands(SECRET).keyFile)).toBe(`echo '${JSON.stringify(BYTES)}' > thief.json`);
   });
 
-  it('signs every attempt with the stolen key and pays with the visitor wallet, on devnet', () => {
-    for (const argv of [commands.withdraw, commands.owner, commands.unlock]) {
-      expect(argv[2]).toBe(CHALLENGE.stakeAccount);
-      expect(argv).toContain('thief.json');
-      expect(argv.slice(-4)).toEqual(['--keypair', 'me.json', '--url', 'devnet']);
+  it("signs every attempt with the stolen key and pays with the visitor's wallet, on the build's network", () => {
+    for (const [cluster, url] of [['devnet', 'devnet'], ['mainnet', 'mainnet-beta']] as const) {
+      const commands = challengeCommands(SECRET, cluster);
+      for (const argv of [commands.withdraw, commands.owner, commands.unlock]) {
+        expect(argv[2]).toBe(CHALLENGE.stakeAccount);
+        expect(argv).toContain('thief.json');
+        expect(argv.slice(-4)).toEqual(['--keypair', 'me.json', '--url', url]);
+      }
+      expect(commandLine(commands.withdraw)).toContain('withdraw-stake');
+      expect(commands.owner).toContain('--new-withdraw-authority');
+      expect(commands.unlock).toContain('--custodian');
     }
-    expect(commandLine(commands.withdraw)).toContain('withdraw-stake');
-    expect(commands.owner).toContain('--new-withdraw-authority');
-    expect(commands.unlock).toContain('--custodian');
+  });
+
+  it('airdrops the fees on devnet; on mainnet, with no faucet, shows the address to fund instead', () => {
+    expect(commandLine(challengeCommands(SECRET, 'devnet').fund)).toBe('solana airdrop 1 --keypair me.json --url devnet');
+    const mainnet = Object.values(challengeCommands(SECRET, 'mainnet')).map(commandLine);
+    expect(mainnet).toContain('solana address -k me.json');
+    expect(mainnet.join('\n')).not.toContain('airdrop');
   });
 
   it('never names the second key', () => {
-    for (const argv of Object.values(commands)) expect(commandLine(argv)).not.toContain(CHALLENGE.secondKey);
+    for (const cluster of ['devnet', 'mainnet'] as const) {
+      for (const argv of Object.values(challengeCommands(SECRET, cluster))) expect(commandLine(argv)).not.toContain(CHALLENGE.secondKey);
+    }
   });
 });

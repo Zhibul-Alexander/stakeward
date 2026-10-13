@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import type { Locator, Page } from '@playwright/test';
 import { readStaticHeaders } from '../static-headers.ts';
 import { expect, test } from './fixtures.ts';
-import { MAIN, mockApi, NOW, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
+import { CHALLENGE, CHALLENGE_SECRET, MAIN, mockApi, NOW, rememberOnDevice, SECOND, SMOKE_FIXTURE, SMOKE_STAKE } from './mock-api.ts';
 import { recordScreenMetrics } from './screen-metrics.ts';
 import { catalogStrings, text } from './texts.ts';
 
@@ -397,6 +397,32 @@ const ROUTES: readonly SmokeRoute[] = [
     path: `/try-steal/${SMOKE_STAKE}`,
     heading: text('common.pages.steal'),
     ready: text('steal.heading'),
+  },
+  {
+    // The public challenge wallet of this build's network (D154): the live stake first, then the key to copy.
+    path: '/challenge',
+    heading: text('challenge.title'),
+    shows: async (page) => {
+      const hero = page.locator('[data-slot="challenge-hero"]');
+      await expect(hero).toContainText(text(DEVNET ? 'challenge.network.devnet' : 'challenge.network.mainnet'));
+      const figure = (key: Parameters<typeof text>[0]) => hero.locator('dt', { hasText: text(key) }).locator('xpath=following-sibling::dd[1]');
+      await expect(figure('challenge.hero.balance')).toHaveText(CHALLENGE.startSol);
+      await expect(figure('challenge.hero.taken')).toHaveText('0 SOL');
+      const simulate = hero.getByRole('link', { name: text('challenge.hero.simulate') });
+      await expect(simulate).toHaveAttribute('href', `/try-steal/${CHALLENGE.stakeAccount}`);
+      await expect(simulate).toBeInViewport();
+      await expect(page.locator('[data-slot="challenge-key"]')).toHaveText(CHALLENGE_SECRET);
+      await expect(page.getByRole('button', { name: text('challenge.copyKey') })).toBeVisible();
+      await expect(page.locator('[data-slot="never-send"]')).toBeVisible();
+      // The QR code carries the page to a phone, so a phone does not show it.
+      await expect(page.locator('[data-slot="challenge-qr"]')).toBeVisible({ visible: (page.viewportSize()?.width ?? 0) >= 640 });
+      await page.getByText(text('challenge.try.show')).click();
+      const urls = await page
+        .locator('[data-slot="command-block"] pre')
+        .evaluateAll((blocks) => blocks.flatMap((block) => [...block.textContent.matchAll(/--url\s+(\S+)/g)].map((match) => match[1])));
+      expect(new Set(urls)).toEqual(new Set([DEVNET ? 'devnet' : 'mainnet-beta']));
+    },
+    screen: 'challenge',
   },
   {
     // The card of the smoke stake's pair of keys, read from the network with no wallet.

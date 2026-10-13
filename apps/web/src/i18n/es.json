@@ -2648,13 +2648,45 @@
   },
   "challenge": {
     "title": "Intenta robarlo",
-    "intro": "Abajo está la clave principal real de una cuenta de stake en devnet. Impórtala en una billetera o en la CLI de Solana e intenta llevarte los SOL. Una segunda clave controla un bloqueo sobre este stake hasta el {date}, y sin ella la red rechaza el intento.",
+    "network": {
+      "mainnet": "En vivo en Solana mainnet",
+      "devnet": "En vivo en Solana devnet"
+    },
+    "intro": "La clave principal de este stake es pública. Llévate los SOL si puedes: sin la segunda clave que controla el bloqueo, la red rechaza el intento.",
+    "hero": {
+      "label": "La cuenta de stake ahora mismo",
+      "balance": "En la cuenta de stake",
+      "taken": "Robado",
+      "lockedUntil": "Bloqueado hasta",
+      "loading": "Leyendo la cuenta de stake de la red",
+      "error": "No se pudo leer la red en este momento.",
+      "retry": "Reintentar",
+      "scope": "Robado cuenta solo la cuenta de stake. El bloqueo no cubre el saldo normal de la billetera de la clave principal.",
+      "simulate": "Intenta robarlo aquí",
+      "simulateHint": "Ejecuta el robo en la red como simulación: sin billetera, sin clave y sin comisión."
+    },
     "devnetOnly": "Solo en devnet: estos SOL no tienen valor. Nunca pegues una clave que tenga fondos reales en ningún sitio ni billetera que no controles.",
     "keyTitle": "La clave principal, pública a propósito",
-    "keyHint": "Las billeteras la llaman clave privada. Phantom, Solflare y Backpack pueden importarla; cambia la billetera a devnet.",
+    "keyHint": "Las billeteras la llaman clave privada. Firma como la clave principal de la cuenta de stake.",
     "keyLoading": "Cargando la clave",
     "keyErrorTitle": "No se pudo cargar la clave",
     "keyErrorBody": "No se pudo obtener la clave del servidor de Stakeward. Espera un minuto y vuelve a intentarlo.",
+    "copyKey": "Copiar clave",
+    "copied": "Copiada",
+    "copyFailed": "No se pudo copiar. Selecciona la clave y cópiala a mano.",
+    "import": {
+      "title": "Impórtala en una billetera",
+      "copy": "Copia la clave.",
+      "open": "En Phantom, Solflare o Backpack, elige Add account y luego Import private key.",
+      "paste": "Pega la clave, abre el stake e intenta retirarlo.",
+      "devnet": "Cambia la billetera a devnet."
+    },
+    "neverSend": "Nunca envíes SOL a esta dirección. Una billetera paga sus comisiones desde ella, pero todos ven esta clave, así que cualquiera puede llevarse lo que envíes.",
+    "qr": {
+      "title": "Ábrela en tu teléfono",
+      "hint": "Escanea para abrir esta página en tu teléfono y luego copia la clave en la app de tu billetera.",
+      "label": "Código QR del enlace a esta página"
+    },
     "mainKey": "Dirección de la clave principal",
     "stakeAccount": "Cuenta de stake",
     "secondKey": "Segunda clave (solo la dirección)",
@@ -2673,18 +2705,28 @@
     },
     "why": "El propio programa de stake comprueba el bloqueo: hasta que termine, para retirar y para cambiar el propietario también hace falta la firma de la segunda clave. Stakeward no está en medio, y tampoco podría dejarte pasar.",
     "proof": "Ver el bloqueo en vivo",
-    "simulate": "Simular un robo",
     "explorer": "Abrir en Solana Explorer",
-    "lockedBadge": "Bloqueado hasta el {date}",
-    "devnetBadge": "Devnet",
     "try": {
       "title": "Pruébalo desde la línea de comandos",
-      "intro": "Todos los comandos de abajo son reales y se ejecutan en devnet. Los tres intentos del final firman con la clave principal y el propio programa de stake los rechaza.",
+      "show": "Mostrar los comandos",
+      "intro": {
+        "mainnet": "Todos los comandos de abajo son reales y se ejecutan en mainnet. Los tres intentos del final firman con la clave principal y el propio programa de stake los rechaza.",
+        "devnet": "Todos los comandos de abajo son reales y se ejecutan en devnet. Los tres intentos del final firman con la clave principal y el propio programa de stake los rechaza."
+      },
       "waitingForKey": "Los comandos aparecerán cuando se haya cargado la clave.",
-      "setupTitle": "Crea una billetera de devnet para pagar las comisiones",
-      "setupHint": "Los intentos se pagan desde tu propia billetera desechable, así que la clave robada nunca necesita SOL. Necesitas la CLI de Solana.",
+      "setupTitle": {
+        "mainnet": "Crea una billetera propia para pagar las comisiones",
+        "devnet": "Crea una billetera de devnet para pagar las comisiones"
+      },
+      "setupHint": {
+        "mainnet": "Los intentos se pagan desde tu propio archivo de billetera, así que la clave publicada nunca necesita SOL. Envíale unos 0.001 SOL desde tu billetera: lo mínimo que puede tener una cuenta nueva, y más que las comisiones. Necesitas la CLI de Solana.",
+        "devnet": "Los intentos se pagan desde tu propia billetera desechable, así que la clave robada nunca necesita SOL. Necesitas la CLI de Solana."
+      },
       "walletLabel": "Crear me.json",
-      "airdropLabel": "Obtener 1 SOL de devnet",
+      "fundLabel": {
+        "mainnet": "Mostrar su dirección, para enviarle unos 0.001 SOL",
+        "devnet": "Obtener 1 SOL de devnet"
+      },
       "keyFileTitle": "Guarda la clave principal robada como thief.json",
       "withdraw": "Intenta retirar todos los SOL a tu billetera",
       "withdrawExpect": "Resultado esperado: rechazado. El bloqueo está activo y la segunda clave no firmó.",

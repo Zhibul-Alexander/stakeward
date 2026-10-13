@@ -1,11 +1,11 @@
 import type { Page, Route } from '@playwright/test';
-import { getAddressEncoder, type Address } from '@solana/kit';
+import { getAddressEncoder, getBase58Decoder, type Address } from '@solana/kit';
 
 /**
  * Test double, Playwright only (never in the site's bundle): the worker's API as the built site reads it (CLAUDE.md
  * section 13, layer 4). It answers the stake account search, the RPC proxy for the reads the pages make
  * (getMultipleAccounts, the Clock sysvar, getEpochInfo, getBalance, getMinimumBalanceForRentExemption, an empty getVoteAccounts), /api/health
- * /api/stats and /api/sol-price (150 USD per SOL).
+ * /api/stats, /api/sol-price (150 USD per SOL) and /api/challenge.
  * A method or path it does not know fails with HTTP 400, which the shared fixture reports as a console error.
  */
 
@@ -85,9 +85,43 @@ export const STATS = { accountsLocked: 12, lamportsLocked: '1234567891234', aler
 /** The stake account of the smoke loop (step 6 spec 13.3): not staked, locked by SECOND until NOW + 190 days. */
 export const SMOKE_STAKE = '472uhJhLhUNK898jCeGUQ2XYA4PTLM7tqng7o7HB7jmD';
 
+/**
+ * The challenge wallet of the build under test (D133, D154), as src/pages/challenge/wallet.ts names it: that module
+ * picks the wallet with import.meta.env, which Playwright does not have.
+ */
+export const CHALLENGE =
+  process.env['E2E_CLUSTER'] === 'mainnet'
+    ? {
+        mainKey: 'k58pveSMKrZzpmuhSxjVssPWpZLUoKgESwdWP4mJkrw',
+        stakeAccount: '3zFC5aZTNg1VfH7WoAtmeS94NVyLxYQmEw6jxWM6o3Dw',
+        secondKey: '52HsrUZCJxr9Bh9ZWw8XL3jPLqnZ5DWvJqMAqerAJFLy',
+        lockUntil: 1_807_660_800n,
+        startLamports: 1_010_278_760n,
+        startSol: '1.01027876 SOL',
+      }
+    : {
+        mainKey: '9QeBtMG3LbdUz7sHHjmJMQ243Pn8Tb1A4WmwM3SJjRKf',
+        stakeAccount: 'FuXxGyzezXKrmHa784Uio8qfo4D9dzov639wPC6RTVA5',
+        secondKey: 'GhVdLekCV7KySTbDrdeFWyryPRxQsfbwBn6UUGS7FpK',
+        lockUntil: 1_823_299_200n,
+        startLamports: 101_666_240n,
+        startSol: '0.10166624 SOL',
+      };
+
+/** What GET /api/challenge serves for it: 64 bytes shaped like a keypair file, ending in the main key. Not a real key. */
+export const CHALLENGE_SECRET = getBase58Decoder().decode(
+  Uint8Array.from([...Array.from({ length: 32 }, (_, i) => i + 1), ...getAddressEncoder().encode(CHALLENGE.mainKey as Address)]),
+);
+
 export const SMOKE_FIXTURE: ApiFixture = {
   accounts: [
     stakeJson(SMOKE_STAKE, { lamports: 1_250n * SOL + 500_000_000n, lockEnd: NOW + 190n * DAY, custodian: SECOND, delegated: false }),
+    stakeJson(CHALLENGE.stakeAccount, {
+      lamports: CHALLENGE.startLamports,
+      withdrawer: CHALLENGE.mainKey,
+      lockEnd: CHALLENGE.lockUntil,
+      custodian: CHALLENGE.secondKey,
+    }),
   ],
   balances: { [MAIN]: SOL, [SECOND]: SOL / 100n },
 };
@@ -207,6 +241,9 @@ export async function mockApi(page: Page, fixture: ApiFixture): Promise<void> {
   });
   await page.route('**/api/sol-price', async (route) => {
     await json(route, { usd: 150, at: new Date().toISOString() });
+  });
+  await page.route('**/api/challenge', async (route) => {
+    await json(route, { mainKey: CHALLENGE.mainKey, mainKeySecret: CHALLENGE_SECRET });
   });
   // A ready one-tap rescue kit (D118) for every account, linked to a Telegram chat: the page shows the new owner.
   await page.route('**/api/rescue-kits?*', async (route) => {

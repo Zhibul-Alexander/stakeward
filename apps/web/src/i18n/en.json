@@ -2648,13 +2648,45 @@
   },
   "challenge": {
     "title": "Try to steal it",
-    "intro": "Below is the real main key of a stake account on devnet. Import it into a wallet or the Solana CLI and try to take the SOL. A second key holds a lock on this stake until {date}, and without it the network refuses.",
+    "network": {
+      "mainnet": "Live on Solana mainnet",
+      "devnet": "Live on Solana devnet"
+    },
+    "intro": "The main key of this stake is public. Take the SOL if you can: without the second key that holds the lock, the network refuses.",
+    "hero": {
+      "label": "The stake account right now",
+      "balance": "In the stake account",
+      "taken": "Taken",
+      "lockedUntil": "Locked until",
+      "loading": "Reading the stake account from the network",
+      "error": "Could not read the network just now.",
+      "retry": "Try again",
+      "scope": "Taken counts the stake account. The lock does not cover the main key's ordinary wallet balance.",
+      "simulate": "Try to steal it here",
+      "simulateHint": "Runs the theft on the network as a simulation: no wallet, no key, no fee."
+    },
     "devnetOnly": "Devnet only: this SOL has no value. Never paste a key that holds real funds into any site or wallet you do not control.",
     "keyTitle": "The main key, public on purpose",
-    "keyHint": "Wallets call this a private key. Phantom, Solflare and Backpack can import it; switch the wallet to devnet.",
+    "keyHint": "Wallets call this a private key. It signs as the main key of the stake account.",
     "keyLoading": "Loading the key",
     "keyErrorTitle": "Could not load the key",
     "keyErrorBody": "Could not get the key from the Stakeward server. Wait a minute, then try again.",
+    "copyKey": "Copy key",
+    "copied": "Copied",
+    "copyFailed": "Could not copy. Select the key and copy it by hand.",
+    "import": {
+      "title": "Import it into a wallet",
+      "copy": "Copy the key.",
+      "open": "In Phantom, Solflare or Backpack, choose Add account, then Import private key.",
+      "paste": "Paste the key, open the stake and try to withdraw it.",
+      "devnet": "Switch the wallet to devnet."
+    },
+    "neverSend": "Never send SOL to this address. A wallet pays its fees from it, but everyone can see this key, so anyone can take what you send.",
+    "qr": {
+      "title": "Open it on your phone",
+      "hint": "Scan to open this page on your phone, then copy the key into your wallet app.",
+      "label": "QR code of the link to this page"
+    },
     "mainKey": "Main key address",
     "stakeAccount": "Stake account",
     "secondKey": "Second key (address only)",
@@ -2673,18 +2705,28 @@
     },
     "why": "The stake program checks the lock itself: until it ends, withdrawing and changing the owner need the second key's signature too. Stakeward is not in the way, and it could not let you through either.",
     "proof": "See the lock live",
-    "simulate": "Simulate a theft",
     "explorer": "Open in Solana Explorer",
-    "lockedBadge": "Locked until {date}",
-    "devnetBadge": "Devnet",
     "try": {
       "title": "Try it from the command line",
-      "intro": "Every command below is real and runs against devnet. The three attempts at the end sign with the main key and are refused by the stake program itself.",
+      "show": "Show the commands",
+      "intro": {
+        "mainnet": "Every command below is real and runs on mainnet. The three attempts at the end sign with the main key and are refused by the stake program itself.",
+        "devnet": "Every command below is real and runs against devnet. The three attempts at the end sign with the main key and are refused by the stake program itself."
+      },
       "waitingForKey": "The commands appear once the key has loaded.",
-      "setupTitle": "Make a devnet wallet to pay the fees",
-      "setupHint": "The attempts are paid from your own throwaway wallet, so the stolen key never needs SOL. Needs the Solana CLI.",
+      "setupTitle": {
+        "mainnet": "Make a wallet of your own to pay the fees",
+        "devnet": "Make a devnet wallet to pay the fees"
+      },
+      "setupHint": {
+        "mainnet": "The attempts are paid from your own wallet file, so the published key never needs SOL. Send it about 0.001 SOL from your wallet: the least a new account can hold, and more than the fees. Needs the Solana CLI.",
+        "devnet": "The attempts are paid from your own throwaway wallet, so the stolen key never needs SOL. Needs the Solana CLI."
+      },
       "walletLabel": "Create me.json",
-      "airdropLabel": "Get 1 devnet SOL",
+      "fundLabel": {
+        "mainnet": "Show its address, to send it about 0.001 SOL",
+        "devnet": "Get 1 devnet SOL"
+      },
       "keyFileTitle": "Save the stolen main key as thief.json",
       "withdraw": "Try to withdraw all the SOL to your wallet",
       "withdrawExpect": "Expected: refused. The lock is in force and the second key did not sign.",

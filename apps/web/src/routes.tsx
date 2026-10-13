@@ -27,8 +27,8 @@ import { WithdrawPage } from '@/pages/WithdrawPage';
 const DEV_PAGES = import.meta.env.VITE_CLUSTER === 'devnet';
 const DevUiPage = DEV_PAGES ? lazy(() => import('@/pages/dev/DevUiPage')) : null;
 const DevCosignPage = DEV_PAGES ? lazy(() => import('@/pages/dev/DevCosignPage')) : null;
-/** The public devnet challenge wallet (D133): its main key is devnet-only content. */
-const ChallengePage = DEV_PAGES ? lazy(() => import('@/pages/challenge/ChallengePage')) : null;
+/** The public challenge wallet of this build's cluster (D133, D154), in a chunk of its own. */
+const ChallengePage = lazy(() => import('@/pages/challenge/ChallengePage'));
 
 function Lazy({ children }: { children: ReactNode }) {
   return (
@@ -105,13 +105,11 @@ export function AppRoutes() {
       <Route path="/check">
         <CheckPage />
       </Route>
-      {ChallengePage === null ? null : (
-        <Route path="/challenge">
-          <Lazy>
-            <ChallengePage />
-          </Lazy>
-        </Route>
-      )}
+      <Route path="/challenge">
+        <Lazy>
+          <ChallengePage />
+        </Lazy>
+      </Route>
       {DevUiPage === null ? null : (
         <Route path="/dev/ui">
           <Lazy>

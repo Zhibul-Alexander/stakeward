@@ -56,18 +56,16 @@ function BrandMark() {
   );
 }
 
-/** The links that are not for an emergency or the stake itself: the demo, the devnet challenge (D133), the other network. */
+/** The links that are not for an emergency or the stake itself: the demo, the challenge (D133, D154), the other network. */
 function SecondaryLinks({ className }: { className?: string | undefined }) {
   return (
     <>
       <NavLink href="/demo" className={className}>
         {t('nav.demo')}
       </NavLink>
-      {IS_DEVNET ? (
-        <NavLink href="/challenge" className={className}>
-          {t('nav.challenge')}
-        </NavLink>
-      ) : null}
+      <NavLink href="/challenge" className={className}>
+        {t('nav.challenge')}
+      </NavLink>
       <NetworkLink className={className} />
     </>
   );
@@ -76,7 +74,7 @@ function SecondaryLinks({ className }: { className?: string | undefined }) {
 /**
  * The site header (DECISIONS.md D112, D141, D143): the mark and name, the Devnet badge on devnet, the theme (D151) and
  * the interface language (D140), and the nav. Your accounts and Rescue, for someone whose main key was just stolen, are links in words at
- * every width. The rest (the demo, the devnet challenge, the other network's site) stands in the row from 1024 px;
+ * every width. The rest (the demo, the challenge, the other network's site) stands in the row from 1024 px;
  * below that a More button opens it as a list under the header, so a phone sees no icon-only links and one row of nav.
  * Below 640 px the nav takes the second row. Boxes (the current page's pill, the focus ring) stay inside the content
  * column, clear of the 16 px gutter.
