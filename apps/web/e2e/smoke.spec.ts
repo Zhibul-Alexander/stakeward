@@ -415,7 +415,6 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(page.getByRole('button', { name: text('challenge.copyKey') })).toBeVisible();
       await expect(page.locator('[data-slot="never-send"]')).toHaveText(text('challenge.neverSend'));
       await expect(page.locator('[data-slot="fee-hint"]')).toHaveText(text('challenge.feeHint'));
-      await expect(page.locator('[data-slot="fee-payer"] p')).toHaveText(text('challenge.feePayer.body'));
       // The QR code carries the page to a phone, so a phone does not show it.
       await expect(page.locator('[data-slot="challenge-qr"]')).toBeVisible({ visible: (page.viewportSize()?.width ?? 0) >= 640 });
       await page.getByText(text('challenge.try.show')).click();

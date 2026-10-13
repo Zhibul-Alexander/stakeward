@@ -2661,13 +2661,13 @@
       "loading": "Reading the stake account from the network",
       "error": "Could not read the network just now.",
       "retry": "Try again",
-      "scope": "Taken counts the stake account. The lock does not cover the main key's ordinary wallet balance.",
+      "scope": "Taken counts only the stake. SOL in the wallet itself is not under the lock.",
       "simulate": "Try to steal it here",
-      "simulateHint": "Runs the theft on the network as a simulation: no wallet, no key, no fee."
+      "simulateHint": "A free simulation on the network. You do not need a wallet."
     },
     "devnetOnly": "Devnet only: this SOL has no value. Never paste a key that holds real funds into any site or wallet you do not control.",
     "keyTitle": "The main key, public on purpose",
-    "keyHint": "Wallets call this a private key. It signs as the main key of the stake account.",
+    "keyHint": "Wallets call this a private key.",
     "keyLoading": "Loading the key",
     "keyErrorTitle": "Could not load the key",
     "keyErrorBody": "Could not get the key from the Stakeward server. Wait a minute, then try again.",
@@ -2682,11 +2682,7 @@
       "devnet": "Switch the wallet to devnet."
     },
     "neverSend": "Never send SOL or any other token to this address. Everyone can see this key, so anyone can take what you send.",
-    "feeHint": "You do not need any SOL here to try. A wallet pays the fee from the imported address and will ask you to add SOL: do not. The simulation at the top costs nothing, and in the command line below a wallet of your own pays the fee.",
-    "feePayer": {
-      "title": "Pay the fee from another wallet",
-      "body": "Any wallet can pay a transaction's fee if it signs too. In the Solana CLI, add --fee-payer with a wallet file of your own, as each command below does: your wallet pays, and this key only signs. Phantom, Solflare and Backpack always pay from the open account, so in them this does not work."
-    },
+    "feeHint": "You need no SOL on this key to try. A wallet app will ask for some to pay the fee: do not send it. The simulation at the top is free, and in the Solana CLI your own wallet pays with --fee-payer, as the commands below do.",
     "qr": {
       "title": "Open it on your phone",
       "hint": "Scan to open this page on your phone, then copy the key into your wallet app.",
@@ -2695,7 +2691,6 @@
     "mainKey": "Main key address",
     "stakeAccount": "Stake account",
     "secondKey": "Second key (address only)",
-    "lockedUntil": "Locked until",
     "canTitle": "With this key a thief can",
     "can": {
       "staker": "Hand the right to manage staking to another address. The main key can take it back.",
@@ -2724,7 +2719,7 @@
         "devnet": "Make a devnet wallet to pay the fees"
       },
       "setupHint": {
-        "mainnet": "Each attempt names your own wallet file with --fee-payer, so it pays the fee and the published key never needs SOL. Send it about 0.001 SOL from your wallet: the least a new account can hold, and more than the fees. Needs the Solana CLI.",
+        "mainnet": "Your own wallet file pays the fees. Send it about 0.001 SOL, the least a new account can hold. Needs the Solana CLI.",
         "devnet": "The attempts are paid from your own throwaway wallet, so the stolen key never needs SOL. Needs the Solana CLI."
       },
       "walletLabel": "Create me.json",

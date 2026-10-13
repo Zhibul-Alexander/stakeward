@@ -75,18 +75,16 @@ describe('/challenge on LiteSvmChain', () => {
     expect(await within(hero()).findByText(formatSol(CHALLENGE.startLamports))).toBeInTheDocument();
     expect(figure('Taken')).toHaveTextContent('0 SOL');
     expect(figure('Locked until')).toHaveTextContent('12 October 2027');
-    expect(within(hero()).getByText(/does not cover the main key's ordinary wallet balance/)).toBeInTheDocument();
+    expect(within(hero()).getByText('Taken counts only the stake. SOL in the wallet itself is not under the lock.')).toBeInTheDocument();
     // The first thing to do needs no wallet: the simulation of /try-steal.
     expect(within(hero()).getByRole('link', { name: 'Try to steal it here' })).toHaveAttribute('href', `/try-steal/${CHALLENGE.stakeAccount}`);
 
     expect(await screen.findByText(SECRET)).toBeInTheDocument();
     expect(screen.getByText(/^Never send SOL or any other token to this address/)).toBeInTheDocument();
     // No one has to fund the key to try: the simulation costs nothing and in the CLI the visitor's own wallet pays.
-    expect(screen.getByText(/^You do not need any SOL here to try\./)).toHaveTextContent('a wallet of your own pays the fee');
-    expect(screen.getByRole('heading', { level: 3, name: 'Pay the fee from another wallet' })).toBeInTheDocument();
-    const feePayer = screen.getByRole('heading', { level: 3, name: 'Pay the fee from another wallet' }).nextElementSibling;
-    expect(feePayer).toHaveTextContent('add --fee-payer with a wallet file of your own');
-    expect(within(feePayer as HTMLElement).getByText('--fee-payer', { selector: 'code' })).toBeInTheDocument();
+    // How another wallet pays the fee: the flag set as code, so it never breaks at its hyphens.
+    const feeHint = screen.getByText('--fee-payer', { selector: 'code' }).parentElement;
+    expect(feeHint).toHaveTextContent(/^You need no SOL on this key to try\. .* your own wallet pays with --fee-payer, as the commands below do\.$/);
     expect(screen.getByText('In Phantom, Solflare or Backpack, choose Add account, then Import private key.')).toBeInTheDocument();
     expect(screen.getByText('Switch the wallet to devnet.')).toBeInTheDocument();
     // The QR code opens this page on a phone, not the key: wallets do not import a key from a QR code.

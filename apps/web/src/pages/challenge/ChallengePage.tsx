@@ -327,16 +327,11 @@ export default function ChallengePage({ load = () => fetchChallengeKey() }: { lo
           <TriangleAlertIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
           {t('challenge.neverSend')}
         </p>
-        {/* Why no one has to fund the key to try: a wallet would ask for it, the simulation and the CLI do not (D154). */}
+        {/* Why no one has to fund the key to try, and how another wallet pays the fee: a wallet app would ask for SOL,
+            the simulation and the CLI do not (D154). */}
         <p data-slot="fee-hint" className="-mt-2 pl-6 text-sm text-pretty text-muted">
-          {t('challenge.feeHint')}
+          <WithFlag text={t('challenge.feeHint')} flag="--fee-payer" />
         </p>
-        <div data-slot="fee-payer" className="flex flex-col gap-1 rounded-md bg-subtle p-3">
-          <h3 className="text-sm font-semibold">{t('challenge.feePayer.title')}</h3>
-          <p className="text-sm text-pretty">
-            <WithFlag text={t('challenge.feePayer.body')} flag="--fee-payer" />
-          </p>
-        </div>
         <div className="flex flex-col gap-2">
           <h3 className="text-base font-semibold">{t('challenge.import.title')}</h3>
           <ol className="flex list-decimal flex-col gap-1 pl-5 text-base text-pretty">
@@ -345,7 +340,8 @@ export default function ChallengePage({ load = () => fetchChallengeKey() }: { lo
             ))}
           </ol>
         </div>
-        <dl className="grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-2">
+        {/* The lock's end is the hero's figure: the list holds the three addresses only. */}
+        <dl className="grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-3">
           <div className="flex flex-col gap-1">
             <dt className="text-muted">{t('challenge.mainKey')}</dt>
             <dd>
@@ -363,10 +359,6 @@ export default function ChallengePage({ load = () => fetchChallengeKey() }: { lo
             <dd>
               <AddressText address={CHALLENGE.secondKey} />
             </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="text-muted">{t('challenge.lockedUntil')}</dt>
-            <dd className="font-medium">{until}</dd>
           </div>
         </dl>
       </Panel>
