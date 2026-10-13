@@ -34,6 +34,7 @@ You can look before you connect anything: paste a wallet address and see which o
 - **Stake SOL.** Create a new stake account and delegate it in one transaction that your main key signs, then protect it.
 - **Delegate.** A stake that earns nothing is marked Not earning and gets a Delegate button. Validators are listed by open rules in random order: Stakeward recommends no validator and sells no placement.
 - **Try to steal it.** For a stake account, Stakeward simulates what a thief with only the main key gets when they withdraw or remove the lock, and shows the network's answer.
+- **Public challenge.** `/challenge` publishes the main key of a real stake account on mainnet, about 1 SOL locked until 14 April 2027. Anyone can import the key and try to take the stake; the page shows live how much is still there.
 - **Check a transaction.** Paste a transaction from any site, and your browser shows whether it touches stake accounts and how. Nothing is sent.
 - **Proof page.** `/proof/<wallet>` shows how much of a wallet's native stake is locked, for a fund, a DAO or a validator to share.
 - **Ask your AI.** Links that open ChatGPT or Claude with a question built from the public data on the page. Stakeward sends nothing to an AI and keeps no answers.
@@ -413,7 +414,7 @@ The worker's API:
 | `GET /api/health` | time of the last successful monitor pass; HTTP 503 when it is older than 10 minutes |
 | `GET /api/stats` | stake accounts under a lock, SOL under a lock, alerts sent |
 | `GET /api/sol-price` | a rough SOL price in US dollars for the costs tab, from Coinbase or else CoinGecko, cached for 5 minutes |
-| `GET /api/challenge` | devnet only: the published main key of the "Try to steal it" wallet |
+| `GET /api/challenge` | the published main key of this network's "Try to steal it" wallet, only if it is the main key the worker names for the network |
 
 ### Requirements
 
@@ -475,8 +476,9 @@ Keys for scripts and tests live in `.keys/` (gitignored). They are test data, ne
 
 Two Wrangler environments, each with its own D1 database, Telegram bot, RPC URL and secrets:
 
-- `dev`: Solana devnet, https://dev.stakeward.com. It also offers 10-minute and 1-hour locks, the `/dev` pages and `/challenge`.
+- `dev`: Solana devnet, https://dev.stakeward.com. It also offers 10-minute and 1-hour locks and the `/dev` pages.
 - `prod`: Solana mainnet, https://stakeward.com.
+- Both serve `/challenge`, each with its own network's public wallet: on mainnet a real stake account of about 1 SOL, locked until 14 April 2027, whose main key anyone can import. Never send SOL to that main key: anyone can take it.
 
 ```sh
 pnpm deploy:dev
@@ -489,7 +491,7 @@ Each deploy appends its commit, the Cloudflare version id and the sha256 of ever
 
 `pnpm deploy:dev:raw` is the old unchecked dev deploy, kept for emergencies; prod has no such route. Deploys also run from GitHub Actions (`deploy.yml`, manual dispatch from `main`; the GitHub environments `dev` and `prod` hold only the two Cloudflare keys; it runs the same wrapper and migrates D1 after the code, docs/DECISIONS.md D115). CI's `check` job has no Cloudflare token. Roll back with `pnpm exec wrangler rollback --env <env>` in `apps/worker`.
 
-- Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL`, `MONITOR_RPC_URL` and, on dev only, `CHALLENGE_MAIN_KEY` (the published key that `/challenge` shows). The monitor reads the chain through `MONITOR_RPC_URL` when it is set; it protects the alerts only if that URL has a quota of its own (another Helius account or another provider), so that traffic on the site cannot use up the monitor's credits. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
+- Secrets: `RPC_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_CHAT_ID`, `TELEGRAM_BOT_USERNAME`, `SITE_ORIGIN`, and optionally `RPC_FALLBACK_URL`, `MONITOR_RPC_URL` `CHALLENGE_MAIN_KEY` (the published key that `/challenge` shows; the worker serves it only when its public half is that network's challenge main key). The monitor reads the chain through `MONITOR_RPC_URL` when it is set; it protects the alerts only if that URL has a quota of its own (another Helius account or another provider), so that traffic on the site cannot use up the monitor's credits. `apps/worker/wrangler.jsonc` describes each. The first deploy of a new worker must pass them all: `pnpm exec wrangler deploy --env dev --secrets-file .dev.vars.dev` in `apps/worker`. Locally they live in `apps/worker/.dev.vars.<env>`, which is gitignored.
 - `RPC_URL` must be a private RPC such as Helius: public Solana RPC endpoints refuse requests from Cloudflare Workers.
 - Migrations: `pnpm --filter @stakeward/worker db:migrate:dev` or `db:migrate:prod`. The local wrapper does not run them: run them as a separate step (the GitHub Actions deploy migrates after the code). The order depends on the migration: for 0004, deploy the code first and migrate after (docs/DECISIONS.md D90); a migration that adds a table or column the code reads goes first. Pass `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to that one command only (for example with `env -i`), never to your shell. To run the worker locally: `pnpm build`, then `pnpm --filter @stakeward/worker exec wrangler d1 migrations apply DB --local --env dev`, then `pnpm --filter @stakeward/worker dev`.
 - The monitor fits the Workers Free plan in small batches (`MONITOR_PLAN` = `free`); the paid plan allows bigger passes (`paid`).

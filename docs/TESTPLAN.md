@@ -425,3 +425,13 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [ ] `scripts/live-demo/sw.sh setup mainnet`; около 1,3 SOL со своего кошелька на FUNDER; в `demo.env` — `SW_RETURN_TO` (адрес своего кошелька) и `SW_URL` Helius mainnet.
 - [ ] `sw ui`: в шапке «Live on Solana mainnet». Top up wallets, затем все шаги по порядку. Вор без замка забирает стейк. Под замком три отказа, у каждого ссылка на эксплорер mainnet (без `?cluster=`). Take over staking проходит, спасение проходит, повторная кража отказывает.
 - [ ] Return SOL to the funder: все пять кошельков и демо-стейки по нулям, на своём кошельке вернулось всё, кроме комиссий (около 0,0002 SOL).
+
+## /challenge на mainnet (D154, 13.10.2026)
+
+- [ ] Перед деплоем prod: в `apps/worker` выполнить `pnpm exec wrangler secret put CHALLENGE_MAIN_KEY --env prod` и вставить основной ключ кошелька челленджа (base58, 64 байта). Только основной ключ `k58p…Jkrw`: любой другой ключ воркер не отдаст, и страница скажет «Could not load the key».
+- [ ] После деплоя открыть https://stakeward.com/challenge на 1280 и на телефоне, в светлой и тёмной теме: «Live on Solana mainnet», в стейк-аккаунте 1,01027876 SOL или больше, Taken 0 SOL, Locked until 14 April 2027. На телефоне кнопка «Try to steal it here» видна без прокрутки и ведёт на `/try-steal/3zFC…o3Dw`; там «Try to steal it» показывает отказ сети.
+- [ ] Copy key копирует ключ; адрес из ключа в Phantom (Add account → Import private key) — `k58p…Jkrw`. В Phantom попытка вывести стейк не проходит. SOL на этот адрес не переводить.
+- [ ] С компьютера QR-код открывает на телефоне https://stakeward.com/challenge.
+- [ ] «Show the commands»: у каждой команды `--url mainnet-beta`, нет airdrop. С `me.json`, на котором около 0,001 SOL, три попытки получают отказ: LockupInForce, CustodianMissing и MissingRequiredSignature.
+- [ ] В шапке prod и dev есть «Try to steal it». На dev страница по-прежнему показывает devnet-кошелёк (секрет `CHALLENGE_MAIN_KEY --env dev` в новом аккаунте Cloudflare, D136).
+- [ ] Замок на mainnet не снимать никогда: тогда кто угодно выведет стейк основным ключом. Вернуть SOL до 14.04.2027 можно только спасением (основной ключ, второй ключ и новый кошелёк).
