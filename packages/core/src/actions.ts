@@ -129,7 +129,8 @@ export type NonceCloseAction = {
 /**
  * Creates a new stake account and delegates it in one transaction (D139): System CreateAccountWithSeed (base = the
  * main key, which pays and signs; owner = the stake program, 200 bytes), stake Initialize with staker = withdrawer =
- * the main key and no lockup, then DelegateStake to `voteAccount`. `stakeAccount` must equal
+ * the main key and no lockup, then DelegateStake to `voteAccount`. With `voteAccount` null there is no DelegateStake:
+ * the account is created undelegated, to be delegated later (D153). `stakeAccount` must equal
  * `deriveStakeAccountAddress(mainKey, seed)`. The SOL stays the main key's: only it can deactivate and withdraw.
  */
 export type CreateStakeAction = {
@@ -140,7 +141,8 @@ export type CreateStakeAction = {
   seed: string;
   /** Everything moved into the account: the rent-exempt reserve plus the amount that is staked. */
   lamports: bigint;
-  voteAccount: Address;
+  /** Validator to delegate to, or null to leave the new account undelegated. */
+  voteAccount: Address | null;
 };
 
 export type TransactionAction =

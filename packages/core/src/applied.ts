@@ -18,6 +18,8 @@ import { readNonceAccount } from './nonce.ts';
  * - change-second-key: the new second key holds the lock, and its end and epoch are unchanged since `before` (when
  *   known).
  * - rescue: the new wallet is both staker and withdrawer, and the lockup is unchanged since `before` (when known).
+ * - create-stake: the main key holds both keys, and the account is delegated to `voteAccount` (not deactivating), or
+ *   undelegated when `voteAccount` is null.
  * - nonce-setup: a ready nonce account of `nonceAuthority`. nonce-close: the account is closed (or empty).
  * An `after` or `before` read of another account than the target is never proof (callers match reads by position).
  */
@@ -70,8 +72,9 @@ export function actionApplied(action: TransactionAction, after: RawAccount | nul
         account !== null &&
         account.staker === action.mainKey &&
         account.withdrawer === action.mainKey &&
-        delegation?.voter === action.voteAccount &&
-        delegation.deactivationEpoch === U64_MAX
+        (action.voteAccount === null
+          ? delegation === null
+          : delegation?.voter === action.voteAccount && delegation.deactivationEpoch === U64_MAX)
       );
     case 'nonce-setup':
       return readNonceAccount(after, action.nonceAuthority).kind === 'ready';

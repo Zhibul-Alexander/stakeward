@@ -6,6 +6,7 @@ import { ActionBar } from '@/components/product/action-bar';
 import { ErrorState } from '@/components/product/error-state';
 import { SolAmount } from '@/components/product/sol-amount';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLoad } from '@/hooks/use-load';
@@ -21,18 +22,21 @@ type StakeChooseProps = {
   /** The amount of the last run, so Back keeps what was typed (UX rule 2). */
   initialAmount: string;
   /** `lamports` is what moves into the account: the amount plus the rent-exempt reserve. */
-  onContinue: (input: { amount: string; lamports: bigint; voteAccount: Address }) => void;
+  onContinue: (input: { amount: string; lamports: bigint; voteAccount: Address | null }) => void;
 };
 
 /**
  * What /stake asks before signing (D139): how much SOL of the main key to stake and with which validator. The wallet
  * balance and the account's rent-exempt reserve are read from the chain; "Max" leaves a little for fees. A validator
- * is chosen at the start (random order, open criteria); the person can pick another or paste one.
+ * is chosen at the start (random order, open criteria); the person can pick another or paste one, or choose one later:
+ * the account is then created undelegated (D153).
  */
 export function StakeChoose({ headingRef, mainKey, initialAmount, onContinue }: StakeChooseProps) {
   const headingId = useId();
   const amountId = useId();
   const hintId = useId();
+  const laterId = useId();
+  const laterHintId = useId();
   const { chain } = usePorts();
   const [attempt, setAttempt] = useState(0);
   const funds = useLoad(`funds#${mainKey}#${String(attempt)}`, async () => {
@@ -44,6 +48,7 @@ export function StakeChoose({ headingRef, mainKey, initialAmount, onContinue }: 
   });
   const [amount, setAmount] = useState(initialAmount);
   const { vote, picker } = useValidatorPicker({ preselect: true });
+  const [later, setLater] = useState(false);
 
   const lamports = parseSolAmount(amount);
   const ready = funds.status === 'ready' ? funds.value : null;
@@ -58,7 +63,7 @@ export function StakeChoose({ headingRef, mainKey, initialAmount, onContinue }: 
           : max !== null && lamports > max
             ? t('stake.amountTooLarge')
             : null;
-  const canContinue = ready !== null && lamports !== null && problem === null && vote !== null;
+  const canContinue = ready !== null && lamports !== null && problem === null && (later || vote !== null);
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-5">
@@ -126,14 +131,31 @@ export function StakeChoose({ headingRef, mainKey, initialAmount, onContinue }: 
           </p>
         )}
       </div>
-      {picker}
+      <div className="flex items-start gap-3">
+        <Checkbox
+          id={laterId}
+          checked={later}
+          className="mt-0.5"
+          aria-describedby={laterHintId}
+          onCheckedChange={(value) => {
+            setLater(value === true);
+          }}
+        />
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={laterId}>{t('stake.later')}</Label>
+          <p id={laterHintId} className="text-sm text-muted">
+            {t('stake.laterHint')}
+          </p>
+        </div>
+      </div>
+      {later ? null : picker}
       <ActionBar
-        note={t('stake.note')}
+        note={later ? t('stake.noteLater') : t('stake.note')}
         primary={
           <Button
             disabled={!canContinue}
             onClick={() => {
-              if (canContinue) onContinue({ amount, lamports: lamports + ready.rent, voteAccount: vote });
+              if (canContinue) onContinue({ amount, lamports: lamports + ready.rent, voteAccount: later ? null : vote });
             }}
           >
             {t('stake.review')}

@@ -565,7 +565,10 @@ function changeRows(action: TransactionAction, current: OnChainContext | undefin
           after: t('components.tx.movesToStake', { amount: formatSol(action.lamports) }),
         },
         { label: t('components.tx.controlledBy'), after: <Full address={action.mainKey} role="main" /> },
-        { label: t('components.tx.validator'), after: <Full address={action.voteAccount} /> },
+        {
+          label: t('components.tx.validator'),
+          after: action.voteAccount === null ? t('components.tx.noValidator') : <Full address={action.voteAccount} />,
+        },
         { label: lockLabel, after: t('components.tx.noLock') },
       ];
     case 'nonce-setup':

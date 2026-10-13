@@ -469,7 +469,8 @@
         },
         "now": "Ahora: {lock}",
         "fee": "Hasta {total} ({amount} cada una)"
-      }
+      },
+      "noValidator": "Ninguno por ahora: delegar más tarde"
     },
     "steps": {
       "label": "Progreso",
@@ -1418,12 +1419,17 @@
       "title": "Tus SOL están en staking",
       "account": "Nueva cuenta de stake",
       "body": "Tu stake empieza a generar recompensas en la próxima época, en unos 2 días. Aún no tiene bloqueo: protégelo ahora para que un ladrón con tu clave principal no pueda retirarlo.",
-      "protect": "Protegerlo ahora"
+      "protect": "Protegerlo ahora",
+      "titleLater": "Tu cuenta de stake está lista",
+      "bodyLater": "No genera recompensas hasta que la delegues a un validador, lo que puedes hacer más tarde desde tus cuentas. Aún no tiene bloqueo: protégela ahora para que un ladrón con tu clave principal no pueda retirarla."
     },
     "refused": {
       "exists": "Ya existe una cuenta de stake en esta dirección. Vuelve atrás y repite el staking: se usará una dirección nueva."
     },
-    "entry": "Hacer staking de SOL"
+    "entry": "Hacer staking de SOL",
+    "later": "Elegir un validador más tarde",
+    "laterHint": "La nueva cuenta de stake se crea sin validador y no genera recompensas hasta que la delegues. Puedes protegerla enseguida.",
+    "noteLater": "La nueva cuenta de stake no genera recompensas hasta que la delegues. No tiene bloqueo hasta que la protejas."
   },
   "devCosign": {
     "title": "Prueba de firma conjunta de billeteras",

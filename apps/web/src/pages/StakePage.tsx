@@ -27,7 +27,7 @@ type Run = {
   stakeAccount: Address;
   seed: string;
   lamports: bigint;
-  voteAccount: Address;
+  voteAccount: Address | null;
 };
 
 type PageState = { kind: 'choose' } | { kind: 'sign'; run: Run } | { kind: 'done'; run: Run; job: JobView };
@@ -56,7 +56,7 @@ export function StakePage({ signing, now = Date.now }: StakePageProps) {
     headingRef.current?.focus();
   }, [page.kind]);
 
-  async function start(input: { mainKey: Address; lamports: bigint; voteAccount: Address; seed?: string }) {
+  async function start(input: { mainKey: Address; lamports: bigint; voteAccount: Address | null; seed?: string }) {
     // A retry keeps the seed: if the first transaction landed late, the plan finds the account and reports it done
     // instead of staking twice. A new choice gets a new seed, so a new address.
     const seed = input.seed ?? newStakeAccountSeed(now());
