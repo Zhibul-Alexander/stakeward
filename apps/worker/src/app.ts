@@ -100,7 +100,7 @@ export function createApp(options: AppOptions = {}) {
 
   app.get('/telegram/link', noStore(), telegramLinkHandler());
 
-  // Devnet only (challenge.ts): no D1 and no RPC, so no rate limit.
+  // The challenge wallet's main key (challenge.ts): no D1 and no RPC, so no rate limit.
   app.get('/challenge', noStore(), challengeHandler());
 
   app.notFound((c) => c.json({ error: 'Not found' }, 404));

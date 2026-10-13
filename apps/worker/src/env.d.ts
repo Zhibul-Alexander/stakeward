@@ -8,7 +8,7 @@ interface Env {
    * contain an API key: never log it.
    */
   MONITOR_RPC_URL?: string;
-  /** Optional, dev only: the published main key of the devnet challenge wallet (challenge.ts, D133). */
+  /** Optional: the published main key of this cluster's challenge wallet (challenge.ts, D133, D154). */
   CHALLENGE_MAIN_KEY?: string;
 }
 
