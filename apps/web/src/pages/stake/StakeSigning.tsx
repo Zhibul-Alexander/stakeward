@@ -16,7 +16,7 @@ type StakeSigningProps = {
   stakeAccount: Address;
   seed: string;
   lamports: bigint;
-  voteAccount: Address;
+  voteAccount: Address | null;
   /** A new key is a new run (useSigningSession). */
   runKey: number;
   signing?: SigningTestOptions | undefined;

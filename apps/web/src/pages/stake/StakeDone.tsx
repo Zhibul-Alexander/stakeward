@@ -17,7 +17,7 @@ type StakeDoneProps = {
   mainKey: Address;
   stakeAccount: Address;
   lamports: bigint;
-  voteAccount: Address;
+  voteAccount: Address | null;
   job: JobView;
   checking: boolean;
   checkFailed: boolean;
@@ -52,7 +52,7 @@ export function StakeDone({ headingRef, mainKey, stakeAccount, lamports, voteAcc
       <div className="flex flex-col gap-2">
         <h2 id={headingId} ref={headingRef} tabIndex={-1} className="flex items-start gap-2 text-2xl">
           <CircleCheckIcon aria-hidden="true" className="animate-seal mt-1 size-6 shrink-0 text-success" />
-          {t('stake.done.title')}
+          {voteAccount === null ? t('stake.done.titleLater') : t('stake.done.title')}
         </h2>
         <p className="flex flex-wrap items-center gap-x-2 text-sm">
           <span className="text-muted">{t('stake.done.account')}</span>
@@ -62,10 +62,12 @@ export function StakeDone({ headingRef, mainKey, stakeAccount, lamports, voteAcc
           <span className="text-muted">{t('components.tx.amount')}</span>
           <SolAmount lamports={lamports} />
         </p>
-        <p className="flex flex-wrap items-center gap-x-2 text-sm">
-          <span className="text-muted">{t('delegate.done.validator')}</span>
-          <AddressText address={voteAccount} />
-        </p>
+        {voteAccount === null ? null : (
+          <p className="flex flex-wrap items-center gap-x-2 text-sm">
+            <span className="text-muted">{t('delegate.done.validator')}</span>
+            <AddressText address={voteAccount} />
+          </p>
+        )}
         {job.signature === null ? null : (
           <p className="flex flex-wrap items-center gap-x-2 text-sm">
             <span className="text-muted">{t('components.jobs.transaction')}</span>
@@ -73,7 +75,7 @@ export function StakeDone({ headingRef, mainKey, stakeAccount, lamports, voteAcc
           </p>
         )}
       </div>
-      <p className="max-w-prose text-pretty">{t('stake.done.body')}</p>
+      <p className="max-w-prose text-pretty">{voteAccount === null ? t('stake.done.bodyLater') : t('stake.done.body')}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button asChild>
           <Link href={`/protect?${accountParams([stakeAccount]).toString()}`}>

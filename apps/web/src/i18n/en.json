@@ -469,7 +469,8 @@
         },
         "now": "Now: {lock}",
         "fee": "Up to {total} ({amount} each)"
-      }
+      },
+      "noValidator": "None yet: delegate later"
     },
     "steps": {
       "label": "Progress",
@@ -1418,12 +1419,17 @@
       "title": "Your SOL is staked",
       "account": "New stake account",
       "body": "It starts earning at the next epoch, in about 2 days. It has no lock yet: protect it now, so a stolen main key cannot withdraw it.",
-      "protect": "Protect it now"
+      "protect": "Protect it now",
+      "titleLater": "Your stake account is ready",
+      "bodyLater": "It earns nothing until you delegate it to a validator, which you can do later from your accounts. It has no lock yet: protect it now, so a stolen main key cannot withdraw it."
     },
     "refused": {
       "exists": "A stake account already exists at this address. Go back and stake again: a new address is used."
     },
-    "entry": "Stake SOL"
+    "entry": "Stake SOL",
+    "later": "Choose a validator later",
+    "laterHint": "The new stake account is created without a validator and earns nothing until you delegate it. You can protect it right away.",
+    "noteLater": "The new stake account earns nothing until you delegate it. It has no lock until you protect it."
   },
   "devCosign": {
     "title": "Wallet co-signing test",

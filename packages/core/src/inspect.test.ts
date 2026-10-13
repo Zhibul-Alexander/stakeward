@@ -672,8 +672,12 @@ describe('rejects parameters Stakeward never builds', () => {
     expect(await tx(create({ seed: 'other', newAccount: other }), init({ stake: other }), delegate({ stake: other }))).toBe(
       'unknown-instruction',
     );
-    // Exactly the triple, in this order.
-    expect(await tx(create({}), init({}))).toBe('unknown-instruction');
+    // The triple in this order, or the pair without a delegation (D153), held to the same rules.
+    expect(await tx(create({}), init({}))).toBe('ok');
+    expect(await tx(create({}), init({ withdrawer: X }))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({ custodian: X, until: T }))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({ stake: S }))).toBe('unknown-instruction');
+    expect(await tx(create({}), init({}), delegate({}), init({}))).toBe('unknown-instruction');
     expect(await tx(create({}), init({}), delegate({}), delegate({}))).toBe('unknown-instruction');
     expect(await tx(init({}), delegate({}))).toBe('multiple-stake-accounts');
     expect(await tx(create({}), delegate({}), init({}))).toBe('bad-layout');

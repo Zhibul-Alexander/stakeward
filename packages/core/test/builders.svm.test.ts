@@ -264,6 +264,29 @@ describe('create-stake (CreateAccountWithSeed + Initialize + DelegateStake, main
     expect(chain.stakeAccount(stakeAccount)?.lockup.custodian).toBe(K.address);
   });
 
+  it('creates an undelegated stake account when no validator is chosen (D153), which it can protect and delegate later', async () => {
+    const seed = newStakeAccountSeed(Date.UTC(2026, 9, 13));
+    const stakeAccount = await deriveStakeAccountAddress(A.address, seed);
+    const lamports = chain.minimumBalanceForRentExemption(BigInt(STAKE_ACCOUNT_SIZE)) + LAMPORTS_PER_SOL;
+    const action: TransactionAction = { kind: 'create-stake', stakeAccount, mainKey: A.address, seed, lamports, voteAccount: null };
+    const tx = build(action);
+    expect(tx.meta.signers).toEqual([A.address]);
+    const inspected = await inspectTransaction(tx.bytes);
+    expect(inspected.ok && inspected.summary.action).toEqual(action);
+    expectOk(await chain.send(tx.bytes, [A]), 'create-stake');
+
+    const account = chain.stakeAccount(stakeAccount);
+    expect(account).toMatchObject({ kind: 'initialized', staker: A.address, withdrawer: A.address, lamports, delegation: null });
+    expect(actionApplied(action, chain.account(stakeAccount), null)).toBe(true);
+    expect(actionApplied({ ...action, voteAccount: await chain.createVoteAccount() }, chain.account(stakeAccount), null)).toBe(false);
+
+    const protect = build({ kind: 'protect', stakeAccount, mainKey: A.address, secondKey: K.address, lockUntil: lockedUntil(30n).unixTimestamp });
+    expectOk(await chain.send(protect.bytes, [A, K]), 'protect');
+    const voteAccount = await chain.createVoteAccount();
+    expectOk(await chain.send(build({ kind: 'delegate', stakeAccount, staker: A.address, voteAccount }).bytes, [A]), 'delegate');
+    expect(chain.stakeAccount(stakeAccount)?.delegation?.voter).toBe(voteAccount);
+  });
+
   it('fails without spending when the account already exists (the same seed twice)', async () => {
     const voteAccount = await chain.createVoteAccount();
     const seed = newStakeAccountSeed(1);

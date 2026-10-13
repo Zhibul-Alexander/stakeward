@@ -34,15 +34,15 @@ export type StakeRefusal = 'exists';
 /**
  * Create-and-delegate of a new stake account (D139): `stakeAccount` is derived from the main key and `seed`, which are
  * fixed for the run. Every round reads it again: no account -> build (the main key signs and pays, moving `lamports`
- * into it); an account of this main key delegated to `voteAccount` -> done (a late landing); anything else at that
- * address -> refused.
+ * into it); an account of this main key delegated to `voteAccount` (or undelegated when it is null, D153) -> done (a
+ * late landing); anything else at that address -> refused.
  */
 export function createStakePlan(input: {
   mainKey: Address;
   stakeAccount: Address;
   seed: string;
   lamports: bigint;
-  voteAccount: Address;
+  voteAccount: Address | null;
 }): SigningPlan {
   const { mainKey, stakeAccount, seed, lamports, voteAccount } = input;
   return {
@@ -69,8 +69,9 @@ export function createStakePlan(input: {
         if (
           account !== null &&
           account.withdrawer === mainKey &&
-          account.delegation?.voter === voteAccount &&
-          account.delegation.deactivationEpoch === U64_MAX
+          (voteAccount === null
+            ? account.delegation === null
+            : account.delegation?.voter === voteAccount && account.delegation.deactivationEpoch === U64_MAX)
         ) {
           jobs[id] = { kind: 'done', after: account };
         } else {

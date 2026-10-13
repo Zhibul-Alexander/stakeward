@@ -749,8 +749,10 @@ async function actionFromSteps(steps: readonly Step[]): Promise<TransactionActio
   if (first === undefined) reject('bad-layout', 'The transaction has no action after the compute budget');
   if (first.type === 'create-account-with-seed' && second?.type === 'initialize') {
     const [third, ...more] = rest;
-    if (third?.type !== 'delegate' || more.length > 0) notBuilt('a stake account creation without exactly one delegation');
-    return createStakeAction(first, second, third);
+    if (more.length > 0 || (third !== undefined && third.type !== 'delegate')) {
+      notBuilt('a stake account creation followed by anything but one delegation');
+    }
+    return createStakeAction(first, second, third ?? null);
   }
   const stake = steps.filter(isStakeStep);
   if (stake.length > 0) {
@@ -897,18 +899,18 @@ async function nonceSetupAction(
 /**
  * Stake account creation (D139): CreateAccountWithSeed funded by and based on the main key, owned by the stake
  * program, 200 bytes, at the address derived from (base, seed, stake program); Initialize of that account with staker =
- * withdrawer = the main key and no lockup; DelegateStake of that account signed by the main key.
+ * withdrawer = the main key and no lockup; DelegateStake of that account signed by the main key, or none (D153).
  */
 async function createStakeAction(
   create: Extract<Step, { type: 'create-account-with-seed' }>,
   initialize: Extract<Step, { type: 'initialize' }>,
-  delegate: Extract<Step, { type: 'delegate' }>,
+  delegate: Extract<Step, { type: 'delegate' }> | null,
 ): Promise<TransactionAction> {
   const owner = create.payer;
   if (create.base !== owner) notBuilt('a stake account whose seed base is not the funder');
   if (create.owner !== STAKE_PROGRAM_ADDRESS) notBuilt('a stake account owned by another program');
   if (create.space !== BigInt(STAKE_ACCOUNT_SIZE)) notBuilt(`a stake account of ${String(create.space)} bytes`);
-  if (initialize.stake !== create.newAccount || delegate.stake !== create.newAccount) {
+  if (initialize.stake !== create.newAccount || (delegate !== null && delegate.stake !== create.newAccount)) {
     notBuilt('a stake account creation that initializes or delegates another account');
   }
   if (initialize.staker !== owner || initialize.withdrawer !== owner) {
@@ -918,7 +920,7 @@ async function createStakeAction(
   if (lockup.unixTimestamp !== 0n || lockup.epoch !== 0n || lockup.custodian !== ZERO_ADDRESS) {
     notBuilt('a new stake account with a lockup');
   }
-  if (delegate.staker !== owner) notBuilt('a new stake account delegated by another key');
+  if (delegate !== null && delegate.staker !== owner) notBuilt('a new stake account delegated by another key');
   let derived: Address;
   try {
     derived = await createAddressWithSeed({ baseAddress: owner, programAddress: STAKE_PROGRAM_ADDRESS, seed: create.seed });
@@ -932,7 +934,7 @@ async function createStakeAction(
     mainKey: owner,
     seed: create.seed,
     lamports: create.lamports,
-    voteAccount: delegate.vote,
+    voteAccount: delegate?.vote ?? null,
   };
 }
 

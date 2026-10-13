@@ -303,7 +303,11 @@ function actionInstructions(action: TransactionAction): Instruction[] {
       ];
     case 'create-stake':
       requireLamports(action.lamports);
-      requireDistinct([action.mainKey, action.stakeAccount, action.voteAccount]);
+      requireDistinct(
+        action.voteAccount === null
+          ? [action.mainKey, action.stakeAccount]
+          : [action.mainKey, action.stakeAccount, action.voteAccount],
+      );
       check(isStakeAccountSeed(action.seed), `The stake account seed is "${STAKE_ACCOUNT_SEED_PREFIX}" plus base-36 characters`);
       return [
         getCreateAccountWithSeedInstruction({
@@ -323,14 +327,18 @@ function actionInstructions(action: TransactionAction): Instruction[] {
             arg1: { unixTimestamp: 0n, epoch: 0n, custodian: ZERO_ADDRESS },
           }),
         ),
-        legacy(
-          StakeInstruction.DelegateStake,
-          getDelegateStakeInstruction({
-            stake: action.stakeAccount,
-            vote: action.voteAccount,
-            stakeAuthority: signer(action.mainKey),
-          }),
-        ),
+        ...(action.voteAccount === null
+          ? []
+          : [
+              legacy(
+                StakeInstruction.DelegateStake,
+                getDelegateStakeInstruction({
+                  stake: action.stakeAccount,
+                  vote: action.voteAccount,
+                  stakeAuthority: signer(action.mainKey),
+                }),
+              ),
+            ]),
       ];
     case 'nonce-close':
       requireLamports(action.lamports);
