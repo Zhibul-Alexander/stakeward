@@ -233,6 +233,19 @@ function MainKey({ secret, onRetry }: { secret: Load<string>; onRetry: () => voi
   }
 }
 
+/** `text` with `flag` set as code that never breaks at its hyphens (every catalog keeps the flag, catalogs.test.ts). */
+function WithFlag({ text, flag }: { text: string; flag: string }) {
+  const [before, ...rest] = text.split(flag);
+  if (rest.length === 0) return text;
+  return (
+    <>
+      {before}
+      <code className="font-mono whitespace-nowrap">{flag}</code>
+      {rest.join(flag)}
+    </>
+  );
+}
+
 const IMPORT_STEPS: readonly MessageKey[] = [
   'challenge.import.copy',
   'challenge.import.open',
@@ -318,6 +331,12 @@ export default function ChallengePage({ load = () => fetchChallengeKey() }: { lo
         <p data-slot="fee-hint" className="-mt-2 pl-6 text-sm text-pretty text-muted">
           {t('challenge.feeHint')}
         </p>
+        <div data-slot="fee-payer" className="flex flex-col gap-1 rounded-md bg-subtle p-3">
+          <h3 className="text-sm font-semibold">{t('challenge.feePayer.title')}</h3>
+          <p className="text-sm text-pretty">
+            <WithFlag text={t('challenge.feePayer.body')} flag="--fee-payer" />
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           <h3 className="text-base font-semibold">{t('challenge.import.title')}</h3>
           <ol className="flex list-decimal flex-col gap-1 pl-5 text-base text-pretty">

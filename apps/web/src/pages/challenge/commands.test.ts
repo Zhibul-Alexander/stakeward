@@ -13,13 +13,13 @@ describe('challengeCommands (D133, D154)', () => {
     expect(commandLine(challengeCommands(SECRET).keyFile)).toBe(`echo '${JSON.stringify(BYTES)}' > thief.json`);
   });
 
-  it("signs every attempt with the stolen key and pays with the visitor's wallet, on the build's network", () => {
+  it("signs every attempt with the stolen key and names the visitor's wallet as fee payer, on the build's network", () => {
     for (const [cluster, url] of [['devnet', 'devnet'], ['mainnet', 'mainnet-beta']] as const) {
       const commands = challengeCommands(SECRET, cluster);
       for (const argv of [commands.withdraw, commands.owner, commands.unlock]) {
         expect(argv[2]).toBe(CHALLENGE.stakeAccount);
         expect(argv).toContain('thief.json');
-        expect(argv.slice(-4)).toEqual(['--keypair', 'me.json', '--url', url]);
+        expect(argv.slice(-6)).toEqual(['--fee-payer', 'me.json', '--keypair', 'me.json', '--url', url]);
       }
       expect(commandLine(commands.withdraw)).toContain('withdraw-stake');
       expect(commands.owner).toContain('--new-withdraw-authority');

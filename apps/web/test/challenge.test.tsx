@@ -83,6 +83,10 @@ describe('/challenge on LiteSvmChain', () => {
     expect(screen.getByText(/^Never send SOL or any other token to this address/)).toBeInTheDocument();
     // No one has to fund the key to try: the simulation costs nothing and in the CLI the visitor's own wallet pays.
     expect(screen.getByText(/^You do not need any SOL here to try\./)).toHaveTextContent('a wallet of your own pays the fee');
+    expect(screen.getByRole('heading', { level: 3, name: 'Pay the fee from another wallet' })).toBeInTheDocument();
+    const feePayer = screen.getByRole('heading', { level: 3, name: 'Pay the fee from another wallet' }).nextElementSibling;
+    expect(feePayer).toHaveTextContent('add --fee-payer with a wallet file of your own');
+    expect(within(feePayer as HTMLElement).getByText('--fee-payer', { selector: 'code' })).toBeInTheDocument();
     expect(screen.getByText('In Phantom, Solflare or Backpack, choose Add account, then Import private key.')).toBeInTheDocument();
     expect(screen.getByText('Switch the wallet to devnet.')).toBeInTheDocument();
     // The QR code opens this page on a phone, not the key: wallets do not import a key from a QR code.

@@ -415,6 +415,7 @@ const ROUTES: readonly SmokeRoute[] = [
       await expect(page.getByRole('button', { name: text('challenge.copyKey') })).toBeVisible();
       await expect(page.locator('[data-slot="never-send"]')).toHaveText(text('challenge.neverSend'));
       await expect(page.locator('[data-slot="fee-hint"]')).toHaveText(text('challenge.feeHint'));
+      await expect(page.locator('[data-slot="fee-payer"] p')).toHaveText(text('challenge.feePayer.body'));
       // The QR code carries the page to a phone, so a phone does not show it.
       await expect(page.locator('[data-slot="challenge-qr"]')).toBeVisible({ visible: (page.viewportSize()?.width ?? 0) >= 640 });
       await page.getByText(text('challenge.try.show')).click();
@@ -422,6 +423,8 @@ const ROUTES: readonly SmokeRoute[] = [
         .locator('[data-slot="command-block"] pre')
         .evaluateAll((blocks) => blocks.flatMap((block) => [...block.textContent.matchAll(/--url\s+(\S+)/g)].map((match) => match[1])));
       expect(new Set(urls)).toEqual(new Set([DEVNET ? 'devnet' : 'mainnet-beta']));
+      // Each attempt pays its fee from the visitor's own wallet, as the note on paying from another wallet says.
+      await expect(page.locator('[data-slot="command-block"] pre', { hasText: '--fee-payer me.json' })).toHaveCount(3);
     },
     screen: 'challenge',
   },
