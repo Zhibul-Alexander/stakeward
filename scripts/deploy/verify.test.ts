@@ -49,6 +49,10 @@ describe('servedPath', () => {
     expect(servedPath('index.html')).toBe('/');
     expect(servedPath('assets/index-AB.js')).toBe('/assets/index-AB.js');
     expect(servedPath('favicon.svg')).toBe('/favicon.svg');
+    // A page of its own (D156): served without `.html`, which Cloudflare redirects to the bare address.
+    expect(servedPath('learn/faq.html')).toBe('/learn/faq');
+    expect(servedPath('app.html')).toBe('/app');
+    expect(servedPath('docs/index.html')).toBe('/docs/');
     expect(servedPath('_headers')).toBeNull();
     expect(servedPath('_redirects')).toBeNull();
   });

@@ -13,7 +13,7 @@ import { SAMPLE_SIGNATURE } from '@/pages/dev-ui/samples';
 import { DEVNET_CHALLENGE, MAINNET_CHALLENGE } from '@/pages/challenge/wallet';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
-import { OG_IMAGE_PATH, robotsTxt, SITE_ORIGINS, sitemapXml } from '../seo.ts';
+import { OG_IMAGE_PATH, pageFiles, pageHead, robotsTxt, SITE_ORIGINS, sitemapXml } from '../seo.ts';
 import { prebuiltDist } from './support/prebuilt.ts';
 
 /**
@@ -84,6 +84,16 @@ function build(cluster: 'devnet' | 'mainnet'): Build {
   return readBuild(dir, true);
 }
 
+/** Every HTML file of a build: index.html and one per sitemap page (seo.ts). */
+function htmlFiles(output: Build): string[] {
+  return [...output.files.keys()].filter((name) => name.endsWith('.html')).sort();
+}
+
+/** A text file as UTF-8 (readBuild keeps bytes as latin1 for the greps). */
+function text(output: Build, name: string): string {
+  return Buffer.from(output.files.get(name) ?? '', 'latin1').toString('utf8');
+}
+
 function filesContaining(output: Build, needle: string): string[] {
   return [...output.files].filter(([, content]) => content.includes(needle)).map(([name]) => name);
 }
@@ -144,26 +154,40 @@ describe('production builds', () => {
   it('each build carries the security headers file and no inline scripts or styles', () => {
     for (const output of [devnet, mainnet]) {
       expect(output.files.has('_headers')).toBe(true);
-      const html = output.files.get('index.html') ?? '';
-      expect(html).toMatch(/<script type="module" crossorigin src="\/assets\/index-[\w-]+\.js"><\/script>/);
-      expect(html).not.toMatch(/<script(?![^>]*\ssrc=)[^>]*>/);
-      expect(html).not.toMatch(/<style|\sstyle=/);
+      for (const name of htmlFiles(output)) {
+        const html = output.files.get(name) ?? '';
+        expect(html, name).toMatch(/<script type="module" crossorigin src="\/assets\/index-[\w-]+\.js"><\/script>/);
+        expect(html, name).not.toMatch(/<script(?![^>]*\ssrc=)[^>]*>/);
+        expect(html, name).not.toMatch(/<style|\sstyle=/);
+      }
     }
   });
 
   it('mainnet is open to search with a sitemap; devnet is kept out of it (seo.ts, D155)', () => {
     expect(mainnet.files.get('robots.txt')).toBe(robotsTxt('mainnet'));
     expect(mainnet.files.get('sitemap.xml')).toBe(sitemapXml(SITE_ORIGINS.mainnet));
-    expect(mainnet.files.get('index.html')).not.toContain('noindex');
     expect(devnet.files.get('robots.txt')).toBe(robotsTxt('devnet'));
     expect(devnet.files.has('sitemap.xml')).toBe(false);
-    expect(devnet.files.get('index.html')).toContain('<meta name="robots" content="noindex">');
-    for (const [output, origin] of [
-      [mainnet, SITE_ORIGINS.mainnet],
-      [devnet, SITE_ORIGINS.devnet],
+    for (const name of htmlFiles(mainnet)) expect(text(mainnet, name), name).not.toContain('noindex');
+    for (const name of htmlFiles(devnet)) expect(text(devnet, name), name).toContain('<meta name="robots" content="noindex" />');
+    for (const output of [mainnet, devnet]) expect(output.files.has(OG_IMAGE_PATH.slice(1))).toBe(true);
+  });
+
+  it('each sitemap page has an HTML file that differs from index.html only in its head (seo.ts, D156)', () => {
+    for (const [output, cluster] of [
+      [mainnet, 'mainnet'],
+      [devnet, 'devnet'],
     ] as const) {
-      expect(output.files.has(OG_IMAGE_PATH.slice(1))).toBe(true);
-      expect(output.files.get('index.html')).toContain(`<meta property="og:image" content="${origin}${OG_IMAGE_PATH}">`);
+      expect(htmlFiles(output)).toEqual(['index.html', ...pageFiles().map(({ fileName }) => fileName)].sort());
+      const landingHead = pageHead(cluster, 'landing', false);
+      const index = text(output, 'index.html');
+      expect(index).toContain(landingHead);
+      for (const { page, fileName } of pageFiles()) {
+        const head = pageHead(cluster, page, true);
+        const html = text(output, fileName);
+        expect(html, fileName).toContain(head);
+        expect(html.replace(head, landingHead), fileName).toBe(index);
+      }
     }
   });
 });

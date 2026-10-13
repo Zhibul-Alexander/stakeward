@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Switch } from 'wouter';
+import { PageMeta } from '@/components/layout/PageMeta';
 import { Spinner } from '@/components/ui/spinner';
 import { AppPage } from '@/pages/AppPage';
 import { ChangeKeyPage } from '@/pages/ChangeKeyPage';
@@ -9,7 +10,7 @@ import { DelegatePage } from '@/pages/DelegatePage';
 import { DemoPage } from '@/pages/DemoPage';
 import { ExtendPage } from '@/pages/ExtendPage';
 import { LandingPage } from '@/pages/LandingPage';
-import { LearnPage } from '@/pages/LearnPage';
+import { LearnPage, learnTab } from '@/pages/LearnPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ProofPage } from '@/pages/ProofPage';
 import { ProtectPage } from '@/pages/ProtectPage';
@@ -44,68 +45,96 @@ function Lazy({ children }: { children: ReactNode }) {
   );
 }
 
-/** Every route of CLAUDE.md section 9. Unknown paths get a not-found page with a way back. */
+/**
+ * Every route of CLAUDE.md section 9. Unknown paths get a not-found page with a way back. PageMeta, first in each route,
+ * sets the tab title, description and canonical link (page-meta.ts, DECISIONS D156); a page may still set its own title
+ * after it, as the recovery card does.
+ */
 export function AppRoutes() {
   return (
     <Switch>
       <Route path="/">
+        <PageMeta page="landing" />
         <LandingPage />
       </Route>
       <Route path="/learn/:tab?">
-        <LearnPage />
+        {(params) => (
+          <>
+            <PageMeta page={`learn.${learnTab(params.tab)}`} />
+            <LearnPage />
+          </>
+        )}
       </Route>
       <Route path="/app">
+        <PageMeta page="app" />
         <AppPage />
       </Route>
       <Route path="/protect">
+        <PageMeta page="protect" />
         <ProtectPage />
       </Route>
       <Route path="/withdraw/:account">
+        <PageMeta page="withdraw" />
         <WithdrawPage />
       </Route>
       <Route path="/extend/:account">
+        <PageMeta page="extend" />
         <ExtendPage />
       </Route>
       <Route path="/change-key/:account">
+        <PageMeta page="changeKey" />
         <ChangeKeyPage />
       </Route>
       <Route path="/delegate/:account">
+        <PageMeta page="delegate" />
         <DelegatePage />
       </Route>
       <Route path="/stake">
+        <PageMeta page="stake" />
         <StakePage />
       </Route>
       <Route path="/rescue">
+        <PageMeta page="rescue" />
         <RescuePage />
       </Route>
       <Route path="/rescue-kit">
+        <PageMeta page="rescueKit" />
         <RescueKitPage />
       </Route>
       <Route path="/rescue-kit/:account">
+        <PageMeta page="rescueNow" />
         <RescueNowPage />
       </Route>
       <Route path="/cosign">
+        <PageMeta page="cosign" />
         <CosignPage />
       </Route>
       <Route path="/try-steal/:account">
+        <PageMeta page="trySteal" />
         <StealPage />
       </Route>
       <Route path="/recovery/:account">
+        <PageMeta page="recovery" />
         <RecoveryPage />
       </Route>
       <Route path="/demo">
+        <PageMeta page="demo" />
         <DemoPage />
       </Route>
       <Route path="/proof/:wallet">
+        <PageMeta page="proof" />
         <ProofPage />
       </Route>
       <Route path="/stats">
+        <PageMeta page="stats" />
         <StatsPage />
       </Route>
       <Route path="/check">
+        <PageMeta page="check" />
         <CheckPage />
       </Route>
       <Route path="/challenge">
+        <PageMeta page="challenge" />
         <Lazy>
           <ChallengePage />
         </Lazy>
@@ -125,6 +154,7 @@ export function AppRoutes() {
         </Route>
       )}
       <Route>
+        <PageMeta page="notFound" />
         <NotFoundPage />
       </Route>
     </Switch>

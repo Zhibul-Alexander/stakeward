@@ -20,6 +20,12 @@
 
 Работа шла в ветке `build/product` (05–08.10.2026), с 08.10.2026 — в main (D111), шаги собираются в отдельных рабочих копиях git и сливаются в неё. Владелец разрешил 05.10.2026 не останавливаться на контрольных точках: всё, что требует кошельков, денег и доступов, собрано в docs/TESTPLAN.md.
 
+## Заголовок, описание и canonical у каждой страницы (13.10.2026, D156)
+
+- Сделано: реестр страниц `src/page-meta.ts` и раздел `meta` в en/es/ka; `PageMeta` в каждом маршруте ставит заголовок вкладки, описание и canonical и обновляет их при переходе и смене языка. Сборка пишет отдельный HTML на каждую страницу из sitemap (14 файлов рядом с index.html) с её `<head>`, так что превью в Telegram и X показывают нужную страницу. verify-deploy отдаёт `learn/faq.html` по `/learn/faq`.
+- Чем проверено: `pnpm typecheck`, `pnpm lint`; web `vitest` 136 файлов, 1122 теста и 1 пропуск; scripts 157 из 157; `pnpm e2e` 22 из 22 (новый `e2e/seo.spec.ts`), `pnpm e2e:mainnet` 2 из 2.
+- Дальше (владелец): носитель читает новые строки `meta` в es.json и ka.json; деплой dev и prod; TESTPLAN «Поиск и превью ссылок».
+
 ## robots.txt, sitemap.xml, теги для поиска (13.10.2026, D155)
 
 - Сделано: плагин Vite `apps/web/seo.ts` пишет при сборке robots.txt (обе сети) и sitemap.xml (только mainnet), кладёт знак как `/og-image.png` и добавляет `og:image`; на devnet каждая страница с `noindex`. В index.html заголовок «Stakeward: lock your staked SOL with a second key», Open Graph и карточка X. «Page not found» ставит `noindex`.

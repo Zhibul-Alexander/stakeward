@@ -8,10 +8,17 @@ import type { FileHash } from './manifest.ts';
 /** Files Cloudflare reads as configuration of the static assets; they are not served. */
 const CONFIG_FILES = new Set(['_headers', '_redirects', '.assetsignore']);
 
-/** The path the site serves a build file at, or null for a config file. index.html is served at `/`. */
+/**
+ * The path the site serves a build file at, or null for a config file. HTML as Cloudflare's default `html_handling`
+ * (auto-trailing-slash) serves it: index.html at `/`, `docs/index.html` at `/docs/`, `learn/faq.html` at `/learn/faq`;
+ * the `.html` addresses answer with a redirect.
+ */
 export function servedPath(file: string): string | null {
   if (CONFIG_FILES.has(file)) return null;
-  return file === 'index.html' ? '/' : `/${file}`;
+  if (file === 'index.html') return '/';
+  if (file.endsWith('/index.html')) return `/${file.slice(0, -'index.html'.length)}`;
+  if (file.endsWith('.html')) return `/${file.slice(0, -'.html'.length)}`;
+  return `/${file}`;
 }
 
 /** Every `/assets/…` path a `src` or `href` attribute of the page names, once, in order. */

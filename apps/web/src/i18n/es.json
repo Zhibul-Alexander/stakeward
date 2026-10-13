@@ -2920,5 +2920,99 @@
       "lockEnd": "Fin del bloqueo",
       "recent": "Cambio anterior"
     }
+  },
+  "meta": {
+    "landing": {
+      "title": "Stakeward: bloquea tus SOL en staking con una segunda clave",
+      "description": "Bloquea tus SOL en staking nativo con una segunda clave que controlas tú, para que una clave robada de tu billetera no pueda retirarlos."
+    },
+    "learn": {
+      "faq": {
+        "title": "Preguntas y respuestas · Stakeward",
+        "description": "Cómo funciona el bloqueo de una cuenta de stake de Solana, qué puede y qué no puede hacer tu segunda clave, y cómo recuperar tus SOL sin Stakeward."
+      },
+      "alerts": {
+        "title": "Alertas en Telegram · Stakeward",
+        "description": "Stakeward revisa tu stake cada pocos minutos y te escribe en Telegram cuando deja de hacer staking, cambia de manos, pierde SOL o el bloqueo está por terminar."
+      },
+      "costs": {
+        "title": "Cuánto cuesta · Stakeward",
+        "description": "Stakeward es gratis. Solo pagas las comisiones de la red Solana, y cada transacción dice quién paga y cuánto antes de que firmes."
+      },
+      "wallets": {
+        "title": "Qué billeteras funcionan · Stakeward",
+        "description": "Qué billeteras se han probado con Stakeward, en qué pares, y qué muestran Phantom y Ledger cuando firmas un bloqueo."
+      },
+      "safety": {
+        "title": "Por qué Stakeward no puede llevarse tus SOL · Stakeward",
+        "description": "El bloqueo vive en tus cuentas de stake en Solana. Tu navegador arma cada transacción, tus billeteras la firman, y Stakeward no tiene programa ni token propios."
+      }
+    },
+    "app": {
+      "title": "Tus cuentas de stake · Stakeward",
+      "description": "Pega cualquier dirección de billetera de Solana para ver sus cuentas de stake nativo y si cada una está bloqueada. Mirar no implica firmar nada."
+    },
+    "check": {
+      "title": "Revisar una transacción · Stakeward",
+      "description": "Pega una transacción de Solana de cualquier sitio antes de firmarla. Stakeward lee sus bytes y te dice si afecta a cuentas de stake, y cómo."
+    },
+    "protect": {
+      "title": "Protege tu stake · Stakeward",
+      "description": "Bloquea tus cuentas de stake con una segunda clave que controlas tú. Mientras dure el bloqueo, tu clave principal por sí sola no puede retirar los SOL ni entregar el stake a otra persona."
+    },
+    "rescue": {
+      "title": "Rescata tu stake · Stakeward",
+      "description": "Si alguien podría tener tu clave principal, mueve tu stake bloqueado a una billetera nueva con tu clave principal, tu segunda clave y la billetera nueva."
+    },
+    "rescueKit": {
+      "title": "Preparar el rescate en un toque · Stakeward",
+      "description": "Firma el rescate de tu stake bloqueado mientras tus claves están a salvo. Si un ladrón lo toca más adelante, el rescate se envía con un toque desde Telegram."
+    },
+    "stake": {
+      "title": "Haz staking de SOL · Stakeward",
+      "description": "Mueve SOL de tu billetera a una cuenta de stake nueva y delégala a un validador en una sola transacción. Después protégela con tu segunda clave."
+    },
+    "demo": {
+      "title": "Mira un robo y luego cómo fracasa · Stakeward",
+      "description": "Recorre paso a paso lo que le pasa a un stake nativo cuando un ladrón consigue tu clave principal: primero sin Stakeward, luego con él."
+    },
+    "stats": {
+      "title": "Stakeward en cifras",
+      "description": "Lo que vigila el monitor de Stakeward: las cuentas de stake bloqueadas, los SOL que guardan y las alertas que ha enviado."
+    },
+    "challenge": {
+      "title": "Intenta robarlo · Stakeward",
+      "description": "La clave principal de este stake es pública. Llévate los SOL si puedes: sin la segunda clave que controla el bloqueo, la red rechaza el intento."
+    },
+    "withdraw": {
+      "title": "Retirar · Stakeward"
+    },
+    "extend": {
+      "title": "Extender el bloqueo · Stakeward"
+    },
+    "changeKey": {
+      "title": "Cambiar la segunda clave · Stakeward"
+    },
+    "delegate": {
+      "title": "Delega tu stake · Stakeward"
+    },
+    "rescueNow": {
+      "title": "Estado del rescate · Stakeward"
+    },
+    "cosign": {
+      "title": "Firmar una transacción · Stakeward"
+    },
+    "trySteal": {
+      "title": "Intenta robar este stake · Stakeward"
+    },
+    "recovery": {
+      "title": "Tarjeta de recuperación de Stakeward"
+    },
+    "proof": {
+      "title": "Comprobante de bloqueo del stake · Stakeward"
+    },
+    "notFound": {
+      "title": "Página no encontrada · Stakeward"
+    }
   }
 }

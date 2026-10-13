@@ -2920,5 +2920,99 @@
       "lockEnd": "Lock ends",
       "recent": "Earlier change"
     }
+  },
+  "meta": {
+    "landing": {
+      "title": "Stakeward: lock your staked SOL with a second key",
+      "description": "Lock your natively staked SOL with a second key you control, so a stolen wallet key cannot withdraw it."
+    },
+    "learn": {
+      "faq": {
+        "title": "Questions and answers · Stakeward",
+        "description": "How the lock on a Solana stake account works, what your second key can and cannot do, and how to get your SOL back without Stakeward."
+      },
+      "alerts": {
+        "title": "Alerts in Telegram · Stakeward",
+        "description": "Stakeward checks your stake every few minutes and messages you in Telegram when it stops staking, changes hands, loses SOL or the lock ends soon."
+      },
+      "costs": {
+        "title": "What it costs · Stakeward",
+        "description": "Stakeward is free. You pay only Solana network fees, and each transaction says who pays and how much before you sign."
+      },
+      "wallets": {
+        "title": "Which wallets work · Stakeward",
+        "description": "Which wallets have been tested with Stakeward, in which pairs, and what Phantom and Ledger show when you sign a lock."
+      },
+      "safety": {
+        "title": "Why Stakeward cannot take your SOL · Stakeward",
+        "description": "The lock lives in your stake accounts on Solana. Your browser builds each transaction, your wallets sign it, and Stakeward owns no program or token."
+      }
+    },
+    "app": {
+      "title": "Your stake accounts · Stakeward",
+      "description": "Paste any Solana wallet address to see its native stake accounts and whether each one is locked. Looking signs nothing."
+    },
+    "check": {
+      "title": "Check a transaction · Stakeward",
+      "description": "Paste a Solana transaction from any site before you sign it. Stakeward reads its bytes and tells you whether it touches stake accounts, and how."
+    },
+    "protect": {
+      "title": "Protect your stake · Stakeward",
+      "description": "Lock your stake accounts with a second key you control. While the lock holds, your main key alone cannot withdraw the SOL or give the stake away."
+    },
+    "rescue": {
+      "title": "Rescue your stake · Stakeward",
+      "description": "If someone may have your main key, move your locked stake to a new wallet with your main key, your second key and the new wallet."
+    },
+    "rescueKit": {
+      "title": "Prepare one-tap rescue · Stakeward",
+      "description": "Sign the rescue of your locked stake while your keys are safe. If a thief touches it later, the rescue is sent in one tap from Telegram."
+    },
+    "stake": {
+      "title": "Stake SOL · Stakeward",
+      "description": "Move SOL from your wallet into a new stake account and delegate it to a validator in one transaction, then protect it with your second key."
+    },
+    "demo": {
+      "title": "See a theft, then see it fail · Stakeward",
+      "description": "Click through what happens to a native stake when a thief gets your main key, first without Stakeward, then with it."
+    },
+    "stats": {
+      "title": "Stakeward in numbers",
+      "description": "What the Stakeward monitor watches: stake accounts under a lock, the SOL in them, and the alerts it has sent."
+    },
+    "challenge": {
+      "title": "Try to steal it · Stakeward",
+      "description": "The main key of this stake is public. Take the SOL if you can: without the second key that holds the lock, the network refuses."
+    },
+    "withdraw": {
+      "title": "Withdraw · Stakeward"
+    },
+    "extend": {
+      "title": "Extend the lock · Stakeward"
+    },
+    "changeKey": {
+      "title": "Change the second key · Stakeward"
+    },
+    "delegate": {
+      "title": "Delegate your stake · Stakeward"
+    },
+    "rescueNow": {
+      "title": "Rescue status · Stakeward"
+    },
+    "cosign": {
+      "title": "Co-sign a transaction · Stakeward"
+    },
+    "trySteal": {
+      "title": "Try to steal this stake · Stakeward"
+    },
+    "recovery": {
+      "title": "Stakeward recovery card"
+    },
+    "proof": {
+      "title": "Stake lock proof · Stakeward"
+    },
+    "notFound": {
+      "title": "Page not found · Stakeward"
+    }
   }
 }

@@ -34,6 +34,11 @@ export function learnPathForHash(hash: string): string | null {
   return null;
 }
 
+/** The tab `/learn/:tab` shows: an unknown or missing one shows the FAQ. */
+export function learnTab(param: string | undefined): LearnTab {
+  return LEARN_TABS.find((candidate) => candidate === param) ?? 'faq';
+}
+
 /**
  * /learn/:tab: the details the landing page used to carry in one long scroll (alerts, costs, wallets, why Stakeward
  * cannot take your SOL, the FAQ), one tab at a time. The tabs are links, so each has its own address and a hash such as
@@ -41,7 +46,7 @@ export function learnPathForHash(hash: string): string | null {
  */
 export function LearnPage() {
   const params = useParams<{ tab?: string }>();
-  const tab = LEARN_TABS.find((candidate) => candidate === params.tab) ?? 'faq';
+  const tab = learnTab(params.tab);
   useHashTarget();
   const deposit = useNonceDeposit();
   const faqParams = useFaqParams(deposit);
