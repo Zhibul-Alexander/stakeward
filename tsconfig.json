@@ -10,6 +10,7 @@
     "apps/worker/vitest.config.ts",
     "apps/web/vite.config.ts",
     "apps/web/playwright.config.ts",
-    "apps/web/static-headers.ts"
+    "apps/web/static-headers.ts",
+    "apps/web/seo.ts"
   ]
 }

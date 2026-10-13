@@ -435,3 +435,10 @@ Prod работает на https://stakeward-prod.stakeward.workers.dev. 09.10.2
 - [ ] «Show the commands»: у каждой команды `--url mainnet-beta`, нет airdrop. С `me.json`, на котором около 0,001 SOL, три попытки получают отказ: LockupInForce, CustodianMissing и MissingRequiredSignature.
 - [ ] В шапке prod и dev есть «Try to steal it». На dev страница по-прежнему показывает devnet-кошелёк (секрет `CHALLENGE_MAIN_KEY --env dev` в новом аккаунте Cloudflare, D136).
 - [ ] Замок на mainnet не снимать никогда: тогда кто угодно выведет стейк основным ключом. Вернуть SOL до 14.04.2027 можно только спасением (основной ключ, второй ключ и новый кошелёк).
+
+## Поиск и превью ссылок (D155, 13.10.2026)
+
+- [ ] После деплоя prod: https://stakeward.com/robots.txt и https://stakeward.com/sitemap.xml открываются текстом, а не страницей сайта; в robots.txt есть строка `Sitemap: https://stakeward.com/sitemap.xml`.
+- [ ] После деплоя dev: https://dev.stakeward.com/robots.txt без строки `Sitemap:`, https://dev.stakeward.com/sitemap.xml показывает страницу сайта (файла нет), в исходном коде страницы (view-source) есть `<meta name="robots" content="noindex">`.
+- [ ] Google Search Console: добавить ресурс stakeward.com (проверка записью TXT в DNS Cloudflare), в «Sitemaps» отправить `https://stakeward.com/sitemap.xml`, статус «Success». Через «URL inspection» проверить `https://stakeward.com/` и `/learn/faq`: страница отрисована, в тексте есть содержимое страницы.
+- [ ] Ссылка https://stakeward.com в Telegram и в черновике поста на X: превью с заголовком «Stakeward: lock your staked SOL with a second key», описанием и знаком-щитом.

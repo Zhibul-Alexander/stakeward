@@ -13,6 +13,7 @@ import { SAMPLE_SIGNATURE } from '@/pages/dev-ui/samples';
 import { DEVNET_CHALLENGE, MAINNET_CHALLENGE } from '@/pages/challenge/wallet';
 import { DEV_SLOTS_STORAGE_KEY } from '@/pages/dev-cosign/ports';
 import { REPORTS_STORAGE_KEY } from '@/pages/dev-cosign/report';
+import { OG_IMAGE_PATH, robotsTxt, SITE_ORIGINS, sitemapXml } from '../seo.ts';
 import { prebuiltDist } from './support/prebuilt.ts';
 
 /**
@@ -147,6 +148,22 @@ describe('production builds', () => {
       expect(html).toMatch(/<script type="module" crossorigin src="\/assets\/index-[\w-]+\.js"><\/script>/);
       expect(html).not.toMatch(/<script(?![^>]*\ssrc=)[^>]*>/);
       expect(html).not.toMatch(/<style|\sstyle=/);
+    }
+  });
+
+  it('mainnet is open to search with a sitemap; devnet is kept out of it (seo.ts, D155)', () => {
+    expect(mainnet.files.get('robots.txt')).toBe(robotsTxt('mainnet'));
+    expect(mainnet.files.get('sitemap.xml')).toBe(sitemapXml(SITE_ORIGINS.mainnet));
+    expect(mainnet.files.get('index.html')).not.toContain('noindex');
+    expect(devnet.files.get('robots.txt')).toBe(robotsTxt('devnet'));
+    expect(devnet.files.has('sitemap.xml')).toBe(false);
+    expect(devnet.files.get('index.html')).toContain('<meta name="robots" content="noindex">');
+    for (const [output, origin] of [
+      [mainnet, SITE_ORIGINS.mainnet],
+      [devnet, SITE_ORIGINS.devnet],
+    ] as const) {
+      expect(output.files.has(OG_IMAGE_PATH.slice(1))).toBe(true);
+      expect(output.files.get('index.html')).toContain(`<meta property="og:image" content="${origin}${OG_IMAGE_PATH}">`);
     }
   });
 });

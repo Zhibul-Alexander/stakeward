@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { seoFiles } from './seo.ts';
 import { readStaticHeaders } from './static-headers.ts';
 
 const CLUSTERS = ['devnet', 'mainnet'] as const;
@@ -23,19 +24,23 @@ function clusterFor(command: 'build' | 'serve'): Cluster {
   return value as Cluster;
 }
 
-export default defineConfig(({ command }) => ({
-  plugins: [react(), tailwindcss()],
-  // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
-  resolve: { tsconfigPaths: true },
-  define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(clusterFor(command)) },
-  // No .env files (SECURITY-CHECK P18): they are gitignored, so the deploy wrapper's clean-tree check cannot see them,
-  // and NODE_ENV=development in one would ship development React. The build takes VITE_CLUSTER from the environment.
-  envDir: false,
-  // Same headers as production (public/_headers), so e2e tests run under the real CSP.
-  preview: { port: 4173, strictPort: true, headers: readStaticHeaders() },
-  test: {
-    environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
-    setupFiles: ['./src/test/setup.ts'],
-  },
-}));
+export default defineConfig(({ command }) => {
+  const cluster = clusterFor(command);
+  return {
+    // seoFiles: robots.txt, sitemap.xml and the cluster's head tags (seo.ts, DECISIONS D155).
+    plugins: [react(), tailwindcss(), seoFiles(cluster)],
+    // `@/` alias comes from tsconfig `paths` (TypeScript 6 rejects `baseUrl`).
+    resolve: { tsconfigPaths: true },
+    define: { 'import.meta.env.VITE_CLUSTER': JSON.stringify(cluster) },
+    // No .env files (SECURITY-CHECK P18): they are gitignored, so the deploy wrapper's clean-tree check cannot see them,
+    // and NODE_ENV=development in one would ship development React. The build takes VITE_CLUSTER from the environment.
+    envDir: false,
+    // Same headers as production (public/_headers), so e2e tests run under the real CSP.
+    preview: { port: 4173, strictPort: true, headers: readStaticHeaders() },
+    test: {
+      environment: 'jsdom',
+      include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
+      setupFiles: ['./src/test/setup.ts'],
+    },
+  };
+});

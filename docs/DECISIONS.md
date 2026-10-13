@@ -1364,3 +1364,15 @@ Helius, бесплатный план, 05.10.2026, тот же VPS: все за�
 - Выход из челленджа — только спасение до 14.04.2027 (основной ключ, второй ключ и новый кошелёк). Снимать замок на mainnet нельзя: тогда кто угодно выведет стейк основным ключом.
 - Отменить: вернуть `DEV_PAGES` у маршрута и в шапке, `CHALLENGE_MARKER`, проверку `CLUSTER !== 'devnet'` в `challenge.ts` и прежний `build-output.test.ts`.
 
+## D155. robots.txt, sitemap.xml и теги для поиска и превью ссылок (13.10.2026, по слову владельца)
+
+- До этого `/robots.txt` и `/sitemap.xml` на обоих доменах отдавали страницу SPA (200, text/html): `not_found_handling: single-page-application` отвечает index.html на любой путь.
+- Файлы пишет при сборке плагин Vite `apps/web/seo.ts`, по VITE_CLUSTER, как и всё остальное в сборке. Воркер не участвует: файлы лежат в ассетах, `run_worker_first` их не задевает.
+- mainnet (stakeward.com): robots.txt со строкой `Sitemap:`; sitemap.xml со страницами, на которые есть смысл попасть из поиска (лендинг, пять вкладок /learn, /app, /check, /protect, /rescue, /rescue-kit, /stake, /demo, /stats, /challenge). Без lastmod, changefreq и priority: Google их не учитывает, а неверный lastmod вредит.
+- devnet (dev.stakeward.com): на каждой странице `<meta name="robots" content="noindex">`, sitemap нет. Копия на devnet не должна спорить в поиске с настоящим сайтом, а prod на неё ссылается («Try on testnet»). robots.txt при этом не закрывает весь сайт: страницу, которую нельзя загрузить, поисковик не прочтёт, и её noindex не сработает.
+- В обеих сборках robots.txt закрывает `/api/` (поисковик, который рендерит страницы, тратил бы квоту Helius и лимиты по IP), `/app?` (адрес чужого кошелька в ссылке) и страницы одного аккаунта или подписи: `/cosign`, `/withdraw/`, `/extend/`, `/change-key/`, `/delegate/`, `/try-steal/`, `/recovery/`, `/rescue-kit/`. `/proof/:wallet` открыт: его делают, чтобы им делиться (D124).
+- Страница «Page not found» ставит `noindex`, пока показана: статус у неё 200, и по статусу поисковик её от настоящей страницы не отличит.
+- Заголовок вкладки «Stakeward: lock your staked SOL with a second key» вместо «Stakeward». Open Graph и `twitter:card summary` в index.html: превью в Telegram, X и Slack читают только этот файл и JS не выполняют. Картинка превью — знак из `docs/brand/logo-512.png` (единственный источник), плагин кладёт его в сборку как `/og-image.png`, а `og:image` — абсолютный адрес своего домена.
+- Проверки: `test/seo.test.tsx` (тексты файлов; каждый путь из sitemap открывает страницу, а не «Page not found»; robots.txt не закрывает ни одну страницу из sitemap; все вкладки /learn в sitemap; noindex на «Page not found»), `test/build-output.test.ts` (файлы и теги в обеих сборках и в папке, которую выкатывает деплой).
+- Не сделано: заголовок и описание своей для каждой страницы (это строки в трёх каталогах), canonical (на SPA один статический canonical склеил бы все страницы с лендингом).
+- Отменить: убрать `seoFiles` из `vite.config.ts`, `seo.ts`, теги из index.html и эффект в `NotFoundPage.tsx`.
